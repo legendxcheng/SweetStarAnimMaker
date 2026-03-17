@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.6.5",
   "scripts": {
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "build": "corepack pnpm -r build",
+    "postinstall": "node tooling/scripts/ensure-better-sqlite3-build.mjs",
+    "test": "corepack pnpm -r test",
+    "typecheck": "corepack pnpm -r typecheck"
   }
 }
