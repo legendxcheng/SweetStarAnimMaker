@@ -1,4 +1,5 @@
 import type { SqliteDatabase } from "./sqlite-db";
+import { initializeSqliteTaskSchema } from "../task-repository/sqlite-task-schema";
 
 export function initializeSqliteSchema(db: SqliteDatabase) {
   db.exec(`
@@ -15,4 +16,6 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
       script_updated_at TEXT NOT NULL
     )
   `);
+
+  initializeSqliteTaskSchema(db);
 }

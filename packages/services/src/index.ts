@@ -11,3 +11,8 @@ export { createLocalDataPaths, type LocalDataPaths } from "./storage/local-data-
 export { createSqliteDb, type CreateSqliteDbOptions, type SqliteDatabase } from "./project-repository/sqlite-db";
 export { createSqliteProjectRepository, type CreateSqliteProjectRepositoryOptions } from "./project-repository/sqlite-project-repository";
 export { initializeSqliteSchema } from "./project-repository/sqlite-schema";
+export {
+  createSqliteTaskRepository,
+  type CreateSqliteTaskRepositoryOptions,
+} from "./task-repository/sqlite-task-repository";
+export { initializeSqliteTaskSchema } from "./task-repository/sqlite-task-schema";
