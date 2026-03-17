@@ -19,6 +19,11 @@ export function createTaskFileStorage(
       await ensureParentDirectory(inputPath);
       await fs.writeFile(inputPath, JSON.stringify(input.input, null, 2), "utf8");
     },
+    async readTaskInput(input) {
+      const inputPath = options.paths.projectTaskInputPath(input.task.storageDir);
+
+      return JSON.parse(await fs.readFile(inputPath, "utf8"));
+    },
     async writeTaskOutput(input) {
       const outputPath = options.paths.projectTaskOutputPath(input.task.storageDir);
 

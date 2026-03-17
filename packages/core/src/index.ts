@@ -45,6 +45,7 @@ export type { Clock } from "./ports/clock";
 export type {
   AppendTaskLogInput,
   CreateTaskArtifactsInput,
+  ReadTaskInputInput,
   TaskFileStorage,
   WriteTaskOutputInput,
 } from "./ports/task-file-storage";
@@ -80,6 +81,13 @@ export {
   type GetTaskDetailUseCase,
   type GetTaskDetailUseCaseDependencies,
 } from "./use-cases/get-task-detail";
+export {
+  createProcessStoryboardGenerateTaskUseCase,
+  type ProcessStoryboardGenerateTaskInput,
+  type ProcessStoryboardGenerateTaskUseCase,
+  type ProcessStoryboardGenerateTaskUseCaseDependencies,
+  type StoryboardGenerateTaskHandler,
+} from "./use-cases/process-storyboard-generate-task";
 export {
   toProjectDetailDto,
 } from "./use-cases/project-detail-dto";

@@ -5,6 +5,10 @@ export interface CreateTaskArtifactsInput {
   input: StoryboardGenerateTaskInput;
 }
 
+export interface ReadTaskInputInput {
+  task: TaskRecord;
+}
+
 export interface WriteTaskOutputInput {
   task: TaskRecord;
   output: unknown;
@@ -17,6 +21,9 @@ export interface AppendTaskLogInput {
 
 export interface TaskFileStorage {
   createTaskArtifacts(input: CreateTaskArtifactsInput): Promise<void> | void;
+  readTaskInput(
+    input: ReadTaskInputInput,
+  ): Promise<StoryboardGenerateTaskInput> | StoryboardGenerateTaskInput;
   writeTaskOutput(input: WriteTaskOutputInput): Promise<void> | void;
   appendTaskLog(input: AppendTaskLogInput): Promise<void> | void;
 }
