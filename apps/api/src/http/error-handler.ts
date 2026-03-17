@@ -1,4 +1,8 @@
-import { ProjectNotFoundError, ProjectValidationError } from "@sweet-star/core";
+import {
+  ProjectNotFoundError,
+  ProjectValidationError,
+  TaskNotFoundError,
+} from "@sweet-star/core";
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 
@@ -14,7 +18,7 @@ export function createApiErrorHandler() {
       });
     }
 
-    if (error instanceof ProjectNotFoundError) {
+    if (error instanceof ProjectNotFoundError || error instanceof TaskNotFoundError) {
       return reply.status(404).send({
         message: error.message,
       });
