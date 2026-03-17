@@ -33,6 +33,7 @@ describe("create storyboard generate task use case", () => {
     };
     const taskFileStorage = {
       createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn(),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
     };
@@ -119,6 +120,7 @@ describe("create storyboard generate task use case", () => {
       },
       taskFileStorage: {
         createTaskArtifacts: vi.fn(),
+        readTaskInput: vi.fn(),
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
       },
@@ -153,6 +155,7 @@ describe("create storyboard generate task use case", () => {
       createTaskArtifacts: vi.fn(() => {
         throw new Error("disk full");
       }),
+      readTaskInput: vi.fn(),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
     };
@@ -229,6 +232,7 @@ describe("create storyboard generate task use case", () => {
       taskRepository,
       taskFileStorage: {
         createTaskArtifacts: vi.fn(),
+        readTaskInput: vi.fn(),
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
       },

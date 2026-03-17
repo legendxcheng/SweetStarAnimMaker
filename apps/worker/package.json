@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "corepack pnpm exec tsc -p tsconfig.json",
     "dev": "corepack pnpm exec tsx src/index.ts",
@@ -12,7 +17,9 @@
   "dependencies": {
     "@sweet-star/core": "workspace:*",
     "@sweet-star/services": "workspace:*",
-    "@sweet-star/shared": "workspace:*"
+    "@sweet-star/shared": "workspace:*",
+    "bullmq": "^5.43.0",
+    "ioredis": "5.9.3"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

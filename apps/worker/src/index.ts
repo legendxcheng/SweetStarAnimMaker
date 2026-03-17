@@ -1,4 +1,7 @@
-import type { Spec2WorkerServices } from "./bootstrap/build-spec2-worker-services";
+import { Worker } from "bullmq";
+import IORedis from "ioredis";
+
+import { buildSpec2WorkerServices } from "./bootstrap/build-spec2-worker-services";
 
 export interface WorkerJob {
   data: {
@@ -15,7 +18,14 @@ export interface StartWorkerResult {
 }
 
 export interface StartWorkerOptions {
-  services?: Spec2WorkerServices;
+  services?: {
+    processStoryboardGenerateTask: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    close?(): Promise<void> | void;
+  };
+  workspaceRoot?: string;
+  redisUrl?: string;
   workerFactory?: (input: {
     queueName: string;
     processor(job: WorkerJob): Promise<void>;
@@ -25,18 +35,47 @@ export interface StartWorkerOptions {
 export async function startWorker(
   options: StartWorkerOptions = {},
 ): Promise<StartWorkerResult> {
+  const services =
+    options.services ??
+    buildSpec2WorkerServices({
+      workspaceRoot: options.workspaceRoot ?? process.cwd(),
+    });
   const processor = async (job: WorkerJob) => {
-    await options.services?.processStoryboardGenerateTask.execute({
+    await services.processStoryboardGenerateTask.execute({
       taskId: job.data.taskId,
     });
   };
+  const redisConnection = options.workerFactory
+    ? null
+    : new IORedis(options.redisUrl ?? process.env.REDIS_URL ?? "redis://127.0.0.1:6379", {
+        maxRetriesPerRequest: null,
+      });
   const worker =
     (await options.workerFactory?.({
       queueName: "storyboard-generate",
       processor,
-    })) ?? {
-      async close() {},
-    };
+    })) ??
+    createBullMqWorker({
+      connection: redisConnection!,
+      processor,
+    });
+
+  return {
+    async close() {
+      await worker.close();
+      await redisConnection?.quit();
+      await services.close?.();
+    },
+  };
+}
+
+function createBullMqWorker(input: {
+  connection: IORedis;
+  processor(job: WorkerJob): Promise<void>;
+}): WorkerInstance {
+  const worker = new Worker("storyboard-generate", input.processor, {
+    connection: input.connection,
+  });
 
   return {
     async close() {

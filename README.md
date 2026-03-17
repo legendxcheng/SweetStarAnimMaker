@@ -10,7 +10,7 @@ Current scope:
 
 This commit establishes only the repository structure. React, Tauri, and runtime tooling are intentionally not initialized yet.
 
-## Spec1 API
+## Backend API And Worker
 
 Install dependencies:
 
@@ -22,6 +22,12 @@ Start the local API:
 
 ```bash
 corepack pnpm --filter @sweet-star/api dev
+```
+
+Start the Spec2 worker:
+
+```bash
+corepack pnpm --filter @sweet-star/worker dev
 ```
 
 Run tests:
@@ -36,4 +42,18 @@ Run type checks:
 corepack pnpm typecheck
 ```
 
+Set `REDIS_URL` before starting the API or worker when you want real queue processing:
+
+```bash
+set REDIS_URL=redis://127.0.0.1:6379
+```
+
+On macOS/Linux:
+
+```bash
+export REDIS_URL=redis://127.0.0.1:6379
+```
+
 Local SQLite data and project files are written under `.local-data/`.
+
+Windows development should use Docker Redis or Memurai for local Redis.

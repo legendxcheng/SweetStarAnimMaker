@@ -64,6 +64,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
 
     redisConnection = new IORedis(
       options.redisUrl ?? process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
+      {
+        maxRetriesPerRequest: null,
+      },
     );
     bullMqQueue = new Queue(storyboardGenerateQueueName, {
       connection: redisConnection,

@@ -64,6 +64,33 @@ describe("task file storage", () => {
         "utf8",
       ),
     ).resolves.toContain("\"taskType\": \"storyboard_generate\"");
+    await expect(
+      storage.readTaskInput({
+        task: {
+          id: "task_20260317_ab12cd",
+          projectId: "proj_20260317_ab12cd",
+          type: "storyboard_generate",
+          status: "pending",
+          queueName: "storyboard-generate",
+          storageDir:
+            "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+          inputRelPath: "tasks/task_20260317_ab12cd/input.json",
+          outputRelPath: "tasks/task_20260317_ab12cd/output.json",
+          logRelPath: "tasks/task_20260317_ab12cd/log.txt",
+          errorMessage: null,
+          createdAt: "2026-03-17T12:00:00.000Z",
+          updatedAt: "2026-03-17T12:00:00.000Z",
+          startedAt: null,
+          finishedAt: null,
+        },
+      }),
+    ).resolves.toEqual({
+      taskId: "task_20260317_ab12cd",
+      projectId: "proj_20260317_ab12cd",
+      taskType: "storyboard_generate",
+      scriptPath: "script/original.txt",
+      scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+    });
   });
 
   it("writes the task output and appends to the task log", async () => {
