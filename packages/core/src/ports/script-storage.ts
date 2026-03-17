@@ -13,6 +13,9 @@ export interface DeleteOriginalScriptInput {
 }
 
 export interface ScriptStorage {
+  readOriginalScript(
+    input: DeleteOriginalScriptInput,
+  ): Promise<string> | string;
   writeOriginalScript(
     input: WriteOriginalScriptInput,
   ): Promise<StoredScriptMetadata> | StoredScriptMetadata;

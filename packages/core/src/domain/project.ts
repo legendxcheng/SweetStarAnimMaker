@@ -30,6 +30,16 @@ export function toProjectStorageDir(projectId: string, slug: string) {
   return `projects/${projectId}-${slug}`;
 }
 
+export function toProjectSlug(name: string) {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "project";
+}
+
 export function createProjectRecord(input: CreateProjectRecordInput): ProjectRecord {
   return {
     ...input,
