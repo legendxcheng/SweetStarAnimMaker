@@ -8,6 +8,9 @@
     "test": "vitest run",
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@sweet-star/shared": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^22.13.10",
     "typescript": "^5.8.2",
