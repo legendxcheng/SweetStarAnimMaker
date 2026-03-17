@@ -9,9 +9,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json",
-    "test": "vitest run",
-    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
+    "build": "corepack pnpm exec tsc -p tsconfig.json",
+    "test": "corepack pnpm exec vitest run",
+    "typecheck": "corepack pnpm exec tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@sweet-star/shared": "workspace:*"
