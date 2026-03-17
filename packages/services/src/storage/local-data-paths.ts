@@ -1,6 +1,11 @@
 import path from "node:path";
 
-import { originalScriptRelPath } from "@sweet-star/core";
+import {
+  originalScriptRelPath,
+  taskInputFileName,
+  taskLogFileName,
+  taskOutputFileName,
+} from "@sweet-star/core";
 
 export interface LocalDataPaths {
   workspaceRoot: string;
@@ -10,6 +15,9 @@ export interface LocalDataPaths {
   projectsDir: string;
   projectPath(storageDir: string): string;
   projectOriginalScriptPath(storageDir: string): string;
+  projectTaskInputPath(taskStorageDir: string): string;
+  projectTaskOutputPath(taskStorageDir: string): string;
+  projectTaskLogPath(taskStorageDir: string): string;
 }
 
 export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
@@ -28,6 +36,15 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
     },
     projectOriginalScriptPath(storageDir) {
       return path.join(dataRootDir, storageDir, originalScriptRelPath);
+    },
+    projectTaskInputPath(taskStorageDir) {
+      return path.join(dataRootDir, taskStorageDir, taskInputFileName);
+    },
+    projectTaskOutputPath(taskStorageDir) {
+      return path.join(dataRootDir, taskStorageDir, taskOutputFileName);
+    },
+    projectTaskLogPath(taskStorageDir) {
+      return path.join(dataRootDir, taskStorageDir, taskLogFileName);
     },
   };
 }

@@ -29,4 +29,24 @@ describe("local data paths", () => {
       ),
     );
   });
+
+  it("builds the task input path inside the owning project", () => {
+    const paths = createLocalDataPaths("C:/repo");
+
+    expect(
+      paths.projectTaskInputPath(
+        "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+      ),
+    ).toMatch(/tasks[\\/]+task_20260317_ab12cd[\\/]+input\.json$/);
+    expect(
+      paths.projectTaskOutputPath(
+        "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+      ),
+    ).toMatch(/tasks[\\/]+task_20260317_ab12cd[\\/]+output\.json$/);
+    expect(
+      paths.projectTaskLogPath(
+        "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+      ),
+    ).toMatch(/tasks[\\/]+task_20260317_ab12cd[\\/]+log\.txt$/);
+  });
 });
