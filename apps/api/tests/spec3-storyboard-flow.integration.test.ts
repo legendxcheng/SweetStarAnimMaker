@@ -11,7 +11,7 @@ import { startWorker } from "@sweet-star/worker";
 
 import { buildApp } from "../src/app";
 
-describe("spec2 task flow", () => {
+describe("spec3 storyboard flow", () => {
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
   const dbs: Array<{ close(): void }> = [];
@@ -33,7 +33,7 @@ describe("spec2 task flow", () => {
   });
 
   it("processes a storyboard task through api, redis, worker, sqlite, and disk", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-spec2-flow-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-spec3-flow-"));
     tempDirs.push(tempDir);
 
     const redisServer = new RedisMemoryServer();
@@ -67,16 +67,6 @@ describe("spec2 task flow", () => {
 
     expect(createTaskResponse.statusCode).toBe(201);
 
-    const paths = createLocalDataPaths(tempDir);
-    const db = createSqliteDb({ paths });
-    dbs.push(db);
-
-    const pendingRow = db
-      .prepare("SELECT status FROM tasks WHERE id = ?")
-      .get("task_20260317_ab12cd") as { status: string } | undefined;
-
-    expect(pendingRow?.status).toBe("pending");
-
     const worker = await startWorker({
       workspaceRoot: tempDir,
       redisUrl,
@@ -94,22 +84,90 @@ describe("spec2 task flow", () => {
       expect(response.json().status).toBe("succeeded");
     });
 
-    const taskDir = path.join(
+    const storyboardDir = path.join(
       tempDir,
       ".local-data",
       project.storageDir,
-      "tasks",
-      "task_20260317_ab12cd",
+      "storyboards",
     );
+    await expect(
+      fs.readFile(path.join(storyboardDir, "raw", "task_20260317_ab12cd-gemini-response.json"), "utf8"),
+    ).resolves.toContain("\"candidates\"");
+    await expect(
+      fs.readFile(path.join(storyboardDir, "versions", "v1-ai.json"), "utf8"),
+    ).resolves.toContain("\"summary\": \"Stub storyboard summary\"");
 
-    await expect(fs.readFile(path.join(taskDir, "input.json"), "utf8")).resolves.toContain(
-      "\"taskType\": \"storyboard_generate\"",
-    );
-    await expect(fs.readFile(path.join(taskDir, "output.json"), "utf8")).resolves.toContain(
-      "\"storyboardVersionId\": \"sbv_20260317_ab12cd\"",
-    );
-    await expect(fs.readFile(path.join(taskDir, "log.txt"), "utf8")).resolves.toContain(
-      "storyboard generation succeeded",
+    const paths = createLocalDataPaths(tempDir);
+    const db = createSqliteDb({ paths });
+    dbs.push(db);
+
+    const versionRow = db
+      .prepare(
+        `
+          SELECT
+            p.current_storyboard_version_id,
+            sv.id,
+            sv.version_number,
+            sv.file_rel_path,
+            sv.raw_response_rel_path
+          FROM projects p
+          JOIN storyboard_versions sv
+            ON sv.id = p.current_storyboard_version_id
+          WHERE p.id = ?
+        `,
+      )
+      .get(project.id) as
+      | {
+          current_storyboard_version_id: string;
+          id: string;
+          version_number: number;
+          file_rel_path: string;
+          raw_response_rel_path: string;
+        }
+      | undefined;
+
+    expect(versionRow).toEqual({
+      current_storyboard_version_id: "sbv_20260317_ab12cd",
+      id: "sbv_20260317_ab12cd",
+      version_number: 1,
+      file_rel_path: "storyboards/versions/v1-ai.json",
+      raw_response_rel_path: "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
+    });
+
+    const projectDetailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
+    });
+    expect(projectDetailResponse.statusCode).toBe(200);
+    expect(projectDetailResponse.json().currentStoryboard).toEqual({
+      id: "sbv_20260317_ab12cd",
+      projectId: project.id,
+      versionNumber: 1,
+      kind: "ai",
+      provider: "gemini",
+      model: "gemini-3.1-pro-preview",
+      filePath: "storyboards/versions/v1-ai.json",
+      createdAt: expect.any(String),
+      sourceTaskId: "task_20260317_ab12cd",
+    });
+
+    const currentStoryboardResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}/storyboard/current`,
+    });
+    expect(currentStoryboardResponse.statusCode).toBe(200);
+    expect(currentStoryboardResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "sbv_20260317_ab12cd",
+        projectId: project.id,
+        summary: "Stub storyboard summary",
+        scenes: [
+          expect.objectContaining({
+            id: "scene_1",
+            sceneIndex: 1,
+          }),
+        ],
+      }),
     );
   });
 });

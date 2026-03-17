@@ -30,6 +30,26 @@ Start the Spec2 worker:
 corepack pnpm --filter @sweet-star/worker dev
 ```
 
+Storyboard generation runtime configuration:
+
+```bash
+set REDIS_URL=redis://127.0.0.1:6379
+set VECTORENGINE_API_TOKEN=your-token
+set VECTORENGINE_BASE_URL=https://api.vectorengine.ai
+set STORYBOARD_LLM_MODEL=gemini-3.1-pro-preview
+```
+
+On macOS/Linux:
+
+```bash
+export REDIS_URL=redis://127.0.0.1:6379
+export VECTORENGINE_API_TOKEN=your-token
+export VECTORENGINE_BASE_URL=https://api.vectorengine.ai
+export STORYBOARD_LLM_MODEL=gemini-3.1-pro-preview
+```
+
+`VECTORENGINE_API_TOKEN` is required for the real Spec3 worker flow. `VECTORENGINE_BASE_URL` is optional and defaults to `https://api.vectorengine.ai`. `STORYBOARD_LLM_MODEL` is optional and defaults to `gemini-3.1-pro-preview`.
+
 Run tests:
 
 ```bash
@@ -42,18 +62,18 @@ Run type checks:
 corepack pnpm typecheck
 ```
 
-Set `REDIS_URL` before starting the API or worker when you want real queue processing:
+Local verification commands:
 
 ```bash
-set REDIS_URL=redis://127.0.0.1:6379
+corepack pnpm --filter @sweet-star/api test
+corepack pnpm --filter @sweet-star/worker test
 ```
 
-On macOS/Linux:
+Local SQLite data and project files are written under `.local-data/`, including:
 
-```bash
-export REDIS_URL=redis://127.0.0.1:6379
-```
-
-Local SQLite data and project files are written under `.local-data/`.
+- project scripts under `.local-data/projects/<project>/script/`
+- task artifacts under `.local-data/projects/<project>/tasks/<task>/`
+- raw storyboard provider responses under `.local-data/projects/<project>/storyboards/raw/`
+- structured storyboard versions under `.local-data/projects/<project>/storyboards/versions/`
 
 Windows development should use Docker Redis or Memurai for local Redis.

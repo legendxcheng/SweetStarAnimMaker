@@ -38,6 +38,13 @@ describe("sqlite project repository", () => {
       .get() as { name: string } | undefined;
 
     expect(table?.name).toBe("projects");
+    const columns = db
+      .prepare("PRAGMA table_info(projects)")
+      .all() as Array<{ name: string }>;
+
+    expect(columns.map((column) => column.name)).toContain(
+      "current_storyboard_version_id",
+    );
   });
 
   it("inserts and finds a project by id", async () => {
@@ -83,6 +90,33 @@ describe("sqlite project repository", () => {
       updatedAt: "2026-03-17T01:00:00.000Z",
       scriptUpdatedAt: "2026-03-17T01:00:00.000Z",
     });
+  });
+
+  it("updates the current storyboard version pointer on the project row", async () => {
+    const { db, repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_20260317_ab12cd",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-17T00:00:00.000Z",
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+      scriptBytes: 7,
+    });
+
+    repository.insert(project);
+    repository.updateCurrentStoryboardVersion({
+      projectId: "proj_20260317_ab12cd",
+      storyboardVersionId: "sbv_20260317_ab12cd",
+    });
+
+    const row = db
+      .prepare("SELECT current_storyboard_version_id FROM projects WHERE id = ?")
+      .get("proj_20260317_ab12cd") as
+      | { current_storyboard_version_id: string | null }
+      | undefined;
+
+    expect(row?.current_storyboard_version_id).toBe("sbv_20260317_ab12cd");
   });
 });
 

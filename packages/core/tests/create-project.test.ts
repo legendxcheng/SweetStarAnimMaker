@@ -8,6 +8,7 @@ describe("create project use case", () => {
       insert: vi.fn(),
       findById: vi.fn(),
       updateScriptMetadata: vi.fn(),
+      updateCurrentStoryboardVersion: vi.fn(),
     };
     const scriptStorage = {
       writeOriginalScript: vi.fn().mockReturnValue({
@@ -54,6 +55,7 @@ describe("create project use case", () => {
         bytes: 7,
         updatedAt: "2026-03-17T00:00:00.000Z",
       },
+      currentStoryboard: null,
     });
   });
 
@@ -64,6 +66,7 @@ describe("create project use case", () => {
       }),
       findById: vi.fn(),
       updateScriptMetadata: vi.fn(),
+      updateCurrentStoryboardVersion: vi.fn(),
     };
     const scriptStorage = {
       writeOriginalScript: vi.fn().mockReturnValue({

@@ -22,8 +22,29 @@ describe("get project detail use case", () => {
         scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
       }),
       updateScriptMetadata: vi.fn(),
+      updateCurrentStoryboardVersion: vi.fn(),
     };
-    const useCase = createGetProjectDetailUseCase({ repository });
+    const storyboardVersionRepository = {
+      insert: vi.fn(),
+      findCurrentByProjectId: vi.fn().mockResolvedValue({
+        id: "sbv_20260317_ab12cd",
+        projectId: "proj_20260317_ab12cd",
+        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
+        sourceTaskId: "task_20260317_ab12cd",
+        versionNumber: 1,
+        kind: "ai",
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+        storageDir: "projects/proj_20260317_ab12cd-my-story/storyboards/versions",
+        fileRelPath: "storyboards/versions/v1-ai.json",
+        rawResponseRelPath: "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
+        createdAt: "2026-03-17T00:00:00.000Z",
+      }),
+    };
+    const useCase = createGetProjectDetailUseCase({
+      repository,
+      storyboardVersionRepository,
+    });
 
     const result = await useCase.execute({
       projectId: "proj_20260317_ab12cd",
@@ -31,6 +52,17 @@ describe("get project detail use case", () => {
 
     expect(result.script.bytes).toBe(7);
     expect(result.script.path).toBe("script/original.txt");
+    expect(result.currentStoryboard).toEqual({
+      id: "sbv_20260317_ab12cd",
+      projectId: "proj_20260317_ab12cd",
+      versionNumber: 1,
+      kind: "ai",
+      provider: "gemini",
+      model: "gemini-3.1-pro-preview",
+      filePath: "storyboards/versions/v1-ai.json",
+      createdAt: "2026-03-17T00:00:00.000Z",
+      sourceTaskId: "task_20260317_ab12cd",
+    });
   });
 
   it("throws when the project does not exist", async () => {
@@ -38,8 +70,15 @@ describe("get project detail use case", () => {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue(null),
       updateScriptMetadata: vi.fn(),
+      updateCurrentStoryboardVersion: vi.fn(),
     };
-    const useCase = createGetProjectDetailUseCase({ repository });
+    const useCase = createGetProjectDetailUseCase({
+      repository,
+      storyboardVersionRepository: {
+        insert: vi.fn(),
+        findCurrentByProjectId: vi.fn(),
+      },
+    });
 
     await expect(
       useCase.execute({

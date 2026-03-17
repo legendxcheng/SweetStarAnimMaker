@@ -7,10 +7,18 @@ export interface UpdateProjectScriptMetadataInput {
   scriptUpdatedAt: string;
 }
 
+export interface UpdateCurrentStoryboardVersionInput {
+  projectId: string;
+  storyboardVersionId: string | null;
+}
+
 export interface ProjectRepository {
   insert(project: ProjectRecord): Promise<void> | void;
   findById(projectId: string): Promise<ProjectRecord | null> | ProjectRecord | null;
   updateScriptMetadata(
     input: UpdateProjectScriptMetadataInput,
+  ): Promise<void> | void;
+  updateCurrentStoryboardVersion(
+    input: UpdateCurrentStoryboardVersionInput,
   ): Promise<void> | void;
 }

@@ -22,6 +22,7 @@ describe("create storyboard generate task use case", () => {
         scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
       }),
       updateScriptMetadata: vi.fn(),
+      updateCurrentStoryboardVersion: vi.fn(),
     };
     const taskRepository = {
       insert: vi.fn(),
@@ -109,6 +110,7 @@ describe("create storyboard generate task use case", () => {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue(null),
         updateScriptMetadata: vi.fn(),
+        updateCurrentStoryboardVersion: vi.fn(),
       },
       taskRepository: {
         insert: vi.fn(),
@@ -175,6 +177,7 @@ describe("create storyboard generate task use case", () => {
           scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
         }),
         updateScriptMetadata: vi.fn(),
+        updateCurrentStoryboardVersion: vi.fn(),
       },
       taskRepository,
       taskFileStorage,
@@ -228,6 +231,7 @@ describe("create storyboard generate task use case", () => {
           scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
         }),
         updateScriptMetadata: vi.fn(),
+        updateCurrentStoryboardVersion: vi.fn(),
       },
       taskRepository,
       taskFileStorage: {

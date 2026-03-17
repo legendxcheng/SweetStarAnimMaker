@@ -1,4 +1,9 @@
-import type { ProjectRecord, ProjectRepository, UpdateProjectScriptMetadataInput } from "@sweet-star/core";
+import type {
+  ProjectRecord,
+  ProjectRepository,
+  UpdateCurrentStoryboardVersionInput,
+  UpdateProjectScriptMetadataInput,
+} from "@sweet-star/core";
 
 import type { SqliteDatabase } from "./sqlite-db";
 
@@ -96,7 +101,26 @@ export function createSqliteProjectRepository(
           script_updated_at: input.scriptUpdatedAt,
         });
     },
+    updateCurrentStoryboardVersion(input) {
+      updateCurrentStoryboardVersion(options.db, input);
+    },
   };
+}
+
+function updateCurrentStoryboardVersion(
+  db: SqliteDatabase,
+  input: UpdateCurrentStoryboardVersionInput,
+) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET current_storyboard_version_id = @current_storyboard_version_id
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    current_storyboard_version_id: input.storyboardVersionId,
+  });
 }
 
 function toSqliteRow(project: ProjectRecord): SqliteProjectRow {

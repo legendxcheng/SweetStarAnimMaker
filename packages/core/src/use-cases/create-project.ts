@@ -60,7 +60,7 @@ export function createCreateProjectUseCase(
         throw error;
       }
 
-      return toProjectDetailDto(persistedProject);
+      return toProjectDetailDto(persistedProject, null);
     },
   };
 }

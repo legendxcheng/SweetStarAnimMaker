@@ -18,6 +18,8 @@ export interface LocalDataPaths {
   projectTaskInputPath(taskStorageDir: string): string;
   projectTaskOutputPath(taskStorageDir: string): string;
   projectTaskLogPath(taskStorageDir: string): string;
+  projectStoryboardRawResponsePath(projectStorageDir: string, rawResponseRelPath: string): string;
+  projectStoryboardVersionPath(projectStorageDir: string, versionRelPath: string): string;
 }
 
 export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
@@ -45,6 +47,12 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
     },
     projectTaskLogPath(taskStorageDir) {
       return path.join(dataRootDir, taskStorageDir, taskLogFileName);
+    },
+    projectStoryboardRawResponsePath(projectStorageDir, rawResponseRelPath) {
+      return path.join(dataRootDir, projectStorageDir, rawResponseRelPath);
+    },
+    projectStoryboardVersionPath(projectStorageDir, versionRelPath) {
+      return path.join(dataRootDir, projectStorageDir, versionRelPath);
     },
   };
 }

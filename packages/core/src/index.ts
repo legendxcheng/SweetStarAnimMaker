@@ -6,6 +6,21 @@ export {
   toProjectStorageDir,
 } from "./domain/project";
 export {
+  createStoryboardVersionRecord,
+  storyboardDirectoryName,
+  storyboardRawDirectoryName,
+  storyboardVersionsDirectoryName,
+  toCurrentStoryboard,
+  toStoryboardRawResponseRelPath,
+  toStoryboardVersionId,
+  toStoryboardVersionFileRelPath,
+  toStoryboardVersionSummary,
+  toStoryboardVersionsStorageDir,
+  type CreateStoryboardVersionRecordInput,
+  type StoryboardDocument,
+  type StoryboardVersionRecord,
+} from "./domain/storyboard";
+export {
   createTaskRecord,
   storyboardGenerateQueueName,
   taskArtifactsDirectoryName,
@@ -29,9 +44,11 @@ export {
   ProjectNotFoundError,
   ProjectValidationError,
 } from "./errors/project-errors";
+export { CurrentStoryboardNotFoundError } from "./errors/storyboard-errors";
 export { TaskNotFoundError } from "./errors/task-errors";
 export type {
   ProjectRepository,
+  UpdateCurrentStoryboardVersionInput,
   UpdateProjectScriptMetadataInput,
 } from "./ports/project-repository";
 export type {
@@ -42,6 +59,18 @@ export type {
 } from "./ports/script-storage";
 export type { IdGenerator } from "./ports/id-generator";
 export type { Clock } from "./ports/clock";
+export type {
+  GenerateStoryboardInput,
+  GenerateStoryboardResult,
+  LlmStoryboardProvider,
+} from "./ports/storyboard-provider";
+export type {
+  ReadStoryboardVersionInput,
+  StoryboardStorage,
+  WriteStoryboardRawResponseInput,
+  WriteStoryboardVersionInput,
+} from "./ports/storyboard-storage";
+export type { StoryboardVersionRepository } from "./ports/storyboard-version-repository";
 export type {
   AppendTaskLogInput,
   CreateTaskArtifactsInput,
@@ -70,6 +99,12 @@ export {
   type CreateStoryboardGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-storyboard-generate-task";
 export {
+  createGetCurrentStoryboardUseCase,
+  type GetCurrentStoryboardInput,
+  type GetCurrentStoryboardUseCase,
+  type GetCurrentStoryboardUseCaseDependencies,
+} from "./use-cases/get-current-storyboard";
+export {
   createGetProjectDetailUseCase,
   type GetProjectDetailInput,
   type GetProjectDetailUseCase,
@@ -86,7 +121,6 @@ export {
   type ProcessStoryboardGenerateTaskInput,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCaseDependencies,
-  type StoryboardGenerateTaskHandler,
 } from "./use-cases/process-storyboard-generate-task";
 export {
   toProjectDetailDto,

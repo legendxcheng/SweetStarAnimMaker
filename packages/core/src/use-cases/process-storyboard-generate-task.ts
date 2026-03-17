@@ -1,11 +1,14 @@
+import { createStoryboardVersionRecord, toStoryboardVersionId } from "../domain/storyboard";
+import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import type { Clock } from "../ports/clock";
+import type { ProjectRepository } from "../ports/project-repository";
+import type { ScriptStorage } from "../ports/script-storage";
+import type { LlmStoryboardProvider } from "../ports/storyboard-provider";
+import type { StoryboardStorage } from "../ports/storyboard-storage";
+import type { StoryboardVersionRepository } from "../ports/storyboard-version-repository";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
-
-export interface StoryboardGenerateTaskHandler {
-  run(input: Awaited<ReturnType<TaskFileStorage["readTaskInput"]>>): Promise<unknown>;
-}
 
 export interface ProcessStoryboardGenerateTaskInput {
   taskId: string;
@@ -17,9 +20,13 @@ export interface ProcessStoryboardGenerateTaskUseCase {
 
 export interface ProcessStoryboardGenerateTaskUseCaseDependencies {
   taskRepository: TaskRepository;
+  projectRepository: ProjectRepository;
   taskFileStorage: TaskFileStorage;
+  scriptStorage: ScriptStorage;
+  storyboardProvider: LlmStoryboardProvider;
+  storyboardStorage: StoryboardStorage;
+  storyboardVersionRepository: StoryboardVersionRepository;
   clock: Clock;
-  handler: StoryboardGenerateTaskHandler;
 }
 
 export function createProcessStoryboardGenerateTaskUseCase(
@@ -43,19 +50,64 @@ export function createProcessStoryboardGenerateTaskUseCase(
 
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
-        const output = await dependencies.handler.run(taskInput);
+        const project = await dependencies.projectRepository.findById(task.projectId);
 
+        if (!project) {
+          throw new ProjectNotFoundError(task.projectId);
+        }
+
+        const script = await dependencies.scriptStorage.readOriginalScript({
+          storageDir: project.storageDir,
+        });
+        const providerResult = await dependencies.storyboardProvider.generateStoryboard({
+          projectId: project.id,
+          script,
+        });
+        const versionNumber =
+          (await dependencies.storyboardVersionRepository.getNextVersionNumber?.(
+            project.id,
+          )) ?? 1;
+        const finishedAt = dependencies.clock.now();
+        const version = createStoryboardVersionRecord({
+          id: toStoryboardVersionId(task.id),
+          projectId: project.id,
+          projectStorageDir: project.storageDir,
+          sourceTaskId: task.id,
+          versionNumber,
+          provider: providerResult.provider,
+          model: providerResult.model,
+          createdAt: finishedAt,
+        });
+
+        await dependencies.storyboardStorage.writeRawResponse({
+          version,
+          rawResponse: providerResult.rawResponse,
+        });
+        await dependencies.storyboardStorage.writeStoryboardVersion({
+          version,
+          storyboard: providerResult.storyboard,
+        });
+        await dependencies.storyboardVersionRepository.insert(version);
+        await dependencies.projectRepository.updateCurrentStoryboardVersion({
+          projectId: project.id,
+          storyboardVersionId: version.id,
+        });
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
-          output,
+          output: {
+            storyboardVersionId: version.id,
+            versionNumber: version.versionNumber,
+            kind: version.kind,
+            provider: version.provider,
+            model: version.model,
+            filePath: version.fileRelPath,
+            rawResponsePath: version.rawResponseRelPath,
+          },
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
           message: "storyboard generation succeeded",
         });
-
-        const finishedAt = dependencies.clock.now();
-
         await dependencies.taskRepository.markSucceeded({
           taskId: task.id,
           updatedAt: finishedAt,

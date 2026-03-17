@@ -39,6 +39,7 @@ describe("projects api", () => {
         name: "My Story",
         slug: "my-story",
         status: "script_ready",
+        currentStoryboard: null,
         script: {
           path: "script/original.txt",
           bytes: 7,
@@ -84,6 +85,7 @@ describe("projects api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: projectId,
+        currentStoryboard: null,
         script: expect.objectContaining({
           path: "script/original.txt",
           bytes: 7,
@@ -127,6 +129,7 @@ describe("projects api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: projectId,
+        currentStoryboard: null,
         script: expect.objectContaining({
           path: "script/original.txt",
           bytes: 15,

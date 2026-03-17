@@ -1,4 +1,5 @@
 import type { ProjectStatus } from "../constants/project-status";
+import type { StoryboardVersionSummary } from "./storyboard";
 
 export interface ProjectScriptMetadata {
   path: string;
@@ -15,4 +16,5 @@ export interface ProjectDetail {
   createdAt: string;
   updatedAt: string;
   script: ProjectScriptMetadata;
+  currentStoryboard: StoryboardVersionSummary | null;
 }

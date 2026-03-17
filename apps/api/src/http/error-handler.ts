@@ -1,4 +1,5 @@
 import {
+  CurrentStoryboardNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
   TaskNotFoundError,
@@ -18,7 +19,11 @@ export function createApiErrorHandler() {
       });
     }
 
-    if (error instanceof ProjectNotFoundError || error instanceof TaskNotFoundError) {
+    if (
+      error instanceof CurrentStoryboardNotFoundError ||
+      error instanceof ProjectNotFoundError ||
+      error instanceof TaskNotFoundError
+    ) {
       return reply.status(404).send({
         message: error.message,
       });

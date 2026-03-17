@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { initialProjectStatus, projectStatuses } from "../constants/project-status";
+import { storyboardVersionResponseSchema } from "./storyboard-api";
 
 const requiredTextSchema = z.string().trim().min(1);
 
@@ -26,4 +27,5 @@ export const projectDetailResponseSchema = z.object({
     bytes: z.number().int().nonnegative(),
     updatedAt: z.string(),
   }),
+  currentStoryboard: storyboardVersionResponseSchema.nullable(),
 });

@@ -49,4 +49,21 @@ describe("local data paths", () => {
       ),
     ).toMatch(/tasks[\\/]+task_20260317_ab12cd[\\/]+log\.txt$/);
   });
+
+  it("builds the current storyboard version path inside the project", () => {
+    const paths = createLocalDataPaths("C:/repo");
+
+    expect(
+      paths.projectStoryboardVersionPath(
+        "projects/proj_20260317_ab12cd-my-story",
+        "storyboards/versions/v1-ai.json",
+      ),
+    ).toMatch(/storyboards[\\/]+versions[\\/]+v1-ai\.json$/);
+    expect(
+      paths.projectStoryboardRawResponsePath(
+        "projects/proj_20260317_ab12cd-my-story",
+        "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
+      ),
+    ).toMatch(/storyboards[\\/]+raw[\\/]+task_20260317_ab12cd-gemini-response\.json$/);
+  });
 });

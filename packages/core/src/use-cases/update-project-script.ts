@@ -62,13 +62,16 @@ export function createUpdateProjectScriptUseCase(
         throw error;
       }
 
-      return toProjectDetailDto({
-        ...project,
-        scriptBytes: storedScript.scriptBytes,
-        scriptRelPath: storedScript.scriptRelPath,
-        updatedAt: timestamp,
-        scriptUpdatedAt: timestamp,
-      });
+      return toProjectDetailDto(
+        {
+          ...project,
+          scriptBytes: storedScript.scriptBytes,
+          scriptRelPath: storedScript.scriptRelPath,
+          updatedAt: timestamp,
+          scriptUpdatedAt: timestamp,
+        },
+        null,
+      );
     },
   };
 }

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import {
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
+  createGetCurrentStoryboardUseCase,
   createGetProjectDetailUseCase,
   createGetTaskDetailUseCase,
   storyboardGenerateQueueName,
@@ -16,7 +17,9 @@ import {
   createLocalDataPaths,
   createSqliteDb,
   createSqliteProjectRepository,
+  createSqliteStoryboardVersionRepository,
   createSqliteTaskRepository,
+  createStoryboardStorage,
   createTaskFileStorage,
   initializeSqliteSchema,
 } from "@sweet-star/services";
@@ -40,6 +43,8 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const scriptStorage = createFileScriptStorage({ paths });
   const taskRepository = createSqliteTaskRepository({ db });
   const taskFileStorage = createTaskFileStorage({ paths });
+  const storyboardVersionRepository = createSqliteStoryboardVersionRepository({ db });
+  const storyboardStorage = createStoryboardStorage({ paths });
   const clock = {
     now: () => new Date().toISOString(),
   };
@@ -100,6 +105,11 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
+      storyboardVersionRepository,
+    }),
+    getCurrentStoryboard: createGetCurrentStoryboardUseCase({
+      storyboardVersionRepository,
+      storyboardStorage,
     }),
     updateProjectScript: createUpdateProjectScriptUseCase({
       repository,

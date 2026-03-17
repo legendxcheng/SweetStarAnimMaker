@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
+import type { LlmStoryboardProvider } from "@sweet-star/core";
 
 import { buildSpec2WorkerServices } from "./bootstrap/build-spec2-worker-services";
 
@@ -26,6 +27,7 @@ export interface StartWorkerOptions {
   };
   workspaceRoot?: string;
   redisUrl?: string;
+  storyboardProvider?: LlmStoryboardProvider;
   workerFactory?: (input: {
     queueName: string;
     processor(job: WorkerJob): Promise<void>;
@@ -39,6 +41,7 @@ export async function startWorker(
     options.services ??
     buildSpec2WorkerServices({
       workspaceRoot: options.workspaceRoot ?? process.cwd(),
+      storyboardProvider: options.storyboardProvider,
     });
   const processor = async (job: WorkerJob) => {
     await services.processStoryboardGenerateTask.execute({
