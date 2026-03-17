@@ -10,6 +10,9 @@
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@sweet-star/core": "workspace:*",
+    "@sweet-star/services": "workspace:*",
+    "@sweet-star/shared": "workspace:*",
     "fastify": "^5.2.1",
     "zod": "^3.24.2"
   },

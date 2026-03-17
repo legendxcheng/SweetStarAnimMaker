@@ -10,6 +10,15 @@ importers:
 
   apps/api:
     dependencies:
+      '@sweet-star/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@sweet-star/services':
+        specifier: workspace:*
+        version: link:../../packages/services
+      '@sweet-star/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       fastify:
         specifier: ^5.2.1
         version: 5.8.2
