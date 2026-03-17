@@ -5,6 +5,8 @@
   "packageManager": "pnpm@10.6.5",
   "scripts": {
     "build": "corepack pnpm -r build",
+    "dev:api": "corepack pnpm --filter @sweet-star/api dev",
+    "dev:worker": "corepack pnpm --filter @sweet-star/worker dev",
     "postinstall": "node tooling/scripts/ensure-better-sqlite3-build.mjs",
     "test": "corepack pnpm -r test",
     "typecheck": "corepack pnpm -r typecheck"

@@ -12,6 +12,10 @@ export { createSqliteDb, type CreateSqliteDbOptions, type SqliteDatabase } from 
 export { createSqliteProjectRepository, type CreateSqliteProjectRepositoryOptions } from "./project-repository/sqlite-project-repository";
 export { initializeSqliteSchema } from "./project-repository/sqlite-schema";
 export {
+  createBullMqTaskQueue,
+  type CreateBullMqTaskQueueOptions,
+} from "./queue/bullmq-task-queue";
+export {
   createSqliteTaskRepository,
   type CreateSqliteTaskRepositoryOptions,
 } from "./task-repository/sqlite-task-repository";

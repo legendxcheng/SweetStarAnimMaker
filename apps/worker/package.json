@@ -1,27 +1,22 @@
 {
-  "name": "@sweet-star/services",
+  "name": "@sweet-star/worker",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "dependencies": {
-    "@sweet-star/core": "workspace:*",
-    "better-sqlite3": "^11.9.1",
-    "bullmq": "^5.43.0",
-    "ioredis": "^5.5.0"
-  },
   "scripts": {
     "build": "corepack pnpm exec tsc -p tsconfig.json",
+    "dev": "corepack pnpm exec tsx src/index.ts",
     "test": "corepack pnpm exec vitest run",
     "typecheck": "corepack pnpm exec tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@sweet-star/core": "workspace:*",
+    "@sweet-star/services": "workspace:*",
+    "@sweet-star/shared": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^22.13.10",
-    "@types/better-sqlite3": "^7.6.12",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"
   }
