@@ -23,6 +23,7 @@ describe("get task detail use case", () => {
           startedAt: "2026-03-17T12:01:00.000Z",
           finishedAt: "2026-03-17T12:03:00.000Z",
         }),
+        findLatestByProjectId: vi.fn(),
         delete: vi.fn(),
         markRunning: vi.fn(),
         markSucceeded: vi.fn(),
@@ -57,6 +58,7 @@ describe("get task detail use case", () => {
       repository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue(null),
+        findLatestByProjectId: vi.fn(),
         delete: vi.fn(),
         markRunning: vi.fn(),
         markSucceeded: vi.fn(),

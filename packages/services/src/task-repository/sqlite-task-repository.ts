@@ -99,6 +99,39 @@ export function createSqliteTaskRepository(
 
       return row ? fromSqliteRow(row) : null;
     },
+    findLatestByProjectId(projectId, taskType) {
+      const row = options.db
+        .prepare(
+          `
+            SELECT
+              id,
+              project_id,
+              type,
+              status,
+              queue_name,
+              storage_dir,
+              input_rel_path,
+              output_rel_path,
+              log_rel_path,
+              error_message,
+              created_at,
+              updated_at,
+              started_at,
+              finished_at
+            FROM tasks
+            WHERE project_id = @project_id
+              AND (@task_type IS NULL OR type = @task_type)
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+          `,
+        )
+        .get({
+          project_id: projectId,
+          task_type: taskType ?? null,
+        }) as SqliteTaskRow | undefined;
+
+      return row ? fromSqliteRow(row) : null;
+    },
     delete(taskId) {
       options.db.prepare("DELETE FROM tasks WHERE id = ?").run(taskId);
     },

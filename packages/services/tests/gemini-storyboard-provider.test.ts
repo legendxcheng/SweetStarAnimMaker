@@ -117,4 +117,57 @@ describe("gemini storyboard provider", () => {
       }),
     ).rejects.toThrow("Gemini storyboard provider returned no usable content");
   });
+
+  it("adds regeneration guidance when review context is present", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    summary: "A short story summary",
+                    scenes: [
+                      {
+                        sceneIndex: 1,
+                        description: "A enters the room",
+                        camera: "medium shot",
+                        characters: ["A"],
+                        prompt: "medium shot, character A entering a dim room",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await provider.generateStoryboard({
+      projectId: "proj_20260317_ab12cd",
+      script: "Scene 1: A enters the room",
+      reviewContext: {
+        reason: "Need stronger scene transitions.",
+        rejectedVersionId: "sbv_20260317_prev",
+      },
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const promptText = request.contents[0].parts[0].text as string;
+
+    expect(promptText).toContain("Regeneration guidance:");
+    expect(promptText).toContain("Need stronger scene transitions.");
+    expect(promptText).toContain("sbv_20260317_prev");
+  });
 });

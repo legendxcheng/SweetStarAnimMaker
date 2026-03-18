@@ -23,6 +23,7 @@ describe("update project script use case", () => {
       }),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const scriptStorage = {
       writeOriginalScript: vi.fn().mockReturnValue({
@@ -75,6 +76,7 @@ describe("update project script use case", () => {
         throw new Error("update failed");
       }),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const scriptStorage = {
       writeOriginalScript: vi
@@ -117,6 +119,7 @@ describe("update project script use case", () => {
       findById: vi.fn().mockReturnValue(null),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const scriptStorage = {
       writeOriginalScript: vi.fn(),

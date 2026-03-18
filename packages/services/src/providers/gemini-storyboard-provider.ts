@@ -54,11 +54,7 @@ export function createGeminiStoryboardProvider(
                 role: "user",
                 parts: [
                   {
-                    text: [
-                      `Project: ${input.projectId}`,
-                      "Generate a storyboard for this script.",
-                      input.script,
-                    ].join("\n\n"),
+                    text: buildPromptText(input),
                   },
                 ],
               },
@@ -100,6 +96,26 @@ export function createGeminiStoryboardProvider(
       }
     },
   };
+}
+
+function buildPromptText(input: GenerateStoryboardInput) {
+  const sections = [
+    `Project: ${input.projectId}`,
+    "Generate a storyboard for this script.",
+    input.script,
+  ];
+
+  if (input.reviewContext) {
+    sections.push(
+      [
+        "Regeneration guidance:",
+        input.reviewContext.reason,
+        `Rejected version id: ${input.reviewContext.rejectedVersionId}`,
+      ].join("\n"),
+    );
+  }
+
+  return sections.join("\n\n");
 }
 
 const storyboardResponseJsonSchema = {

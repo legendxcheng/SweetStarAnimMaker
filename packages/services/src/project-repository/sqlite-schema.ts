@@ -1,6 +1,7 @@
 import type { SqliteDatabase } from "./sqlite-db";
 import { initializeSqliteTaskSchema } from "../task-repository/sqlite-task-schema";
 import { initializeSqliteStoryboardSchema } from "../storyboard-repository/sqlite-storyboard-schema";
+import { initializeSqliteStoryboardReviewSchema } from "../storyboard-repository/sqlite-storyboard-review-schema";
 
 export function initializeSqliteSchema(db: SqliteDatabase) {
   db.exec(`
@@ -23,6 +24,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
 
   initializeSqliteStoryboardSchema(db);
   initializeSqliteTaskSchema(db);
+  initializeSqliteStoryboardReviewSchema(db);
 }
 
 function ensureProjectsColumn(

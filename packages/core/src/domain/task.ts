@@ -29,6 +29,12 @@ export interface StoryboardGenerateTaskInput {
   taskType: "storyboard_generate";
   scriptPath: string;
   scriptUpdatedAt: string;
+  reviewContext?: StoryboardGenerateReviewContext;
+}
+
+export interface StoryboardGenerateReviewContext {
+  reason: string;
+  rejectedVersionId: string;
 }
 
 export interface CreateTaskRecordInput {

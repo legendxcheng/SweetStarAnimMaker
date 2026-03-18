@@ -26,6 +26,7 @@ describe("process storyboard generate task use case", () => {
         startedAt: null,
         finishedAt: null,
       }),
+      findLatestByProjectId: vi.fn(),
       delete: vi.fn(),
       markRunning: vi.fn(),
       markSucceeded: vi.fn(),
@@ -47,6 +48,7 @@ describe("process storyboard generate task use case", () => {
       }),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const taskFileStorage = {
       createTaskArtifacts: vi.fn(),
@@ -67,6 +69,7 @@ describe("process storyboard generate task use case", () => {
     };
     const storyboardVersionRepository = {
       insert: vi.fn(),
+      findById: vi.fn(),
       findCurrentByProjectId: vi.fn(),
       getNextVersionNumber: vi.fn().mockReturnValue(1),
     };
@@ -155,6 +158,11 @@ describe("process storyboard generate task use case", () => {
       projectId: "proj_20260317_ab12cd",
       storyboardVersionId: "sbv_20260317_ab12cd",
     });
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_20260317_ab12cd",
+      status: "storyboard_in_review",
+      updatedAt: "2026-03-17T12:02:00.000Z",
+    });
     expect(taskFileStorage.writeTaskOutput).toHaveBeenCalledWith({
       task: expect.objectContaining({
         id: "task_20260317_ab12cd",
@@ -195,6 +203,7 @@ describe("process storyboard generate task use case", () => {
         startedAt: null,
         finishedAt: null,
       }),
+      findLatestByProjectId: vi.fn(),
       delete: vi.fn(),
       markRunning: vi.fn(),
       markSucceeded: vi.fn(),
@@ -216,6 +225,7 @@ describe("process storyboard generate task use case", () => {
       }),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const taskFileStorage = {
       createTaskArtifacts: vi.fn(),
@@ -250,6 +260,7 @@ describe("process storyboard generate task use case", () => {
       },
       storyboardVersionRepository: {
         insert: vi.fn(),
+        findById: vi.fn(),
         findCurrentByProjectId: vi.fn(),
         getNextVersionNumber: vi.fn().mockReturnValue(1),
       },
@@ -266,6 +277,7 @@ describe("process storyboard generate task use case", () => {
     );
 
     expect(projectRepository.updateCurrentStoryboardVersion).not.toHaveBeenCalled();
+    expect(projectRepository.updateStatus).not.toHaveBeenCalled();
     expect(taskFileStorage.writeTaskOutput).not.toHaveBeenCalled();
     expect(taskRepository.markFailed).toHaveBeenCalledWith({
       taskId: "task_20260317_ab12cd",
@@ -280,6 +292,7 @@ describe("process storyboard generate task use case", () => {
       taskRepository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue(null),
+        findLatestByProjectId: vi.fn(),
         delete: vi.fn(),
         markRunning: vi.fn(),
         markSucceeded: vi.fn(),
@@ -290,6 +303,7 @@ describe("process storyboard generate task use case", () => {
         findById: vi.fn(),
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
+        updateStatus: vi.fn(),
       },
       taskFileStorage: {
         createTaskArtifacts: vi.fn(),
@@ -312,6 +326,7 @@ describe("process storyboard generate task use case", () => {
       },
       storyboardVersionRepository: {
         insert: vi.fn(),
+        findById: vi.fn(),
         findCurrentByProjectId: vi.fn(),
         getNextVersionNumber: vi.fn(),
       },
@@ -345,6 +360,7 @@ describe("process storyboard generate task use case", () => {
           startedAt: null,
           finishedAt: null,
         }),
+        findLatestByProjectId: vi.fn(),
         delete: vi.fn(),
         markRunning: vi.fn(),
         markSucceeded: vi.fn(),
@@ -355,6 +371,7 @@ describe("process storyboard generate task use case", () => {
         findById: vi.fn().mockResolvedValue(null),
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
+        updateStatus: vi.fn(),
       },
       taskFileStorage: {
         createTaskArtifacts: vi.fn(),
@@ -383,6 +400,7 @@ describe("process storyboard generate task use case", () => {
       },
       storyboardVersionRepository: {
         insert: vi.fn(),
+        findById: vi.fn(),
         findCurrentByProjectId: vi.fn(),
         getNextVersionNumber: vi.fn(),
       },
@@ -397,5 +415,115 @@ describe("process storyboard generate task use case", () => {
     await expect(useCase.execute({ taskId: "task_20260317_ab12cd" })).rejects.toBeInstanceOf(
       ProjectNotFoundError,
     );
+  });
+
+  it("passes reject review context into storyboard generation", async () => {
+    const storyboardProvider = {
+      generateStoryboard: vi.fn().mockResolvedValue({
+        rawResponse: {
+          candidates: [{ content: { parts: [{ text: "{}" }] } }],
+        },
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+        storyboard: {
+          summary: "Generated storyboard summary",
+          scenes: [],
+        },
+      }),
+    };
+    const useCase = createProcessStoryboardGenerateTaskUseCase({
+      taskRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "task_20260317_ab12cd",
+          projectId: "proj_20260317_ab12cd",
+          type: "storyboard_generate",
+          status: "pending",
+          queueName: "storyboard-generate",
+          storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+          inputRelPath: "tasks/task_20260317_ab12cd/input.json",
+          outputRelPath: "tasks/task_20260317_ab12cd/output.json",
+          logRelPath: "tasks/task_20260317_ab12cd/log.txt",
+          errorMessage: null,
+          createdAt: "2026-03-17T12:00:00.000Z",
+          updatedAt: "2026-03-17T12:00:00.000Z",
+          startedAt: null,
+          finishedAt: null,
+        }),
+        findLatestByProjectId: vi.fn(),
+        delete: vi.fn(),
+        markRunning: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_20260317_ab12cd",
+          name: "My Story",
+          slug: "my-story",
+          storageDir: "projects/proj_20260317_ab12cd-my-story",
+          scriptRelPath: "script/original.txt",
+          scriptBytes: 7,
+          status: "storyboard_generating",
+          createdAt: "2026-03-17T12:00:00.000Z",
+          updatedAt: "2026-03-17T12:00:00.000Z",
+          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        }),
+        updateScriptMetadata: vi.fn(),
+        updateCurrentStoryboardVersion: vi.fn(),
+        updateStatus: vi.fn(),
+      },
+      taskFileStorage: {
+        createTaskArtifacts: vi.fn(),
+        readTaskInput: vi.fn().mockResolvedValue({
+          taskId: "task_20260317_ab12cd",
+          projectId: "proj_20260317_ab12cd",
+          taskType: "storyboard_generate",
+          scriptPath: "script/original.txt",
+          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+          reviewContext: {
+            reason: "Need a brighter ending.",
+            rejectedVersionId: "sbv_20260317_prev",
+          },
+        }),
+        writeTaskOutput: vi.fn(),
+        appendTaskLog: vi.fn(),
+      },
+      scriptStorage: {
+        readOriginalScript: vi.fn().mockResolvedValue("Scene 1: A enters the room"),
+        writeOriginalScript: vi.fn(),
+        deleteOriginalScript: vi.fn(),
+      },
+      storyboardProvider,
+      storyboardStorage: {
+        writeRawResponse: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+      },
+      storyboardVersionRepository: {
+        insert: vi.fn(),
+        findById: vi.fn(),
+        findCurrentByProjectId: vi.fn(),
+        getNextVersionNumber: vi.fn().mockReturnValue(2),
+      },
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-17T12:01:00.000Z")
+          .mockReturnValueOnce("2026-03-17T12:02:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_20260317_ab12cd" });
+
+    expect(storyboardProvider.generateStoryboard).toHaveBeenCalledWith({
+      projectId: "proj_20260317_ab12cd",
+      script: "Scene 1: A enters the room",
+      reviewContext: {
+        reason: "Need a brighter ending.",
+        rejectedVersionId: "sbv_20260317_prev",
+      },
+    });
   });
 });

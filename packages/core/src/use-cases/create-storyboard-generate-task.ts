@@ -3,6 +3,7 @@ import type { TaskDetail } from "@sweet-star/shared";
 import {
   createTaskRecord,
   storyboardGenerateQueueName,
+  type StoryboardGenerateReviewContext,
   type StoryboardGenerateTaskInput,
 } from "../domain/task";
 import { ProjectNotFoundError } from "../errors/project-errors";
@@ -16,6 +17,7 @@ import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface CreateStoryboardGenerateTaskInput {
   projectId: string;
+  reviewContext?: StoryboardGenerateReviewContext;
 }
 
 export interface CreateStoryboardGenerateTaskUseCase {
@@ -57,6 +59,7 @@ export function createCreateStoryboardGenerateTaskUseCase(
         taskType: "storyboard_generate",
         scriptPath: project.scriptRelPath,
         scriptUpdatedAt: project.scriptUpdatedAt,
+        reviewContext: input.reviewContext,
       };
 
       await dependencies.taskRepository.insert(task);
@@ -76,6 +79,11 @@ export function createCreateStoryboardGenerateTaskUseCase(
           taskId: task.id,
           queueName: task.queueName,
           taskType: task.type,
+        });
+        await dependencies.projectRepository.updateStatus({
+          projectId: project.id,
+          status: "storyboard_generating",
+          updatedAt: timestamp,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Task enqueue failed";

@@ -4,6 +4,14 @@ export {
   type ProjectStatus,
 } from "./constants/project-status";
 export {
+  storyboardReviewActions,
+  type StoryboardReviewAction,
+} from "./constants/storyboard-review-action";
+export {
+  storyboardReviewNextActions,
+  type StoryboardReviewNextAction,
+} from "./constants/storyboard-review-next-action";
+export {
   storyboardVersionKinds,
   type StoryboardVersionKind,
 } from "./constants/storyboard-version-kind";
@@ -16,7 +24,12 @@ export {
 } from "./schemas/project-api";
 export {
   currentStoryboardResponseSchema,
+  approveStoryboardRequestSchema,
+  rejectStoryboardRequestSchema,
+  saveHumanStoryboardVersionRequestSchema,
   storyboardVersionResponseSchema,
+  storyboardReviewSummarySchema,
+  storyboardReviewWorkspaceResponseSchema,
 } from "./schemas/storyboard-api";
 export {
   createStoryboardGenerateTaskResponseSchema,
@@ -28,4 +41,13 @@ export type {
   StoryboardScene,
   StoryboardVersionSummary,
 } from "./types/storyboard";
+export type {
+  ApproveStoryboardRequest,
+  RejectStoryboardRequest,
+  SaveHumanStoryboardVersionRequest,
+  StoryboardReviewAvailableActions,
+  StoryboardReviewRecord,
+  StoryboardReviewSummary,
+  StoryboardReviewWorkspace,
+} from "./types/storyboard-review";
 export type { TaskDetail, TaskFileMetadata } from "./types/task-detail";

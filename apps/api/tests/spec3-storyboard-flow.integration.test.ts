@@ -139,17 +139,22 @@ describe("spec3 storyboard flow", () => {
       url: `/projects/${project.id}`,
     });
     expect(projectDetailResponse.statusCode).toBe(200);
-    expect(projectDetailResponse.json().currentStoryboard).toEqual({
-      id: "sbv_20260317_ab12cd",
-      projectId: project.id,
-      versionNumber: 1,
-      kind: "ai",
-      provider: "gemini",
-      model: "gemini-3.1-pro-preview",
-      filePath: "storyboards/versions/v1-ai.json",
-      createdAt: expect.any(String),
-      sourceTaskId: "task_20260317_ab12cd",
-    });
+    expect(projectDetailResponse.json()).toEqual(
+      expect.objectContaining({
+        status: "storyboard_in_review",
+        currentStoryboard: {
+          id: "sbv_20260317_ab12cd",
+          projectId: project.id,
+          versionNumber: 1,
+          kind: "ai",
+          provider: "gemini",
+          model: "gemini-3.1-pro-preview",
+          filePath: "storyboards/versions/v1-ai.json",
+          createdAt: expect.any(String),
+          sourceTaskId: "task_20260317_ab12cd",
+        },
+      }),
+    );
 
     const currentStoryboardResponse = await app.inject({
       method: "GET",

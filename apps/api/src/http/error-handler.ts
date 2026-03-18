@@ -2,6 +2,8 @@ import {
   CurrentStoryboardNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
+  RejectStoryboardReasonRequiredError,
+  StoryboardReviewVersionConflictError,
   TaskNotFoundError,
 } from "@sweet-star/core";
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
@@ -19,12 +21,24 @@ export function createApiErrorHandler() {
       });
     }
 
+    if (error instanceof RejectStoryboardReasonRequiredError) {
+      return reply.status(400).send({
+        message: error.message,
+      });
+    }
+
     if (
       error instanceof CurrentStoryboardNotFoundError ||
       error instanceof ProjectNotFoundError ||
       error instanceof TaskNotFoundError
     ) {
       return reply.status(404).send({
+        message: error.message,
+      });
+    }
+
+    if (error instanceof StoryboardReviewVersionConflictError) {
+      return reply.status(409).send({
         message: error.message,
       });
     }

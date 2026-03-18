@@ -2,6 +2,7 @@ import type {
   ProjectRecord,
   ProjectRepository,
   UpdateCurrentStoryboardVersionInput,
+  UpdateProjectStatusInput,
   UpdateProjectScriptMetadataInput,
 } from "@sweet-star/core";
 
@@ -104,6 +105,9 @@ export function createSqliteProjectRepository(
     updateCurrentStoryboardVersion(input) {
       updateCurrentStoryboardVersion(options.db, input);
     },
+    updateStatus(input) {
+      updateProjectStatus(options.db, input);
+    },
   };
 }
 
@@ -120,6 +124,22 @@ function updateCurrentStoryboardVersion(
   ).run({
     project_id: input.projectId,
     current_storyboard_version_id: input.storyboardVersionId,
+  });
+}
+
+function updateProjectStatus(db: SqliteDatabase, input: UpdateProjectStatusInput) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET
+        status = @status,
+        updated_at = @updated_at
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    status: input.status,
+    updated_at: input.updatedAt,
   });
 }
 

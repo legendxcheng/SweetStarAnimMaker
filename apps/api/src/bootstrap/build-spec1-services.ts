@@ -1,11 +1,15 @@
 import crypto from "node:crypto";
 
 import {
+  createApproveStoryboardUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
   createGetCurrentStoryboardUseCase,
   createGetProjectDetailUseCase,
+  createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
+  createRejectStoryboardUseCase,
+  createSaveHumanStoryboardVersionUseCase,
   storyboardGenerateQueueName,
   createUpdateProjectScriptUseCase,
   type TaskIdGenerator,
@@ -17,6 +21,7 @@ import {
   createLocalDataPaths,
   createSqliteDb,
   createSqliteProjectRepository,
+  createSqliteStoryboardReviewRepository,
   createSqliteStoryboardVersionRepository,
   createSqliteTaskRepository,
   createStoryboardStorage,
@@ -44,6 +49,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const taskRepository = createSqliteTaskRepository({ db });
   const taskFileStorage = createTaskFileStorage({ paths });
   const storyboardVersionRepository = createSqliteStoryboardVersionRepository({ db });
+  const storyboardReviewRepository = createSqliteStoryboardReviewRepository({ db });
   const storyboardStorage = createStoryboardStorage({ paths });
   const clock = {
     now: () => new Date().toISOString(),
@@ -83,6 +89,19 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     return taskQueue;
   }
 
+  const createStoryboardGenerateTask = createCreateStoryboardGenerateTaskUseCase({
+    projectRepository: repository,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: {
+      enqueue(input) {
+        return getTaskQueue().enqueue(input);
+      },
+    },
+    taskIdGenerator,
+    clock,
+  });
+
   return {
     db,
     async close() {
@@ -111,23 +130,38 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardVersionRepository,
       storyboardStorage,
     }),
+    getStoryboardReview: createGetStoryboardReviewUseCase({
+      projectRepository: repository,
+      storyboardVersionRepository,
+      storyboardStorage,
+      storyboardReviewRepository,
+      taskRepository,
+    }),
     updateProjectScript: createUpdateProjectScriptUseCase({
       repository,
       scriptStorage,
       clock,
     }),
-    createStoryboardGenerateTask: createCreateStoryboardGenerateTaskUseCase({
+    saveHumanStoryboardVersion: createSaveHumanStoryboardVersionUseCase({
       projectRepository: repository,
-      taskRepository,
-      taskFileStorage,
-      taskQueue: {
-        enqueue(input) {
-          return getTaskQueue().enqueue(input);
-        },
-      },
-      taskIdGenerator,
+      storyboardVersionRepository,
+      storyboardStorage,
       clock,
     }),
+    approveStoryboard: createApproveStoryboardUseCase({
+      projectRepository: repository,
+      storyboardVersionRepository,
+      storyboardReviewRepository,
+      clock,
+    }),
+    rejectStoryboard: createRejectStoryboardUseCase({
+      projectRepository: repository,
+      storyboardVersionRepository,
+      storyboardReviewRepository,
+      createStoryboardGenerateTask,
+      clock,
+    }),
+    createStoryboardGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,
     }),

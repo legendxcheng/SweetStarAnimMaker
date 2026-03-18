@@ -1,3 +1,3 @@
-export const storyboardVersionKinds = ["ai"] as const;
+export const storyboardVersionKinds = ["ai", "human"] as const;
 
 export type StoryboardVersionKind = (typeof storyboardVersionKinds)[number];

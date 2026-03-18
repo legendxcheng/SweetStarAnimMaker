@@ -9,6 +9,7 @@ describe("get current storyboard use case", () => {
   it("returns the current storyboard document", async () => {
     const storyboardVersionRepository = {
       insert: vi.fn(),
+      findById: vi.fn(),
       findCurrentByProjectId: vi.fn().mockResolvedValue({
         id: "sbv_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
@@ -59,6 +60,7 @@ describe("get current storyboard use case", () => {
     const useCase = createGetCurrentStoryboardUseCase({
       storyboardVersionRepository: {
         insert: vi.fn(),
+        findById: vi.fn(),
         findCurrentByProjectId: vi.fn().mockResolvedValue(null),
       },
       storyboardStorage: {

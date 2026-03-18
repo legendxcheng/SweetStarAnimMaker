@@ -22,6 +22,10 @@ export interface MarkTaskFailedInput {
 export interface TaskRepository {
   insert(task: TaskRecord): Promise<void> | void;
   findById(taskId: string): Promise<TaskRecord | null> | TaskRecord | null;
+  findLatestByProjectId(
+    projectId: string,
+    taskType?: TaskRecord["type"],
+  ): Promise<TaskRecord | null> | TaskRecord | null;
   delete(taskId: string): Promise<void> | void;
   markRunning(input: MarkTaskRunningInput): Promise<void> | void;
   markSucceeded(input: MarkTaskSucceededInput): Promise<void> | void;
