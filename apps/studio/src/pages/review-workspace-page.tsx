@@ -44,6 +44,9 @@ export function ReviewWorkspacePage() {
   const [editedScenes, setEditedScenes] = useState<StoryboardScene[]>([]);
   const [editedSummary, setEditedSummary] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectAction, setRejectAction] = useState<"regenerate" | "edit_manually">("regenerate");
 
   useEffect(() => {
     if (!projectId) return;
@@ -97,8 +100,51 @@ export function ReviewWorkspacePage() {
       // Reload workspace
       const data = await apiClient.getReviewWorkspace(projectId);
       setWorkspace(data as ReviewWorkspace);
+      setEditedScenes((data as ReviewWorkspace).currentStoryboard.scenes);
+      setEditedSummary((data as ReviewWorkspace).currentStoryboard.summary);
     } catch (err) {
       alert(`Save failed: ${(err as Error).message}`);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!workspace || !projectId) return;
+
+    if (!confirm("Are you sure you want to approve this storyboard?")) {
+      return;
+    }
+
+    try {
+      await apiClient.approveStoryboard(projectId, {
+        storyboardVersionId: workspace.currentStoryboard.id,
+      });
+      alert("Storyboard approved successfully!");
+      navigate(`/projects/${projectId}`);
+    } catch (err) {
+      alert(`Approve failed: ${(err as Error).message}`);
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!workspace || !projectId) return;
+
+    if (!rejectReason.trim()) {
+      alert("Please provide a reason for rejection");
+      return;
+    }
+
+    try {
+      await apiClient.rejectStoryboard(projectId, {
+        storyboardVersionId: workspace.currentStoryboard.id,
+        reason: rejectReason,
+        nextAction: rejectAction,
+      });
+      setShowRejectDialog(false);
+      setRejectReason("");
+      alert(`Storyboard rejected. ${rejectAction === "regenerate" ? "Regeneration task created." : "You can now edit manually."}`);
+      navigate(`/projects/${projectId}`);
+    } catch (err) {
+      alert(`Reject failed: ${(err as Error).message}`);
     }
   };
 
@@ -203,10 +249,138 @@ export function ReviewWorkspacePage() {
                   color: "white",
                   border: "none",
                   cursor: "pointer",
+                  marginRight: "0.5rem",
                 }}
               >
                 Save Changes
               </button>
+            )}
+
+            {!hasChanges && (
+              <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+                {ws.availableActions.approve && (
+                  <button
+                    onClick={handleApprove}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      background: "#28a745",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Approve
+                  </button>
+                )}
+
+                {ws.availableActions.reject && (
+                  <button
+                    onClick={() => setShowRejectDialog(true)}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      background: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Reject
+                  </button>
+                )}
+              </div>
+            )}
+
+            {showRejectDialog && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <div
+                  style={{
+                    background: "white",
+                    padding: "2rem",
+                    borderRadius: "0.5rem",
+                    maxWidth: "500px",
+                    width: "90%",
+                  }}
+                >
+                  <h3>Reject Storyboard</h3>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label>
+                      <strong>Reason:</strong>
+                      <textarea
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        style={{ width: "100%", minHeight: "80px", marginTop: "0.5rem" }}
+                        placeholder="Explain why you're rejecting this storyboard..."
+                      />
+                    </label>
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label>
+                      <strong>Next Action:</strong>
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <label style={{ display: "block", marginBottom: "0.5rem" }}>
+                          <input
+                            type="radio"
+                            value="regenerate"
+                            checked={rejectAction === "regenerate"}
+                            onChange={(e) => setRejectAction(e.target.value as "regenerate")}
+                          />
+                          {" "}Regenerate (create new AI version)
+                        </label>
+                        <label style={{ display: "block" }}>
+                          <input
+                            type="radio"
+                            value="edit_manually"
+                            checked={rejectAction === "edit_manually"}
+                            onChange={(e) => setRejectAction(e.target.value as "edit_manually")}
+                          />
+                          {" "}Edit Manually (stay in review)
+                        </label>
+                      </div>
+                    </label>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={handleRejectSubmit}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        background: "#dc3545",
+                        color: "white",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Submit Rejection
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowRejectDialog(false);
+                        setRejectReason("");
+                      }}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        background: "#6c757d",
+                        color: "white",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
