@@ -36,6 +36,14 @@ Start the Studio browser app:
 corepack pnpm --filter @sweet-star/studio dev
 ```
 
+Or use the shorthand:
+
+```bash
+corepack pnpm dev:studio
+```
+
+The Studio app will be available at `http://localhost:5173`.
+
 Storyboard generation runtime configuration:
 
 ```bash
@@ -107,3 +115,24 @@ Local SQLite data and project files are written under `.local-data/`, including:
 Human review saves create files like `.local-data/projects/<project>/storyboards/versions/v2-human.json`.
 
 Windows development should use Docker Redis or Memurai for local Redis.
+
+## Studio Browser App
+
+The Studio app provides a browser-based UI for the complete storyboard workflow:
+
+1. **Projects List** (`/`): View all projects and create new ones
+2. **Project Detail** (`/projects/:id`): View project status, current storyboard, and task progress
+3. **Review Workspace** (`/projects/:id/review`): Review, edit, approve, or reject storyboards
+
+### Complete MVP Flow
+
+1. Start the API server: `corepack pnpm --filter @sweet-star/api dev`
+2. Start the worker: `corepack pnpm --filter @sweet-star/worker dev`
+3. Start the Studio app: `corepack pnpm dev:studio`
+4. Open `http://localhost:5173` in your browser
+5. Create a new project with a script
+6. Wait for storyboard generation to complete (auto-refreshing)
+7. Click "Review Storyboard" when status is `storyboard_in_review`
+8. Edit scenes, save changes, approve, or reject with regeneration
+
+The Studio app communicates with the API at `http://localhost:3000` (configurable via `VITE_API_BASE_URL`).
