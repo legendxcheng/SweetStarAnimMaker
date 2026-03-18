@@ -44,6 +44,22 @@ corepack pnpm dev:studio
 
 The Studio app will be available at `http://localhost:5173`.
 
+Studio and API local browser config:
+
+```bash
+set VITE_API_BASE_URL=http://localhost:3000
+set STUDIO_ORIGIN=http://localhost:5173
+```
+
+On macOS/Linux:
+
+```bash
+export VITE_API_BASE_URL=http://localhost:3000
+export STUDIO_ORIGIN=http://localhost:5173
+```
+
+`VITE_API_BASE_URL` controls which API the Studio browser app calls. `STUDIO_ORIGIN` controls which browser origin the API allows through CORS. If Vite starts on a different port, update `STUDIO_ORIGIN` to match.
+
 Storyboard generation runtime configuration:
 
 ```bash
@@ -131,8 +147,9 @@ The Studio app provides a browser-based UI for the complete storyboard workflow:
 3. Start the Studio app: `corepack pnpm dev:studio`
 4. Open `http://localhost:5173` in your browser
 5. Create a new project with a script
-6. Wait for storyboard generation to complete (auto-refreshing)
-7. Click "Review Storyboard" when status is `storyboard_in_review`
-8. Edit scenes, save changes, approve, or reject with regeneration
+6. Click "Generate Storyboard" on the project detail page
+7. Wait for task polling to reach a terminal state and expose "Enter Review"
+8. Edit summary or scenes, then click "Save Changes" to create a human storyboard version
+9. Approve the storyboard, reject for manual editing, or reject with regeneration to return to project detail and track the next task
 
 The Studio app communicates with the API at `http://localhost:3000` (configurable via `VITE_API_BASE_URL`).

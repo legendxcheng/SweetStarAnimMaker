@@ -1,28 +1,35 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import type { ProjectDetail } from "@sweet-star/shared";
-import { apiClient } from "../services/api-client";
+import { Link, useParams } from "react-router-dom";
+import type { ProjectDetail, TaskDetail } from "@sweet-star/shared";
 import { AsyncState } from "../components/async-state";
+import { ErrorState } from "../components/error-state";
 import { PageHeader } from "../components/page-header";
 import { StatusBadge } from "../components/status-badge";
-import { ErrorState } from "../components/error-state";
+import { useTaskPolling } from "../hooks/use-task-polling";
+import { apiClient } from "../services/api-client";
+
+function isActiveTask(task: TaskDetail | null) {
+  return task?.status === "pending" || task?.status === "running";
+}
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const [data, setData] = useState<ProjectDetail | null>(null);
+  const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [activeTask, setActiveTask] = useState<TaskDetail | null>(null);
+  const [creatingTask, setCreatingTask] = useState(false);
 
   const loadProject = async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get<ProjectDetail>(
-        `/projects/${projectId}`
-      );
-      setData(response);
+      const response = await apiClient.getProjectDetail(projectId);
+      setProject(response);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -31,32 +38,64 @@ export function ProjectDetailPage() {
   };
 
   useEffect(() => {
-    loadProject();
+    void loadProject();
   }, [projectId]);
 
-  // Poll for updates when status is generating
   useEffect(() => {
-    if (data?.status === "storyboard_generating") {
-      const interval = setInterval(() => {
-        loadProject();
-      }, 3000);
-
-      return () => clearInterval(interval);
+    if (project?.status !== "storyboard_generating" || activeTask) {
+      return;
     }
-  }, [data?.status]);
+
+    const interval = setInterval(() => {
+      void loadProject();
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [project?.status, activeTask]);
+
+  const polling = useTaskPolling({
+    taskId: activeTask?.id ?? null,
+    enabled: isActiveTask(activeTask),
+    onTaskUpdate: setActiveTask,
+    onTerminal: async () => {
+      await loadProject();
+    },
+  });
+
+  const task = polling.task ?? activeTask;
+  const taskError = polling.error ?? error;
+
+  const handleGenerateStoryboard = async () => {
+    if (!projectId || creatingTask || isActiveTask(task)) {
+      return;
+    }
+
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createStoryboardGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
 
   return (
     <div>
       <AsyncState
-        data={data}
+        data={project}
         loading={loading}
         error={error}
         errorFallback={(err) => <ErrorState error={err} retry={loadProject} />}
       >
-        {(project) => (
+        {(currentProject) => (
           <>
             <PageHeader
-              title={project.name}
+              title={currentProject.name}
               actions={
                 <Link
                   to="/projects"
@@ -84,28 +123,112 @@ export function ProjectDetailPage() {
               }}
             >
               <div style={{ marginBottom: "1rem" }}>
-                <StatusBadge status={project.status} />
+                <StatusBadge status={currentProject.status} />
               </div>
 
               <div style={{ display: "grid", gap: "0.5rem" }}>
                 <div>
-                  <strong>Project ID:</strong> {project.id}
+                  <strong>Project ID:</strong> {currentProject.id}
                 </div>
                 <div>
-                  <strong>Slug:</strong> {project.slug}
+                  <strong>Slug:</strong> {currentProject.slug}
+                </div>
+                <div>
+                  <strong>Script:</strong> {currentProject.script.path} (
+                  {currentProject.script.bytes} bytes)
                 </div>
                 <div>
                   <strong>Created:</strong>{" "}
-                  {new Date(project.createdAt).toLocaleString()}
+                  {new Date(currentProject.createdAt).toLocaleString()}
                 </div>
                 <div>
                   <strong>Updated:</strong>{" "}
-                  {new Date(project.updatedAt).toLocaleString()}
+                  {new Date(currentProject.updatedAt).toLocaleString()}
                 </div>
+              </div>
+
+              <div style={{ marginTop: "1.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleGenerateStoryboard();
+                  }}
+                  disabled={creatingTask || isActiveTask(task)}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor:
+                      creatingTask || isActiveTask(task) ? "#b0bec5" : "#2196F3",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "0.25rem",
+                    cursor:
+                      creatingTask || isActiveTask(task) ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {creatingTask ? "Starting..." : "Generate Storyboard"}
+                </button>
               </div>
             </div>
 
-            {project.currentStoryboard && (
+            {task && (
+              <div
+                style={{
+                  padding: "1.5rem",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "0.5rem",
+                  backgroundColor: "white",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: "1.25rem",
+                    fontWeight: 600,
+                    marginBottom: "1rem",
+                  }}
+                >
+                  Task Status
+                </h3>
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <div>
+                    <strong>Task ID:</strong> {task.id}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {task.status}
+                  </div>
+                  <div>
+                    <strong>Updated:</strong>{" "}
+                    {new Date(task.updatedAt).toLocaleString()}
+                  </div>
+                  {task.errorMessage && (
+                    <div style={{ color: "#c62828" }}>{task.errorMessage}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {taskError && task && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <ErrorState error={taskError} />
+              </div>
+            )}
+
+            {currentProject.status === "storyboard_generating" && !task && (
+              <div
+                style={{
+                  padding: "1.5rem",
+                  border: "1px solid #FF9800",
+                  borderRadius: "0.5rem",
+                  backgroundColor: "#FFF3E0",
+                  color: "#E65100",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <p>Storyboard generation in progress... auto-refreshing project status.</p>
+              </div>
+            )}
+
+            {currentProject.currentStoryboard && (
               <div
                 style={{
                   padding: "1.5rem",
@@ -126,29 +249,31 @@ export function ProjectDetailPage() {
                 </h3>
                 <div style={{ display: "grid", gap: "0.5rem" }}>
                   <div>
-                    <strong>Version:</strong> v{project.currentStoryboard.versionNumber}
+                    <strong>Version:</strong> v
+                    {currentProject.currentStoryboard.versionNumber}
                   </div>
                   <div>
-                    <strong>Type:</strong> {project.currentStoryboard.kind}
+                    <strong>Type:</strong> {currentProject.currentStoryboard.kind}
                   </div>
                   <div>
-                    <strong>Provider:</strong> {project.currentStoryboard.provider}
+                    <strong>Provider:</strong>{" "}
+                    {currentProject.currentStoryboard.provider}
                   </div>
                   <div>
-                    <strong>Model:</strong> {project.currentStoryboard.model}
+                    <strong>Model:</strong> {currentProject.currentStoryboard.model}
                   </div>
                   <div>
                     <strong>Created:</strong>{" "}
                     {new Date(
-                      project.currentStoryboard.createdAt
+                      currentProject.currentStoryboard.createdAt,
                     ).toLocaleString()}
                   </div>
                 </div>
 
-                {project.status === "storyboard_in_review" && (
+                {currentProject.status === "storyboard_in_review" && (
                   <div style={{ marginTop: "1rem" }}>
                     <Link
-                      to={`/projects/${project.id}/review`}
+                      to={`/projects/${currentProject.id}/review`}
                       style={{
                         padding: "0.75rem 1.5rem",
                         backgroundColor: "#2196F3",
@@ -158,24 +283,10 @@ export function ProjectDetailPage() {
                         display: "inline-block",
                       }}
                     >
-                      Review Storyboard
+                      Enter Review
                     </Link>
                   </div>
                 )}
-              </div>
-            )}
-
-            {project.status === "storyboard_generating" && (
-              <div
-                style={{
-                  padding: "1.5rem",
-                  border: "1px solid #FF9800",
-                  borderRadius: "0.5rem",
-                  backgroundColor: "#FFF3E0",
-                  color: "#E65100",
-                }}
-              >
-                <p>Storyboard generation in progress... (auto-refreshing)</p>
               </div>
             )}
           </>

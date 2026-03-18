@@ -8,12 +8,8 @@ import { StatusBadge } from "../components/status-badge";
 import { EmptyState } from "../components/empty-state";
 import { ErrorState } from "../components/error-state";
 
-interface ProjectListResponse {
-  projects: ProjectSummary[];
-}
-
 export function ProjectsPage() {
-  const [data, setData] = useState<ProjectListResponse | null>(null);
+  const [data, setData] = useState<ProjectSummary[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -21,7 +17,7 @@ export function ProjectsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get<ProjectListResponse>("/projects");
+      const response = await apiClient.listProjects();
       setData(response);
     } catch (err) {
       setError(err as Error);
@@ -60,8 +56,8 @@ export function ProjectsPage() {
         error={error}
         errorFallback={(err) => <ErrorState error={err} retry={loadProjects} />}
       >
-        {(response) =>
-          response.projects.length === 0 ? (
+        {(projects) =>
+          projects.length === 0 ? (
             <EmptyState
               message="No projects yet. Create your first project to get started."
               action={
@@ -87,7 +83,7 @@ export function ProjectsPage() {
                 gap: "1.5rem",
               }}
             >
-              {response.projects.map((project) => (
+              {projects.map((project) => (
                 <Link
                   key={project.id}
                   to={`/projects/${project.id}`}
