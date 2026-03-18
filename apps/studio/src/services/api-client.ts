@@ -49,4 +49,27 @@ export const apiClient = {
       body: JSON.stringify(body),
     }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+
+  // Review workspace
+  getReviewWorkspace: (projectId: string) =>
+    request<unknown>(`/projects/${projectId}/storyboard/review`),
+
+  // Review actions
+  saveHumanVersion: (projectId: string, data: unknown) =>
+    request<unknown>(`/projects/${projectId}/storyboard/save-human-version`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  approveStoryboard: (projectId: string, data: unknown) =>
+    request<unknown>(`/projects/${projectId}/storyboard/approve`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  rejectStoryboard: (projectId: string, data: unknown) =>
+    request<unknown>(`/projects/${projectId}/storyboard/reject`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };

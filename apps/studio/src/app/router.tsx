@@ -3,6 +3,7 @@ import { Layout } from "./layout";
 import { ProjectsPage } from "../pages/projects-page";
 import { NewProjectPage } from "../pages/new-project-page";
 import { ProjectDetailPage } from "../pages/project-detail-page";
+import { ReviewWorkspacePage } from "../pages/review-workspace-page";
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ export const router = createBrowserRouter([
       {
         path: "projects/:projectId",
         element: <ProjectDetailPage />,
+      },
+      {
+        path: "projects/:projectId/review",
+        element: <ReviewWorkspacePage />,
       },
       {
         path: "*",
