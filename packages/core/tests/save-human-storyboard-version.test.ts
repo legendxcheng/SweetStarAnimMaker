@@ -25,6 +25,7 @@ describe("save human storyboard version use case", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       storyboardVersionRepository: {
         insert: vi.fn(),
@@ -83,6 +84,7 @@ describe("save human storyboard version use case", () => {
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
+      listAll: vi.fn(),
     };
     const storyboardVersionRepository = {
       insert: vi.fn(),

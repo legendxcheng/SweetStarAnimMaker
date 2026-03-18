@@ -83,6 +83,29 @@ export function createSqliteProjectRepository(
 
       return row ? fromSqliteRow(row) : null;
     },
+    listAll() {
+      const rows = options.db
+        .prepare(
+          `
+            SELECT
+              id,
+              name,
+              slug,
+              storage_dir,
+              script_rel_path,
+              script_bytes,
+              status,
+              created_at,
+              updated_at,
+              script_updated_at
+            FROM projects
+            ORDER BY updated_at DESC
+          `,
+        )
+        .all() as SqliteProjectRow[];
+
+      return rows.map(fromSqliteRow);
+    },
     updateScriptMetadata(input) {
       options.db
         .prepare(

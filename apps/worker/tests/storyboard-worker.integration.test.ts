@@ -94,6 +94,7 @@ describe("storyboard worker integration", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       scriptStorage: {
         writeOriginalScript: vi.fn(),

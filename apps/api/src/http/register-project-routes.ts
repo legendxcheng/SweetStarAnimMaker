@@ -11,6 +11,10 @@ export function registerProjectRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
+  app.get("/projects", async () => {
+    return services.listProjects.execute();
+  });
+
   app.post("/projects", async (request, reply) => {
     const payload = createProjectRequestSchema.parse(request.body);
     const project = await services.createProject.execute(payload);

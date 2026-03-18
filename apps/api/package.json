@@ -10,6 +10,7 @@
     "typecheck": "corepack pnpm exec tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fastify/cors": "^10.0.1",
     "@sweet-star/core": "workspace:*",
     "@sweet-star/services": "workspace:*",
     "@sweet-star/shared": "workspace:*",

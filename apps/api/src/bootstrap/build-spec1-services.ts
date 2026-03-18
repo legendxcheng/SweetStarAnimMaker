@@ -8,6 +8,7 @@ import {
   createGetProjectDetailUseCase,
   createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
+  createListProjectsUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanStoryboardVersionUseCase,
   storyboardGenerateQueueName,
@@ -121,6 +122,10 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
         },
       },
       clock,
+    }),
+    listProjects: createListProjectsUseCase({
+      repository,
+      storyboardVersionRepository,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,

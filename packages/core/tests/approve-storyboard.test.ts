@@ -25,6 +25,7 @@ describe("approve storyboard use case", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       storyboardVersionRepository: {
         insert: vi.fn(),
@@ -70,6 +71,7 @@ describe("approve storyboard use case", () => {
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
+      listAll: vi.fn(),
     };
     const storyboardReviewRepository = {
       insert: vi.fn(),

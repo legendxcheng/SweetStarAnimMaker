@@ -137,6 +137,11 @@ export {
   type GetProjectDetailUseCaseDependencies,
 } from "./use-cases/get-project-detail";
 export {
+  createListProjectsUseCase,
+  type ListProjectsUseCase,
+  type ListProjectsUseCaseDependencies,
+} from "./use-cases/list-projects";
+export {
   createGetTaskDetailUseCase,
   type GetTaskDetailInput,
   type GetTaskDetailUseCase,
@@ -169,6 +174,9 @@ export {
 export {
   toProjectDetailDto,
 } from "./use-cases/project-detail-dto";
+export {
+  toProjectSummaryDto,
+} from "./use-cases/project-summary-dto";
 export { toTaskDetailDto } from "./use-cases/task-detail-dto";
 export {
   createUpdateProjectScriptUseCase,

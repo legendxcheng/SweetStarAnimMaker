@@ -7,6 +7,7 @@ describe("create project use case", () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn(),
+      listAll: vi.fn(),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
@@ -66,6 +67,7 @@ describe("create project use case", () => {
         throw new Error("insert failed");
       }),
       findById: vi.fn(),
+      listAll: vi.fn(),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),

@@ -20,6 +20,8 @@ export { taskTypes, type TaskType } from "./constants/task-type";
 export {
   createProjectRequestSchema,
   projectDetailResponseSchema,
+  projectListResponseSchema,
+  projectSummaryResponseSchema,
   updateProjectScriptRequestSchema,
 } from "./schemas/project-api";
 export {
@@ -36,6 +38,7 @@ export {
   taskDetailResponseSchema,
 } from "./schemas/task-api";
 export type { ProjectDetail, ProjectScriptMetadata } from "./types/project-detail";
+export type { ProjectSummary } from "./types/project-summary";
 export type {
   CurrentStoryboard,
   StoryboardScene,

@@ -23,6 +23,7 @@ export interface UpdateProjectStatusInput {
 export interface ProjectRepository {
   insert(project: ProjectRecord): Promise<void> | void;
   findById(projectId: string): Promise<ProjectRecord | null> | ProjectRecord | null;
+  listAll(): Promise<ProjectRecord[]> | ProjectRecord[];
   updateScriptMetadata(
     input: UpdateProjectScriptMetadataInput,
   ): Promise<void> | void;

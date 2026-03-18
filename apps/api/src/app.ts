@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 
 import { buildSpec1Services } from "./bootstrap/build-spec1-services";
 import { createApiErrorHandler } from "./http/error-handler";
@@ -12,6 +13,7 @@ export interface BuildAppOptions {
   taskQueue?: TaskQueue;
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
+  studioOrigin?: string;
 }
 
 export function buildApp(options: BuildAppOptions = {}) {
@@ -21,6 +23,13 @@ export function buildApp(options: BuildAppOptions = {}) {
     taskQueue: options.taskQueue,
     taskIdGenerator: options.taskIdGenerator,
     redisUrl: options.redisUrl,
+  });
+
+  const studioOrigin = options.studioOrigin ?? process.env.STUDIO_ORIGIN ?? "http://localhost:5173";
+
+  app.register(cors, {
+    origin: studioOrigin,
+    credentials: true,
   });
 
   app.setErrorHandler(createApiErrorHandler());

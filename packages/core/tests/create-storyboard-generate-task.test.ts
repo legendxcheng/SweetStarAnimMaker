@@ -24,6 +24,7 @@ describe("create storyboard generate task use case", () => {
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
+      listAll: vi.fn(),
     };
     const taskRepository = {
       insert: vi.fn(),
@@ -120,6 +121,7 @@ describe("create storyboard generate task use case", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       taskRepository: {
         insert: vi.fn(),
@@ -190,6 +192,7 @@ describe("create storyboard generate task use case", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       taskRepository,
       taskFileStorage,
@@ -246,6 +249,7 @@ describe("create storyboard generate task use case", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       taskRepository,
       taskFileStorage: {
@@ -295,6 +299,7 @@ describe("create storyboard generate task use case", () => {
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
+      listAll: vi.fn(),
     };
     const taskFileStorage = {
       createTaskArtifacts: vi.fn(),

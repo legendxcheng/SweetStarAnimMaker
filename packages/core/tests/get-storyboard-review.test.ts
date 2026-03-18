@@ -22,6 +22,7 @@ describe("get storyboard review use case", () => {
         updateScriptMetadata: vi.fn(),
         updateCurrentStoryboardVersion: vi.fn(),
         updateStatus: vi.fn(),
+        listAll: vi.fn(),
       },
       storyboardVersionRepository: {
         insert: vi.fn(),

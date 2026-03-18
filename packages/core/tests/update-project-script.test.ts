@@ -21,6 +21,7 @@ describe("update project script use case", () => {
         updatedAt: "2026-03-17T00:00:00.000Z",
         scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
       }),
+      listAll: vi.fn(),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
@@ -72,6 +73,7 @@ describe("update project script use case", () => {
         updatedAt: "2026-03-17T00:00:00.000Z",
         scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
       }),
+      listAll: vi.fn(),
       updateScriptMetadata: vi.fn(() => {
         throw new Error("update failed");
       }),
@@ -117,6 +119,7 @@ describe("update project script use case", () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue(null),
+      listAll: vi.fn(),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
       updateStatus: vi.fn(),
