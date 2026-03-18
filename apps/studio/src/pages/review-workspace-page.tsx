@@ -1,83 +1,64 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { apiClient } from "../services/api-client";
+import { useNavigate, useParams } from "react-router-dom";
+import type {
+  StoryboardReviewNextAction,
+  StoryboardReviewWorkspace,
+  StoryboardScene,
+} from "@sweet-star/shared";
 import { AsyncState } from "../components/async-state";
 import { PageHeader } from "../components/page-header";
 import { StatusBadge } from "../components/status-badge";
-
-interface StoryboardScene {
-  id: string;
-  sceneIndex: number;
-  description: string;
-  camera: string;
-  characters: string[];
-  prompt: string;
-}
-
-interface ReviewWorkspace {
-  projectId: string;
-  projectStatus: string;
-  currentStoryboard: {
-    id: string;
-    versionNumber: number;
-    kind: string;
-    summary: string;
-    scenes: StoryboardScene[];
-  };
-  latestReview: {
-    action: string;
-    reason: string | null;
-  } | null;
-  availableActions: {
-    saveHumanVersion: boolean;
-    approve: boolean;
-    reject: boolean;
-  };
-}
+import { apiClient } from "../services/api-client";
 
 export function ReviewWorkspacePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const [workspace, setWorkspace] = useState<ReviewWorkspace | null>(null);
+  const [workspace, setWorkspace] = useState<StoryboardReviewWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [editedScenes, setEditedScenes] = useState<StoryboardScene[]>([]);
   const [editedSummary, setEditedSummary] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [rejectAction, setRejectAction] = useState<"regenerate" | "edit_manually">("regenerate");
+  const [rejectAction, setRejectAction] =
+    useState<StoryboardReviewNextAction>("regenerate");
+
+  const loadWorkspace = async () => {
+    if (!projectId) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await apiClient.getReviewWorkspace(projectId);
+      setWorkspace(data);
+      setEditedScenes(data.currentStoryboard.scenes);
+      setEditedSummary(data.currentStoryboard.summary);
+      setHasChanges(false);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!projectId) return;
-
-    const loadWorkspace = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.getReviewWorkspace(projectId);
-        setWorkspace(data as ReviewWorkspace);
-        setEditedScenes((data as ReviewWorkspace).currentStoryboard.scenes);
-        setEditedSummary((data as ReviewWorkspace).currentStoryboard.summary);
-        setError(null);
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadWorkspace();
+    void loadWorkspace();
   }, [projectId]);
 
   const handleSceneChange = (
     sceneIndex: number,
     field: keyof StoryboardScene,
-    value: string
+    value: string,
   ) => {
-    setEditedScenes((prev) =>
-      prev.map((scene) =>
-        scene.sceneIndex === sceneIndex ? { ...scene, [field]: value } : scene
-      )
+    setEditedScenes((previousScenes) =>
+      previousScenes.map((scene) =>
+        scene.sceneIndex === sceneIndex ? { ...scene, [field]: value } : scene,
+      ),
     );
     setHasChanges(true);
   };
@@ -88,33 +69,36 @@ export function ReviewWorkspacePage() {
   };
 
   const handleSave = async () => {
-    if (!workspace || !projectId) return;
+    if (!workspace || !projectId) {
+      return;
+    }
 
     try {
+      setSaving(true);
       await apiClient.saveHumanVersion(projectId, {
         baseVersionId: workspace.currentStoryboard.id,
         summary: editedSummary,
         scenes: editedScenes,
       });
-      setHasChanges(false);
-      // Reload workspace
-      const data = await apiClient.getReviewWorkspace(projectId);
-      setWorkspace(data as ReviewWorkspace);
-      setEditedScenes((data as ReviewWorkspace).currentStoryboard.scenes);
-      setEditedSummary((data as ReviewWorkspace).currentStoryboard.summary);
+      await loadWorkspace();
     } catch (err) {
       alert(`Save failed: ${(err as Error).message}`);
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleApprove = async () => {
-    if (!workspace || !projectId) return;
+    if (!workspace || !projectId) {
+      return;
+    }
 
     if (!confirm("Are you sure you want to approve this storyboard?")) {
       return;
     }
 
     try {
+      setSubmittingAction(true);
       await apiClient.approveStoryboard(projectId, {
         storyboardVersionId: workspace.currentStoryboard.id,
       });
@@ -122,11 +106,20 @@ export function ReviewWorkspacePage() {
       navigate(`/projects/${projectId}`);
     } catch (err) {
       alert(`Approve failed: ${(err as Error).message}`);
+    } finally {
+      setSubmittingAction(false);
     }
   };
 
+  const closeRejectDialog = () => {
+    setShowRejectDialog(false);
+    setRejectReason("");
+  };
+
   const handleRejectSubmit = async () => {
-    if (!workspace || !projectId) return;
+    if (!workspace || !projectId) {
+      return;
+    }
 
     if (!rejectReason.trim()) {
       alert("Please provide a reason for rejection");
@@ -134,17 +127,31 @@ export function ReviewWorkspacePage() {
     }
 
     try {
+      setSubmittingAction(true);
       await apiClient.rejectStoryboard(projectId, {
         storyboardVersionId: workspace.currentStoryboard.id,
-        reason: rejectReason,
+        reason: rejectReason.trim(),
         nextAction: rejectAction,
       });
-      setShowRejectDialog(false);
-      setRejectReason("");
-      alert(`Storyboard rejected. ${rejectAction === "regenerate" ? "Regeneration task created." : "You can now edit manually."}`);
-      navigate(`/projects/${projectId}`);
+      closeRejectDialog();
+      alert(
+        `Storyboard rejected. ${
+          rejectAction === "regenerate"
+            ? "Regeneration task created."
+            : "You can now edit manually."
+        }`,
+      );
+
+      if (rejectAction === "regenerate") {
+        navigate(`/projects/${projectId}`);
+        return;
+      }
+
+      await loadWorkspace();
     } catch (err) {
       alert(`Reject failed: ${(err as Error).message}`);
+    } finally {
+      setSubmittingAction(false);
     }
   };
 
@@ -173,11 +180,15 @@ export function ReviewWorkspacePage() {
             </div>
 
             {ws.latestReview && (
-              <div style={{ marginBottom: "1rem", padding: "0.5rem", background: "#f5f5f5" }}>
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.5rem",
+                  background: "#f5f5f5",
+                }}
+              >
                 <strong>Latest Review:</strong> {ws.latestReview.action}
-                {ws.latestReview.reason && (
-                  <div>Reason: {ws.latestReview.reason}</div>
-                )}
+                {ws.latestReview.reason && <div>Reason: {ws.latestReview.reason}</div>}
               </div>
             )}
 
@@ -186,7 +197,7 @@ export function ReviewWorkspacePage() {
                 <strong>Summary:</strong>
                 <textarea
                   value={editedSummary}
-                  onChange={(e) => handleSummaryChange(e.target.value)}
+                  onChange={(event) => handleSummaryChange(event.target.value)}
                   style={{ width: "100%", minHeight: "80px", marginTop: "0.5rem" }}
                 />
               </label>
@@ -208,8 +219,12 @@ export function ReviewWorkspacePage() {
                     Description:
                     <textarea
                       value={scene.description}
-                      onChange={(e) =>
-                        handleSceneChange(scene.sceneIndex, "description", e.target.value)
+                      onChange={(event) =>
+                        handleSceneChange(
+                          scene.sceneIndex,
+                          "description",
+                          event.target.value,
+                        )
                       }
                       style={{ width: "100%", minHeight: "60px" }}
                     />
@@ -219,8 +234,8 @@ export function ReviewWorkspacePage() {
                     <input
                       type="text"
                       value={scene.camera}
-                      onChange={(e) =>
-                        handleSceneChange(scene.sceneIndex, "camera", e.target.value)
+                      onChange={(event) =>
+                        handleSceneChange(scene.sceneIndex, "camera", event.target.value)
                       }
                       style={{ width: "100%" }}
                     />
@@ -229,8 +244,8 @@ export function ReviewWorkspacePage() {
                     Prompt:
                     <textarea
                       value={scene.prompt}
-                      onChange={(e) =>
-                        handleSceneChange(scene.sceneIndex, "prompt", e.target.value)
+                      onChange={(event) =>
+                        handleSceneChange(scene.sceneIndex, "prompt", event.target.value)
                       }
                       style={{ width: "100%", minHeight: "60px" }}
                     />
@@ -241,18 +256,21 @@ export function ReviewWorkspacePage() {
 
             {hasChanges && ws.availableActions.saveHumanVersion && (
               <button
-                onClick={handleSave}
+                onClick={() => {
+                  void handleSave();
+                }}
+                disabled={saving}
                 style={{
                   marginTop: "1rem",
                   padding: "0.5rem 1rem",
-                  background: "#007bff",
+                  background: saving ? "#90caf9" : "#007bff",
                   color: "white",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: saving ? "not-allowed" : "pointer",
                   marginRight: "0.5rem",
                 }}
               >
-                Save Changes
+                {saving ? "Saving..." : "Save Changes"}
               </button>
             )}
 
@@ -260,13 +278,16 @@ export function ReviewWorkspacePage() {
               <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
                 {ws.availableActions.approve && (
                   <button
-                    onClick={handleApprove}
+                    onClick={() => {
+                      void handleApprove();
+                    }}
+                    disabled={submittingAction}
                     style={{
                       padding: "0.5rem 1rem",
-                      background: "#28a745",
+                      background: submittingAction ? "#a5d6a7" : "#28a745",
                       color: "white",
                       border: "none",
-                      cursor: "pointer",
+                      cursor: submittingAction ? "not-allowed" : "pointer",
                     }}
                   >
                     Approve
@@ -276,12 +297,13 @@ export function ReviewWorkspacePage() {
                 {ws.availableActions.reject && (
                   <button
                     onClick={() => setShowRejectDialog(true)}
+                    disabled={submittingAction}
                     style={{
                       padding: "0.5rem 1rem",
-                      background: "#dc3545",
+                      background: submittingAction ? "#ef9a9a" : "#dc3545",
                       color: "white",
                       border: "none",
-                      cursor: "pointer",
+                      cursor: submittingAction ? "not-allowed" : "pointer",
                     }}
                   >
                     Reject
@@ -319,8 +341,12 @@ export function ReviewWorkspacePage() {
                       <strong>Reason:</strong>
                       <textarea
                         value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        style={{ width: "100%", minHeight: "80px", marginTop: "0.5rem" }}
+                        onChange={(event) => setRejectReason(event.target.value)}
+                        style={{
+                          width: "100%",
+                          minHeight: "80px",
+                          marginTop: "0.5rem",
+                        }}
                         placeholder="Explain why you're rejecting this storyboard..."
                       />
                     </label>
@@ -334,46 +360,55 @@ export function ReviewWorkspacePage() {
                             type="radio"
                             value="regenerate"
                             checked={rejectAction === "regenerate"}
-                            onChange={(e) => setRejectAction(e.target.value as "regenerate")}
-                          />
-                          {" "}Regenerate (create new AI version)
+                            onChange={(event) =>
+                              setRejectAction(
+                                event.target.value as StoryboardReviewNextAction,
+                              )
+                            }
+                          />{" "}
+                          Regenerate (create new AI version)
                         </label>
                         <label style={{ display: "block" }}>
                           <input
                             type="radio"
                             value="edit_manually"
                             checked={rejectAction === "edit_manually"}
-                            onChange={(e) => setRejectAction(e.target.value as "edit_manually")}
-                          />
-                          {" "}Edit Manually (stay in review)
+                            onChange={(event) =>
+                              setRejectAction(
+                                event.target.value as StoryboardReviewNextAction,
+                              )
+                            }
+                          />{" "}
+                          Edit Manually (stay in review)
                         </label>
                       </div>
                     </label>
                   </div>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     <button
-                      onClick={handleRejectSubmit}
+                      onClick={() => {
+                        void handleRejectSubmit();
+                      }}
+                      disabled={submittingAction}
                       style={{
                         padding: "0.5rem 1rem",
-                        background: "#dc3545",
+                        background: submittingAction ? "#ef9a9a" : "#dc3545",
                         color: "white",
                         border: "none",
-                        cursor: "pointer",
+                        cursor: submittingAction ? "not-allowed" : "pointer",
                       }}
                     >
                       Submit Rejection
                     </button>
                     <button
-                      onClick={() => {
-                        setShowRejectDialog(false);
-                        setRejectReason("");
-                      }}
+                      onClick={closeRejectDialog}
+                      disabled={submittingAction}
                       style={{
                         padding: "0.5rem 1rem",
-                        background: "#6c757d",
+                        background: submittingAction ? "#cfd8dc" : "#6c757d",
                         color: "white",
                         border: "none",
-                        cursor: "pointer",
+                        cursor: submittingAction ? "not-allowed" : "pointer",
                       }}
                     >
                       Cancel

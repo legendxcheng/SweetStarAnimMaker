@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { apiClient } from "../../src/services/api-client";
+import { apiClient, ApiError } from "../../src/services/api-client";
 import { config } from "../../src/services/config";
 
 describe("API Client", () => {
@@ -11,15 +11,15 @@ describe("API Client", () => {
   it("uses VITE_API_BASE_URL from config", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ projects: [] }),
+      json: async () => [],
     });
     global.fetch = mockFetch;
 
-    await apiClient.get("/projects");
+    await apiClient.listProjects();
 
     expect(mockFetch).toHaveBeenCalledWith(
       `${config.apiBaseUrl}/projects`,
-      expect.any(Object)
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
@@ -31,19 +31,21 @@ describe("API Client", () => {
       json: async () => ({ message: "Project not found" }),
     });
 
-    await expect(apiClient.get("/projects/invalid")).rejects.toThrow(
-      "Project not found"
+    await expect(apiClient.getProjectDetail("invalid")).rejects.toEqual(
+      expect.objectContaining<ApiError>({
+        message: "Project not found",
+        status: 404,
+        statusText: "Not Found",
+      }),
     );
   });
 
-  it("validates JSON responses against schemas", async () => {
+  it("validates JSON responses against shared schemas", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ invalid: "data" }),
     });
 
-    // This will be validated in actual usage with zod schemas
-    const response = await apiClient.get("/projects");
-    expect(response).toEqual({ invalid: "data" });
+    await expect(apiClient.getProjectDetail("proj-1")).rejects.toThrow();
   });
 });

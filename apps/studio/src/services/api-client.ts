@@ -1,10 +1,36 @@
+import {
+  approveStoryboardRequestSchema,
+  createProjectRequestSchema,
+  createStoryboardGenerateTaskResponseSchema,
+  currentStoryboardResponseSchema,
+  projectDetailResponseSchema,
+  projectListResponseSchema,
+  rejectStoryboardRequestSchema,
+  saveHumanStoryboardVersionRequestSchema,
+  storyboardReviewSummarySchema,
+  storyboardReviewWorkspaceResponseSchema,
+  taskDetailResponseSchema,
+  type ApproveStoryboardRequest,
+  type CurrentStoryboard,
+  type ProjectDetail,
+  type ProjectSummary,
+  type RejectStoryboardRequest,
+  type SaveHumanStoryboardVersionRequest,
+  type StoryboardReviewSummary,
+  type StoryboardReviewWorkspace,
+  type TaskDetail,
+} from "@sweet-star/shared";
 import { config } from "./config";
+
+interface ResponseSchema<T> {
+  parse(input: unknown): T;
+}
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public statusText: string
+    public statusText: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -13,7 +39,8 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  schema: ResponseSchema<T>,
+  options: RequestInit = {},
 ): Promise<T> {
   const url = `${config.apiBaseUrl}${path}`;
   const response = await fetch(url, {
@@ -29,47 +56,87 @@ async function request<T>(
     throw new ApiError(
       errorData.message || response.statusText,
       response.status,
-      response.statusText
+      response.statusText,
     );
   }
 
-  return response.json();
+  return schema.parse(await response.json());
 }
 
 export const apiClient = {
-  get: <T>(path: string) => request<T>(path, { method: "GET" }),
-  post: <T>(path: string, body: unknown) =>
-    request<T>(path, {
-      method: "POST",
-      body: JSON.stringify(body),
+  listProjects: () =>
+    request<ProjectSummary[]>("/projects", projectListResponseSchema, {
+      method: "GET",
     }),
-  put: <T>(path: string, body: unknown) =>
-    request<T>(path, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 
-  // Review workspace
+  createProject: (data: { name: string; script: string }) =>
+    request<ProjectDetail>("/projects", projectDetailResponseSchema, {
+      method: "POST",
+      body: JSON.stringify(createProjectRequestSchema.parse(data)),
+    }),
+
+  getProjectDetail: (projectId: string) =>
+    request<ProjectDetail>(
+      `/projects/${projectId}`,
+      projectDetailResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
+  createStoryboardGenerateTask: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/tasks/storyboard-generate`,
+      createStoryboardGenerateTaskResponseSchema,
+      {
+        method: "POST",
+      },
+    ),
+
+  getTaskDetail: (taskId: string) =>
+    request<TaskDetail>(`/tasks/${taskId}`, taskDetailResponseSchema, {
+      method: "GET",
+    }),
+
   getReviewWorkspace: (projectId: string) =>
-    request<unknown>(`/projects/${projectId}/storyboard/review`),
+    request<StoryboardReviewWorkspace>(
+      `/projects/${projectId}/storyboard/review`,
+      storyboardReviewWorkspaceResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
 
-  // Review actions
-  saveHumanVersion: (projectId: string, data: unknown) =>
-    request<unknown>(`/projects/${projectId}/storyboard/save-human-version`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  saveHumanVersion: (
+    projectId: string,
+    data: SaveHumanStoryboardVersionRequest,
+  ) =>
+    request<CurrentStoryboard>(
+      `/projects/${projectId}/storyboard/save-human-version`,
+      currentStoryboardResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(saveHumanStoryboardVersionRequestSchema.parse(data)),
+      },
+    ),
 
-  approveStoryboard: (projectId: string, data: unknown) =>
-    request<unknown>(`/projects/${projectId}/storyboard/approve`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  approveStoryboard: (projectId: string, data: ApproveStoryboardRequest) =>
+    request<StoryboardReviewSummary>(
+      `/projects/${projectId}/storyboard/approve`,
+      storyboardReviewSummarySchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveStoryboardRequestSchema.parse(data)),
+      },
+    ),
 
-  rejectStoryboard: (projectId: string, data: unknown) =>
-    request<unknown>(`/projects/${projectId}/storyboard/reject`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  rejectStoryboard: (projectId: string, data: RejectStoryboardRequest) =>
+    request<StoryboardReviewSummary>(
+      `/projects/${projectId}/storyboard/reject`,
+      storyboardReviewSummarySchema,
+      {
+        method: "POST",
+        body: JSON.stringify(rejectStoryboardRequestSchema.parse(data)),
+      },
+    ),
 };
