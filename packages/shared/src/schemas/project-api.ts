@@ -42,3 +42,4 @@ export const projectDetailResponseSchema = z.object({
   }),
   currentStoryboard: storyboardVersionResponseSchema.nullable(),
 });
+
