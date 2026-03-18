@@ -30,6 +30,12 @@ Start the Spec2 worker:
 corepack pnpm --filter @sweet-star/worker dev
 ```
 
+Start the Studio browser app:
+
+```bash
+corepack pnpm --filter @sweet-star/studio dev
+```
+
 Storyboard generation runtime configuration:
 
 ```bash
