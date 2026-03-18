@@ -118,6 +118,32 @@ describe("sqlite project repository", () => {
 
     expect(row?.current_storyboard_version_id).toBe("sbv_20260317_ab12cd");
   });
+
+  it("updates the persisted project status", async () => {
+    const { repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_20260317_ab12cd",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-17T00:00:00.000Z",
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+      scriptBytes: 7,
+    });
+
+    repository.insert(project);
+    repository.updateStatus({
+      projectId: project.id,
+      status: "storyboard_in_review",
+      updatedAt: "2026-03-17T01:00:00.000Z",
+    });
+
+    expect(repository.findById(project.id)).toEqual({
+      ...project,
+      status: "storyboard_in_review",
+      updatedAt: "2026-03-17T01:00:00.000Z",
+    });
+  });
 });
 
 async function createRepositoryContext() {

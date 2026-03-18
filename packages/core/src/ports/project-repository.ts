@@ -1,3 +1,5 @@
+import type { ProjectStatus } from "@sweet-star/shared";
+
 import type { ProjectRecord } from "../domain/project";
 
 export interface UpdateProjectScriptMetadataInput {
@@ -12,6 +14,12 @@ export interface UpdateCurrentStoryboardVersionInput {
   storyboardVersionId: string | null;
 }
 
+export interface UpdateProjectStatusInput {
+  projectId: string;
+  status: ProjectStatus;
+  updatedAt: string;
+}
+
 export interface ProjectRepository {
   insert(project: ProjectRecord): Promise<void> | void;
   findById(projectId: string): Promise<ProjectRecord | null> | ProjectRecord | null;
@@ -21,4 +29,5 @@ export interface ProjectRepository {
   updateCurrentStoryboardVersion(
     input: UpdateCurrentStoryboardVersionInput,
   ): Promise<void> | void;
+  updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
 }

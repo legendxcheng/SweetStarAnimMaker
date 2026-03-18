@@ -62,6 +62,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
         const providerResult = await dependencies.storyboardProvider.generateStoryboard({
           projectId: project.id,
           script,
+          reviewContext: taskInput.reviewContext,
         });
         const versionNumber =
           (await dependencies.storyboardVersionRepository.getNextVersionNumber?.(
@@ -91,6 +92,11 @@ export function createProcessStoryboardGenerateTaskUseCase(
         await dependencies.projectRepository.updateCurrentStoryboardVersion({
           projectId: project.id,
           storyboardVersionId: version.id,
+        });
+        await dependencies.projectRepository.updateStatus({
+          projectId: project.id,
+          status: "storyboard_in_review",
+          updatedAt: finishedAt,
         });
         await dependencies.taskFileStorage.writeTaskOutput({
           task,

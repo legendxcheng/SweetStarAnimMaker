@@ -48,4 +48,20 @@ describe("storyboard api schema", () => {
 
     expect(parsed.scenes).toHaveLength(1);
   });
+
+  it("accepts a human storyboard version summary", () => {
+    const parsed = storyboardVersionResponseSchema.parse({
+      id: "sbv_20260318_hu12cd",
+      projectId: "proj_20260318_ab12cd",
+      versionNumber: 2,
+      kind: "human",
+      provider: "manual",
+      model: "manual-edit",
+      filePath: "storyboards/versions/v2-human.json",
+      createdAt: "2026-03-18T12:30:00.000Z",
+      sourceTaskId: "task_20260318_ab12cd",
+    });
+
+    expect(parsed.kind).toBe("human");
+  });
 });

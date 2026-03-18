@@ -92,6 +92,32 @@ export function createSqliteStoryboardVersionRepository(
 
       return row ? fromSqliteRow(row) : null;
     },
+    findById(storyboardVersionId) {
+      const row = options.db
+        .prepare(
+          `
+            SELECT
+              sv.id,
+              sv.project_id,
+              p.storage_dir AS project_storage_dir,
+              sv.source_task_id,
+              sv.version_number,
+              sv.kind,
+              sv.provider,
+              sv.model,
+              sv.file_rel_path,
+              sv.raw_response_rel_path,
+              sv.created_at
+            FROM storyboard_versions sv
+            JOIN projects p
+              ON p.id = sv.project_id
+            WHERE sv.id = ?
+          `,
+        )
+        .get(storyboardVersionId) as SqliteStoryboardVersionRow | undefined;
+
+      return row ? fromSqliteRow(row) : null;
+    },
     getNextVersionNumber(projectId) {
       const row = options.db
         .prepare(

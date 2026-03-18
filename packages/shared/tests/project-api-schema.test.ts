@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createProjectRequestSchema,
   projectDetailResponseSchema,
+  projectStatuses,
   updateProjectScriptRequestSchema,
 } from "../src/index";
 
@@ -42,5 +43,14 @@ describe("project api schema", () => {
     });
 
     expect(parsed.currentStoryboard).toBeNull();
+  });
+
+  it("exposes the expanded storyboard workflow statuses", () => {
+    expect(projectStatuses).toEqual([
+      "script_ready",
+      "storyboard_generating",
+      "storyboard_in_review",
+      "storyboard_approved",
+    ]);
   });
 });

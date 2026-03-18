@@ -23,9 +23,11 @@ describe("get project detail use case", () => {
       }),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const storyboardVersionRepository = {
       insert: vi.fn(),
+      findById: vi.fn(),
       findCurrentByProjectId: vi.fn().mockResolvedValue({
         id: "sbv_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
@@ -71,11 +73,13 @@ describe("get project detail use case", () => {
       findById: vi.fn().mockReturnValue(null),
       updateScriptMetadata: vi.fn(),
       updateCurrentStoryboardVersion: vi.fn(),
+      updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
       repository,
       storyboardVersionRepository: {
         insert: vi.fn(),
+        findById: vi.fn(),
         findCurrentByProjectId: vi.fn(),
       },
     });

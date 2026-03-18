@@ -75,6 +75,59 @@ describe("sqlite storyboard version repository", () => {
       storyboardVersionRepository.findCurrentByProjectId(project.id),
     ).toEqual(version);
   });
+
+  it("finds a version by id and increments across ai and human versions", async () => {
+    const { projectRepository, storyboardVersionRepository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_20260317_ab12cd",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-17T00:00:00.000Z",
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+      scriptBytes: 7,
+    });
+
+    projectRepository.insert(project);
+
+    storyboardVersionRepository.insert(
+      createStoryboardVersionRecord({
+        id: "sbv_v1",
+        projectId: "proj_20260317_ab12cd",
+        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
+        sourceTaskId: "task_20260317_v1",
+        versionNumber: 1,
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+        createdAt: "2026-03-17T12:00:00.000Z",
+      }),
+    );
+    storyboardVersionRepository.insert(
+      createStoryboardVersionRecord({
+        id: "sbv_v2",
+        projectId: "proj_20260317_ab12cd",
+        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
+        sourceTaskId: "task_20260317_v1",
+        versionNumber: 2,
+        provider: "manual",
+        model: "manual-edit",
+        createdAt: "2026-03-17T12:10:00.000Z",
+        kind: "human",
+      }),
+    );
+
+    expect(storyboardVersionRepository.findById("sbv_v2")).toEqual(
+      expect.objectContaining({
+        id: "sbv_v2",
+        versionNumber: 2,
+        kind: "human",
+        fileRelPath: "storyboards/versions/v2-human.json",
+      }),
+    );
+    expect(
+      storyboardVersionRepository.getNextVersionNumber?.("proj_20260317_ab12cd"),
+    ).toBe(3);
+  });
 });
 
 async function createRepositoryContext() {

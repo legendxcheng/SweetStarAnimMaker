@@ -33,3 +33,8 @@ export {
   type CreateSqliteStoryboardVersionRepositoryOptions,
 } from "./storyboard-repository/sqlite-storyboard-version-repository";
 export { initializeSqliteStoryboardSchema } from "./storyboard-repository/sqlite-storyboard-schema";
+export {
+  createSqliteStoryboardReviewRepository,
+  type CreateSqliteStoryboardReviewRepositoryOptions,
+} from "./storyboard-repository/sqlite-storyboard-review-repository";
+export { initializeSqliteStoryboardReviewSchema } from "./storyboard-repository/sqlite-storyboard-review-schema";

@@ -5,6 +5,15 @@ export {
   toProjectSlug,
   toProjectStorageDir,
 } from "./domain/project";
+export type {
+  CurrentStoryboard,
+  StoryboardReviewAvailableActions,
+  StoryboardReviewRecord,
+  StoryboardReviewSummary,
+  StoryboardReviewWorkspace,
+  StoryboardVersionSummary,
+  TaskDetail,
+} from "@sweet-star/shared";
 export {
   createStoryboardVersionRecord,
   storyboardDirectoryName,
@@ -21,6 +30,10 @@ export {
   type StoryboardVersionRecord,
 } from "./domain/storyboard";
 export {
+  createStoryboardReviewRecord,
+  type CreateStoryboardReviewRecordInput,
+} from "./domain/storyboard-review";
+export {
   createTaskRecord,
   storyboardGenerateQueueName,
   taskArtifactsDirectoryName,
@@ -32,6 +45,7 @@ export {
   toTaskOutputRelPath,
   toTaskStorageDir,
   type CreateTaskRecordInput,
+  type StoryboardGenerateReviewContext,
   type StoryboardGenerateTaskInput,
   type TaskRecord,
 } from "./domain/task";
@@ -45,10 +59,15 @@ export {
   ProjectValidationError,
 } from "./errors/project-errors";
 export { CurrentStoryboardNotFoundError } from "./errors/storyboard-errors";
+export {
+  RejectStoryboardReasonRequiredError,
+  StoryboardReviewVersionConflictError,
+} from "./errors/storyboard-review-errors";
 export { TaskNotFoundError } from "./errors/task-errors";
 export type {
   ProjectRepository,
   UpdateCurrentStoryboardVersionInput,
+  UpdateProjectStatusInput,
   UpdateProjectScriptMetadataInput,
 } from "./ports/project-repository";
 export type {
@@ -64,6 +83,7 @@ export type {
   GenerateStoryboardResult,
   LlmStoryboardProvider,
 } from "./ports/storyboard-provider";
+export type { StoryboardReviewRepository } from "./ports/storyboard-review-repository";
 export type {
   ReadStoryboardVersionInput,
   StoryboardStorage,
@@ -105,6 +125,12 @@ export {
   type GetCurrentStoryboardUseCaseDependencies,
 } from "./use-cases/get-current-storyboard";
 export {
+  createGetStoryboardReviewUseCase,
+  type GetStoryboardReviewInput,
+  type GetStoryboardReviewUseCase,
+  type GetStoryboardReviewUseCaseDependencies,
+} from "./use-cases/get-storyboard-review";
+export {
   createGetProjectDetailUseCase,
   type GetProjectDetailInput,
   type GetProjectDetailUseCase,
@@ -122,6 +148,24 @@ export {
   type ProcessStoryboardGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-storyboard-generate-task";
+export {
+  createSaveHumanStoryboardVersionUseCase,
+  type SaveHumanStoryboardVersionInput,
+  type SaveHumanStoryboardVersionUseCase,
+  type SaveHumanStoryboardVersionUseCaseDependencies,
+} from "./use-cases/save-human-storyboard-version";
+export {
+  createApproveStoryboardUseCase,
+  type ApproveStoryboardInput,
+  type ApproveStoryboardUseCase,
+  type ApproveStoryboardUseCaseDependencies,
+} from "./use-cases/approve-storyboard";
+export {
+  createRejectStoryboardUseCase,
+  type RejectStoryboardInput,
+  type RejectStoryboardUseCase,
+  type RejectStoryboardUseCaseDependencies,
+} from "./use-cases/reject-storyboard";
 export {
   toProjectDetailDto,
 } from "./use-cases/project-detail-dto";
