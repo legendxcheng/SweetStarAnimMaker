@@ -1,9 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
-import {
-  createProjectRequestSchema,
-  updateProjectScriptRequestSchema,
-} from "@sweet-star/shared";
+import { createProjectRequestSchema } from "@sweet-star/shared";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
 
@@ -27,16 +24,6 @@ export function registerProjectRoutes(
 
     return services.getProjectDetail.execute({
       projectId: params.projectId,
-    });
-  });
-
-  app.put("/projects/:projectId/script", async (request) => {
-    const params = request.params as { projectId: string };
-    const payload = updateProjectScriptRequestSchema.parse(request.body);
-
-    return services.updateProjectScript.execute({
-      projectId: params.projectId,
-      script: payload.script,
     });
   });
 }

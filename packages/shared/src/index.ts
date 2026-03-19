@@ -22,35 +22,30 @@ export {
   projectDetailResponseSchema,
   projectListResponseSchema,
   projectSummaryResponseSchema,
-  updateProjectScriptRequestSchema,
 } from "./schemas/project-api";
 export {
-  currentStoryboardResponseSchema,
-  approveStoryboardRequestSchema,
-  rejectStoryboardRequestSchema,
-  saveHumanStoryboardVersionRequestSchema,
-  storyboardVersionResponseSchema,
-  storyboardReviewSummarySchema,
-  storyboardReviewWorkspaceResponseSchema,
+  currentMasterPlotResponseSchema,
+  approveMasterPlotRequestSchema,
+  rejectMasterPlotRequestSchema,
+  saveMasterPlotRequestSchema,
+  masterPlotReviewSummarySchema,
+  masterPlotReviewWorkspaceResponseSchema,
 } from "./schemas/storyboard-api";
 export {
-  createStoryboardGenerateTaskResponseSchema,
+  createMasterPlotGenerateTaskResponseSchema,
   taskDetailResponseSchema,
 } from "./schemas/task-api";
-export type { ProjectDetail, ProjectScriptMetadata } from "./types/project-detail";
+export type { ProjectDetail, ProjectPremiseMetadata } from "./types/project-detail";
 export type { ProjectSummary } from "./types/project-summary";
 export type {
-  CurrentStoryboard,
-  StoryboardScene,
-  StoryboardVersionSummary,
-} from "./types/storyboard";
+  CurrentMasterPlot,
+} from "./types/master-plot";
 export type {
-  ApproveStoryboardRequest,
-  RejectStoryboardRequest,
-  SaveHumanStoryboardVersionRequest,
-  StoryboardReviewAvailableActions,
-  StoryboardReviewRecord,
-  StoryboardReviewSummary,
-  StoryboardReviewWorkspace,
-} from "./types/storyboard-review";
+  ApproveMasterPlotRequest,
+  RejectMasterPlotRequest,
+  SaveMasterPlotRequest,
+  MasterPlotReviewAvailableActions,
+  MasterPlotReviewSummary,
+  MasterPlotReviewWorkspace,
+} from "./types/master-plot-review";
 export type { TaskDetail, TaskFileMetadata } from "./types/task-detail";

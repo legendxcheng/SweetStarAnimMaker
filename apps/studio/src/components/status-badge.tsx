@@ -10,31 +10,26 @@ type StatusConfig = {
 };
 
 const STATUS_CONFIG: Record<string, StatusConfig> = {
-  script_ready: {
-    label: "Script Ready",
+  premise_ready: {
+    label: "Premise Ready",
     dotClass: "bg-(--color-info)",
     pillClass: "bg-(--color-info)/10 border-(--color-info)/30 text-(--color-info)",
   },
-  storyboard_generating: {
+  master_plot_generating: {
     label: "Generating",
     dotClass: "bg-(--color-warning)",
     pillClass: "bg-(--color-warning)/10 border-(--color-warning)/30 text-(--color-warning)",
     pulse: true,
   },
-  storyboard_in_review: {
+  master_plot_in_review: {
     label: "In Review",
     dotClass: "bg-(--color-accent)",
     pillClass: "bg-(--color-accent)/10 border-(--color-accent)/30 text-(--color-accent)",
   },
-  storyboard_approved: {
+  master_plot_approved: {
     label: "Approved",
     dotClass: "bg-(--color-success)",
     pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
-  },
-  storyboard_rejected: {
-    label: "Rejected",
-    dotClass: "bg-(--color-danger)",
-    pillClass: "bg-(--color-danger)/10 border-(--color-danger)/30 text-(--color-danger)",
   },
 };
 

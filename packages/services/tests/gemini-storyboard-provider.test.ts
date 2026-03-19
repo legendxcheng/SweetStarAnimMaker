@@ -17,16 +17,16 @@ describe("gemini storyboard provider", () => {
               parts: [
                 {
                   text: JSON.stringify({
-                    summary: "A short story summary",
-                    scenes: [
-                      {
-                        sceneIndex: 1,
-                        description: "A enters the room",
-                        camera: "medium shot",
-                        characters: ["A"],
-                        prompt: "medium shot, character A entering a dim room",
-                      },
-                    ],
+                    title: "The Last Sky Choir",
+                    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+                    synopsis:
+                      "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+                    mainCharacters: ["Rin", "Ivo"],
+                    coreConflict:
+                      "Rin must choose between private escape and saving the city that exiled her.",
+                    emotionalArc: "She moves from bitterness to sacrificial hope.",
+                    endingBeat: "Rin turns the comet's music into a rising tide of light.",
+                    targetDurationSec: 480,
                   }),
                 },
               ],
@@ -43,9 +43,10 @@ describe("gemini storyboard provider", () => {
       model: "gemini-3.1-pro-preview",
     });
 
-    const result = await provider.generateStoryboard({
+    const result = await provider.generateMasterPlot({
       projectId: "proj_20260317_ab12cd",
-      script: "Scene 1: A enters the room",
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptText: "Turn this premise into a master plot:\n{{premiseText}}",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -61,12 +62,13 @@ describe("gemini storyboard provider", () => {
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
 
-    expect(request.systemInstruction.parts[0].text).toContain("storyboard");
+    expect(request.systemInstruction.parts[0].text).toContain("master plot");
     expect(request.generationConfig.responseMimeType).toBe("application/json");
-    expect(request.generationConfig.responseJsonSchema.properties.scenes).toBeDefined();
+    expect(request.generationConfig.responseJsonSchema.properties.mainCharacters).toBeDefined();
     expect(result.provider).toBe("gemini");
     expect(result.model).toBe("gemini-3.1-pro-preview");
-    expect(result.storyboard.scenes[0]?.id).toBe("scene_1");
+    expect(result.masterPlot.title).toBe("The Last Sky Choir");
+    expect(result.rawResponse).toContain("The Last Sky Choir");
   });
 
   it("rejects non-2xx provider responses", async () => {
@@ -86,14 +88,15 @@ describe("gemini storyboard provider", () => {
     });
 
     await expect(
-      provider.generateStoryboard({
+      provider.generateMasterPlot({
         projectId: "proj_20260317_ab12cd",
-        script: "Scene 1",
+        premiseText: "Scene 1",
+        promptText: "Turn this premise into a master plot.",
       }),
-    ).rejects.toThrow("Gemini storyboard provider request failed with status 401");
+    ).rejects.toThrow("Gemini master plot provider request failed with status 401");
   });
 
-  it("rejects responses without usable storyboard content", async () => {
+  it("rejects responses without usable master-plot content", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -111,14 +114,15 @@ describe("gemini storyboard provider", () => {
     });
 
     await expect(
-      provider.generateStoryboard({
+      provider.generateMasterPlot({
         projectId: "proj_20260317_ab12cd",
-        script: "Scene 1",
+        premiseText: "Scene 1",
+        promptText: "Turn this premise into a master plot.",
       }),
-    ).rejects.toThrow("Gemini storyboard provider returned no usable content");
+    ).rejects.toThrow("Gemini master plot provider returned no usable content");
   });
 
-  it("adds regeneration guidance when review context is present", async () => {
+  it("includes premise and prompt text in the request body", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -128,16 +132,15 @@ describe("gemini storyboard provider", () => {
               parts: [
                 {
                   text: JSON.stringify({
-                    summary: "A short story summary",
-                    scenes: [
-                      {
-                        sceneIndex: 1,
-                        description: "A enters the room",
-                        camera: "medium shot",
-                        characters: ["A"],
-                        prompt: "medium shot, character A entering a dim room",
-                      },
-                    ],
+                    title: null,
+                    logline: "A lonely mechanic bargains with a star trapped in iron.",
+                    synopsis:
+                      "She must free the star before the empire turns it into a weapon.",
+                    mainCharacters: ["Mara", "The Star"],
+                    coreConflict: "Mercy collides with survival under occupation.",
+                    emotionalArc: "Mara learns that intimacy requires risk.",
+                    endingBeat: "She opens the foundry roof and lets dawn choose for her.",
+                    targetDurationSec: null,
                   }),
                 },
               ],
@@ -154,20 +157,16 @@ describe("gemini storyboard provider", () => {
       model: "gemini-3.1-pro-preview",
     });
 
-    await provider.generateStoryboard({
+    await provider.generateMasterPlot({
       projectId: "proj_20260317_ab12cd",
-      script: "Scene 1: A enters the room",
-      reviewContext: {
-        reason: "Need stronger scene transitions.",
-        rejectedVersionId: "sbv_20260317_prev",
-      },
+      premiseText: "A lonely mechanic bargains with a star trapped in iron.",
+      promptText: "Expand this premise into a romantic tragedy.",
     });
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     const promptText = request.contents[0].parts[0].text as string;
 
-    expect(promptText).toContain("Regeneration guidance:");
-    expect(promptText).toContain("Need stronger scene transitions.");
-    expect(promptText).toContain("sbv_20260317_prev");
+    expect(promptText).toContain("Premise: A lonely mechanic bargains with a star trapped in iron.");
+    expect(promptText).toContain("Expand this premise into a romantic tragedy.");
   });
 });

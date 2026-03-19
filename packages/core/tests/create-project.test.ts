@@ -3,26 +3,30 @@ import { describe, expect, it, vi } from "vitest";
 import { createCreateProjectUseCase } from "../src/index";
 
 describe("create project use case", () => {
-  it("creates a project and returns the expected detail dto", async () => {
+  it("creates a premise-first project and initializes prompt assets", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn(),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
     };
-    const scriptStorage = {
-      writeOriginalScript: vi.fn().mockReturnValue({
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
+    const premiseStorage = {
+      writePremise: vi.fn().mockReturnValue({
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
       }),
-      readOriginalScript: vi.fn(),
-      deleteOriginalScript: vi.fn(),
+      readPremise: vi.fn(),
+      deletePremise: vi.fn(),
+    };
+    const masterPlotStorage = {
+      initializePromptTemplate: vi.fn(),
     };
     const useCase = createCreateProjectUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
+      masterPlotStorage,
       idGenerator: {
         generateProjectId: () => "proj_20260317_ab12cd",
       },
@@ -33,7 +37,7 @@ describe("create project use case", () => {
 
     const result = await useCase.execute({
       name: "My Story",
-      script: "Scene 1",
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
     });
 
     expect(repository.insert).toHaveBeenCalledWith(
@@ -41,48 +45,55 @@ describe("create project use case", () => {
         id: "proj_20260317_ab12cd",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptBytes: 7,
+        premiseBytes: 88,
       }),
     );
+    expect(masterPlotStorage.initializePromptTemplate).toHaveBeenCalledWith({
+      storageDir: "projects/proj_20260317_ab12cd-my-story",
+      promptTemplateKey: "master_plot.generate",
+    });
     expect(result).toEqual({
       id: "proj_20260317_ab12cd",
       name: "My Story",
       slug: "my-story",
-      status: "script_ready",
+      status: "premise_ready",
       storageDir: "projects/proj_20260317_ab12cd-my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      script: {
-        path: "script/original.txt",
-        bytes: 7,
+      premise: {
+        path: "premise/v1.md",
+        bytes: 88,
         updatedAt: "2026-03-17T00:00:00.000Z",
       },
-      currentStoryboard: null,
+      currentMasterPlot: null,
     });
   });
 
-  it("removes the script file when repository insert fails", async () => {
+  it("removes premise files when repository insert fails", async () => {
     const repository = {
       insert: vi.fn(() => {
         throw new Error("insert failed");
       }),
       findById: vi.fn(),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
     };
-    const scriptStorage = {
-      writeOriginalScript: vi.fn().mockReturnValue({
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
+    const premiseStorage = {
+      writePremise: vi.fn().mockReturnValue({
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
       }),
-      readOriginalScript: vi.fn(),
-      deleteOriginalScript: vi.fn(),
+      readPremise: vi.fn(),
+      deletePremise: vi.fn(),
     };
     const useCase = createCreateProjectUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+      },
       idGenerator: {
         generateProjectId: () => "proj_20260317_ab12cd",
       },
@@ -94,11 +105,11 @@ describe("create project use case", () => {
     await expect(
       useCase.execute({
         name: "My Story",
-        script: "Scene 1",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
       }),
     ).rejects.toThrow("insert failed");
 
-    expect(scriptStorage.deleteOriginalScript).toHaveBeenCalledWith({
+    expect(premiseStorage.deletePremise).toHaveBeenCalledWith({
       storageDir: "projects/proj_20260317_ab12cd-my-story",
     });
   });

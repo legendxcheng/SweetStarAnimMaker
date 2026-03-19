@@ -1,20 +1,21 @@
 import fs from "node:fs/promises";
 
 import type {
-  DeleteOriginalScriptInput,
-  StoredScriptMetadata,
-  WriteOriginalScriptInput,
+  DeletePremiseInput,
+  PremiseStorage,
+  StoredPremiseMetadata,
+  WritePremiseInput,
 } from "@sweet-star/core";
-import { originalScriptRelPath } from "@sweet-star/core";
+import { premiseRelPath } from "@sweet-star/core";
 
 import { ensureParentDirectory, removeDirectory } from "./fs-utils";
 import type { LocalDataPaths } from "./local-data-paths";
 
 export interface FileScriptStorage {
-  readOriginalScript(input: DeleteOriginalScriptInput): Promise<string>;
-  writeOriginalScript(input: WriteOriginalScriptInput): Promise<StoredScriptMetadata>;
-  readScriptMetadata(input: DeleteOriginalScriptInput): Promise<StoredScriptMetadata>;
-  deleteOriginalScript(input: DeleteOriginalScriptInput): Promise<void>;
+  readPremise(input: DeletePremiseInput): Promise<string>;
+  writePremise(input: WritePremiseInput): Promise<StoredPremiseMetadata>;
+  readPremiseMetadata(input: DeletePremiseInput): Promise<StoredPremiseMetadata>;
+  deletePremise(input: DeletePremiseInput): Promise<void>;
 }
 
 export interface CreateFileScriptStorageOptions {
@@ -23,35 +24,32 @@ export interface CreateFileScriptStorageOptions {
 
 export function createFileScriptStorage(
   options: CreateFileScriptStorageOptions,
-): FileScriptStorage {
+): FileScriptStorage & PremiseStorage {
   return {
-    async readOriginalScript(input) {
-      return fs.readFile(
-        options.paths.projectOriginalScriptPath(input.storageDir),
-        "utf8",
-      );
+    async readPremise(input) {
+      return fs.readFile(options.paths.projectPremisePath(input.storageDir), "utf8");
     },
-    async writeOriginalScript(input) {
-      const scriptPath = options.paths.projectOriginalScriptPath(input.storageDir);
+    async writePremise(input) {
+      const premisePath = options.paths.projectPremisePath(input.storageDir);
 
-      await ensureParentDirectory(scriptPath);
-      await fs.writeFile(scriptPath, input.script, "utf8");
+      await ensureParentDirectory(premisePath);
+      await fs.writeFile(premisePath, input.premiseText, "utf8");
 
       return {
-        scriptRelPath: originalScriptRelPath,
-        scriptBytes: Buffer.byteLength(input.script, "utf8"),
+        premiseRelPath,
+        premiseBytes: Buffer.byteLength(input.premiseText, "utf8"),
       };
     },
-    async readScriptMetadata(input) {
-      const scriptPath = options.paths.projectOriginalScriptPath(input.storageDir);
-      const stats = await fs.stat(scriptPath);
+    async readPremiseMetadata(input) {
+      const premisePath = options.paths.projectPremisePath(input.storageDir);
+      const stats = await fs.stat(premisePath);
 
       return {
-        scriptRelPath: originalScriptRelPath,
-        scriptBytes: stats.size,
+        premiseRelPath,
+        premiseBytes: stats.size,
       };
     },
-    async deleteOriginalScript(input) {
+    async deletePremise(input) {
       await removeDirectory(options.paths.projectPath(input.storageDir));
     },
   };

@@ -20,36 +20,28 @@ vi.mock("react-router-dom", async () => {
 
 const workspace = {
   projectId: "proj-1",
-  projectStatus: "storyboard_in_review" as const,
-  currentStoryboard: {
-    id: "sbv-1",
-    projectId: "proj-1",
-    versionNumber: 1,
-    kind: "ai" as const,
-    provider: "gemini",
-    model: "gemini-3.1-pro-preview",
-    filePath: "storyboards/versions/v1-ai.json",
-    createdAt: "2024-01-01T00:00:00Z",
+  projectStatus: "master_plot_in_review" as const,
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis: "Rin hears the comet sing and discovers how to lift the drowned city.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict: "Rin must choose between escape and saving the city.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "The city rises on a final chorus of light.",
+    targetDurationSec: 480,
     sourceTaskId: "task-1",
-    summary: "Initial storyboard summary",
-    scenes: [
-      {
-        id: "scene-1",
-        sceneIndex: 1,
-        description: "Opening shot",
-        camera: "wide shot",
-        characters: ["A"],
-        prompt: "wide shot prompt",
-      },
-    ],
+    updatedAt: "2024-01-01T00:00:00Z",
+    approvedAt: null,
   },
   latestReview: null,
   availableActions: {
-    saveHumanVersion: true,
+    save: true,
     approve: true,
     reject: true,
   },
-  latestStoryboardTask: null,
+  latestTask: null,
 };
 
 function renderPage() {
@@ -83,13 +75,13 @@ describe("Review Actions", () => {
     const deferred = createDeferred({
       id: "review-1",
       projectId: "proj-1",
-      storyboardVersionId: "sbv-1",
+      masterPlotId: "mp-1",
       action: "approve" as const,
       reason: null,
       triggeredTaskId: null,
       createdAt: "2024-01-01T00:00:01Z",
     });
-    vi.spyOn(apiModule.apiClient, "approveStoryboard").mockReturnValue(deferred.promise);
+    vi.spyOn(apiModule.apiClient, "approveMasterPlot").mockReturnValue(deferred.promise);
 
     renderPage();
 
@@ -99,9 +91,7 @@ describe("Review Actions", () => {
     fireEvent.click(approveButton);
 
     await waitFor(() => {
-      expect(apiModule.apiClient.approveStoryboard).toHaveBeenCalledWith("proj-1", {
-        storyboardVersionId: "sbv-1",
-      });
+      expect(apiModule.apiClient.approveMasterPlot).toHaveBeenCalledWith("proj-1", {});
     });
 
     expect(approveButton).toBeDisabled();
@@ -110,7 +100,7 @@ describe("Review Actions", () => {
     deferred.resolve({
       id: "review-1",
       projectId: "proj-1",
-      storyboardVersionId: "sbv-1",
+      masterPlotId: "mp-1",
       action: "approve",
       reason: null,
       triggeredTaskId: null,
@@ -122,65 +112,44 @@ describe("Review Actions", () => {
     });
   });
 
-  it("rejects with edit_manually and stays on the review page", async () => {
-    vi.spyOn(apiModule.apiClient, "rejectStoryboard").mockResolvedValue({
+  it("rejects with a reason and redirects back to the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "rejectMasterPlot").mockResolvedValue({
       id: "review-2",
       projectId: "proj-1",
-      storyboardVersionId: "sbv-1",
+      masterPlotId: "mp-1",
       action: "reject",
       reason: "Need stronger framing",
-      triggeredTaskId: null,
+      triggeredTaskId: "task-2",
       createdAt: "2024-01-01T00:00:02Z",
     });
 
     renderPage();
 
     fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
-    fireEvent.click(screen.getAllByRole("radio")[1]);
     fireEvent.change(screen.getByPlaceholderText(/explain why/i), {
       target: { value: "Need stronger framing" },
     });
     fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.rejectStoryboard).toHaveBeenCalledWith("proj-1", {
-        storyboardVersionId: "sbv-1",
+      expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {
         reason: "Need stronger framing",
-        nextAction: "edit_manually",
-      });
-    });
-
-    expect(navigate).not.toHaveBeenCalled();
-    expect(apiModule.apiClient.getReviewWorkspace).toHaveBeenCalledTimes(2);
-  });
-
-  it("rejects with regenerate and redirects back to the project detail page", async () => {
-    vi.spyOn(apiModule.apiClient, "rejectStoryboard").mockResolvedValue({
-      id: "review-3",
-      projectId: "proj-1",
-      storyboardVersionId: "sbv-1",
-      action: "reject",
-      reason: "Try another draft",
-      triggeredTaskId: "task-2",
-      createdAt: "2024-01-01T00:00:03Z",
-    });
-
-    renderPage();
-
-    fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
-    fireEvent.change(screen.getByPlaceholderText(/explain why/i), {
-      target: { value: "Try another draft" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.rejectStoryboard).toHaveBeenCalledWith("proj-1", {
-        storyboardVersionId: "sbv-1",
-        reason: "Try another draft",
-        nextAction: "regenerate",
       });
     });
 
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
+  });
+
+  it("reject validation keeps the dialog open when reason is blank", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
+    fireEvent.change(screen.getByPlaceholderText(/explain why/i), {
+      target: { value: "   " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
+
+    expect(globalThis.alert).toHaveBeenCalledWith("Please provide a reason for rejection");
+    expect(apiModule.apiClient.rejectMasterPlot).not.toHaveBeenCalled();
   });
 });

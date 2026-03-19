@@ -1,25 +1,25 @@
-export interface StoredScriptMetadata {
-  scriptRelPath: string;
-  scriptBytes: number;
+export interface StoredPremiseMetadata {
+  premiseRelPath: string;
+  premiseBytes: number;
 }
 
-export interface WriteOriginalScriptInput {
+export interface WritePremiseInput {
   storageDir: string;
-  script: string;
+  premiseText: string;
 }
 
-export interface DeleteOriginalScriptInput {
+export interface DeletePremiseInput {
   storageDir: string;
 }
 
-export interface ScriptStorage {
-  readOriginalScript(
-    input: DeleteOriginalScriptInput,
+export interface PremiseStorage {
+  readPremise(
+    input: DeletePremiseInput,
   ): Promise<string> | string;
-  writeOriginalScript(
-    input: WriteOriginalScriptInput,
-  ): Promise<StoredScriptMetadata> | StoredScriptMetadata;
-  deleteOriginalScript(
-    input: DeleteOriginalScriptInput,
+  writePremise(
+    input: WritePremiseInput,
+  ): Promise<StoredPremiseMetadata> | StoredPremiseMetadata;
+  deletePremise(
+    input: DeletePremiseInput,
   ): Promise<void> | void;
 }

@@ -1,12 +1,11 @@
-import { createStoryboardVersionRecord, toStoryboardVersionId } from "../domain/storyboard";
+import type { CurrentMasterPlot } from "@sweet-star/shared";
+
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { ScriptStorage } from "../ports/script-storage";
-import type { LlmStoryboardProvider } from "../ports/storyboard-provider";
-import type { StoryboardStorage } from "../ports/storyboard-storage";
-import type { StoryboardVersionRepository } from "../ports/storyboard-version-repository";
+import type { MasterPlotProvider } from "../ports/storyboard-provider";
+import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
 
@@ -22,10 +21,8 @@ export interface ProcessStoryboardGenerateTaskUseCaseDependencies {
   taskRepository: TaskRepository;
   projectRepository: ProjectRepository;
   taskFileStorage: TaskFileStorage;
-  scriptStorage: ScriptStorage;
-  storyboardProvider: LlmStoryboardProvider;
-  storyboardStorage: StoryboardStorage;
-  storyboardVersionRepository: StoryboardVersionRepository;
+  masterPlotProvider: MasterPlotProvider;
+  masterPlotStorage: MasterPlotStorage;
   clock: Clock;
 }
 
@@ -56,63 +53,64 @@ export function createProcessStoryboardGenerateTaskUseCase(
           throw new ProjectNotFoundError(task.projectId);
         }
 
-        const script = await dependencies.scriptStorage.readOriginalScript({
+        const promptTemplate = await dependencies.masterPlotStorage.readPromptTemplate({
           storageDir: project.storageDir,
+          promptTemplateKey: taskInput.promptTemplateKey,
         });
-        const providerResult = await dependencies.storyboardProvider.generateStoryboard({
-          projectId: project.id,
-          script,
-          reviewContext: taskInput.reviewContext,
-        });
-        const versionNumber =
-          (await dependencies.storyboardVersionRepository.getNextVersionNumber?.(
-            project.id,
-          )) ?? 1;
-        const finishedAt = dependencies.clock.now();
-        const version = createStoryboardVersionRecord({
-          id: toStoryboardVersionId(task.id),
-          projectId: project.id,
-          projectStorageDir: project.storageDir,
-          sourceTaskId: task.id,
-          versionNumber,
-          provider: providerResult.provider,
-          model: providerResult.model,
-          createdAt: finishedAt,
+        const promptText = renderPromptTemplate(promptTemplate, taskInput.premiseText);
+
+        await dependencies.masterPlotStorage.writePromptSnapshot({
+          taskStorageDir: task.storageDir,
+          promptText,
+          promptVariables: {
+            premiseText: taskInput.premiseText,
+          },
         });
 
-        await dependencies.storyboardStorage.writeRawResponse({
-          version,
+        const providerResult = await dependencies.masterPlotProvider.generateMasterPlot({
+          projectId: project.id,
+          premiseText: taskInput.premiseText,
+          promptText,
+        });
+        const finishedAt = dependencies.clock.now();
+
+        await dependencies.masterPlotStorage.writeRawResponse({
+          taskStorageDir: task.storageDir,
           rawResponse: providerResult.rawResponse,
         });
-        await dependencies.storyboardStorage.writeStoryboardVersion({
-          version,
-          storyboard: providerResult.storyboard,
-        });
-        await dependencies.storyboardVersionRepository.insert(version);
-        await dependencies.projectRepository.updateCurrentStoryboardVersion({
+
+        const masterPlot = createCurrentMasterPlot({
           projectId: project.id,
-          storyboardVersionId: version.id,
+          taskId: task.id,
+          updatedAt: finishedAt,
+          masterPlot: providerResult.masterPlot,
+        });
+
+        await dependencies.masterPlotStorage.writeCurrentMasterPlot({
+          storageDir: project.storageDir,
+          masterPlot,
+        });
+        await dependencies.projectRepository.updateCurrentMasterPlot({
+          projectId: project.id,
+          masterPlotId: masterPlot.id,
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "storyboard_in_review",
+          status: "master_plot_in_review",
           updatedAt: finishedAt,
         });
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
           output: {
-            storyboardVersionId: version.id,
-            versionNumber: version.versionNumber,
-            kind: version.kind,
-            provider: version.provider,
-            model: version.model,
-            filePath: version.fileRelPath,
-            rawResponsePath: version.rawResponseRelPath,
+            masterPlotId: masterPlot.id,
+            provider: providerResult.provider,
+            model: providerResult.model,
+            promptTemplateKey: taskInput.promptTemplateKey,
           },
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: "storyboard generation succeeded",
+          message: "master plot generation succeeded",
         });
         await dependencies.taskRepository.markSucceeded({
           taskId: task.id,
@@ -125,7 +123,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `storyboard generation failed: ${errorMessage}`,
+          message: `master plot generation failed: ${errorMessage}`,
         });
         await dependencies.taskRepository.markFailed({
           taskId: task.id,
@@ -133,9 +131,37 @@ export function createProcessStoryboardGenerateTaskUseCase(
           updatedAt: finishedAt,
           finishedAt,
         });
+        await dependencies.projectRepository.updateStatus({
+          projectId: task.projectId,
+          status: "premise_ready",
+          updatedAt: finishedAt,
+        });
 
         throw error;
       }
     },
   };
+}
+
+function renderPromptTemplate(template: string, premiseText: string) {
+  return template.replaceAll("{{premiseText}}", premiseText);
+}
+
+function createCurrentMasterPlot(input: {
+  projectId: string;
+  taskId: string;
+  updatedAt: string;
+  masterPlot: Omit<CurrentMasterPlot, "id" | "sourceTaskId" | "updatedAt" | "approvedAt">;
+}): CurrentMasterPlot {
+  return {
+    id: toMasterPlotId(input.projectId),
+    ...input.masterPlot,
+    sourceTaskId: input.taskId,
+    updatedAt: input.updatedAt,
+    approvedAt: null,
+  };
+}
+
+function toMasterPlotId(projectId: string) {
+  return `mp_${projectId.replace(/^proj_/, "")}`;
 }

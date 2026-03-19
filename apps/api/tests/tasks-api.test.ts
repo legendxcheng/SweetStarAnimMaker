@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/app";
 
 describe("tasks api", () => {
+  const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
 
@@ -20,7 +21,7 @@ describe("tasks api", () => {
     );
   });
 
-  it("creates a storyboard task for an existing project", async () => {
+  it("creates a master-plot task for an existing project", async () => {
     const enqueue = vi.fn();
     const app = await createTempApp({
       taskQueue: { enqueue },
@@ -29,20 +30,20 @@ describe("tasks api", () => {
     const createProjectResponse = await app.inject({
       method: "POST",
       url: "/projects",
-      payload: { name: "My Story", script: "Scene 1" },
+      payload: { name: "My Story", premiseText },
     });
     const project = createProjectResponse.json();
 
     const taskResponse = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/tasks/storyboard-generate`,
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
     });
 
     expect(taskResponse.statusCode).toBe(201);
     expect(taskResponse.json()).toEqual({
       id: "task_20260317_ab12cd",
       projectId: project.id,
-      type: "storyboard_generate",
+      type: "master_plot_generate",
       status: "pending",
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
@@ -57,8 +58,8 @@ describe("tasks api", () => {
     });
     expect(enqueue).toHaveBeenCalledWith({
       taskId: "task_20260317_ab12cd",
-      queueName: "storyboard-generate",
-      taskType: "storyboard_generate",
+      queueName: "master-plot-generate",
+      taskType: "master_plot_generate",
     });
   });
 
@@ -69,13 +70,13 @@ describe("tasks api", () => {
     const createProjectResponse = await app.inject({
       method: "POST",
       url: "/projects",
-      payload: { name: "My Story", script: "Scene 1" },
+      payload: { name: "My Story", premiseText },
     });
     const project = createProjectResponse.json();
 
     await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/tasks/storyboard-generate`,
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
     });
     const detailResponse = await app.inject({
       method: "GET",
@@ -99,7 +100,7 @@ describe("tasks api", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: "/projects/missing-project/tasks/storyboard-generate",
+      url: "/projects/missing-project/tasks/master-plot-generate",
     });
 
     expect(response.statusCode).toBe(404);

@@ -6,14 +6,21 @@ export {
   toProjectStorageDir,
 } from "./domain/project";
 export type {
-  CurrentStoryboard,
-  StoryboardReviewAvailableActions,
-  StoryboardReviewRecord,
-  StoryboardReviewSummary,
-  StoryboardReviewWorkspace,
-  StoryboardVersionSummary,
+  CurrentMasterPlot,
+  MasterPlotReviewAvailableActions,
+  MasterPlotReviewSummary,
+  MasterPlotReviewWorkspace,
   TaskDetail,
 } from "@sweet-star/shared";
+export {
+  currentMasterPlotJsonFileName,
+  currentMasterPlotJsonRelPath,
+  currentMasterPlotMarkdownFileName,
+  currentMasterPlotMarkdownRelPath,
+  masterPlotDirectoryName,
+  toCurrentMasterPlotRecord,
+  type CurrentMasterPlotRecord,
+} from "./domain/master-plot";
 export {
   createStoryboardVersionRecord,
   storyboardDirectoryName,
@@ -35,7 +42,7 @@ export {
 } from "./domain/storyboard-review";
 export {
   createTaskRecord,
-  storyboardGenerateQueueName,
+  masterPlotGenerateQueueName,
   taskArtifactsDirectoryName,
   taskInputFileName,
   taskLogFileName,
@@ -45,20 +52,19 @@ export {
   toTaskOutputRelPath,
   toTaskStorageDir,
   type CreateTaskRecordInput,
-  type StoryboardGenerateReviewContext,
-  type StoryboardGenerateTaskInput,
+  type MasterPlotGenerateTaskInput,
   type TaskRecord,
 } from "./domain/task";
 export {
-  originalScriptFileName,
-  originalScriptRelPath,
-  projectScriptDirectory,
-} from "./domain/project-script";
+  premiseFileName,
+  premiseRelPath,
+  projectPremiseDirectory,
+} from "./domain/project-premise";
 export {
   ProjectNotFoundError,
   ProjectValidationError,
 } from "./errors/project-errors";
-export { CurrentStoryboardNotFoundError } from "./errors/storyboard-errors";
+export { CurrentMasterPlotNotFoundError } from "./errors/storyboard-errors";
 export {
   RejectStoryboardReasonRequiredError,
   StoryboardReviewVersionConflictError,
@@ -66,29 +72,32 @@ export {
 export { TaskNotFoundError } from "./errors/task-errors";
 export type {
   ProjectRepository,
-  UpdateCurrentStoryboardVersionInput,
+  UpdateCurrentMasterPlotInput,
   UpdateProjectStatusInput,
-  UpdateProjectScriptMetadataInput,
+  UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
 export type {
-  DeleteOriginalScriptInput,
-  ScriptStorage,
-  StoredScriptMetadata,
-  WriteOriginalScriptInput,
+  DeletePremiseInput,
+  PremiseStorage,
+  StoredPremiseMetadata,
+  WritePremiseInput,
 } from "./ports/script-storage";
 export type { IdGenerator } from "./ports/id-generator";
 export type { Clock } from "./ports/clock";
 export type {
-  GenerateStoryboardInput,
-  GenerateStoryboardResult,
-  LlmStoryboardProvider,
+  GenerateMasterPlotInput,
+  GenerateMasterPlotResult,
+  MasterPlotProvider,
 } from "./ports/storyboard-provider";
 export type { StoryboardReviewRepository } from "./ports/storyboard-review-repository";
 export type {
-  ReadStoryboardVersionInput,
-  StoryboardStorage,
-  WriteStoryboardRawResponseInput,
-  WriteStoryboardVersionInput,
+  InitializePromptTemplateInput,
+  MasterPlotStorage,
+  ReadPromptTemplateInput,
+  ReadCurrentMasterPlotInput,
+  WriteCurrentMasterPlotInput,
+  WritePromptSnapshotInput,
+  WriteRawResponseInput,
 } from "./ports/storyboard-storage";
 export type { StoryboardVersionRepository } from "./ports/storyboard-version-repository";
 export type {

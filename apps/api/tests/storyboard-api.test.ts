@@ -4,7 +4,6 @@ import path from "node:path";
 
 import {
   createStoryboardReviewRecord,
-  createStoryboardVersionRecord,
   createTaskRecord,
 } from "@sweet-star/core";
 import {
@@ -12,16 +11,33 @@ import {
   createSqliteDb,
   createSqliteProjectRepository,
   createSqliteStoryboardReviewRepository,
-  createSqliteStoryboardVersionRepository,
   createSqliteTaskRepository,
   createStoryboardStorage,
 } from "@sweet-star/services";
+import type { CurrentMasterPlot } from "@sweet-star/shared";
 import type { FastifyInstance } from "fastify";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../src/app";
 
-describe("storyboard api", () => {
+describe("master plot api", () => {
+  const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
+  const baseMasterPlot: CurrentMasterPlot = {
+    id: "mp_20260317_ab12cd",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis:
+      "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict:
+      "Rin must choose between private escape and saving the city that exiled her.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "Rin turns the comet's music into a rising tide of light.",
+    targetDurationSec: 480,
+    sourceTaskId: "task_20260317_ab12cd",
+    updatedAt: "2026-03-17T12:00:00.000Z",
+    approvedAt: null,
+  };
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
 
@@ -34,216 +50,132 @@ describe("storyboard api", () => {
     );
   });
 
-  it("returns the current storyboard document", async () => {
-    const { app } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const project = created.json();
-
-    await seedCurrentStoryboard({
-      tempDir: tempDirs[0]!,
-      projectId: project.id,
-      projectStorageDir: project.storageDir,
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: `/projects/${project.id}/storyboard/current`,
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(
-      expect.objectContaining({
-        projectId: project.id,
-        versionNumber: 1,
-        summary: "A short story summary",
-        scenes: [
-          expect.objectContaining({
-            id: "scene_1",
-            sceneIndex: 1,
-          }),
-        ],
-      }),
-    );
-  });
-
-  it("returns 404 when the project has no current storyboard", async () => {
-    const { app } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const projectId = created.json().id as string;
-
-    const response = await app.inject({
-      method: "GET",
-      url: `/projects/${projectId}/storyboard/current`,
-    });
-
-    expect(response.statusCode).toBe(404);
-  });
-
-  it("returns 404 when the project does not exist", async () => {
-    const { app } = await createTempApp();
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/projects/missing-project/storyboard/current",
-    });
-
-    expect(response.statusCode).toBe(404);
-  });
-
-  it("returns the storyboard review workspace", async () => {
+  it("returns the master-plot review workspace", async () => {
     const { app, tempDir } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const project = created.json();
+    const project = await createProject(app);
 
-    await seedCurrentStoryboard({
+    await seedCurrentMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
     });
     seedReviewWorkspace({
       tempDir,
       projectId: project.id,
+      projectStorageDir: project.storageDir,
+      masterPlotId: baseMasterPlot.id,
     });
 
     const response = await app.inject({
       method: "GET",
-      url: `/projects/${project.id}/storyboard/review`,
+      url: `/projects/${project.id}/master-plot/review`,
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
         projectId: project.id,
-        projectStatus: "storyboard_in_review",
-        currentStoryboard: expect.objectContaining({
-          id: "sbv_20260317_ab12cd",
+        projectStatus: "master_plot_in_review",
+        currentMasterPlot: expect.objectContaining({
+          id: baseMasterPlot.id,
+          title: baseMasterPlot.title,
         }),
         latestReview: expect.objectContaining({
           action: "reject",
+          masterPlotId: baseMasterPlot.id,
         }),
         availableActions: {
-          saveHumanVersion: true,
+          save: true,
           approve: true,
           reject: true,
         },
-        latestStoryboardTask: expect.objectContaining({
+        latestTask: expect.objectContaining({
           id: "task_20260317_ab12cd",
+          type: "master_plot_generate",
         }),
       }),
     );
   });
 
-  it("saves a human storyboard version", async () => {
-    const { app, tempDir } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const project = created.json();
+  it("returns 404 when the project has no current master plot", async () => {
+    const { app } = await createTempApp();
+    const project = await createProject(app);
 
-    await seedCurrentStoryboard({
+    const response = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}/master-plot/review`,
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("saves the current master plot", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCurrentMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
     });
     setProjectStatus({
       tempDir,
       projectId: project.id,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
     });
 
     const response = await app.inject({
-      method: "POST",
-      url: `/projects/${project.id}/storyboard/save-human-version`,
+      method: "PUT",
+      url: `/projects/${project.id}/master-plot`,
       payload: {
-        baseVersionId: "sbv_20260317_ab12cd",
-        summary: "Updated storyboard summary",
-        scenes: [
-          {
-            id: "scene_1",
-            sceneIndex: 1,
-            description: "A revised opening beat.",
-            camera: "wide shot",
-            characters: ["A"],
-            prompt: "wide shot of character A in a bright studio",
-          },
-        ],
+        ...baseMasterPlot,
+        title: "The Last Sky Choir Revised",
+        synopsis: "Rin follows the comet song into the drowned city and finds a way to lift it.",
       },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
-        projectId: project.id,
-        versionNumber: 2,
-        kind: "human",
-        filePath: "storyboards/versions/v2-human.json",
+        id: baseMasterPlot.id,
+        title: "The Last Sky Choir Revised",
+        synopsis:
+          "Rin follows the comet song into the drowned city and finds a way to lift it.",
+        sourceTaskId: "task_20260317_ab12cd",
+        approvedAt: null,
       }),
     );
   });
 
-  it("approves the current storyboard version", async () => {
+  it("approves the current master plot", async () => {
     const { app, tempDir } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const project = created.json();
+    const project = await createProject(app);
 
-    await seedCurrentStoryboard({
+    await seedCurrentMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
     });
     setProjectStatus({
       tempDir,
       projectId: project.id,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
     });
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/storyboard/approve`,
-      payload: {
-        storyboardVersionId: "sbv_20260317_ab12cd",
-        note: "Approved after manual review.",
-      },
+      url: `/projects/${project.id}/master-plot/approve`,
+      payload: {},
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
         action: "approve",
-        reason: "Approved after manual review.",
+        masterPlotId: baseMasterPlot.id,
       }),
     );
 
@@ -252,39 +184,37 @@ describe("storyboard api", () => {
       url: `/projects/${project.id}`,
     });
 
-    expect(detailResponse.json().status).toBe("storyboard_approved");
+    expect(detailResponse.json().status).toBe("master_plot_approved");
+    expect(detailResponse.json().currentMasterPlot.approvedAt).toEqual(expect.any(String));
   });
 
-  it("rejects the current storyboard version for manual editing", async () => {
-    const { app, tempDir } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
+  it("rejects the current master plot and triggers regeneration", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260318_cd34ef",
       },
     });
-    const project = created.json();
+    const project = await createProject(app);
 
-    await seedCurrentStoryboard({
+    await seedCurrentMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
     });
     setProjectStatus({
       tempDir,
       projectId: project.id,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
     });
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/storyboard/reject`,
+      url: `/projects/${project.id}/master-plot/reject`,
       payload: {
-        storyboardVersionId: "sbv_20260317_ab12cd",
-        reason: "Need better pacing.",
-        nextAction: "edit_manually",
+        reason: "Need a sharper ending beat.",
       },
     });
 
@@ -292,142 +222,112 @@ describe("storyboard api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         action: "reject",
-        reason: "Need better pacing.",
-        triggeredTaskId: null,
+        masterPlotId: baseMasterPlot.id,
+        reason: "Need a sharper ending beat.",
+        triggeredTaskId: "task_20260318_cd34ef",
       }),
     );
-  });
-
-  it("returns 409 for stale storyboard version actions", async () => {
-    const { app, tempDir } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const project = created.json();
-
-    await seedCurrentStoryboard({
-      tempDir,
-      projectId: project.id,
-      projectStorageDir: project.storageDir,
-    });
-    setProjectStatus({
-      tempDir,
-      projectId: project.id,
-      status: "storyboard_in_review",
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260318_cd34ef",
+      queueName: "master-plot-generate",
+      taskType: "master_plot_generate",
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: `/projects/${project.id}/storyboard/save-human-version`,
-      payload: {
-        baseVersionId: "sbv_stale",
-        summary: "Updated storyboard summary",
-        scenes: [],
-      },
+    const detailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
     });
 
-    expect(response.statusCode).toBe(409);
+    expect(detailResponse.json().status).toBe("master_plot_generating");
   });
 
   it("returns 400 when reject is missing a reason", async () => {
     const { app, tempDir } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const project = created.json();
+    const project = await createProject(app);
 
-    await seedCurrentStoryboard({
+    await seedCurrentMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
     });
     setProjectStatus({
       tempDir,
       projectId: project.id,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
     });
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/storyboard/reject`,
+      url: `/projects/${project.id}/master-plot/reject`,
       payload: {
-        storyboardVersionId: "sbv_20260317_ab12cd",
         reason: "   ",
-        nextAction: "edit_manually",
       },
     });
 
     expect(response.statusCode).toBe(400);
   });
 
-  async function createTempApp() {
+  async function createTempApp(options?: {
+    taskQueue?: { enqueue: ReturnType<typeof vi.fn> };
+    taskIdGenerator?: { generateTaskId(): string };
+  }) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-api-"));
     tempDirs.push(tempDir);
 
-    const app = buildApp({ dataRoot: tempDir });
+    const app = buildApp({
+      dataRoot: tempDir,
+      taskQueue: options?.taskQueue,
+      taskIdGenerator: options?.taskIdGenerator,
+    });
     apps.push(app);
     await app.ready();
 
     return { app, tempDir };
   }
+
+  async function createProject(app: FastifyInstance) {
+    const created = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: {
+        name: "My Story",
+        premiseText,
+      },
+    });
+
+    return created.json();
+  }
 });
 
-async function seedCurrentStoryboard(input: {
+async function seedCurrentMasterPlot(input: {
   tempDir: string;
   projectId: string;
   projectStorageDir: string;
+  masterPlot: CurrentMasterPlot;
 }) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
   const projectRepository = createSqliteProjectRepository({ db });
-  const storyboardVersionRepository = createSqliteStoryboardVersionRepository({ db });
-  const storyboardStorage = createStoryboardStorage({ paths });
-  const version = createStoryboardVersionRecord({
-    id: "sbv_20260317_ab12cd",
-    projectId: input.projectId,
-    projectStorageDir: input.projectStorageDir,
-    sourceTaskId: "task_20260317_ab12cd",
-    versionNumber: 1,
-    provider: "gemini",
-    model: "gemini-3.1-pro-preview",
-    createdAt: "2026-03-17T12:00:00.000Z",
-  });
+  const masterPlotStorage = createStoryboardStorage({ paths });
 
-  storyboardVersionRepository.insert(version);
-  projectRepository.updateCurrentStoryboardVersion({
-    projectId: input.projectId,
-    storyboardVersionId: version.id,
+  await masterPlotStorage.writeCurrentMasterPlot({
+    storageDir: input.projectStorageDir,
+    masterPlot: input.masterPlot,
   });
-  await storyboardStorage.writeStoryboardVersion({
-    version,
-    storyboard: {
-      summary: "A short story summary",
-      scenes: [
-        {
-          id: "scene_1",
-          sceneIndex: 1,
-          description: "A enters the room",
-          camera: "medium shot",
-          characters: ["A"],
-          prompt: "medium shot, character A entering a dim room",
-        },
-      ],
-    },
+  projectRepository.updateCurrentMasterPlot({
+    projectId: input.projectId,
+    masterPlotId: input.masterPlot.id,
   });
   db.close();
 }
 
-function seedReviewWorkspace(input: { tempDir: string; projectId: string }) {
+function seedReviewWorkspace(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+  masterPlotId: string;
+}) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
   const projectRepository = createSqliteProjectRepository({ db });
@@ -436,16 +336,16 @@ function seedReviewWorkspace(input: { tempDir: string; projectId: string }) {
 
   projectRepository.updateStatus({
     projectId: input.projectId,
-    status: "storyboard_in_review",
+    status: "master_plot_in_review",
     updatedAt: "2026-03-17T12:10:00.000Z",
   });
   taskRepository.insert(
     createTaskRecord({
       id: "task_20260317_ab12cd",
       projectId: input.projectId,
-      projectStorageDir: `projects/${input.projectId}-my-story`,
-      type: "storyboard_generate",
-      queueName: "storyboard-generate",
+      projectStorageDir: input.projectStorageDir,
+      type: "master_plot_generate",
+      queueName: "master-plot-generate",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:05:00.000Z",
       status: "succeeded",
@@ -457,7 +357,7 @@ function seedReviewWorkspace(input: { tempDir: string; projectId: string }) {
     createStoryboardReviewRecord({
       id: "sbr_20260317_ab12cd",
       projectId: input.projectId,
-      storyboardVersionId: "sbv_20260317_ab12cd",
+      masterPlotId: input.masterPlotId,
       action: "reject",
       reason: "Need better pacing.",
       createdAt: "2026-03-17T12:10:00.000Z",
@@ -469,7 +369,7 @@ function seedReviewWorkspace(input: { tempDir: string; projectId: string }) {
 function setProjectStatus(input: {
   tempDir: string;
   projectId: string;
-  status: "storyboard_in_review" | "storyboard_approved";
+  status: "master_plot_in_review" | "master_plot_approved";
 }) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });

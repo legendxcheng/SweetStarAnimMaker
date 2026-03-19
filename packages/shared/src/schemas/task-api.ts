@@ -22,4 +22,4 @@ export const taskDetailResponseSchema = z.object({
   files: taskFileMetadataSchema,
 });
 
-export const createStoryboardGenerateTaskResponseSchema = taskDetailResponseSchema;
+export const createMasterPlotGenerateTaskResponseSchema = taskDetailResponseSchema;

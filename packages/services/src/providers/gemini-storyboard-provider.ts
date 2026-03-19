@@ -1,7 +1,7 @@
 import type {
-  GenerateStoryboardInput,
-  GenerateStoryboardResult,
-  LlmStoryboardProvider,
+  GenerateMasterPlotInput,
+  GenerateMasterPlotResult,
+  MasterPlotProvider,
 } from "@sweet-star/core";
 
 export interface CreateGeminiStoryboardProviderOptions {
@@ -16,17 +16,17 @@ const DEFAULT_MODEL = "gemini-3.1-pro-preview";
 
 export function createGeminiStoryboardProvider(
   options: CreateGeminiStoryboardProviderOptions,
-): LlmStoryboardProvider {
+): MasterPlotProvider {
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
   const apiToken = options.apiToken?.trim();
   const model = options.model?.trim() || DEFAULT_MODEL;
 
   if (!apiToken) {
-    throw new Error("VECTORENGINE_API_TOKEN is required for storyboard generation");
+    throw new Error("VECTORENGINE_API_TOKEN is required for master plot generation");
   }
 
   return {
-    async generateStoryboard(input: GenerateStoryboardInput): Promise<GenerateStoryboardResult> {
+    async generateMasterPlot(input: GenerateMasterPlotInput): Promise<GenerateMasterPlotResult> {
       const controller = options.timeoutMs ? new AbortController() : null;
       const timeout =
         options.timeoutMs && controller
@@ -45,7 +45,7 @@ export function createGeminiStoryboardProvider(
               parts: [
                 {
                   text:
-                    "You generate concise JSON storyboard documents with a summary and scene list.",
+                    "You generate concise JSON master plot documents for short animated stories.",
                 },
               ],
             },
@@ -61,7 +61,7 @@ export function createGeminiStoryboardProvider(
             ],
             generationConfig: {
               responseMimeType: "application/json",
-              responseJsonSchema: storyboardResponseJsonSchema,
+              responseJsonSchema: masterPlotResponseJsonSchema,
             },
           }),
           signal: controller?.signal,
@@ -69,23 +69,23 @@ export function createGeminiStoryboardProvider(
 
         if (!response.ok) {
           throw new Error(
-            `Gemini storyboard provider request failed with status ${response.status}`,
+            `Gemini master plot provider request failed with status ${response.status}`,
           );
         }
 
         const rawResponse = await response.json();
         const rawText = extractCandidateText(rawResponse);
-        const storyboard = normalizeStoryboardPayload(JSON.parse(rawText));
+        const masterPlot = normalizeMasterPlotPayload(JSON.parse(rawText));
 
         return {
-          rawResponse,
+          rawResponse: rawText,
           provider: "gemini",
           model,
-          storyboard,
+          masterPlot,
         };
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          throw new Error("Gemini storyboard provider request timed out");
+          throw new Error("Gemini master plot provider request timed out");
         }
 
         throw error;
@@ -98,48 +98,38 @@ export function createGeminiStoryboardProvider(
   };
 }
 
-function buildPromptText(input: GenerateStoryboardInput) {
-  const sections = [
+function buildPromptText(input: GenerateMasterPlotInput) {
+  return [
     `Project: ${input.projectId}`,
-    "Generate a storyboard for this script.",
-    input.script,
-  ];
-
-  if (input.reviewContext) {
-    sections.push(
-      [
-        "Regeneration guidance:",
-        input.reviewContext.reason,
-        `Rejected version id: ${input.reviewContext.rejectedVersionId}`,
-      ].join("\n"),
-    );
-  }
-
-  return sections.join("\n\n");
+    `Premise: ${input.premiseText}`,
+    "",
+    "Prompt:",
+    input.promptText,
+  ].join("\n");
 }
 
-const storyboardResponseJsonSchema = {
+const masterPlotResponseJsonSchema = {
   type: "object",
-  required: ["summary", "scenes"],
+  required: [
+    "logline",
+    "synopsis",
+    "mainCharacters",
+    "coreConflict",
+    "emotionalArc",
+    "endingBeat",
+  ],
   properties: {
-    summary: { type: "string" },
-    scenes: {
+    title: { type: ["string", "null"] },
+    logline: { type: "string" },
+    synopsis: { type: "string" },
+    mainCharacters: {
       type: "array",
-      items: {
-        type: "object",
-        required: ["sceneIndex", "description", "camera", "characters", "prompt"],
-        properties: {
-          sceneIndex: { type: "integer" },
-          description: { type: "string" },
-          camera: { type: "string" },
-          characters: {
-            type: "array",
-            items: { type: "string" },
-          },
-          prompt: { type: "string" },
-        },
-      },
+      items: { type: "string" },
     },
+    coreConflict: { type: "string" },
+    emotionalArc: { type: "string" },
+    endingBeat: { type: "string" },
+    targetDurationSec: { type: ["integer", "null"] },
   },
 } as const;
 
@@ -155,61 +145,70 @@ function extractCandidateText(rawResponse: unknown) {
   })?.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) {
-    throw new Error("Gemini storyboard provider returned no usable content");
+    throw new Error("Gemini master plot provider returned no usable content");
   }
 
   return text;
 }
 
-function normalizeStoryboardPayload(payload: unknown): GenerateStoryboardResult["storyboard"] {
+function normalizeMasterPlotPayload(payload: unknown): GenerateMasterPlotResult["masterPlot"] {
   if (!payload || typeof payload !== "object") {
-    throw new Error("Gemini storyboard provider returned invalid storyboard JSON");
+    throw new Error("Gemini master plot provider returned invalid master plot JSON");
   }
 
-  const summary = readNonEmptyString((payload as { summary?: unknown }).summary, "summary");
-  const scenes = (payload as { scenes?: unknown }).scenes;
+  const mainCharacters = (payload as { mainCharacters?: unknown }).mainCharacters;
 
-  if (!Array.isArray(scenes) || scenes.length === 0) {
-    throw new Error("Gemini storyboard provider returned invalid storyboard scenes");
+  if (
+    !Array.isArray(mainCharacters) ||
+    mainCharacters.length === 0 ||
+    !mainCharacters.every((value) => typeof value === "string" && value.trim())
+  ) {
+    throw new Error("Gemini master plot provider returned invalid mainCharacters");
+  }
+
+  const targetDurationSec = (payload as { targetDurationSec?: unknown }).targetDurationSec;
+
+  if (
+    targetDurationSec !== undefined &&
+    targetDurationSec !== null &&
+    (!Number.isInteger(targetDurationSec) || targetDurationSec <= 0)
+  ) {
+    throw new Error("Gemini master plot provider returned invalid targetDurationSec");
   }
 
   return {
-    summary,
-    scenes: scenes.map((scene, index) => {
-      if (!scene || typeof scene !== "object") {
-        throw new Error("Gemini storyboard provider returned invalid storyboard scenes");
-      }
-
-      const sceneIndex = Number((scene as { sceneIndex?: unknown }).sceneIndex ?? index + 1);
-
-      if (!Number.isInteger(sceneIndex) || sceneIndex <= 0) {
-        throw new Error("Gemini storyboard provider returned invalid sceneIndex");
-      }
-
-      const characters = (scene as { characters?: unknown }).characters;
-
-      if (!Array.isArray(characters) || !characters.every((value) => typeof value === "string")) {
-        throw new Error("Gemini storyboard provider returned invalid scene characters");
-      }
-
-      return {
-        id: `scene_${sceneIndex}`,
-        sceneIndex,
-        description: readNonEmptyString(
-          (scene as { description?: unknown }).description,
-          "description",
-        ),
-        camera: readNonEmptyString((scene as { camera?: unknown }).camera, "camera"),
-        characters,
-        prompt: readNonEmptyString((scene as { prompt?: unknown }).prompt, "prompt"),
-      };
-    }),
+    title: readNullableString((payload as { title?: unknown }).title, "title"),
+    logline: readNonEmptyString((payload as { logline?: unknown }).logline, "logline"),
+    synopsis: readNonEmptyString((payload as { synopsis?: unknown }).synopsis, "synopsis"),
+    mainCharacters,
+    coreConflict: readNonEmptyString(
+      (payload as { coreConflict?: unknown }).coreConflict,
+      "coreConflict",
+    ),
+    emotionalArc: readNonEmptyString(
+      (payload as { emotionalArc?: unknown }).emotionalArc,
+      "emotionalArc",
+    ),
+    endingBeat: readNonEmptyString((payload as { endingBeat?: unknown }).endingBeat, "endingBeat"),
+    targetDurationSec: targetDurationSec ?? null,
   };
 }
 
 function readNonEmptyString(value: unknown, fieldName: string) {
   if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`Gemini storyboard provider returned invalid ${fieldName}`);
+    throw new Error(`Gemini master plot provider returned invalid ${fieldName}`);
+  }
+
+  return value;
+}
+
+function readNullableString(value: unknown, fieldName: string) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Gemini master plot provider returned invalid ${fieldName}`);
   }
 
   return value;

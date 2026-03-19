@@ -1,26 +1,25 @@
-import type { RejectStoryboardRequest, StoryboardReviewRecord } from "@sweet-star/shared";
+import type { MasterPlotReviewSummary, RejectMasterPlotRequest } from "@sweet-star/shared";
 
 import { createStoryboardReviewRecord } from "../domain/storyboard-review";
 import { ProjectNotFoundError } from "../errors/project-errors";
-import { CurrentStoryboardNotFoundError } from "../errors/storyboard-errors";
-import { StoryboardReviewVersionConflictError } from "../errors/storyboard-review-errors";
+import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { StoryboardReviewRepository } from "../ports/storyboard-review-repository";
-import type { StoryboardVersionRepository } from "../ports/storyboard-version-repository";
+import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import type { CreateStoryboardGenerateTaskUseCase } from "./create-storyboard-generate-task";
 
-export interface RejectStoryboardInput extends RejectStoryboardRequest {
+export interface RejectStoryboardInput extends RejectMasterPlotRequest {
   projectId: string;
 }
 
 export interface RejectStoryboardUseCase {
-  execute(input: RejectStoryboardInput): Promise<StoryboardReviewRecord>;
+  execute(input: RejectStoryboardInput): Promise<MasterPlotReviewSummary>;
 }
 
 export interface RejectStoryboardUseCaseDependencies {
   projectRepository: ProjectRepository;
-  storyboardVersionRepository: StoryboardVersionRepository;
+  masterPlotStorage: MasterPlotStorage;
   storyboardReviewRepository: StoryboardReviewRepository;
   createStoryboardGenerateTask: CreateStoryboardGenerateTaskUseCase;
   clock: Clock;
@@ -31,56 +30,43 @@ export function createRejectStoryboardUseCase(
 ): RejectStoryboardUseCase {
   return {
     async execute(input) {
+      const reason = requireRejectReason(input.reason);
       const project = await dependencies.projectRepository.findById(input.projectId);
 
       if (!project) {
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const currentVersion = await dependencies.storyboardVersionRepository.findCurrentByProjectId(
-        project.id,
-      );
+      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
+        storageDir: project.storageDir,
+      });
 
-      if (!currentVersion) {
-        throw new CurrentStoryboardNotFoundError(project.id);
-      }
-
-      if (currentVersion.id !== input.storyboardVersionId) {
-        throw new StoryboardReviewVersionConflictError(input.storyboardVersionId);
+      if (!currentMasterPlot) {
+        throw new CurrentMasterPlotNotFoundError(project.id);
       }
 
       const createdAt = dependencies.clock.now();
-      const triggeredTaskId =
-        input.nextAction === "regenerate"
-          ? (
-              await dependencies.createStoryboardGenerateTask.execute({
-                projectId: project.id,
-                reviewContext: {
-                  reason: input.reason,
-                  rejectedVersionId: currentVersion.id,
-                },
-              })
-            ).id
-          : null;
+      const triggeredTaskId = (
+        await dependencies.createStoryboardGenerateTask.execute({
+          projectId: project.id,
+        })
+      ).id;
       const review = createStoryboardReviewRecord({
         id: toStoryboardReviewId(project.id, createdAt),
         projectId: project.id,
-        storyboardVersionId: currentVersion.id,
+        masterPlotId: currentMasterPlot.id,
         action: "reject",
-        reason: input.reason,
+        reason,
         triggeredTaskId,
         createdAt,
       });
 
       await dependencies.storyboardReviewRepository.insert(review);
-
-      if (input.nextAction === "edit_manually") {
-        await dependencies.projectRepository.updateStatus({
-          projectId: project.id,
-          status: "storyboard_in_review",
-          updatedAt: createdAt,
-        });
-      }
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: "master_plot_generating",
+        updatedAt: createdAt,
+      });
 
       return review;
     },
@@ -89,4 +75,21 @@ export function createRejectStoryboardUseCase(
 
 function toStoryboardReviewId(projectId: string, createdAt: string) {
   return `sbr_${projectId.replace(/^proj_/, "")}_reject_${createdAt.replace(/\W/g, "")}`;
+}
+
+function requireRejectReason(reason: string) {
+  const trimmed = reason.trim();
+
+  if (!trimmed) {
+    createStoryboardReviewRecord({
+      id: "unused",
+      projectId: "unused",
+      masterPlotId: "unused",
+      action: "reject",
+      reason,
+      createdAt: "unused",
+    });
+  }
+
+  return trimmed;
 }

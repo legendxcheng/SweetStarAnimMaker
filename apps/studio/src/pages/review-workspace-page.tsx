@@ -1,40 +1,63 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type {
-  StoryboardReviewNextAction,
-  StoryboardReviewWorkspace,
-  StoryboardScene,
-} from "@sweet-star/shared";
+import type { CurrentMasterPlot, MasterPlotReviewWorkspace } from "@sweet-star/shared";
 import { AsyncState } from "../components/async-state";
 import { StatusBadge } from "../components/status-badge";
 import { apiClient } from "../services/api-client";
 
+type EditableMasterPlot = Omit<
+  CurrentMasterPlot,
+  "id" | "sourceTaskId" | "updatedAt" | "approvedAt"
+>;
+
+function toEditableMasterPlot(masterPlot: CurrentMasterPlot): EditableMasterPlot {
+  return {
+    title: masterPlot.title,
+    logline: masterPlot.logline,
+    synopsis: masterPlot.synopsis,
+    mainCharacters: masterPlot.mainCharacters,
+    coreConflict: masterPlot.coreConflict,
+    emotionalArc: masterPlot.emotionalArc,
+    endingBeat: masterPlot.endingBeat,
+    targetDurationSec: masterPlot.targetDurationSec,
+  };
+}
+
+function serializeCharacterList(value: string[]) {
+  return value.join(", ");
+}
+
+function parseCharacterList(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
 export function ReviewWorkspacePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const [workspace, setWorkspace] = useState<StoryboardReviewWorkspace | null>(null);
+  const [workspace, setWorkspace] = useState<MasterPlotReviewWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [editedScenes, setEditedScenes] = useState<StoryboardScene[]>([]);
-  const [editedSummary, setEditedSummary] = useState("");
-  const [selectedSceneIndex, setSelectedSceneIndex] = useState<number>(0);
+  const [draft, setDraft] = useState<EditableMasterPlot | null>(null);
+  const [charactersText, setCharactersText] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [rejectAction, setRejectAction] =
-    useState<StoryboardReviewNextAction>("regenerate");
 
   const loadWorkspace = async () => {
     if (!projectId) return;
     try {
       setLoading(true);
       const data = await apiClient.getReviewWorkspace(projectId);
+      const editable = toEditableMasterPlot(data.currentMasterPlot);
+
       setWorkspace(data);
-      setEditedScenes(data.currentStoryboard.scenes);
-      setEditedSummary(data.currentStoryboard.summary);
-      setSelectedSceneIndex(0);
+      setDraft(editable);
+      setCharactersText(serializeCharacterList(editable.mainCharacters));
       setHasChanges(false);
       setError(null);
     } catch (err) {
@@ -48,32 +71,21 @@ export function ReviewWorkspacePage() {
     void loadWorkspace();
   }, [projectId]);
 
-  const handleSceneChange = (
-    sceneIndex: number,
-    field: keyof StoryboardScene,
-    value: string,
+  const updateDraft = <K extends keyof EditableMasterPlot>(
+    field: K,
+    value: EditableMasterPlot[K],
   ) => {
-    setEditedScenes((prev) =>
-      prev.map((scene) =>
-        scene.sceneIndex === sceneIndex ? { ...scene, [field]: value } : scene,
-      ),
-    );
-    setHasChanges(true);
-  };
-
-  const handleSummaryChange = (value: string) => {
-    setEditedSummary(value);
+    setDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
     setHasChanges(true);
   };
 
   const handleSave = async () => {
-    if (!workspace || !projectId) return;
+    if (!workspace || !projectId || !draft) return;
     try {
       setSaving(true);
-      await apiClient.saveHumanVersion(projectId, {
-        baseVersionId: workspace.currentStoryboard.id,
-        summary: editedSummary,
-        scenes: editedScenes,
+      await apiClient.saveMasterPlot(projectId, {
+        ...draft,
+        mainCharacters: parseCharacterList(charactersText),
       });
       await loadWorkspace();
     } catch (err) {
@@ -85,13 +97,11 @@ export function ReviewWorkspacePage() {
 
   const handleApprove = async () => {
     if (!workspace || !projectId) return;
-    if (!confirm("Are you sure you want to approve this storyboard?")) return;
+    if (!confirm("Are you sure you want to approve this master plot?")) return;
     try {
       setSubmittingAction(true);
-      await apiClient.approveStoryboard(projectId, {
-        storyboardVersionId: workspace.currentStoryboard.id,
-      });
-      alert("Storyboard approved successfully!");
+      await apiClient.approveMasterPlot(projectId, {});
+      alert("Master plot approved successfully!");
       navigate(`/projects/${projectId}`);
     } catch (err) {
       alert(`Approve failed: ${(err as Error).message}`);
@@ -113,24 +123,12 @@ export function ReviewWorkspacePage() {
     }
     try {
       setSubmittingAction(true);
-      await apiClient.rejectStoryboard(projectId, {
-        storyboardVersionId: workspace.currentStoryboard.id,
+      await apiClient.rejectMasterPlot(projectId, {
         reason: rejectReason.trim(),
-        nextAction: rejectAction,
       });
       closeRejectDialog();
-      alert(
-        `Storyboard rejected. ${
-          rejectAction === "regenerate"
-            ? "Regeneration task created."
-            : "You can now edit manually."
-        }`,
-      );
-      if (rejectAction === "regenerate") {
-        navigate(`/projects/${projectId}`);
-        return;
-      }
-      await loadWorkspace();
+      alert("Master plot rejected. Regeneration task created.");
+      navigate(`/projects/${projectId}`);
     } catch (err) {
       alert(`Reject failed: ${(err as Error).message}`);
     } finally {
@@ -145,13 +143,10 @@ export function ReviewWorkspacePage() {
     <div className="flex flex-col h-full -m-6">
       <AsyncState loading={loading} error={error} data={workspace}>
         {(ws) => {
-          const selectedScene =
-            editedScenes.find((s) => s.sceneIndex === selectedSceneIndex + 1) ??
-            editedScenes[0];
+          const currentDraft = draft ?? toEditableMasterPlot(ws.currentMasterPlot);
 
           return (
             <>
-              {/* Top toolbar */}
               <div className="flex items-center justify-between border-b border-(--color-border) px-6 py-3 bg-(--color-bg-base) shrink-0">
                 <div className="flex items-center gap-3">
                   <button
@@ -162,17 +157,16 @@ export function ReviewWorkspacePage() {
                   </button>
                   <span className="text-(--color-border-muted)">|</span>
                   <span className="text-sm font-semibold text-(--color-text-primary)">
-                    Review Workspace
+                    Master Plot Review
                   </span>
                   <StatusBadge status={ws.projectStatus} />
-                  <span className="text-xs text-(--color-text-muted) bg-(--color-bg-surface) border border-(--color-border) px-2 py-0.5 rounded-md">
-                    v{ws.currentStoryboard.versionNumber} · {ws.currentStoryboard.kind}
-                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasChanges && ws.availableActions.saveHumanVersion && (
+                  {hasChanges && ws.availableActions.save && (
                     <button
-                      onClick={() => { void handleSave(); }}
+                      onClick={() => {
+                        void handleSave();
+                      }}
                       disabled={saving}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -181,7 +175,9 @@ export function ReviewWorkspacePage() {
                   )}
                   {!hasChanges && ws.availableActions.approve && (
                     <button
-                      onClick={() => { void handleApprove(); }}
+                      onClick={() => {
+                        void handleApprove();
+                      }}
                       disabled={submittingAction}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-success)/10 text-(--color-success) border border-(--color-success)/30 hover:bg-(--color-success)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -200,212 +196,186 @@ export function ReviewWorkspacePage() {
                 </div>
               </div>
 
-              {/* Latest review notice */}
               {ws.latestReview && (
                 <div className="mx-6 mt-3 px-4 py-2.5 rounded-lg bg-(--color-bg-surface) border border-(--color-border) text-sm text-(--color-text-muted) shrink-0">
-                  <span className="font-medium text-(--color-text-primary)">
-                    Latest review:
-                  </span>{" "}
+                  <span className="font-medium text-(--color-text-primary)">Latest review:</span>{" "}
                   {ws.latestReview.action}
                   {ws.latestReview.reason && ` — ${ws.latestReview.reason}`}
                 </div>
               )}
 
-              {/* Split layout */}
-              <div className="flex flex-1 overflow-hidden">
-                {/* Scene list */}
-                <div className="w-72 shrink-0 border-r border-(--color-border) overflow-y-auto p-3 flex flex-col gap-2 bg-(--color-bg-surface)">
-                  <p className="text-xs font-medium text-(--color-text-muted) uppercase tracking-wide px-2 mb-1">
-                    Scenes
-                  </p>
-                  {editedScenes.map((scene, idx) => (
-                    <button
-                      key={scene.id}
-                      onClick={() => setSelectedSceneIndex(idx)}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
-                        idx === selectedSceneIndex
-                          ? "border-(--color-accent)/40 bg-(--color-accent)/10"
-                          : "border-(--color-border) bg-(--color-bg-surface) hover:border-(--color-border-muted)"
-                      }`}
-                    >
-                      <p
-                        className={`text-xs font-semibold mb-0.5 ${
-                          idx === selectedSceneIndex
-                            ? "text-(--color-accent)"
-                            : "text-(--color-text-primary)"
-                        }`}
-                      >
-                        Scene {scene.sceneIndex}
-                      </p>
-                      <p className="text-xs text-(--color-text-muted) truncate">
-                        {scene.description}
-                      </p>
-                    </button>
-                  ))}
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+                <div>
+                  <label
+                    htmlFor="title-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Title
+                  </label>
+                  <input
+                    id="title-input"
+                    value={currentDraft.title ?? ""}
+                    onChange={(e) => updateDraft("title", e.target.value || null)}
+                    className={inputClass}
+                  />
                 </div>
 
-                {/* Edit panel */}
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-                  {/* Summary — always visible */}
-                  <div>
-                    <label
-                      htmlFor="summary-input"
-                      className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                    >
-                      Summary:
-                    </label>
-                    <textarea
-                      id="summary-input"
-                      aria-label="Summary:"
-                      value={editedSummary}
-                      onChange={(e) => handleSummaryChange(e.target.value)}
-                      rows={3}
-                      className={`${inputClass} resize-y`}
-                    />
-                  </div>
+                <div>
+                  <label
+                    htmlFor="logline-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Logline
+                  </label>
+                  <textarea
+                    id="logline-input"
+                    aria-label="Logline"
+                    value={currentDraft.logline}
+                    onChange={(e) => updateDraft("logline", e.target.value)}
+                    rows={2}
+                    className={`${inputClass} resize-y`}
+                  />
+                </div>
 
-                  {/* Per-scene fields */}
-                  {selectedScene && (
-                    <>
-                      <div className="flex items-center gap-2 border-t border-(--color-border) pt-4">
-                        <span className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wide">
-                          Scene {selectedScene.sceneIndex}
-                        </span>
-                      </div>
+                <div>
+                  <label
+                    htmlFor="synopsis-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Synopsis
+                  </label>
+                  <textarea
+                    id="synopsis-input"
+                    aria-label="Synopsis"
+                    value={currentDraft.synopsis}
+                    onChange={(e) => updateDraft("synopsis", e.target.value)}
+                    rows={5}
+                    className={`${inputClass} resize-y`}
+                  />
+                </div>
 
-                      <div>
-                        <label
-                          htmlFor="scene-description"
-                          className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                        >
-                          Description:
-                        </label>
-                        <textarea
-                          id="scene-description"
-                          aria-label="Description:"
-                          value={selectedScene.description}
-                          onChange={(e) =>
-                            handleSceneChange(
-                              selectedScene.sceneIndex,
-                              "description",
-                              e.target.value,
-                            )
-                          }
-                          rows={3}
-                          className={`${inputClass} resize-y`}
-                        />
-                      </div>
+                <div>
+                  <label
+                    htmlFor="characters-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Main Characters
+                  </label>
+                  <input
+                    id="characters-input"
+                    aria-label="Main Characters"
+                    value={charactersText}
+                    onChange={(e) => {
+                      setCharactersText(e.target.value);
+                      setHasChanges(true);
+                    }}
+                    className={inputClass}
+                  />
+                </div>
 
-                      <div>
-                        <label
-                          htmlFor="scene-camera"
-                          className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                        >
-                          Camera:
-                        </label>
-                        <input
-                          id="scene-camera"
-                          type="text"
-                          value={selectedScene.camera}
-                          onChange={(e) =>
-                            handleSceneChange(
-                              selectedScene.sceneIndex,
-                              "camera",
-                              e.target.value,
-                            )
-                          }
-                          className={inputClass}
-                        />
-                      </div>
+                <div>
+                  <label
+                    htmlFor="core-conflict-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Core Conflict
+                  </label>
+                  <textarea
+                    id="core-conflict-input"
+                    aria-label="Core Conflict"
+                    value={currentDraft.coreConflict}
+                    onChange={(e) => updateDraft("coreConflict", e.target.value)}
+                    rows={3}
+                    className={`${inputClass} resize-y`}
+                  />
+                </div>
 
-                      <div>
-                        <label
-                          htmlFor="scene-prompt"
-                          className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                        >
-                          Prompt:
-                        </label>
-                        <textarea
-                          id="scene-prompt"
-                          value={selectedScene.prompt}
-                          onChange={(e) =>
-                            handleSceneChange(
-                              selectedScene.sceneIndex,
-                              "prompt",
-                              e.target.value,
-                            )
-                          }
-                          rows={3}
-                          className={`${inputClass} resize-y`}
-                        />
-                      </div>
-                    </>
-                  )}
+                <div>
+                  <label
+                    htmlFor="emotional-arc-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Emotional Arc
+                  </label>
+                  <textarea
+                    id="emotional-arc-input"
+                    aria-label="Emotional Arc"
+                    value={currentDraft.emotionalArc}
+                    onChange={(e) => updateDraft("emotionalArc", e.target.value)}
+                    rows={3}
+                    className={`${inputClass} resize-y`}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="ending-beat-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Ending Beat
+                  </label>
+                  <textarea
+                    id="ending-beat-input"
+                    aria-label="Ending Beat"
+                    value={currentDraft.endingBeat}
+                    onChange={(e) => updateDraft("endingBeat", e.target.value)}
+                    rows={3}
+                    className={`${inputClass} resize-y`}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="duration-input"
+                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                  >
+                    Target Duration (sec)
+                  </label>
+                  <input
+                    id="duration-input"
+                    aria-label="Target Duration (sec)"
+                    type="number"
+                    value={currentDraft.targetDurationSec ?? ""}
+                    onChange={(e) =>
+                      updateDraft(
+                        "targetDurationSec",
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                    className={inputClass}
+                  />
                 </div>
               </div>
 
-              {/* Reject dialog */}
               {showRejectDialog && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                   <div className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-6 w-full max-w-md mx-4">
                     <h3 className="text-base font-semibold text-(--color-text-primary) mb-4">
-                      Reject Storyboard
+                      Reject Master Plot
                     </h3>
 
-                    <div className="mb-4">
+                    <div className="mb-5">
                       <label
                         htmlFor="reject-reason"
                         className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                       >
-                        Reason:
+                        Reason
                       </label>
                       <textarea
                         id="reject-reason"
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         rows={3}
-                        placeholder="Explain why you're rejecting this storyboard..."
+                        placeholder="Explain why you're rejecting this master plot..."
                         className={`${inputClass} resize-y`}
                       />
                     </div>
 
-                    <div className="mb-5">
-                      <p className="text-sm font-medium text-(--color-text-primary) mb-2">
-                        Next Action:
-                      </p>
-                      <label className="flex items-center gap-2 mb-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="regenerate"
-                          checked={rejectAction === "regenerate"}
-                          onChange={(e) =>
-                            setRejectAction(e.target.value as StoryboardReviewNextAction)
-                          }
-                          className="accent-(--color-accent)"
-                        />
-                        <span className="text-sm text-(--color-text-primary)">
-                          Regenerate (create new AI version)
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="edit_manually"
-                          checked={rejectAction === "edit_manually"}
-                          onChange={(e) =>
-                            setRejectAction(e.target.value as StoryboardReviewNextAction)
-                          }
-                          className="accent-(--color-accent)"
-                        />
-                        <span className="text-sm text-(--color-text-primary)">
-                          Edit Manually (stay in review)
-                        </span>
-                      </label>
-                    </div>
-
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { void handleRejectSubmit(); }}
+                        onClick={() => {
+                          void handleRejectSubmit();
+                        }}
                         disabled={submittingAction}
                         className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >

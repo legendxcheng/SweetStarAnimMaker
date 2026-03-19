@@ -14,22 +14,22 @@ const createdProject = {
   id: "proj-1",
   name: "Flow Project",
   slug: "flow-project",
-  status: "script_ready" as const,
+  status: "premise_ready" as const,
   storageDir: "/projects/proj-1",
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
-  script: {
-    path: "script/original.txt",
+  premise: {
+    path: "premise/v1.md",
     bytes: 128,
     updatedAt: "2024-01-01T00:00:00Z",
   },
-  currentStoryboard: null,
+  currentMasterPlot: null,
 };
 
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
-  type: "storyboard_generate" as const,
+  type: "master_plot_generate" as const,
   status: "running" as const,
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:01Z",
@@ -45,62 +45,43 @@ const runningTask = {
 
 const reviewedProject = {
   ...createdProject,
-  status: "storyboard_in_review" as const,
-  currentStoryboard: {
-    id: "sbv-1",
-    projectId: "proj-1",
-    versionNumber: 1,
-    kind: "ai" as const,
-    provider: "gemini",
-    model: "gemini-3.1-pro-preview",
-    filePath: "storyboards/versions/v1-ai.json",
-    createdAt: "2024-01-01T00:00:02Z",
+  status: "master_plot_in_review" as const,
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis: "Rin hears the comet sing and discovers how to lift the drowned city.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict: "Rin must choose between escape and saving the city.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "The city rises on a final chorus of light.",
+    targetDurationSec: 480,
     sourceTaskId: "task-1",
+    updatedAt: "2024-01-01T00:00:02Z",
+    approvedAt: null,
   },
 };
 
 const reviewWorkspace = {
   projectId: "proj-1",
-  projectStatus: "storyboard_in_review" as const,
-  currentStoryboard: {
-    ...reviewedProject.currentStoryboard,
-    summary: "Initial storyboard summary",
-    scenes: [
-      {
-        id: "scene-1",
-        sceneIndex: 1,
-        description: "Opening shot",
-        camera: "wide shot",
-        characters: ["A"],
-        prompt: "wide shot prompt",
-      },
-    ],
-  },
+  projectStatus: "master_plot_in_review" as const,
+  currentMasterPlot: reviewedProject.currentMasterPlot,
   latestReview: null,
   availableActions: {
-    saveHumanVersion: true,
+    save: true,
     approve: true,
     reject: true,
   },
-  latestStoryboardTask: null,
+  latestTask: null,
 };
 
 const refreshedWorkspace = {
   ...reviewWorkspace,
-  currentStoryboard: {
-    ...reviewWorkspace.currentStoryboard,
-    id: "sbv-2",
-    versionNumber: 2,
-    kind: "human" as const,
-    provider: "manual",
-    model: "manual-edit",
-    summary: "Updated storyboard summary",
-    scenes: [
-      {
-        ...reviewWorkspace.currentStoryboard.scenes[0],
-        description: "Updated opening shot",
-      },
-    ],
+  currentMasterPlot: {
+    ...reviewWorkspace.currentMasterPlot,
+    title: "The Last Sky Choir Revised",
+    synopsis: "Updated master plot synopsis",
+    updatedAt: "2024-01-01T00:00:03Z",
   },
 };
 
@@ -131,7 +112,7 @@ describe("Spec5 Studio Flow", () => {
     globalThis.alert = vi.fn();
   });
 
-  it("completes the browser-only storyboard flow from create to reject-and-regenerate", async () => {
+  it("completes the browser-only master-plot flow from create to reject-and-regenerate", async () => {
     let pollTimer: (() => void) | undefined;
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
       pollTimer = callback as () => void;
@@ -145,7 +126,7 @@ describe("Spec5 Studio Flow", () => {
       .mockResolvedValueOnce(createdProject)
       .mockResolvedValueOnce(reviewedProject)
       .mockResolvedValueOnce(createdProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(
+    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
       runningTask,
     );
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
@@ -157,13 +138,13 @@ describe("Spec5 Studio Flow", () => {
     vi.spyOn(apiModule.apiClient, "getReviewWorkspace")
       .mockResolvedValueOnce(reviewWorkspace)
       .mockResolvedValueOnce(refreshedWorkspace);
-    vi.spyOn(apiModule.apiClient, "saveHumanVersion").mockResolvedValue(
-      refreshedWorkspace.currentStoryboard,
+    vi.spyOn(apiModule.apiClient, "saveMasterPlot").mockResolvedValue(
+      refreshedWorkspace.currentMasterPlot,
     );
-    vi.spyOn(apiModule.apiClient, "rejectStoryboard").mockResolvedValue({
+    vi.spyOn(apiModule.apiClient, "rejectMasterPlot").mockResolvedValue({
       id: "review-1",
       projectId: "proj-1",
-      storyboardVersionId: "sbv-2",
+      masterPlotId: "mp-1",
       action: "reject",
       reason: "Try a different draft",
       triggeredTaskId: "task-2",
@@ -180,15 +161,15 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.change(screen.getByLabelText("Project Name"), {
       target: { value: "Flow Project" },
     });
-    fireEvent.change(screen.getByLabelText("Script"), {
-      target: { value: "Scene 1" },
+    fireEvent.change(screen.getByLabelText("Premise"), {
+      target: { value: "A washed-up pilot discovers a singing comet above a drowned city." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Project" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createProject).toHaveBeenCalledWith({
         name: "Flow Project",
-        script: "Scene 1",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
       });
     });
 
@@ -196,10 +177,10 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate storyboard/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith(
+      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
         "proj-1",
       );
     });
@@ -214,36 +195,32 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.click(screen.getByRole("link", { name: /enter review/i }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Initial storyboard summary")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Summary:"), {
-      target: { value: "Updated storyboard summary" },
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "The Last Sky Choir Revised" },
     });
-    fireEvent.change(screen.getByLabelText("Description:"), {
-      target: { value: "Updated opening shot" },
+    fireEvent.change(screen.getByLabelText("Synopsis"), {
+      target: { value: "Updated master plot synopsis" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.saveHumanVersion).toHaveBeenCalledWith("proj-1", {
-        baseVersionId: "sbv-1",
-        summary: "Updated storyboard summary",
-        scenes: [
-          {
-            id: "scene-1",
-            sceneIndex: 1,
-            description: "Updated opening shot",
-            camera: "wide shot",
-            characters: ["A"],
-            prompt: "wide shot prompt",
-          },
-        ],
+      expect(apiModule.apiClient.saveMasterPlot).toHaveBeenCalledWith("proj-1", {
+        title: "The Last Sky Choir Revised",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis: "Updated master plot synopsis",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict: "Rin must choose between escape and saving the city.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "The city rises on a final chorus of light.",
+        targetDurationSec: 480,
       });
     });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Updated storyboard summary")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("The Last Sky Choir Revised")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
@@ -253,10 +230,8 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.rejectStoryboard).toHaveBeenCalledWith("proj-1", {
-        storyboardVersionId: "sbv-2",
+      expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {
         reason: "Try a different draft",
-        nextAction: "regenerate",
       });
     });
 

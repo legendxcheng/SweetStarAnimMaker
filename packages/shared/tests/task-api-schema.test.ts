@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
-import {
-  createStoryboardGenerateTaskResponseSchema,
-  taskDetailResponseSchema,
-} from "../src/schemas/task-api";
+import * as shared from "../src/index";
 
 describe("task api schema", () => {
-  it("accepts a storyboard task response", () => {
-    const parsed = createStoryboardGenerateTaskResponseSchema.parse({
+  it("exports a master-plot task response schema", () => {
+    const schema = (shared as Record<string, unknown>).createMasterPlotGenerateTaskResponseSchema;
+
+    expect(schema).toBeDefined();
+  });
+
+  it("accepts a master-plot task response", () => {
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).createMasterPlotGenerateTaskResponseSchema;
+    const parsed = schema.parse({
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
-      type: "storyboard_generate",
+      type: "master_plot_generate",
       status: "pending",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
@@ -27,10 +31,10 @@ describe("task api schema", () => {
   });
 
   it("accepts a task detail response", () => {
-    const parsed = taskDetailResponseSchema.parse({
+    const parsed = shared.taskDetailResponseSchema.parse({
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
-      type: "storyboard_generate",
+      type: "master_plot_generate",
       status: "succeeded",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:03:00.000Z",

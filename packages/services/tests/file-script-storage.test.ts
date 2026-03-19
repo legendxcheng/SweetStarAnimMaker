@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createFileScriptStorage, createLocalDataPaths } from "../src/index";
 
-describe("file script storage", () => {
+describe("file premise storage", () => {
   const tempDirs: string[] = [];
 
   afterEach(async () => {
@@ -16,7 +16,7 @@ describe("file script storage", () => {
     tempDirs.length = 0;
   });
 
-  it("writes the original script and creates the containing directories", async () => {
+  it("writes the premise and creates the containing directories", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-services-"));
     tempDirs.push(tempDir);
 
@@ -25,14 +25,14 @@ describe("file script storage", () => {
     });
     const storageDir = "projects/proj_20260317_ab12cd-my-story";
 
-    const result = await storage.writeOriginalScript({
+    const result = await storage.writePremise({
       storageDir,
-      script: "Scene 1",
+      premiseText: "Scene 1",
     });
 
     expect(result).toEqual({
-      scriptRelPath: "script/original.txt",
-      scriptBytes: 7,
+      premiseRelPath: "premise/v1.md",
+      premiseBytes: 7,
     });
     await expect(
       fs.readFile(
@@ -41,15 +41,15 @@ describe("file script storage", () => {
           ".local-data",
           "projects",
           "proj_20260317_ab12cd-my-story",
-          "script",
-          "original.txt",
+          "premise",
+          "v1.md",
         ),
         "utf8",
       ),
     ).resolves.toBe("Scene 1");
   });
 
-  it("overwrites the original script content and preserves the logical path", async () => {
+  it("overwrites the premise content and preserves the logical path", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-services-"));
     tempDirs.push(tempDir);
 
@@ -58,20 +58,20 @@ describe("file script storage", () => {
     });
     const storageDir = "projects/proj_20260317_ab12cd-my-story";
 
-    await storage.writeOriginalScript({
+    await storage.writePremise({
       storageDir,
-      script: "Scene 1",
+      premiseText: "Scene 1",
     });
-    const result = await storage.writeOriginalScript({
+    const result = await storage.writePremise({
       storageDir,
-      script: "Updated Scene 1",
+      premiseText: "Updated Scene 1",
     });
 
     expect(result).toEqual({
-      scriptRelPath: "script/original.txt",
-      scriptBytes: 15,
+      premiseRelPath: "premise/v1.md",
+      premiseBytes: 15,
     });
-    await expect(storage.readOriginalScript({ storageDir })).resolves.toBe(
+    await expect(storage.readPremise({ storageDir })).resolves.toBe(
       "Updated Scene 1",
     );
   });

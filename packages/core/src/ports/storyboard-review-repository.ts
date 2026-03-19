@@ -1,8 +1,8 @@
-import type { StoryboardReviewRecord } from "@sweet-star/shared";
+import type { MasterPlotReviewSummary } from "@sweet-star/shared";
 
 export interface StoryboardReviewRepository {
-  insert(review: StoryboardReviewRecord): Promise<void> | void;
+  insert(review: MasterPlotReviewSummary): Promise<void> | void;
   findLatestByProjectId(
     projectId: string,
-  ): Promise<StoryboardReviewRecord | null> | StoryboardReviewRecord | null;
+  ): Promise<MasterPlotReviewSummary | null> | MasterPlotReviewSummary | null;
 }

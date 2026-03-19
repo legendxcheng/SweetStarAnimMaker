@@ -1,11 +1,10 @@
-import type { ProjectDetail } from "@sweet-star/shared";
+import type { CurrentMasterPlot, ProjectDetail } from "@sweet-star/shared";
 
 import type { ProjectRecord } from "../domain/project";
-import { toStoryboardVersionSummary, type StoryboardVersionRecord } from "../domain/storyboard";
 
 export function toProjectDetailDto(
   project: ProjectRecord,
-  currentStoryboard: StoryboardVersionRecord | null,
+  currentMasterPlot: CurrentMasterPlot | null,
 ): ProjectDetail {
   return {
     id: project.id,
@@ -15,11 +14,11 @@ export function toProjectDetailDto(
     storageDir: project.storageDir,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
-    script: {
-      path: project.scriptRelPath,
-      bytes: project.scriptBytes,
-      updatedAt: project.scriptUpdatedAt,
+    premise: {
+      path: project.premiseRelPath,
+      bytes: project.premiseBytes,
+      updatedAt: project.premiseUpdatedAt,
     },
-    currentStoryboard: currentStoryboard ? toStoryboardVersionSummary(currentStoryboard) : null,
+    currentMasterPlot,
   };
 }

@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
 
 import {
-  approveStoryboardRequestSchema,
-  rejectStoryboardRequestSchema,
-  saveHumanStoryboardVersionRequestSchema,
+  approveMasterPlotRequestSchema,
+  rejectMasterPlotRequestSchema,
+  saveMasterPlotRequestSchema,
 } from "@sweet-star/shared";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
@@ -28,9 +28,17 @@ export function registerStoryboardRoutes(
     });
   });
 
-  app.post("/projects/:projectId/storyboard/save-human-version", async (request) => {
+  app.get("/projects/:projectId/master-plot/review", async (request) => {
     const params = request.params as { projectId: string };
-    const payload = saveHumanStoryboardVersionRequestSchema.parse(request.body);
+
+    return services.getStoryboardReview.execute({
+      projectId: params.projectId,
+    });
+  });
+
+  app.put("/projects/:projectId/master-plot", async (request) => {
+    const params = request.params as { projectId: string };
+    const payload = saveMasterPlotRequestSchema.parse(request.body);
 
     return services.saveHumanStoryboardVersion.execute({
       projectId: params.projectId,
@@ -38,9 +46,9 @@ export function registerStoryboardRoutes(
     });
   });
 
-  app.post("/projects/:projectId/storyboard/approve", async (request) => {
+  app.post("/projects/:projectId/master-plot/approve", async (request) => {
     const params = request.params as { projectId: string };
-    const payload = approveStoryboardRequestSchema.parse(request.body);
+    const payload = approveMasterPlotRequestSchema.parse(request.body);
 
     return services.approveStoryboard.execute({
       projectId: params.projectId,
@@ -48,9 +56,9 @@ export function registerStoryboardRoutes(
     });
   });
 
-  app.post("/projects/:projectId/storyboard/reject", async (request) => {
+  app.post("/projects/:projectId/master-plot/reject", async (request) => {
     const params = request.params as { projectId: string };
-    const payload = rejectStoryboardRequestSchema.parse(request.body);
+    const payload = rejectMasterPlotRequestSchema.parse(request.body);
 
     return services.rejectStoryboard.execute({
       projectId: params.projectId,

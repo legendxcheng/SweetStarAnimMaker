@@ -2,16 +2,16 @@ import type { ProjectStatus } from "@sweet-star/shared";
 
 import type { ProjectRecord } from "../domain/project";
 
-export interface UpdateProjectScriptMetadataInput {
+export interface UpdateProjectPremiseMetadataInput {
   id: string;
-  scriptBytes: number;
+  premiseBytes: number;
   updatedAt: string;
-  scriptUpdatedAt: string;
+  premiseUpdatedAt: string;
 }
 
-export interface UpdateCurrentStoryboardVersionInput {
+export interface UpdateCurrentMasterPlotInput {
   projectId: string;
-  storyboardVersionId: string | null;
+  masterPlotId: string | null;
 }
 
 export interface UpdateProjectStatusInput {
@@ -24,11 +24,11 @@ export interface ProjectRepository {
   insert(project: ProjectRecord): Promise<void> | void;
   findById(projectId: string): Promise<ProjectRecord | null> | ProjectRecord | null;
   listAll(): Promise<ProjectRecord[]> | ProjectRecord[];
-  updateScriptMetadata(
-    input: UpdateProjectScriptMetadataInput,
+  updatePremiseMetadata(
+    input: UpdateProjectPremiseMetadataInput,
   ): Promise<void> | void;
-  updateCurrentStoryboardVersion(
-    input: UpdateCurrentStoryboardVersionInput,
+  updateCurrentMasterPlot(
+    input: UpdateCurrentMasterPlotInput,
   ): Promise<void> | void;
   updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
 }

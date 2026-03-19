@@ -11,7 +11,8 @@ import { startWorker } from "@sweet-star/worker";
 
 import { buildApp } from "../src/app";
 
-describe("spec3 storyboard flow", () => {
+describe("spec3 master plot flow", () => {
+  const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
   const dbs: Array<{ close(): void }> = [];
@@ -32,7 +33,7 @@ describe("spec3 storyboard flow", () => {
     );
   });
 
-  it("processes a storyboard task through api, redis, worker, sqlite, and disk", async () => {
+  it("processes a master-plot task and exposes the review workspace", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-spec3-flow-"));
     tempDirs.push(tempDir);
 
@@ -55,14 +56,14 @@ describe("spec3 storyboard flow", () => {
       url: "/projects",
       payload: {
         name: "My Story",
-        script: "Scene 1",
+        premiseText,
       },
     });
     const project = createProjectResponse.json();
 
     const createTaskResponse = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/tasks/storyboard-generate`,
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
     });
 
     expect(createTaskResponse.statusCode).toBe(201);
@@ -70,7 +71,7 @@ describe("spec3 storyboard flow", () => {
     const worker = await startWorker({
       workspaceRoot: tempDir,
       redisUrl,
-      storyboardProvider: createStubStoryboardProvider(),
+      masterPlotProvider: createStubMasterPlotProvider(),
     });
     workers.push(worker);
 
@@ -84,55 +85,36 @@ describe("spec3 storyboard flow", () => {
       expect(response.json().status).toBe("succeeded");
     });
 
-    const storyboardDir = path.join(
-      tempDir,
-      ".local-data",
-      project.storageDir,
-      "storyboards",
-    );
-    await expect(
-      fs.readFile(path.join(storyboardDir, "raw", "task_20260317_ab12cd-gemini-response.json"), "utf8"),
-    ).resolves.toContain("\"candidates\"");
-    await expect(
-      fs.readFile(path.join(storyboardDir, "versions", "v1-ai.json"), "utf8"),
-    ).resolves.toContain("\"summary\": \"Stub storyboard summary\"");
-
     const paths = createLocalDataPaths(tempDir);
     const db = createSqliteDb({ paths });
     dbs.push(db);
 
-    const versionRow = db
-      .prepare(
-        `
-          SELECT
-            p.current_storyboard_version_id,
-            sv.id,
-            sv.version_number,
-            sv.file_rel_path,
-            sv.raw_response_rel_path
-          FROM projects p
-          JOIN storyboard_versions sv
-            ON sv.id = p.current_storyboard_version_id
-          WHERE p.id = ?
-        `,
-      )
+    const row = db
+      .prepare("SELECT current_master_plot_id, status FROM projects WHERE id = ?")
       .get(project.id) as
       | {
-          current_storyboard_version_id: string;
-          id: string;
-          version_number: number;
-          file_rel_path: string;
-          raw_response_rel_path: string;
+          current_master_plot_id: string | null;
+          status: string;
         }
       | undefined;
 
-    expect(versionRow).toEqual({
-      current_storyboard_version_id: "sbv_20260317_ab12cd",
-      id: "sbv_20260317_ab12cd",
-      version_number: 1,
-      file_rel_path: "storyboards/versions/v1-ai.json",
-      raw_response_rel_path: "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
+    expect(row).toEqual({
+      current_master_plot_id: `mp_${project.id.replace(/^proj_/, "")}`,
+      status: "master_plot_in_review",
     });
+
+    await expect(
+      fs.readFile(
+        path.join(
+          tempDir,
+          ".local-data",
+          project.storageDir,
+          "master-plot",
+          "current.json",
+        ),
+        "utf8",
+      ),
+    ).resolves.toContain("\"title\": \"The Last Sky Choir\"");
 
     const projectDetailResponse = await app.inject({
       method: "GET",
@@ -141,37 +123,32 @@ describe("spec3 storyboard flow", () => {
     expect(projectDetailResponse.statusCode).toBe(200);
     expect(projectDetailResponse.json()).toEqual(
       expect.objectContaining({
-        status: "storyboard_in_review",
-        currentStoryboard: {
-          id: "sbv_20260317_ab12cd",
-          projectId: project.id,
-          versionNumber: 1,
-          kind: "ai",
-          provider: "gemini",
-          model: "gemini-3.1-pro-preview",
-          filePath: "storyboards/versions/v1-ai.json",
-          createdAt: expect.any(String),
+        status: "master_plot_in_review",
+        currentMasterPlot: expect.objectContaining({
+          id: `mp_${project.id.replace(/^proj_/, "")}`,
+          title: "The Last Sky Choir",
           sourceTaskId: "task_20260317_ab12cd",
-        },
+        }),
       }),
     );
 
-    const currentStoryboardResponse = await app.inject({
+    const reviewResponse = await app.inject({
       method: "GET",
-      url: `/projects/${project.id}/storyboard/current`,
+      url: `/projects/${project.id}/master-plot/review`,
     });
-    expect(currentStoryboardResponse.statusCode).toBe(200);
-    expect(currentStoryboardResponse.json()).toEqual(
+    expect(reviewResponse.statusCode).toBe(200);
+    expect(reviewResponse.json()).toEqual(
       expect.objectContaining({
-        id: "sbv_20260317_ab12cd",
         projectId: project.id,
-        summary: "Stub storyboard summary",
-        scenes: [
-          expect.objectContaining({
-            id: "scene_1",
-            sceneIndex: 1,
-          }),
-        ],
+        projectStatus: "master_plot_in_review",
+        currentMasterPlot: expect.objectContaining({
+          title: "The Last Sky Choir",
+        }),
+        latestReview: null,
+        latestTask: expect.objectContaining({
+          id: "task_20260317_ab12cd",
+          status: "succeeded",
+        }),
       }),
     );
   });
@@ -194,27 +171,24 @@ async function waitFor(assertion: () => Promise<void>, timeoutMs = 10000) {
   }
 }
 
-function createStubStoryboardProvider() {
+function createStubMasterPlotProvider() {
   return {
-    async generateStoryboard() {
+    async generateMasterPlot() {
       return {
-        rawResponse: {
-          candidates: [{ content: { parts: [{ text: "{}" }] } }],
-        },
+        rawResponse: "{\"title\":\"The Last Sky Choir\"}",
         provider: "gemini",
         model: "gemini-3.1-pro-preview",
-        storyboard: {
-          summary: "Stub storyboard summary",
-          scenes: [
-            {
-              id: "scene_1",
-              sceneIndex: 1,
-              description: "A enters the room",
-              camera: "medium shot",
-              characters: ["A"],
-              prompt: "medium shot, character A entering a dim room",
-            },
-          ],
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
         },
       };
     },

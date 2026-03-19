@@ -39,26 +39,32 @@ export function ProjectDetailPage() {
   }, [projectId]);
 
   useEffect(() => {
-    if (project?.status !== "storyboard_generating" || activeTask) return;
-    const interval = setInterval(() => { void loadProject(); }, 3000);
-    return () => { clearInterval(interval); };
+    if (project?.status !== "master_plot_generating" || activeTask) return;
+    const interval = setInterval(() => {
+      void loadProject();
+    }, 3000);
+    return () => {
+      clearInterval(interval);
+    };
   }, [project?.status, activeTask]);
 
   const polling = useTaskPolling({
     taskId: activeTask?.id ?? null,
     enabled: isActiveTask(activeTask),
     onTaskUpdate: setActiveTask,
-    onTerminal: async () => { await loadProject(); },
+    onTerminal: async () => {
+      await loadProject();
+    },
   });
 
   const task = polling.task ?? activeTask;
   const taskError = polling.error ?? error;
 
-  const handleGenerateStoryboard = async () => {
+  const handleGenerateMasterPlot = async () => {
     if (!projectId || creatingTask || isActiveTask(task)) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createStoryboardGenerateTask(projectId);
+      const nextTask = await apiClient.createMasterPlotGenerateTask(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -68,7 +74,8 @@ export function ProjectDetailPage() {
     }
   };
 
-  const cardClass = "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
+  const cardClass =
+    "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
 
@@ -94,7 +101,6 @@ export function ProjectDetailPage() {
               }
             />
 
-            {/* Project info card */}
             <div className={cardClass}>
               <div className="mb-4">
                 <StatusBadge status={currentProject.status} />
@@ -109,11 +115,11 @@ export function ProjectDetailPage() {
                   <p className={metaValueClass}>{currentProject.slug}</p>
                 </div>
                 <div>
-                  <p className={metaLabelClass}>Script</p>
+                  <p className={metaLabelClass}>Premise</p>
                   <p className={metaValueClass}>
-                    {currentProject.script.path}{" "}
+                    {currentProject.premise.path}{" "}
                     <span className="text-(--color-text-muted)">
-                      ({currentProject.script.bytes} bytes)
+                      ({currentProject.premise.bytes} bytes)
                     </span>
                   </p>
                 </div>
@@ -134,16 +140,17 @@ export function ProjectDetailPage() {
               <div className="mt-5">
                 <button
                   type="button"
-                  onClick={() => { void handleGenerateStoryboard(); }}
+                  onClick={() => {
+                    void handleGenerateMasterPlot();
+                  }}
                   disabled={creatingTask || isActiveTask(task)}
                   className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {creatingTask ? "Starting..." : "Generate Storyboard"}
+                  {creatingTask ? "Starting..." : "Generate Master Plot"}
                 </button>
               </div>
             </div>
 
-            {/* Task status card */}
             {task && (
               <div className={cardClass}>
                 <h3 className="text-base font-semibold text-(--color-text-primary) mb-3">
@@ -171,58 +178,51 @@ export function ProjectDetailPage() {
               </div>
             )}
 
-            {/* Task polling error */}
             {taskError && task && (
               <div className="mb-4">
                 <ErrorState error={taskError} />
               </div>
             )}
 
-            {/* In-progress notice (no active task object yet) */}
-            {currentProject.status === "storyboard_generating" && !task && (
+            {currentProject.status === "master_plot_generating" && !task && (
               <div className="bg-(--color-warning)/10 border border-(--color-warning)/30 rounded-xl p-4 mb-4">
                 <p className="text-sm text-(--color-warning)">
-                  Storyboard generation in progress... auto-refreshing project status.
+                  Master plot generation in progress... auto-refreshing project status.
                 </p>
               </div>
             )}
 
-            {/* Current storyboard card */}
-            {currentProject.currentStoryboard && (
+            {currentProject.currentMasterPlot && (
               <div className={cardClass}>
                 <h3 className="text-base font-semibold text-(--color-text-primary) mb-3">
-                  Current Storyboard
+                  Current Master Plot
                 </h3>
                 <div className="grid gap-2 mb-4">
                   <div>
-                    <p className={metaLabelClass}>Version</p>
+                    <p className={metaLabelClass}>Title</p>
                     <p className={metaValueClass}>
-                      v{currentProject.currentStoryboard.versionNumber}
+                      {currentProject.currentMasterPlot.title ?? "Untitled"}
                     </p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Type</p>
-                    <p className={metaValueClass}>{currentProject.currentStoryboard.kind}</p>
+                    <p className={metaLabelClass}>Logline</p>
+                    <p className={metaValueClass}>{currentProject.currentMasterPlot.logline}</p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Provider</p>
+                    <p className={metaLabelClass}>Main Characters</p>
                     <p className={metaValueClass}>
-                      {currentProject.currentStoryboard.provider}
+                      {currentProject.currentMasterPlot.mainCharacters.join(", ")}
                     </p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Model</p>
-                    <p className={metaValueClass}>{currentProject.currentStoryboard.model}</p>
-                  </div>
-                  <div>
-                    <p className={metaLabelClass}>Created</p>
+                    <p className={metaLabelClass}>Updated</p>
                     <p className={metaValueClass}>
-                      {new Date(currentProject.currentStoryboard.createdAt).toLocaleString()}
+                      {new Date(currentProject.currentMasterPlot.updatedAt).toLocaleString()}
                     </p>
                   </div>
                 </div>
 
-                {currentProject.status === "storyboard_in_review" && (
+                {currentProject.status === "master_plot_in_review" && (
                   <Link
                     to={`/projects/${currentProject.id}/review`}
                     className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity no-underline"

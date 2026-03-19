@@ -1,11 +1,10 @@
-import type { ProjectSummary } from "@sweet-star/shared";
+import type { CurrentMasterPlot, ProjectSummary } from "@sweet-star/shared";
 
 import type { ProjectRecord } from "../domain/project";
-import { toStoryboardVersionSummary, type StoryboardVersionRecord } from "../domain/storyboard";
 
 export function toProjectSummaryDto(
   project: ProjectRecord,
-  currentStoryboard: StoryboardVersionRecord | null,
+  currentMasterPlot: CurrentMasterPlot | null,
 ): ProjectSummary {
   return {
     id: project.id,
@@ -15,6 +14,6 @@ export function toProjectSummaryDto(
     storageDir: project.storageDir,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
-    currentStoryboard: currentStoryboard ? toStoryboardVersionSummary(currentStoryboard) : null,
+    currentMasterPlot,
   };
 }

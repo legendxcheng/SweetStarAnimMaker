@@ -1,6 +1,6 @@
 import { type TaskStatus, type TaskType } from "@sweet-star/shared";
 
-export const storyboardGenerateQueueName = "storyboard-generate";
+export const masterPlotGenerateQueueName = "master-plot-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -23,18 +23,12 @@ export interface TaskRecord {
   finishedAt: string | null;
 }
 
-export interface StoryboardGenerateTaskInput {
+export interface MasterPlotGenerateTaskInput {
   taskId: string;
   projectId: string;
-  taskType: "storyboard_generate";
-  scriptPath: string;
-  scriptUpdatedAt: string;
-  reviewContext?: StoryboardGenerateReviewContext;
-}
-
-export interface StoryboardGenerateReviewContext {
-  reason: string;
-  rejectedVersionId: string;
+  taskType: "master_plot_generate";
+  premiseText: string;
+  promptTemplateKey: "master_plot.generate";
 }
 
 export interface CreateTaskRecordInput {

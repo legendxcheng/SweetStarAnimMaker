@@ -13,8 +13,13 @@ export interface BuildAppOptions {
   taskQueue?: TaskQueue;
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
-  studioOrigin?: string;
+  studioOrigin?: string | string[];
 }
+
+const defaultStudioOrigins = [
+  "http://127.0.0.1:4273",
+  "http://localhost:5173",
+];
 
 export function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify();
@@ -25,10 +30,14 @@ export function buildApp(options: BuildAppOptions = {}) {
     redisUrl: options.redisUrl,
   });
 
-  const studioOrigin = options.studioOrigin ?? process.env.STUDIO_ORIGIN ?? "http://localhost:5173";
+  const allowedStudioOrigins = new Set(
+    parseStudioOrigins(options.studioOrigin ?? process.env.STUDIO_ORIGIN),
+  );
 
   app.register(cors, {
-    origin: studioOrigin,
+    origin(origin, callback) {
+      callback(null, Boolean(origin) && allowedStudioOrigins.has(origin));
+    },
     credentials: true,
   });
 
@@ -41,4 +50,19 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
 
   return app;
+}
+
+function parseStudioOrigins(origins: BuildAppOptions["studioOrigin"]): string[] {
+  if (Array.isArray(origins)) {
+    return origins;
+  }
+
+  if (typeof origins === "string") {
+    return origins
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0);
+  }
+
+  return defaultStudioOrigins;
 }

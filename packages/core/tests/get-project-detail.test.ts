@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("get project detail use case", () => {
-  it("returns the expected detail dto", async () => {
+  it("returns premise metadata and the current master plot", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue({
@@ -14,58 +14,51 @@ describe("get project detail use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "script_ready",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "mp_20260317_ab12cd",
+        status: "master_plot_in_review",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
       }),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
-    };
-    const storyboardVersionRepository = {
-      insert: vi.fn(),
-      findById: vi.fn(),
-      findCurrentByProjectId: vi.fn().mockResolvedValue({
-        id: "sbv_20260317_ab12cd",
-        projectId: "proj_20260317_ab12cd",
-        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-        sourceTaskId: "task_20260317_ab12cd",
-        versionNumber: 1,
-        kind: "ai",
-        provider: "gemini",
-        model: "gemini-3.1-pro-preview",
-        storageDir: "projects/proj_20260317_ab12cd-my-story/storyboards/versions",
-        fileRelPath: "storyboards/versions/v1-ai.json",
-        rawResponseRelPath: "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
-        createdAt: "2026-03-17T00:00:00.000Z",
-      }),
     };
     const useCase = createGetProjectDetailUseCase({
       repository,
-      storyboardVersionRepository,
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn().mockResolvedValue({
+          id: "mp_20260317_ab12cd",
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+          sourceTaskId: "task_20260317_ab12cd",
+          updatedAt: "2026-03-17T00:00:00.000Z",
+          approvedAt: null,
+        }),
+      },
     });
 
     const result = await useCase.execute({
       projectId: "proj_20260317_ab12cd",
     });
 
-    expect(result.script.bytes).toBe(7);
-    expect(result.script.path).toBe("script/original.txt");
-    expect(result.currentStoryboard).toEqual({
-      id: "sbv_20260317_ab12cd",
-      projectId: "proj_20260317_ab12cd",
-      versionNumber: 1,
-      kind: "ai",
-      provider: "gemini",
-      model: "gemini-3.1-pro-preview",
-      filePath: "storyboards/versions/v1-ai.json",
-      createdAt: "2026-03-17T00:00:00.000Z",
-      sourceTaskId: "task_20260317_ab12cd",
-    });
+    expect(result.premise.bytes).toBe(88);
+    expect(result.premise.path).toBe("premise/v1.md");
+    expect(result.currentMasterPlot?.title).toBe("The Last Sky Choir");
   });
 
   it("throws when the project does not exist", async () => {
@@ -73,16 +66,19 @@ describe("get project detail use case", () => {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue(null),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
       repository,
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn(),
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
       },
     });
 

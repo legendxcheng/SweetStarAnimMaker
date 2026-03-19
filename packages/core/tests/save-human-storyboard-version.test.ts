@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  StoryboardReviewVersionConflictError,
   createSaveHumanStoryboardVersionUseCase,
 } from "../src/index";
 
-describe("save human storyboard version use case", () => {
-  it("rejects a stale base version id", async () => {
+describe("save current master plot use case", () => {
+  it("throws when there is no current master plot to overwrite", async () => {
     const useCase = createSaveHumanStoryboardVersionUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -15,41 +14,26 @@ describe("save human storyboard version use case", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260318_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 120,
-          status: "storyboard_in_review",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 120,
+          currentMasterPlotId: null,
+          status: "master_plot_in_review",
           createdAt: "2026-03-18T10:00:00.000Z",
           updatedAt: "2026-03-18T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-18T10:00:00.000Z",
+          premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
         }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn().mockResolvedValue({
-          id: "sbv_current",
-          projectId: "proj_20260318_ab12cd",
-          projectStorageDir: "projects/proj_20260318_ab12cd-my-story",
-          sourceTaskId: "task_20260318_ab12cd",
-          versionNumber: 1,
-          kind: "ai",
-          provider: "gemini",
-          model: "gemini-3.1-pro-preview",
-          storageDir: "projects/proj_20260318_ab12cd-my-story/storyboards/versions",
-          fileRelPath: "storyboards/versions/v1-ai.json",
-          rawResponseRelPath: "storyboards/raw/task_20260318_ab12cd-gemini-response.json",
-          createdAt: "2026-03-18T12:00:00.000Z",
-        }),
-        getNextVersionNumber: vi.fn(),
-      },
-      storyboardStorage: {
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn(),
+        readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
+        writeCurrentMasterPlot: vi.fn(),
       },
       clock: {
         now: () => "2026-03-18T12:30:00.000Z",
@@ -59,14 +43,19 @@ describe("save human storyboard version use case", () => {
     await expect(
       useCase.execute({
         projectId: "proj_20260318_ab12cd",
-        baseVersionId: "sbv_old",
-        summary: "Updated storyboard summary.",
-        scenes: [],
+        title: "The Last Sky Choir",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
       }),
-    ).rejects.toBeInstanceOf(StoryboardReviewVersionConflictError);
+    ).rejects.toThrow("Current master plot not found");
   });
 
-  it("creates the next human storyboard version and keeps the project in review", async () => {
+  it("overwrites the current master plot and keeps the project in review", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -74,46 +63,43 @@ describe("save human storyboard version use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260318_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 120,
-        status: "storyboard_in_review",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 120,
+        currentMasterPlotId: "mp_current",
+        status: "master_plot_in_review",
         createdAt: "2026-03-18T10:00:00.000Z",
         updatedAt: "2026-03-18T12:00:00.000Z",
-        scriptUpdatedAt: "2026-03-18T10:00:00.000Z",
+        premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
       }),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
-    const storyboardVersionRepository = {
-      insert: vi.fn(),
-      findById: vi.fn(),
-      findCurrentByProjectId: vi.fn().mockResolvedValue({
-        id: "sbv_current",
-        projectId: "proj_20260318_ab12cd",
-        projectStorageDir: "projects/proj_20260318_ab12cd-my-story",
-        sourceTaskId: "task_20260318_ab12cd",
-        versionNumber: 1,
-        kind: "ai",
-        provider: "gemini",
-        model: "gemini-3.1-pro-preview",
-        storageDir: "projects/proj_20260318_ab12cd-my-story/storyboards/versions",
-        fileRelPath: "storyboards/versions/v1-ai.json",
-        rawResponseRelPath: "storyboards/raw/task_20260318_ab12cd-gemini-response.json",
-        createdAt: "2026-03-18T12:00:00.000Z",
-      }),
-      getNextVersionNumber: vi.fn().mockResolvedValue(2),
-    };
-    const storyboardStorage = {
+    const masterPlotStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
       writeRawResponse: vi.fn(),
-      writeStoryboardVersion: vi.fn(),
-      readStoryboardVersion: vi.fn(),
+      readCurrentMasterPlot: vi.fn().mockResolvedValue({
+        id: "mp_current",
+        title: null,
+        logline: "Old logline",
+        synopsis: "Old synopsis",
+        mainCharacters: ["Rin"],
+        coreConflict: "Old conflict",
+        emotionalArc: "Old arc",
+        endingBeat: "Old ending",
+        targetDurationSec: null,
+        sourceTaskId: "task_20260318_ab12cd",
+        updatedAt: "2026-03-18T12:00:00.000Z",
+        approvedAt: null,
+      }),
+      writeCurrentMasterPlot: vi.fn(),
     };
     const useCase = createSaveHumanStoryboardVersionUseCase({
       projectRepository,
-      storyboardVersionRepository,
-      storyboardStorage,
+      masterPlotStorage,
       clock: {
         now: () => "2026-03-18T12:30:00.000Z",
       },
@@ -121,44 +107,28 @@ describe("save human storyboard version use case", () => {
 
     const result = await useCase.execute({
       projectId: "proj_20260318_ab12cd",
-      baseVersionId: "sbv_current",
-      summary: "Updated storyboard summary.",
-      scenes: [
-        {
-          id: "scene_1",
-          sceneIndex: 1,
-          description: "A revised opening beat.",
-          camera: "wide shot",
-          characters: ["A"],
-          prompt: "wide shot of character A in a bright studio",
-        },
-      ],
+      title: "The Last Sky Choir",
+      logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+      synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+      mainCharacters: ["Rin", "Ivo"],
+      coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+      emotionalArc: "She moves from bitterness to sacrificial hope.",
+      endingBeat: "Rin turns the comet's music into a rising tide of light.",
+      targetDurationSec: 480,
     });
 
-    expect(storyboardStorage.writeStoryboardVersion).toHaveBeenCalledWith({
-      version: expect.objectContaining({
-        kind: "human",
-        fileRelPath: "storyboards/versions/v2-human.json",
+    expect(masterPlotStorage.writeCurrentMasterPlot).toHaveBeenCalledWith({
+      storageDir: "projects/proj_20260318_ab12cd-my-story",
+      masterPlot: expect.objectContaining({
+        id: "mp_current",
+        title: "The Last Sky Choir",
       }),
-      storyboard: expect.objectContaining({
-        summary: "Updated storyboard summary.",
-      }),
-    });
-    expect(storyboardVersionRepository.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        versionNumber: 2,
-        kind: "human",
-      }),
-    );
-    expect(projectRepository.updateCurrentStoryboardVersion).toHaveBeenCalledWith({
-      projectId: "proj_20260318_ab12cd",
-      storyboardVersionId: result.id,
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260318_ab12cd",
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
       updatedAt: "2026-03-18T12:30:00.000Z",
     });
-    expect(result.kind).toBe("human");
+    expect(result.id).toBe("mp_current");
   });
 });

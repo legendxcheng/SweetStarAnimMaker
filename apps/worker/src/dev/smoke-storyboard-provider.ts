@@ -1,73 +1,36 @@
-import type { GenerateStoryboardInput, GenerateStoryboardResult, LlmStoryboardProvider } from "@sweet-star/core";
+import type {
+  GenerateMasterPlotInput,
+  GenerateMasterPlotResult,
+  MasterPlotProvider,
+} from "@sweet-star/core";
 
 const provider = "gemini";
 const model = "gemini-3.1-pro-preview";
 
-export function createSmokeStoryboardProvider(): LlmStoryboardProvider {
+export function createSmokeStoryboardProvider(): MasterPlotProvider {
   return {
-    async generateStoryboard(
-      input: GenerateStoryboardInput,
-    ): Promise<GenerateStoryboardResult> {
-      if (input.reviewContext) {
-        return {
-          rawResponse: {
-            mode: "regenerate",
-            rejectedVersionId: input.reviewContext.rejectedVersionId,
-            reason: input.reviewContext.reason,
-          },
-          provider,
-          model,
-          storyboard: {
-            summary: "Regenerated storyboard summary",
-            scenes: [
-              {
-                id: "scene_1",
-                sceneIndex: 1,
-                description: "A returns with a clearer emotional beat.",
-                camera: "medium shot",
-                characters: ["A"],
-                prompt: "medium shot, character A returning with stronger emotion",
-              },
-              {
-                id: "scene_2",
-                sceneIndex: 2,
-                description: "The rival notices the shift and reacts.",
-                camera: "over-the-shoulder",
-                characters: ["A", "Rival"],
-                prompt: "over-the-shoulder shot, rival reacting to character A",
-              },
-            ],
-          },
-        };
-      }
+    async generateMasterPlot(
+      input: GenerateMasterPlotInput,
+    ): Promise<GenerateMasterPlotResult> {
+      const title = input.promptText.includes("second pass")
+        ? "Refined Sky Choir"
+        : "Initial Sky Choir";
 
       return {
-        rawResponse: {
-          mode: "initial",
-          projectId: input.projectId,
-        },
+        rawResponse: JSON.stringify({ title }),
         provider,
         model,
-        storyboard: {
-          summary: "Initial storyboard summary",
-          scenes: [
-            {
-              id: "scene_1",
-              sceneIndex: 1,
-              description: "A enters the rehearsal room and scans the stage.",
-              camera: "wide shot",
-              characters: ["A"],
-              prompt: "wide shot of character A entering a rehearsal room",
-            },
-            {
-              id: "scene_2",
-              sceneIndex: 2,
-              description: "A steps into the spotlight and steadies their breath.",
-              camera: "close-up",
-              characters: ["A"],
-              prompt: "close-up of character A standing in a spotlight",
-            },
-          ],
+        masterPlot: {
+          title,
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
         },
       };
     },

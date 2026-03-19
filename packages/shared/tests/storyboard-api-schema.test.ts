@@ -1,67 +1,51 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  currentStoryboardResponseSchema,
-  storyboardVersionResponseSchema,
-} from "../src/schemas/storyboard-api";
+import * as shared from "../src/index";
 
-describe("storyboard api schema", () => {
-  it("accepts a storyboard version summary", () => {
-    const parsed = storyboardVersionResponseSchema.parse({
-      id: "sbv_20260317_ab12cd",
-      projectId: "proj_20260317_ab12cd",
-      versionNumber: 1,
-      kind: "ai",
-      provider: "gemini",
-      model: "gemini-3.1-pro-preview",
-      filePath: "storyboards/versions/v1-ai.json",
-      createdAt: "2026-03-17T12:00:00.000Z",
-      sourceTaskId: "task_20260317_ab12cd",
-    });
+describe("master plot api schema", () => {
+  it("exports a current master-plot schema", () => {
+    const schema = (shared as Record<string, unknown>).currentMasterPlotResponseSchema;
 
-    expect(parsed.kind).toBe("ai");
+    expect(schema).toBeDefined();
   });
 
-  it("accepts a current storyboard response", () => {
-    const parsed = currentStoryboardResponseSchema.parse({
-      id: "sbv_20260317_ab12cd",
-      projectId: "proj_20260317_ab12cd",
-      versionNumber: 1,
-      kind: "ai",
-      provider: "gemini",
-      model: "gemini-3.1-pro-preview",
-      filePath: "storyboards/versions/v1-ai.json",
-      createdAt: "2026-03-17T12:00:00.000Z",
+  it("accepts a current master plot response", () => {
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).currentMasterPlotResponseSchema;
+    const parsed = schema.parse({
+      id: "mp_20260317_ab12cd",
+      title: "The Last Sky Choir",
+      logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+      synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+      mainCharacters: ["Rin", "Ivo"],
+      coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+      emotionalArc: "She moves from bitterness to sacrificial hope.",
+      endingBeat: "Rin turns the comet's music into a rising tide of light.",
+      targetDurationSec: 480,
       sourceTaskId: "task_20260317_ab12cd",
-      summary: "A short story summary",
-      scenes: [
-        {
-          id: "scene_1",
-          sceneIndex: 1,
-          description: "A enters the room",
-          camera: "medium shot",
-          characters: ["A"],
-          prompt: "medium shot, character A entering a dim room",
-        },
-      ],
+      updatedAt: "2026-03-17T12:00:00.000Z",
+      approvedAt: null,
     });
 
-    expect(parsed.scenes).toHaveLength(1);
+    expect(parsed.mainCharacters).toHaveLength(2);
   });
 
-  it("accepts a human storyboard version summary", () => {
-    const parsed = storyboardVersionResponseSchema.parse({
-      id: "sbv_20260318_hu12cd",
-      projectId: "proj_20260318_ab12cd",
-      versionNumber: 2,
-      kind: "human",
-      provider: "manual",
-      model: "manual-edit",
-      filePath: "storyboards/versions/v2-human.json",
-      createdAt: "2026-03-18T12:30:00.000Z",
-      sourceTaskId: "task_20260318_ab12cd",
+  it("accepts a current master plot response with a nullable title", () => {
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).currentMasterPlotResponseSchema;
+    const parsed = schema.parse({
+      id: "mp_20260318_hu12cd",
+      title: null,
+      logline: "A lonely mechanic bargains with a star trapped in iron.",
+      synopsis: "She must free the star before the empire turns it into a weapon.",
+      mainCharacters: ["Mara", "The Star"],
+      coreConflict: "Mercy collides with survival under occupation.",
+      emotionalArc: "Mara learns that intimacy requires risk.",
+      endingBeat: "She opens the foundry roof and lets dawn choose for her.",
+      targetDurationSec: null,
+      sourceTaskId: null,
+      updatedAt: "2026-03-18T12:30:00.000Z",
+      approvedAt: "2026-03-18T12:45:00.000Z",
     });
 
-    expect(parsed.kind).toBe("human");
+    expect(parsed.approvedAt).toBe("2026-03-18T12:45:00.000Z");
   });
 });

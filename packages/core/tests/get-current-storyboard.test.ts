@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  CurrentStoryboardNotFoundError,
+  CurrentMasterPlotNotFoundError,
   createGetCurrentStoryboardUseCase,
 } from "../src/index";
 
@@ -74,6 +74,6 @@ describe("get current storyboard use case", () => {
       useCase.execute({
         projectId: "proj_20260317_missing",
       }),
-    ).rejects.toBeInstanceOf(CurrentStoryboardNotFoundError);
+    ).rejects.toBeInstanceOf(CurrentMasterPlotNotFoundError);
   });
 });

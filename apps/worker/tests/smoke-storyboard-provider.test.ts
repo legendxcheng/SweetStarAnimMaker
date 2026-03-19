@@ -3,47 +3,31 @@ import { describe, expect, it } from "vitest";
 import { createSmokeStoryboardProvider } from "../src/dev/smoke-storyboard-provider";
 
 describe("smoke storyboard provider", () => {
-  it("returns an initial storyboard for first-pass generation", async () => {
+  it("returns an initial master plot for first-pass generation", async () => {
     const provider = createSmokeStoryboardProvider();
 
-    const result = await provider.generateStoryboard({
+    const result = await provider.generateMasterPlot({
       projectId: "proj_20260318_demo",
-      script: "Scene 1: A enters the rehearsal room.",
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptText: "Turn this premise into a master plot:\n{{premiseText}}",
     });
 
     expect(result.provider).toBe("gemini");
     expect(result.model).toBe("gemini-3.1-pro-preview");
-    expect(result.storyboard.summary).toBe("Initial storyboard summary");
-    expect(result.storyboard.scenes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: "scene_1",
-          sceneIndex: 1,
-        }),
-      ]),
-    );
+    expect(result.masterPlot.title).toBe("Initial Sky Choir");
+    expect(result.masterPlot.mainCharacters).toEqual(["Rin", "Ivo"]);
   });
 
-  it("returns a regeneration storyboard when review context is present", async () => {
+  it("returns a refined master plot when the prompt indicates a later pass", async () => {
     const provider = createSmokeStoryboardProvider();
 
-    const result = await provider.generateStoryboard({
+    const result = await provider.generateMasterPlot({
       projectId: "proj_20260318_demo",
-      script: "Scene 1: A enters the rehearsal room.",
-      reviewContext: {
-        reason: "Need a stronger emotional turn.",
-        rejectedVersionId: "sbv_20260318_prev",
-      },
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptText: "Turn this premise into a second pass master plot:\n{{premiseText}}",
     });
 
-    expect(result.storyboard.summary).toBe("Regenerated storyboard summary");
-    expect(result.storyboard.scenes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: "scene_2",
-          sceneIndex: 2,
-        }),
-      ]),
-    );
+    expect(result.masterPlot.title).toBe("Refined Sky Choir");
+    expect(result.rawResponse).toContain("Refined Sky Choir");
   });
 });

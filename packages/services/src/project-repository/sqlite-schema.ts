@@ -10,17 +10,20 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
       storage_dir TEXT NOT NULL,
-      script_rel_path TEXT NOT NULL,
-      script_bytes INTEGER NOT NULL,
+      premise_rel_path TEXT NOT NULL,
+      premise_bytes INTEGER NOT NULL,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      script_updated_at TEXT NOT NULL,
-      current_storyboard_version_id TEXT NULL
+      premise_updated_at TEXT NOT NULL,
+      current_master_plot_id TEXT NULL
     )
   `);
 
-  ensureProjectsColumn(db, "current_storyboard_version_id", "TEXT NULL");
+  ensureProjectsColumn(db, "premise_rel_path", "TEXT NULL");
+  ensureProjectsColumn(db, "premise_bytes", "INTEGER NULL");
+  ensureProjectsColumn(db, "premise_updated_at", "TEXT NULL");
+  ensureProjectsColumn(db, "current_master_plot_id", "TEXT NULL");
 
   initializeSqliteStoryboardSchema(db);
   initializeSqliteTaskSchema(db);

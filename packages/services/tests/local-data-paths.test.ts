@@ -13,19 +13,17 @@ describe("local data paths", () => {
     );
   });
 
-  it("resolves the original script path under the project storage directory", () => {
+  it("resolves the premise path under the project storage directory", () => {
     const paths = createLocalDataPaths("E:/repo");
 
-    expect(
-      paths.projectOriginalScriptPath("projects/proj_20260317_ab12cd-my-story"),
-    ).toBe(
+    expect(paths.projectPremisePath("projects/proj_20260317_ab12cd-my-story")).toBe(
       path.join(
         "E:/repo",
         ".local-data",
         "projects",
         "proj_20260317_ab12cd-my-story",
-        "script",
-        "original.txt",
+        "premise",
+        "v1.md",
       ),
     );
   });
