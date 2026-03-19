@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { ErrorState } from "./error-state";
 
 interface AsyncStateProps<T> {
   data: T | null;
@@ -14,8 +15,12 @@ export function AsyncState<T>({
   loading,
   error,
   children,
-  loadingFallback = <div>Loading...</div>,
-  errorFallback = (err) => <div>Error: {err.message}</div>,
+  loadingFallback = (
+    <div className="flex items-center justify-center py-12">
+      <p className="text-sm text-(--color-text-muted)">Loading...</p>
+    </div>
+  ),
+  errorFallback = (err) => <ErrorState error={err} />,
 }: AsyncStateProps<T>) {
   if (loading) {
     return <>{loadingFallback}</>;
