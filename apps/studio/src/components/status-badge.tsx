@@ -2,36 +2,59 @@ interface StatusBadgeProps {
   status: string;
 }
 
-const statusColors: Record<string, string> = {
-  script_ready: "#2196F3",
-  storyboard_generating: "#FF9800",
-  storyboard_in_review: "#9C27B0",
-  storyboard_approved: "#4CAF50",
+type StatusConfig = {
+  label: string;
+  dotClass: string;
+  pillClass: string;
+  pulse?: boolean;
 };
 
-const statusLabels: Record<string, string> = {
-  script_ready: "Script Ready",
-  storyboard_generating: "Generating",
-  storyboard_in_review: "In Review",
-  storyboard_approved: "Approved",
+const STATUS_CONFIG: Record<string, StatusConfig> = {
+  script_ready: {
+    label: "Script Ready",
+    dotClass: "bg-(--color-info)",
+    pillClass: "bg-(--color-info)/10 border-(--color-info)/30 text-(--color-info)",
+  },
+  storyboard_generating: {
+    label: "Generating",
+    dotClass: "bg-(--color-warning)",
+    pillClass: "bg-(--color-warning)/10 border-(--color-warning)/30 text-(--color-warning)",
+    pulse: true,
+  },
+  storyboard_in_review: {
+    label: "In Review",
+    dotClass: "bg-(--color-accent)",
+    pillClass: "bg-(--color-accent)/10 border-(--color-accent)/30 text-(--color-accent)",
+  },
+  storyboard_approved: {
+    label: "Approved",
+    dotClass: "bg-(--color-success)",
+    pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
+  },
+  storyboard_rejected: {
+    label: "Rejected",
+    dotClass: "bg-(--color-danger)",
+    pillClass: "bg-(--color-danger)/10 border-(--color-danger)/30 text-(--color-danger)",
+  },
+};
+
+const FALLBACK_CONFIG: StatusConfig = {
+  label: "",
+  dotClass: "bg-(--color-text-muted)",
+  pillClass: "bg-(--color-bg-elevated) border-(--color-border) text-(--color-text-muted)",
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const color = statusColors[status] || "#757575";
-  const label = statusLabels[status] || status;
+  const config = STATUS_CONFIG[status] ?? FALLBACK_CONFIG;
+  const label = config.label || status;
 
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.25rem 0.75rem",
-        borderRadius: "1rem",
-        fontSize: "0.875rem",
-        fontWeight: 500,
-        backgroundColor: `${color}20`,
-        color: color,
-      }}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.pillClass}`}
     >
+      <span
+        className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dotClass} ${config.pulse ? "animate-pulse" : ""}`}
+      />
       {label}
     </span>
   );
