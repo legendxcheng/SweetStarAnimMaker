@@ -29,34 +29,27 @@ export function NewProjectPage() {
     }
   };
 
+  const inputClass =
+    "w-full bg-(--color-bg-surface) border border-(--color-border-muted) text-(--color-text-primary) placeholder:text-(--color-text-muted) rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20 disabled:opacity-40";
+
   return (
     <div>
       <PageHeader title="Create New Project" />
 
       {error && (
-        <div style={{ marginBottom: "1.5rem" }}>
+        <div className="mb-6">
           <ErrorState error={error} retry={() => setError(null)} />
         </div>
       )}
 
       <form
         onSubmit={handleSubmit}
-        style={{
-          maxWidth: "600px",
-          padding: "2rem",
-          border: "1px solid #e0e0e0",
-          borderRadius: "0.5rem",
-          backgroundColor: "white",
-        }}
+        className="max-w-2xl bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-6"
       >
-        <div style={{ marginBottom: "1.5rem" }}>
+        <div className="mb-5">
           <label
             htmlFor="project-name"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: 500,
-            }}
+            className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
           >
             Project Name
           </label>
@@ -68,24 +61,14 @@ export function NewProjectPage() {
             placeholder="Enter project name"
             required
             disabled={submitting}
-            style={{
-              width: "100%",
-              padding: "0.75rem",
-              border: "1px solid #e0e0e0",
-              borderRadius: "0.25rem",
-              fontSize: "1rem",
-            }}
+            className={inputClass}
           />
         </div>
 
-        <div style={{ marginBottom: "1.5rem" }}>
+        <div className="mb-6">
           <label
             htmlFor="project-script"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: 500,
-            }}
+            className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
           >
             Script
           </label>
@@ -97,31 +80,15 @@ export function NewProjectPage() {
             required
             disabled={submitting}
             rows={10}
-            style={{
-              width: "100%",
-              padding: "0.75rem",
-              border: "1px solid #e0e0e0",
-              borderRadius: "0.25rem",
-              fontSize: "1rem",
-              resize: "vertical",
-              fontFamily: "inherit",
-            }}
+            className={`${inputClass} resize-y font-[inherit]`}
           />
         </div>
 
-        <div style={{ display: "flex", gap: "1rem" }}>
+        <div className="flex gap-3">
           <button
             type="submit"
             disabled={submitting || !name.trim() || !script.trim()}
-            style={{
-              padding: "0.75rem 1.5rem",
-              backgroundColor: submitting ? "#ccc" : "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "0.25rem",
-              fontSize: "1rem",
-              cursor: submitting ? "not-allowed" : "pointer",
-            }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? "Creating..." : "Create Project"}
           </button>
@@ -129,15 +96,7 @@ export function NewProjectPage() {
             type="button"
             onClick={() => navigate("/projects")}
             disabled={submitting}
-            style={{
-              padding: "0.75rem 1.5rem",
-              backgroundColor: "white",
-              color: "#333",
-              border: "1px solid #e0e0e0",
-              borderRadius: "0.25rem",
-              fontSize: "1rem",
-              cursor: submitting ? "not-allowed" : "pointer",
-            }}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Cancel
           </button>

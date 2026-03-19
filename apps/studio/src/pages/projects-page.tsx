@@ -32,23 +32,7 @@ export function ProjectsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Projects"
-        actions={
-          <Link
-            to="/projects/new"
-            style={{
-              padding: "0.5rem 1rem",
-              backgroundColor: "#2196F3",
-              color: "white",
-              textDecoration: "none",
-              borderRadius: "0.25rem",
-            }}
-          >
-            New Project
-          </Link>
-        }
-      />
+      <PageHeader title="Projects" />
 
       <AsyncState
         data={data}
@@ -63,64 +47,28 @@ export function ProjectsPage() {
               action={
                 <Link
                   to="/projects/new"
-                  style={{
-                    padding: "0.5rem 1rem",
-                    backgroundColor: "#2196F3",
-                    color: "white",
-                    textDecoration: "none",
-                    borderRadius: "0.25rem",
-                  }}
+                  className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity"
                 >
                   Create Project
                 </Link>
               }
             />
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: "1.5rem",
-              }}
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
                 <Link
                   key={project.id}
                   to={`/projects/${project.id}`}
-                  style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
+                  className="block no-underline"
                 >
-                  <div
-                    style={{
-                      padding: "1.5rem",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: "0.5rem",
-                      backgroundColor: "white",
-                      transition: "box-shadow 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(0,0,0,0.1)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                  >
-                    <h3
-                      style={{
-                        fontSize: "1.25rem",
-                        fontWeight: 600,
-                        marginBottom: "0.5rem",
-                      }}
-                    >
+                  <div className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 hover:border-(--color-border-muted) transition-colors cursor-pointer">
+                    <h3 className="text-base font-semibold text-(--color-text-primary) mb-2">
                       {project.name}
                     </h3>
-                    <div style={{ marginBottom: "1rem" }}>
+                    <div className="mb-3">
                       <StatusBadge status={project.status} />
                     </div>
-                    <p style={{ fontSize: "0.875rem", color: "#757575" }}>
+                    <p className="text-xs text-(--color-text-muted)">
                       Updated: {new Date(project.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
