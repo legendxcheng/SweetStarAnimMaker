@@ -1,4 +1,25 @@
-* {
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: #0d1117;
+  --color-bg-surface: #161b22;
+  --color-bg-elevated: #1c2128;
+  --color-border: #21262d;
+  --color-border-muted: #30363d;
+  --color-accent: #06b6d4;
+  --color-accent-end: #14b8a6;
+  --color-text-primary: #e6edf3;
+  --color-text-muted: #8b949e;
+  --color-text-disabled: #4b5563;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+  --color-danger: #f87171;
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -6,28 +27,6 @@
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
-  color: #333;
-}
-
-.app-layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-header {
-  padding: 1rem 2rem;
-  border-bottom: 1px solid #e0e0e0;
-  background: #fff;
-}
-
-.app-header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.app-main {
-  flex: 1;
-  padding: 2rem;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
 }
