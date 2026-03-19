@@ -55,8 +55,8 @@ describe("sqlite storyboard review repository", () => {
       slug: "my-story",
       createdAt: "2026-03-18T10:00:00.000Z",
       updatedAt: "2026-03-18T10:00:00.000Z",
-      scriptUpdatedAt: "2026-03-18T10:00:00.000Z",
-      scriptBytes: 120,
+      premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
+      premiseBytes: 120,
     });
 
     projectRepository.insert(project);
@@ -90,7 +90,7 @@ describe("sqlite storyboard review repository", () => {
       createStoryboardReviewRecord({
         id: "sbr_20260318_old",
         projectId: "proj_20260318_ab12cd",
-        storyboardVersionId: "sbv_20260318_v1",
+        masterPlotId: "mp_20260318_v1",
         action: "reject",
         reason: "Need better pacing.",
         createdAt: "2026-03-18T12:00:00.000Z",
@@ -100,7 +100,7 @@ describe("sqlite storyboard review repository", () => {
       createStoryboardReviewRecord({
         id: "sbr_20260318_new",
         projectId: "proj_20260318_ab12cd",
-        storyboardVersionId: "sbv_20260318_v2",
+        masterPlotId: "mp_20260318_v2",
         action: "approve",
         note: "Ready to ship.",
         createdAt: "2026-03-18T12:10:00.000Z",
@@ -110,7 +110,7 @@ describe("sqlite storyboard review repository", () => {
     expect(repository.findLatestByProjectId("proj_20260318_ab12cd")).toEqual({
       id: "sbr_20260318_new",
       projectId: "proj_20260318_ab12cd",
-      storyboardVersionId: "sbv_20260318_v2",
+      masterPlotId: "mp_20260318_v2",
       action: "approve",
       reason: "Ready to ship.",
       triggeredTaskId: null,

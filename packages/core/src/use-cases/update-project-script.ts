@@ -3,12 +3,12 @@ import type { ProjectDetail } from "@sweet-star/shared";
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { ScriptStorage } from "../ports/script-storage";
+import type { PremiseStorage } from "../ports/script-storage";
 import { toProjectDetailDto } from "./project-detail-dto";
 
 export interface UpdateProjectScriptInput {
   projectId: string;
-  script: string;
+  premiseText: string;
 }
 
 export interface UpdateProjectScriptUseCase {
@@ -17,7 +17,7 @@ export interface UpdateProjectScriptUseCase {
 
 export interface UpdateProjectScriptUseCaseDependencies {
   repository: ProjectRepository;
-  scriptStorage: ScriptStorage;
+  premiseStorage: PremiseStorage;
   clock: Clock;
 }
 
@@ -26,10 +26,10 @@ export function createUpdateProjectScriptUseCase(
 ): UpdateProjectScriptUseCase {
   return {
     async execute(input) {
-      const script = input.script.trim();
+      const premiseText = input.premiseText.trim();
 
-      if (!script) {
-        throw new ProjectValidationError("Script is required");
+      if (!premiseText) {
+        throw new ProjectValidationError("Premise is required");
       }
 
       const project = await dependencies.repository.findById(input.projectId);
@@ -38,26 +38,26 @@ export function createUpdateProjectScriptUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const previousScript = await dependencies.scriptStorage.readOriginalScript({
+      const previousPremise = await dependencies.premiseStorage.readPremise({
         storageDir: project.storageDir,
       });
-      const storedScript = await dependencies.scriptStorage.writeOriginalScript({
+      const storedPremise = await dependencies.premiseStorage.writePremise({
         storageDir: project.storageDir,
-        script,
+        premiseText,
       });
       const timestamp = dependencies.clock.now();
 
       try {
-        await dependencies.repository.updateScriptMetadata({
+        await dependencies.repository.updatePremiseMetadata({
           id: project.id,
-          scriptBytes: storedScript.scriptBytes,
+          premiseBytes: storedPremise.premiseBytes,
           updatedAt: timestamp,
-          scriptUpdatedAt: timestamp,
+          premiseUpdatedAt: timestamp,
         });
       } catch (error) {
-        await dependencies.scriptStorage.writeOriginalScript({
+        await dependencies.premiseStorage.writePremise({
           storageDir: project.storageDir,
-          script: previousScript,
+          premiseText: previousPremise,
         });
         throw error;
       }
@@ -65,10 +65,10 @@ export function createUpdateProjectScriptUseCase(
       return toProjectDetailDto(
         {
           ...project,
-          scriptBytes: storedScript.scriptBytes,
-          scriptRelPath: storedScript.scriptRelPath,
+          premiseBytes: storedPremise.premiseBytes,
+          premiseRelPath: storedPremise.premiseRelPath,
           updatedAt: timestamp,
-          scriptUpdatedAt: timestamp,
+          premiseUpdatedAt: timestamp,
         },
         null,
       );

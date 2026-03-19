@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  StoryboardReviewVersionConflictError,
   createApproveStoryboardUseCase,
 } from "../src/index";
 
-describe("approve storyboard use case", () => {
-  it("rejects non-current versions", async () => {
+describe("approve master plot use case", () => {
+  it("throws when there is no current master plot", async () => {
     const useCase = createApproveStoryboardUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -15,26 +14,26 @@ describe("approve storyboard use case", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260318_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 120,
-          status: "storyboard_in_review",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 120,
+          currentMasterPlotId: null,
+          status: "master_plot_in_review",
           createdAt: "2026-03-18T10:00:00.000Z",
           updatedAt: "2026-03-18T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-18T10:00:00.000Z",
+          premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
         }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn().mockResolvedValue({
-          id: "sbv_current",
-          projectId: "proj_20260318_ab12cd",
-        }),
-        getNextVersionNumber: vi.fn(),
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
+        writeCurrentMasterPlot: vi.fn(),
       },
       storyboardReviewRepository: {
         insert: vi.fn(),
@@ -48,12 +47,11 @@ describe("approve storyboard use case", () => {
     await expect(
       useCase.execute({
         projectId: "proj_20260318_ab12cd",
-        storyboardVersionId: "sbv_old",
       }),
-    ).rejects.toBeInstanceOf(StoryboardReviewVersionConflictError);
+    ).rejects.toThrow("Current master plot not found");
   });
 
-  it("writes an approve review record and updates the project status", async () => {
+  it("writes an approve review record, stamps approvedAt, and updates the project status", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -61,15 +59,16 @@ describe("approve storyboard use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260318_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 120,
-        status: "storyboard_in_review",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 120,
+        currentMasterPlotId: "mp_current",
+        status: "master_plot_in_review",
         createdAt: "2026-03-18T10:00:00.000Z",
         updatedAt: "2026-03-18T12:00:00.000Z",
-        scriptUpdatedAt: "2026-03-18T10:00:00.000Z",
+        premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
       }),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -77,17 +76,30 @@ describe("approve storyboard use case", () => {
       insert: vi.fn(),
       findLatestByProjectId: vi.fn(),
     };
+    const masterPlotStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      readCurrentMasterPlot: vi.fn().mockResolvedValue({
+        id: "mp_current",
+        title: "The Last Sky Choir",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
+        sourceTaskId: "task_20260318_ab12cd",
+        updatedAt: "2026-03-18T12:00:00.000Z",
+        approvedAt: null,
+      }),
+      writeCurrentMasterPlot: vi.fn(),
+    };
     const useCase = createApproveStoryboardUseCase({
       projectRepository,
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn().mockResolvedValue({
-          id: "sbv_current",
-          projectId: "proj_20260318_ab12cd",
-        }),
-        getNextVersionNumber: vi.fn(),
-      },
+      masterPlotStorage,
       storyboardReviewRepository,
       clock: {
         now: () => "2026-03-18T12:40:00.000Z",
@@ -96,19 +108,23 @@ describe("approve storyboard use case", () => {
 
     const result = await useCase.execute({
       projectId: "proj_20260318_ab12cd",
-      storyboardVersionId: "sbv_current",
-      note: "Approved after manual review.",
     });
 
+    expect(masterPlotStorage.writeCurrentMasterPlot).toHaveBeenCalledWith({
+      storageDir: "projects/proj_20260318_ab12cd-my-story",
+      masterPlot: expect.objectContaining({
+        approvedAt: "2026-03-18T12:40:00.000Z",
+      }),
+    });
     expect(storyboardReviewRepository.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "approve",
-        reason: "Approved after manual review.",
+        reason: null,
       }),
     );
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260318_ab12cd",
-      status: "storyboard_approved",
+      status: "master_plot_approved",
       updatedAt: "2026-03-18T12:40:00.000Z",
     });
     expect(result.action).toBe("approve");

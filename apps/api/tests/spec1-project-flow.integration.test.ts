@@ -10,6 +10,7 @@ import { createLocalDataPaths, createSqliteDb } from "@sweet-star/services";
 import { buildApp } from "../src/app";
 
 describe("spec1 project flow", () => {
+  const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
   const dbs: Array<{ close(): void }> = [];
@@ -27,7 +28,7 @@ describe("spec1 project flow", () => {
     );
   });
 
-  it("creates, updates, and queries a project across http, sqlite, and disk", async () => {
+  it("creates and queries a project across http, sqlite, and disk", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-flow-"));
     tempDirs.push(tempDir);
 
@@ -40,7 +41,7 @@ describe("spec1 project flow", () => {
       url: "/projects",
       payload: {
         name: "My Story",
-        script: "Scene 1",
+        premiseText,
       },
     });
     expect(createResponse.statusCode).toBe(201);
@@ -53,54 +54,29 @@ describe("spec1 project flow", () => {
 
     const sqliteRow = db
       .prepare(
-        "SELECT id, storage_dir, script_rel_path, script_bytes FROM projects WHERE id = ?",
+        "SELECT id, storage_dir, premise_rel_path, premise_bytes, current_master_plot_id FROM projects WHERE id = ?",
       )
       .get(projectId) as
       | {
           id: string;
           storage_dir: string;
-          script_rel_path: string;
-          script_bytes: number;
+          premise_rel_path: string;
+          premise_bytes: number;
+          current_master_plot_id: string | null;
         }
       | undefined;
 
     expect(sqliteRow).toEqual({
       id: projectId,
       storage_dir: created.storageDir,
-      script_rel_path: "script/original.txt",
-      script_bytes: 7,
+      premise_rel_path: "premise/v1.md",
+      premise_bytes: Buffer.byteLength(premiseText, "utf8"),
+      current_master_plot_id: null,
     });
 
-    const scriptFilePath = path.join(tempDir, ".local-data", created.storageDir, "script", "original.txt");
+    const premiseFilePath = path.join(tempDir, ".local-data", created.storageDir, "premise", "v1.md");
 
-    await expect(fs.readFile(scriptFilePath, "utf8")).resolves.toBe("Scene 1");
-
-    const updateResponse = await app.inject({
-      method: "PUT",
-      url: `/projects/${projectId}/script`,
-      payload: {
-        script: "Updated Scene 1",
-      },
-    });
-    expect(updateResponse.statusCode).toBe(200);
-
-    await expect(fs.readFile(scriptFilePath, "utf8")).resolves.toBe("Updated Scene 1");
-
-    const updatedRow = db
-      .prepare(
-        "SELECT script_bytes, updated_at, script_updated_at FROM projects WHERE id = ?",
-      )
-      .get(projectId) as
-      | {
-          script_bytes: number;
-          updated_at: string;
-          script_updated_at: string;
-        }
-      | undefined;
-
-    expect(updatedRow?.script_bytes).toBe(15);
-    expect(updatedRow?.updated_at).toBeTruthy();
-    expect(updatedRow?.script_updated_at).toBeTruthy();
+    await expect(fs.readFile(premiseFilePath, "utf8")).resolves.toBe(premiseText);
 
     const detailResponse = await app.inject({
       method: "GET",
@@ -110,10 +86,12 @@ describe("spec1 project flow", () => {
     expect(detailResponse.json()).toEqual(
       expect.objectContaining({
         id: projectId,
-        script: expect.objectContaining({
-          path: "script/original.txt",
-          bytes: 15,
-        }),
+        currentMasterPlot: null,
+        premise: {
+          path: "premise/v1.md",
+          bytes: Buffer.byteLength(premiseText, "utf8"),
+          updatedAt: expect.any(String),
+        },
       }),
     );
   });

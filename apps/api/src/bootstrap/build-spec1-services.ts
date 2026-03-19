@@ -11,7 +11,7 @@ import {
   createListProjectsUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanStoryboardVersionUseCase,
-  storyboardGenerateQueueName,
+  masterPlotGenerateQueueName,
   createUpdateProjectScriptUseCase,
   type TaskIdGenerator,
   type TaskQueue,
@@ -46,12 +46,13 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   initializeSqliteSchema(db);
 
   const repository = createSqliteProjectRepository({ db });
-  const scriptStorage = createFileScriptStorage({ paths });
+  const premiseStorage = createFileScriptStorage({ paths });
   const taskRepository = createSqliteTaskRepository({ db });
   const taskFileStorage = createTaskFileStorage({ paths });
   const storyboardVersionRepository = createSqliteStoryboardVersionRepository({ db });
   const storyboardReviewRepository = createSqliteStoryboardReviewRepository({ db });
   const storyboardStorage = createStoryboardStorage({ paths });
+  const masterPlotStorage = storyboardStorage;
   const clock = {
     now: () => new Date().toISOString(),
   };
@@ -80,7 +81,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
         maxRetriesPerRequest: null,
       },
     );
-    bullMqQueue = new Queue(storyboardGenerateQueueName, {
+    bullMqQueue = new Queue(masterPlotGenerateQueueName, {
       connection: redisConnection,
     });
     taskQueue = createBullMqTaskQueue({
@@ -92,6 +93,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
 
   const createStoryboardGenerateTask = createCreateStoryboardGenerateTaskUseCase({
     projectRepository: repository,
+    premiseStorage,
     taskRepository,
     taskFileStorage,
     taskQueue: {
@@ -112,7 +114,8 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     },
     createProject: createCreateProjectUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
+      masterPlotStorage,
       idGenerator: {
         generateProjectId: () => {
           const datePart = new Date().toISOString().slice(0, 10).replaceAll("-", "");
@@ -129,7 +132,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
-      storyboardVersionRepository,
+      masterPlotStorage,
     }),
     getCurrentStoryboard: createGetCurrentStoryboardUseCase({
       storyboardVersionRepository,
@@ -137,31 +140,29 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     getStoryboardReview: createGetStoryboardReviewUseCase({
       projectRepository: repository,
-      storyboardVersionRepository,
-      storyboardStorage,
+      masterPlotStorage,
       storyboardReviewRepository,
       taskRepository,
     }),
     updateProjectScript: createUpdateProjectScriptUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
       clock,
     }),
     saveHumanStoryboardVersion: createSaveHumanStoryboardVersionUseCase({
       projectRepository: repository,
-      storyboardVersionRepository,
-      storyboardStorage,
+      masterPlotStorage,
       clock,
     }),
     approveStoryboard: createApproveStoryboardUseCase({
       projectRepository: repository,
-      storyboardVersionRepository,
+      masterPlotStorage,
       storyboardReviewRepository,
       clock,
     }),
     rejectStoryboard: createRejectStoryboardUseCase({
       projectRepository: repository,
-      storyboardVersionRepository,
+      masterPlotStorage,
       storyboardReviewRepository,
       createStoryboardGenerateTask,
       clock,

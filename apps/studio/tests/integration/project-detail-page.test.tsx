@@ -10,22 +10,22 @@ const baseProject = {
   id: "proj-1",
   name: "Test Project",
   slug: "test-project",
-  status: "script_ready" as const,
+  status: "premise_ready" as const,
   storageDir: "/path/to/project",
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
-  script: {
-    path: "script/original.txt",
+  premise: {
+    path: "premise/v1.md",
     bytes: 42,
     updatedAt: "2024-01-01T00:00:00Z",
   },
-  currentStoryboard: null,
+  currentMasterPlot: null,
 };
 
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
-  type: "storyboard_generate" as const,
+  type: "master_plot_generate" as const,
   status: "running" as const,
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:01Z",
@@ -56,23 +56,26 @@ const failedTask = {
 
 const reviewedProject = {
   ...baseProject,
-  status: "storyboard_in_review" as const,
-  currentStoryboard: {
-    id: "sbv-1",
-    projectId: "proj-1",
-    versionNumber: 1,
-    kind: "ai" as const,
-    provider: "gemini",
-    model: "gemini-3.1-pro-preview",
-    filePath: "storyboards/versions/v1-ai.json",
-    createdAt: "2024-01-01T00:00:03Z",
+  status: "master_plot_in_review" as const,
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis: "Rin follows the comet song and discovers how to lift the drowned city.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict: "Rin must choose between escape and saving the city.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "The city rises on a final chorus of light.",
+    targetDurationSec: 480,
     sourceTaskId: "task-1",
+    updatedAt: "2024-01-01T00:00:03Z",
+    approvedAt: null,
   },
 };
 
 const generatingProject = {
   ...baseProject,
-  status: "storyboard_generating" as const,
+  status: "master_plot_generating" as const,
 };
 
 function renderPage() {
@@ -95,9 +98,9 @@ describe("Project Detail Page", () => {
     vi.clearAllMocks();
   });
 
-  it("loads project detail and lets the user start storyboard generation", async () => {
+  it("loads project detail and lets the user start master-plot generation", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(
+    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
       runningTask,
     );
 
@@ -107,10 +110,10 @@ describe("Project Detail Page", () => {
       expect(screen.getByText("Test Project")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate storyboard/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith(
+      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
         "proj-1",
       );
     });
@@ -133,7 +136,7 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/generation in progress/i)).toBeInTheDocument();
+      expect(screen.getByText(/master plot generation in progress/i)).toBeInTheDocument();
     });
 
     expect(refreshTimer).toBeDefined();
@@ -159,7 +162,7 @@ describe("Project Detail Page", () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
       .mockResolvedValueOnce(baseProject)
       .mockResolvedValueOnce(reviewedProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(
+    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
       runningTask,
     );
     const getTaskDetail = vi
@@ -170,13 +173,13 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /generate storyboard/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /generate master plot/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate storyboard/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith(
+      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
         "proj-1",
       );
     });
@@ -206,7 +209,7 @@ describe("Project Detail Page", () => {
     }) as typeof setInterval);
 
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(
+    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
       runningTask,
     );
     const getTaskDetail = vi
@@ -216,13 +219,13 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /generate storyboard/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /generate master plot/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate storyboard/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith(
+      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
         "proj-1",
       );
     });

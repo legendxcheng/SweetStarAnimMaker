@@ -1,22 +1,18 @@
 import {
   createProcessStoryboardGenerateTaskUseCase,
   type Clock,
-  type LlmStoryboardProvider,
+  type MasterPlotProvider,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProjectRepository,
-  type ScriptStorage,
-  type StoryboardStorage,
-  type StoryboardVersionRepository,
+  type MasterPlotStorage,
   type TaskFileStorage,
   type TaskRepository,
 } from "@sweet-star/core";
 import {
-  createFileScriptStorage,
   createGeminiStoryboardProvider,
   createLocalDataPaths,
   createSqliteDb,
   createSqliteProjectRepository,
-  createSqliteStoryboardVersionRepository,
   createSqliteTaskRepository,
   createStoryboardStorage,
   createTaskFileStorage,
@@ -27,11 +23,9 @@ export interface BuildSpec2WorkerServicesOptions {
   workspaceRoot?: string;
   projectRepository?: ProjectRepository;
   taskRepository?: TaskRepository;
-  scriptStorage?: ScriptStorage;
   taskFileStorage?: TaskFileStorage;
-  storyboardStorage?: StoryboardStorage;
-  storyboardVersionRepository?: StoryboardVersionRepository;
-  storyboardProvider?: LlmStoryboardProvider;
+  masterPlotStorage?: MasterPlotStorage;
+  masterPlotProvider?: MasterPlotProvider;
   clock?: Clock;
 }
 
@@ -54,17 +48,12 @@ export function buildSpec2WorkerServices(
     options.taskRepository ?? (db ? createSqliteTaskRepository({ db }) : null);
   const projectRepository =
     options.projectRepository ?? (db ? createSqliteProjectRepository({ db }) : null);
-  const scriptStorage =
-    options.scriptStorage ?? (paths ? createFileScriptStorage({ paths }) : null);
   const taskFileStorage =
     options.taskFileStorage ?? (paths ? createTaskFileStorage({ paths }) : null);
-  const storyboardStorage =
-    options.storyboardStorage ?? (paths ? createStoryboardStorage({ paths }) : null);
-  const storyboardVersionRepository =
-    options.storyboardVersionRepository ??
-    (db ? createSqliteStoryboardVersionRepository({ db }) : null);
-  const storyboardProvider =
-    options.storyboardProvider ??
+  const masterPlotStorage =
+    options.masterPlotStorage ?? (paths ? createStoryboardStorage({ paths }) : null);
+  const masterPlotProvider =
+    options.masterPlotProvider ??
     createGeminiStoryboardProvider({
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
@@ -74,10 +63,8 @@ export function buildSpec2WorkerServices(
   if (
     !taskRepository ||
     !projectRepository ||
-    !scriptStorage ||
     !taskFileStorage ||
-    !storyboardStorage ||
-    !storyboardVersionRepository
+    !masterPlotStorage
   ) {
     throw new Error(
       "buildSpec2WorkerServices requires either workspaceRoot or explicit task dependencies",
@@ -89,10 +76,8 @@ export function buildSpec2WorkerServices(
       taskRepository,
       projectRepository,
       taskFileStorage,
-      scriptStorage,
-      storyboardProvider,
-      storyboardStorage,
-      storyboardVersionRepository,
+      masterPlotProvider,
+      masterPlotStorage,
       clock: options.clock ?? {
         now: () => new Date().toISOString(),
       },

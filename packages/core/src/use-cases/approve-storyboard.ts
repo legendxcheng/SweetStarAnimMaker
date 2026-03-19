@@ -1,28 +1,24 @@
-import type {
-  ApproveStoryboardRequest,
-  StoryboardReviewRecord,
-} from "@sweet-star/shared";
+import type { ApproveMasterPlotRequest, MasterPlotReviewSummary } from "@sweet-star/shared";
 
 import { createStoryboardReviewRecord } from "../domain/storyboard-review";
 import { ProjectNotFoundError } from "../errors/project-errors";
-import { CurrentStoryboardNotFoundError } from "../errors/storyboard-errors";
-import { StoryboardReviewVersionConflictError } from "../errors/storyboard-review-errors";
+import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { StoryboardReviewRepository } from "../ports/storyboard-review-repository";
-import type { StoryboardVersionRepository } from "../ports/storyboard-version-repository";
+import type { MasterPlotStorage } from "../ports/storyboard-storage";
 
-export interface ApproveStoryboardInput extends ApproveStoryboardRequest {
+export interface ApproveStoryboardInput extends ApproveMasterPlotRequest {
   projectId: string;
 }
 
 export interface ApproveStoryboardUseCase {
-  execute(input: ApproveStoryboardInput): Promise<StoryboardReviewRecord>;
+  execute(input: ApproveStoryboardInput): Promise<MasterPlotReviewSummary>;
 }
 
 export interface ApproveStoryboardUseCaseDependencies {
   projectRepository: ProjectRepository;
-  storyboardVersionRepository: StoryboardVersionRepository;
+  masterPlotStorage: MasterPlotStorage;
   storyboardReviewRepository: StoryboardReviewRepository;
   clock: Clock;
 }
@@ -38,32 +34,37 @@ export function createApproveStoryboardUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const currentVersion = await dependencies.storyboardVersionRepository.findCurrentByProjectId(
-        project.id,
-      );
+      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
+        storageDir: project.storageDir,
+      });
 
-      if (!currentVersion) {
-        throw new CurrentStoryboardNotFoundError(project.id);
-      }
-
-      if (currentVersion.id !== input.storyboardVersionId) {
-        throw new StoryboardReviewVersionConflictError(input.storyboardVersionId);
+      if (!currentMasterPlot) {
+        throw new CurrentMasterPlotNotFoundError(project.id);
       }
 
       const createdAt = dependencies.clock.now();
+
+      await dependencies.masterPlotStorage.writeCurrentMasterPlot({
+        storageDir: project.storageDir,
+        masterPlot: {
+          ...currentMasterPlot,
+          updatedAt: createdAt,
+          approvedAt: createdAt,
+        },
+      });
+
       const review = createStoryboardReviewRecord({
         id: toStoryboardReviewId(project.id, "approve", createdAt),
         projectId: project.id,
-        storyboardVersionId: currentVersion.id,
+        masterPlotId: currentMasterPlot.id,
         action: "approve",
-        note: input.note,
         createdAt,
       });
 
       await dependencies.storyboardReviewRepository.insert(review);
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "storyboard_approved",
+        status: "master_plot_approved",
         updatedAt: createdAt,
       });
 

@@ -1,19 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { createProjectRecord } from "../src/index";
+import { createProjectRecord, toProjectDetailDto, toProjectSummaryDto } from "../src/index";
 
 describe("project domain", () => {
-  it("creates a storage directory name from project id and slug", () => {
+  it("creates premise-first project storage metadata", () => {
     const project = createProjectRecord({
       id: "proj_20260317_ab12cd",
       name: "My Story",
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
     });
 
     expect(project.storageDir).toBe("projects/proj_20260317_ab12cd-my-story");
-    expect(project.scriptRelPath).toBe("script/original.txt");
-    expect(project.status).toBe("script_ready");
+    expect((project as Record<string, unknown>).premiseRelPath).toBe("premise/v1.md");
+    expect(project.status).toBe("premise_ready");
+  });
+
+  it("maps project dtos with premise metadata and current master plot slots", () => {
+    const project = createProjectRecord({
+      id: "proj_20260317_ab12cd",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-17T00:00:00.000Z",
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+    });
+
+    const detail = toProjectDetailDto(project, null);
+    const summary = toProjectSummaryDto(project, null);
+
+    expect((detail as Record<string, unknown>).premise).toEqual({
+      path: "premise/v1.md",
+      bytes: 0,
+      updatedAt: "2026-03-17T00:00:00.000Z",
+    });
+    expect((detail as Record<string, unknown>).currentMasterPlot).toBeNull();
+    expect((summary as Record<string, unknown>).currentMasterPlot).toBeNull();
   });
 });

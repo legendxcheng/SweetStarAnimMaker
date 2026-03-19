@@ -31,11 +31,11 @@ describe("Projects Page", () => {
         id: "proj-1",
         name: "Test Project",
         slug: "test-project",
-        status: "script_ready",
+        status: "premise_ready",
         storageDir: "/path/to/project",
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
-        currentStoryboard: null,
+        currentMasterPlot: null,
       },
     ]);
 

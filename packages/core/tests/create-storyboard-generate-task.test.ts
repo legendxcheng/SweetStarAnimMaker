@@ -5,8 +5,8 @@ import {
   createCreateStoryboardGenerateTaskUseCase,
 } from "../src/index";
 
-describe("create storyboard generate task use case", () => {
-  it("creates a pending task, writes input artifacts, and enqueues it", async () => {
+describe("create master plot generate task use case", () => {
+  it("creates a pending task, writes premise-based input artifacts, and enqueues it", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -14,15 +14,16 @@ describe("create storyboard generate task use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "script_ready",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: null,
+        status: "premise_ready",
         createdAt: "2026-03-17T11:59:00.000Z",
         updatedAt: "2026-03-17T12:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T12:00:00.000Z",
       }),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -46,6 +47,13 @@ describe("create storyboard generate task use case", () => {
     };
     const useCase = createCreateStoryboardGenerateTaskUseCase({
       projectRepository,
+      premiseStorage: {
+        writePremise: vi.fn(),
+        readPremise: vi.fn().mockResolvedValue(
+          "A washed-up pilot discovers a singing comet above a drowned city.",
+        ),
+        deletePremise: vi.fn(),
+      },
       taskRepository,
       taskFileStorage,
       taskQueue,
@@ -79,26 +87,25 @@ describe("create storyboard generate task use case", () => {
       input: {
         taskId: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        taskType: "storyboard_generate",
-        scriptPath: "script/original.txt",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
-        reviewContext: undefined,
+        taskType: "master_plot_generate",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        promptTemplateKey: "master_plot.generate",
       },
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260317_ab12cd",
-      status: "storyboard_generating",
+      status: "master_plot_generating",
       updatedAt: "2026-03-17T12:00:00.000Z",
     });
     expect(taskQueue.enqueue).toHaveBeenCalledWith({
       taskId: "task_20260317_ab12cd",
-      queueName: "storyboard-generate",
-      taskType: "storyboard_generate",
+      queueName: "master-plot-generate",
+      taskType: "master_plot_generate",
     });
     expect(result).toEqual({
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
-      type: "storyboard_generate",
+      type: "master_plot_generate",
       status: "pending",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
@@ -118,10 +125,15 @@ describe("create storyboard generate task use case", () => {
       projectRepository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue(null),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
+      },
+      premiseStorage: {
+        writePremise: vi.fn(),
+        readPremise: vi.fn(),
+        deletePremise: vi.fn(),
       },
       taskRepository: {
         insert: vi.fn(),
@@ -182,17 +194,25 @@ describe("create storyboard generate task use case", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260317_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 7,
-          status: "script_ready",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 88,
+          currentMasterPlotId: null,
+          status: "premise_ready",
           createdAt: "2026-03-17T11:59:00.000Z",
           updatedAt: "2026-03-17T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-17T12:00:00.000Z",
         }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
+      },
+      premiseStorage: {
+        writePremise: vi.fn(),
+        readPremise: vi.fn().mockResolvedValue(
+          "A washed-up pilot discovers a singing comet above a drowned city.",
+        ),
+        deletePremise: vi.fn(),
       },
       taskRepository,
       taskFileStorage,
@@ -239,17 +259,25 @@ describe("create storyboard generate task use case", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260317_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 7,
-          status: "script_ready",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 88,
+          currentMasterPlotId: null,
+          status: "premise_ready",
           createdAt: "2026-03-17T11:59:00.000Z",
           updatedAt: "2026-03-17T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-17T12:00:00.000Z",
         }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
+      },
+      premiseStorage: {
+        writePremise: vi.fn(),
+        readPremise: vi.fn().mockResolvedValue(
+          "A washed-up pilot discovers a singing comet above a drowned city.",
+        ),
+        deletePremise: vi.fn(),
       },
       taskRepository,
       taskFileStorage: {
@@ -278,76 +306,6 @@ describe("create storyboard generate task use case", () => {
       errorMessage: "redis down",
       updatedAt: "2026-03-17T12:00:00.000Z",
       finishedAt: "2026-03-17T12:00:00.000Z",
-    });
-  });
-
-  it("includes reject review context when regeneration is requested", async () => {
-    const projectRepository = {
-      insert: vi.fn(),
-      findById: vi.fn().mockResolvedValue({
-        id: "proj_20260317_ab12cd",
-        name: "My Story",
-        slug: "my-story",
-        storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "storyboard_in_review",
-        createdAt: "2026-03-17T11:59:00.000Z",
-        updatedAt: "2026-03-17T12:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
-      }),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
-      updateStatus: vi.fn(),
-      listAll: vi.fn(),
-    };
-    const taskFileStorage = {
-      createTaskArtifacts: vi.fn(),
-      readTaskInput: vi.fn(),
-      writeTaskOutput: vi.fn(),
-      appendTaskLog: vi.fn(),
-    };
-    const useCase = createCreateStoryboardGenerateTaskUseCase({
-      projectRepository,
-      taskRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findLatestByProjectId: vi.fn(),
-        delete: vi.fn(),
-        markRunning: vi.fn(),
-        markSucceeded: vi.fn(),
-        markFailed: vi.fn(),
-      },
-      taskFileStorage,
-      taskQueue: {
-        enqueue: vi.fn(),
-      },
-      taskIdGenerator: {
-        generateTaskId: () => "task_20260317_ab12cd",
-      },
-      clock: {
-        now: () => "2026-03-17T12:00:00.000Z",
-      },
-    });
-
-    await useCase.execute({
-      projectId: "proj_20260317_ab12cd",
-      reviewContext: {
-        reason: "Need stronger scene transitions.",
-        rejectedVersionId: "sbv_20260317_prev",
-      },
-    });
-
-    expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith({
-      task: expect.objectContaining({
-        id: "task_20260317_ab12cd",
-      }),
-      input: expect.objectContaining({
-        reviewContext: {
-          reason: "Need stronger scene transitions.",
-          rejectedVersionId: "sbv_20260317_prev",
-        },
-      }),
     });
   });
 });

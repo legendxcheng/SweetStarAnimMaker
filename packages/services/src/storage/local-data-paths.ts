@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import {
-  originalScriptRelPath,
+  premiseRelPath,
   taskInputFileName,
   taskLogFileName,
   taskOutputFileName,
@@ -14,7 +14,7 @@ export interface LocalDataPaths {
   sqliteDbPath: string;
   projectsDir: string;
   projectPath(storageDir: string): string;
-  projectOriginalScriptPath(storageDir: string): string;
+  projectPremisePath(storageDir: string): string;
   projectTaskInputPath(taskStorageDir: string): string;
   projectTaskOutputPath(taskStorageDir: string): string;
   projectTaskLogPath(taskStorageDir: string): string;
@@ -36,8 +36,8 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
     projectPath(storageDir) {
       return path.join(dataRootDir, storageDir);
     },
-    projectOriginalScriptPath(storageDir) {
-      return path.join(dataRootDir, storageDir, originalScriptRelPath);
+    projectPremisePath(storageDir) {
+      return path.join(dataRootDir, storageDir, premiseRelPath);
     },
     projectTaskInputPath(taskStorageDir) {
       return path.join(dataRootDir, taskStorageDir, taskInputFileName);

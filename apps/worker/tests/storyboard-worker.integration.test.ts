@@ -40,15 +40,23 @@ describe("storyboard worker integration", () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it("forwards reject review context into the configured storyboard provider", async () => {
-    const storyboardProvider = {
-      generateStoryboard: vi.fn().mockResolvedValue({
-        rawResponse: {},
+  it("forwards premise-driven prompt input into the configured master-plot provider", async () => {
+    const masterPlotProvider = {
+      generateMasterPlot: vi.fn().mockResolvedValue({
+        rawResponse: "{\"title\":\"Generated master plot\"}",
         provider: "gemini",
         model: "gemini-3.1-pro-preview",
-        storyboard: {
-          summary: "Generated storyboard summary",
-          scenes: [],
+        masterPlot: {
+          title: "Generated master plot",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
         },
       }),
     };
@@ -58,9 +66,9 @@ describe("storyboard worker integration", () => {
         findById: vi.fn().mockResolvedValue({
           id: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          type: "storyboard_generate",
+          type: "master_plot_generate",
           status: "pending",
-          queueName: "storyboard-generate",
+          queueName: "master-plot-generate",
           storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
           inputRelPath: "tasks/task_20260317_ab12cd/input.json",
           outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -84,51 +92,42 @@ describe("storyboard worker integration", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260317_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 120,
-          status: "storyboard_generating",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 88,
+          currentMasterPlotId: null,
+          status: "master_plot_generating",
           createdAt: "2026-03-17T10:00:00.000Z",
           updatedAt: "2026-03-17T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-17T10:00:00.000Z",
+          premiseUpdatedAt: "2026-03-17T10:00:00.000Z",
         }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
-      },
-      scriptStorage: {
-        writeOriginalScript: vi.fn(),
-        readOriginalScript: vi.fn().mockResolvedValue("Scene 1: A enters the room"),
-        deleteOriginalScript: vi.fn(),
       },
       taskFileStorage: {
         createTaskArtifacts: vi.fn(),
         readTaskInput: vi.fn().mockResolvedValue({
           taskId: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          taskType: "storyboard_generate",
-          scriptPath: "script/original.txt",
-          scriptUpdatedAt: "2026-03-17T10:00:00.000Z",
-          reviewContext: {
-            reason: "Need a brighter ending.",
-            rejectedVersionId: "sbv_20260317_prev",
-          },
+          taskType: "master_plot_generate",
+          premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+          promptTemplateKey: "master_plot.generate",
         }),
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
       },
-      storyboardStorage: {
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi
+          .fn()
+          .mockResolvedValue("Turn this premise into a master plot:\n{{premiseText}}"),
+        writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
       },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn(),
-        getNextVersionNumber: vi.fn().mockResolvedValue(2),
-      },
-      storyboardProvider,
+      masterPlotProvider,
       clock: {
         now: vi
           .fn()
@@ -141,13 +140,11 @@ describe("storyboard worker integration", () => {
       taskId: "task_20260317_ab12cd",
     });
 
-    expect(storyboardProvider.generateStoryboard).toHaveBeenCalledWith({
+    expect(masterPlotProvider.generateMasterPlot).toHaveBeenCalledWith({
       projectId: "proj_20260317_ab12cd",
-      script: "Scene 1: A enters the room",
-      reviewContext: {
-        reason: "Need a brighter ending.",
-        rejectedVersionId: "sbv_20260317_prev",
-      },
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptText:
+        "Turn this premise into a master plot:\nA washed-up pilot discovers a singing comet above a drowned city.",
     });
   });
 });

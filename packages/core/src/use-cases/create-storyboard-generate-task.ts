@@ -2,13 +2,13 @@ import type { TaskDetail } from "@sweet-star/shared";
 
 import {
   createTaskRecord,
-  storyboardGenerateQueueName,
-  type StoryboardGenerateReviewContext,
-  type StoryboardGenerateTaskInput,
+  masterPlotGenerateQueueName,
+  type MasterPlotGenerateTaskInput,
 } from "../domain/task";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { PremiseStorage } from "../ports/script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
@@ -17,7 +17,6 @@ import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface CreateStoryboardGenerateTaskInput {
   projectId: string;
-  reviewContext?: StoryboardGenerateReviewContext;
 }
 
 export interface CreateStoryboardGenerateTaskUseCase {
@@ -26,6 +25,7 @@ export interface CreateStoryboardGenerateTaskUseCase {
 
 export interface CreateStoryboardGenerateTaskUseCaseDependencies {
   projectRepository: ProjectRepository;
+  premiseStorage: PremiseStorage;
   taskRepository: TaskRepository;
   taskFileStorage: TaskFileStorage;
   taskQueue: TaskQueue;
@@ -44,22 +44,24 @@ export function createCreateStoryboardGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
+      const premiseText = await dependencies.premiseStorage.readPremise({
+        storageDir: project.storageDir,
+      });
       const timestamp = dependencies.clock.now();
       const task = createTaskRecord({
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,
         projectStorageDir: project.storageDir,
-        type: "storyboard_generate",
-        queueName: storyboardGenerateQueueName,
+        type: "master_plot_generate",
+        queueName: masterPlotGenerateQueueName,
         createdAt: timestamp,
       });
-      const taskInput: StoryboardGenerateTaskInput = {
+      const taskInput: MasterPlotGenerateTaskInput = {
         taskId: task.id,
         projectId: project.id,
-        taskType: "storyboard_generate",
-        scriptPath: project.scriptRelPath,
-        scriptUpdatedAt: project.scriptUpdatedAt,
-        reviewContext: input.reviewContext,
+        taskType: "master_plot_generate",
+        premiseText,
+        promptTemplateKey: "master_plot.generate",
       };
 
       await dependencies.taskRepository.insert(task);
@@ -82,7 +84,7 @@ export function createCreateStoryboardGenerateTaskUseCase(
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "storyboard_generating",
+          status: "master_plot_generating",
           updatedAt: timestamp,
         });
       } catch (error) {

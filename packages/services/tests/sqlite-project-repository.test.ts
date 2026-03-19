@@ -42,9 +42,7 @@ describe("sqlite project repository", () => {
       .prepare("PRAGMA table_info(projects)")
       .all() as Array<{ name: string }>;
 
-    expect(columns.map((column) => column.name)).toContain(
-      "current_storyboard_version_id",
-    );
+    expect(columns.map((column) => column.name)).toContain("current_master_plot_id");
   });
 
   it("inserts and finds a project by id", async () => {
@@ -55,8 +53,8 @@ describe("sqlite project repository", () => {
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
-      scriptBytes: 7,
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 7,
     });
 
     repository.insert(project);
@@ -64,7 +62,7 @@ describe("sqlite project repository", () => {
     expect(repository.findById("proj_20260317_ab12cd")).toEqual(project);
   });
 
-  it("updates script metadata fields", async () => {
+  it("updates premise metadata fields", async () => {
     const { repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_20260317_ab12cd",
@@ -72,27 +70,27 @@ describe("sqlite project repository", () => {
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
-      scriptBytes: 7,
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 7,
     });
 
     repository.insert(project);
-    repository.updateScriptMetadata({
+    repository.updatePremiseMetadata({
       id: "proj_20260317_ab12cd",
-      scriptBytes: 15,
+      premiseBytes: 15,
       updatedAt: "2026-03-17T01:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T01:00:00.000Z",
+      premiseUpdatedAt: "2026-03-17T01:00:00.000Z",
     });
 
     expect(repository.findById("proj_20260317_ab12cd")).toEqual({
       ...project,
-      scriptBytes: 15,
+      premiseBytes: 15,
       updatedAt: "2026-03-17T01:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T01:00:00.000Z",
+      premiseUpdatedAt: "2026-03-17T01:00:00.000Z",
     });
   });
 
-  it("updates the current storyboard version pointer on the project row", async () => {
+  it("updates the current master plot pointer on the project row", async () => {
     const { db, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_20260317_ab12cd",
@@ -100,23 +98,23 @@ describe("sqlite project repository", () => {
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
-      scriptBytes: 7,
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 7,
     });
 
     repository.insert(project);
-    repository.updateCurrentStoryboardVersion({
+    repository.updateCurrentMasterPlot({
       projectId: "proj_20260317_ab12cd",
-      storyboardVersionId: "sbv_20260317_ab12cd",
+      masterPlotId: "mp_20260317_ab12cd",
     });
 
     const row = db
-      .prepare("SELECT current_storyboard_version_id FROM projects WHERE id = ?")
+      .prepare("SELECT current_master_plot_id FROM projects WHERE id = ?")
       .get("proj_20260317_ab12cd") as
-      | { current_storyboard_version_id: string | null }
+      | { current_master_plot_id: string | null }
       | undefined;
 
-    expect(row?.current_storyboard_version_id).toBe("sbv_20260317_ab12cd");
+    expect(row?.current_master_plot_id).toBe("mp_20260317_ab12cd");
   });
 
   it("updates the persisted project status", async () => {
@@ -127,20 +125,20 @@ describe("sqlite project repository", () => {
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
-      scriptBytes: 7,
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 7,
     });
 
     repository.insert(project);
     repository.updateStatus({
       projectId: project.id,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
       updatedAt: "2026-03-17T01:00:00.000Z",
     });
 
     expect(repository.findById(project.id)).toEqual({
       ...project,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
       updatedAt: "2026-03-17T01:00:00.000Z",
     });
   });

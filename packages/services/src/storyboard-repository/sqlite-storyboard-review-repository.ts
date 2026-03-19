@@ -1,12 +1,12 @@
-import type { StoryboardReviewRecord, StoryboardReviewRepository } from "@sweet-star/core";
+import type { MasterPlotReviewSummary, StoryboardReviewRepository } from "@sweet-star/core";
 
 import type { SqliteDatabase } from "../project-repository/sqlite-db";
 
 interface SqliteStoryboardReviewRow {
   id: string;
   project_id: string;
-  storyboard_version_id: string;
-  action: StoryboardReviewRecord["action"];
+  master_plot_id: string;
+  action: MasterPlotReviewSummary["action"];
   reason: string | null;
   triggered_task_id: string | null;
   created_at: string;
@@ -27,7 +27,7 @@ export function createSqliteStoryboardReviewRepository(
             INSERT INTO storyboard_reviews (
               id,
               project_id,
-              storyboard_version_id,
+              master_plot_id,
               action,
               reason,
               triggered_task_id,
@@ -35,7 +35,7 @@ export function createSqliteStoryboardReviewRepository(
             ) VALUES (
               @id,
               @project_id,
-              @storyboard_version_id,
+              @master_plot_id,
               @action,
               @reason,
               @triggered_task_id,
@@ -46,7 +46,7 @@ export function createSqliteStoryboardReviewRepository(
         .run({
           id: review.id,
           project_id: review.projectId,
-          storyboard_version_id: review.storyboardVersionId,
+          master_plot_id: review.masterPlotId,
           action: review.action,
           reason: review.reason,
           triggered_task_id: review.triggeredTaskId,
@@ -60,7 +60,7 @@ export function createSqliteStoryboardReviewRepository(
             SELECT
               id,
               project_id,
-              storyboard_version_id,
+              master_plot_id,
               action,
               reason,
               triggered_task_id,
@@ -78,11 +78,11 @@ export function createSqliteStoryboardReviewRepository(
   };
 }
 
-function fromSqliteRow(row: SqliteStoryboardReviewRow): StoryboardReviewRecord {
+function fromSqliteRow(row: SqliteStoryboardReviewRow): MasterPlotReviewSummary {
   return {
     id: row.id,
     projectId: row.project_id,
-    storyboardVersionId: row.storyboard_version_id,
+    masterPlotId: row.master_plot_id,
     action: row.action,
     reason: row.reason,
     triggeredTaskId: row.triggered_task_id,

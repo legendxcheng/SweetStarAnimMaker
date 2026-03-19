@@ -1,9 +1,8 @@
 import type {
   ProjectRecord,
   ProjectRepository,
-  UpdateCurrentStoryboardVersionInput,
+  UpdateCurrentMasterPlotInput,
   UpdateProjectStatusInput,
-  UpdateProjectScriptMetadataInput,
 } from "@sweet-star/core";
 
 import type { SqliteDatabase } from "./sqlite-db";
@@ -13,12 +12,13 @@ interface SqliteProjectRow {
   name: string;
   slug: string;
   storage_dir: string;
-  script_rel_path: string;
-  script_bytes: number;
+  premise_rel_path: string;
+  premise_bytes: number;
   status: ProjectRecord["status"];
   created_at: string;
   updated_at: string;
-  script_updated_at: string;
+  premise_updated_at: string;
+  current_master_plot_id: string | null;
 }
 
 export interface CreateSqliteProjectRepositoryOptions {
@@ -38,23 +38,25 @@ export function createSqliteProjectRepository(
               name,
               slug,
               storage_dir,
-              script_rel_path,
-              script_bytes,
+              premise_rel_path,
+              premise_bytes,
               status,
               created_at,
               updated_at,
-              script_updated_at
+              premise_updated_at,
+              current_master_plot_id
             ) VALUES (
               @id,
               @name,
               @slug,
               @storage_dir,
-              @script_rel_path,
-              @script_bytes,
+              @premise_rel_path,
+              @premise_bytes,
               @status,
               @created_at,
               @updated_at,
-              @script_updated_at
+              @premise_updated_at,
+              @current_master_plot_id
             )
           `,
         )
@@ -69,12 +71,13 @@ export function createSqliteProjectRepository(
               name,
               slug,
               storage_dir,
-              script_rel_path,
-              script_bytes,
+              premise_rel_path,
+              premise_bytes,
               status,
               created_at,
               updated_at,
-              script_updated_at
+              premise_updated_at,
+              current_master_plot_id
             FROM projects
             WHERE id = ?
           `,
@@ -92,12 +95,13 @@ export function createSqliteProjectRepository(
               name,
               slug,
               storage_dir,
-              script_rel_path,
-              script_bytes,
+              premise_rel_path,
+              premise_bytes,
               status,
               created_at,
               updated_at,
-              script_updated_at
+              premise_updated_at,
+              current_master_plot_id
             FROM projects
             ORDER BY updated_at DESC
           `,
@@ -106,27 +110,27 @@ export function createSqliteProjectRepository(
 
       return rows.map(fromSqliteRow);
     },
-    updateScriptMetadata(input) {
+    updatePremiseMetadata(input) {
       options.db
         .prepare(
           `
             UPDATE projects
             SET
-              script_bytes = @script_bytes,
+              premise_bytes = @premise_bytes,
               updated_at = @updated_at,
-              script_updated_at = @script_updated_at
+              premise_updated_at = @premise_updated_at
             WHERE id = @id
           `,
         )
         .run({
           id: input.id,
-          script_bytes: input.scriptBytes,
+          premise_bytes: input.premiseBytes,
           updated_at: input.updatedAt,
-          script_updated_at: input.scriptUpdatedAt,
+          premise_updated_at: input.premiseUpdatedAt,
         });
     },
-    updateCurrentStoryboardVersion(input) {
-      updateCurrentStoryboardVersion(options.db, input);
+    updateCurrentMasterPlot(input) {
+      updateCurrentMasterPlot(options.db, input);
     },
     updateStatus(input) {
       updateProjectStatus(options.db, input);
@@ -134,19 +138,19 @@ export function createSqliteProjectRepository(
   };
 }
 
-function updateCurrentStoryboardVersion(
+function updateCurrentMasterPlot(
   db: SqliteDatabase,
-  input: UpdateCurrentStoryboardVersionInput,
+  input: UpdateCurrentMasterPlotInput,
 ) {
   db.prepare(
     `
       UPDATE projects
-      SET current_storyboard_version_id = @current_storyboard_version_id
+      SET current_master_plot_id = @current_master_plot_id
       WHERE id = @project_id
     `,
   ).run({
     project_id: input.projectId,
-    current_storyboard_version_id: input.storyboardVersionId,
+    current_master_plot_id: input.masterPlotId,
   });
 }
 
@@ -172,12 +176,13 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     name: project.name,
     slug: project.slug,
     storage_dir: project.storageDir,
-    script_rel_path: project.scriptRelPath,
-    script_bytes: project.scriptBytes,
+    premise_rel_path: project.premiseRelPath,
+    premise_bytes: project.premiseBytes,
     status: project.status,
     created_at: project.createdAt,
     updated_at: project.updatedAt,
-    script_updated_at: project.scriptUpdatedAt,
+    premise_updated_at: project.premiseUpdatedAt,
+    current_master_plot_id: project.currentMasterPlotId,
   };
 }
 
@@ -187,11 +192,12 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     name: row.name,
     slug: row.slug,
     storageDir: row.storage_dir,
-    scriptRelPath: row.script_rel_path,
-    scriptBytes: row.script_bytes,
+    premiseRelPath: row.premise_rel_path,
+    premiseBytes: row.premise_bytes,
+    currentMasterPlotId: row.current_master_plot_id,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    scriptUpdatedAt: row.script_updated_at,
+    premiseUpdatedAt: row.premise_updated_at,
   };
 }

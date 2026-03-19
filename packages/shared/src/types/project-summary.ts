@@ -1,5 +1,5 @@
 import type { ProjectStatus } from "../constants/project-status";
-import type { StoryboardVersionSummary } from "./storyboard";
+import type { CurrentMasterPlot } from "./master-plot";
 
 export interface ProjectSummary {
   id: string;
@@ -9,5 +9,5 @@ export interface ProjectSummary {
   storageDir: string;
   createdAt: string;
   updatedAt: string;
-  currentStoryboard: StoryboardVersionSummary | null;
+  currentMasterPlot: CurrentMasterPlot | null;
 }

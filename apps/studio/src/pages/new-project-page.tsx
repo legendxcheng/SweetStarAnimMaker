@@ -7,20 +7,20 @@ import { ErrorState } from "../components/error-state";
 export function NewProjectPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
-  const [script, setScript] = useState("");
+  const [premiseText, setPremiseText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !script.trim()) return;
+    if (!name.trim() || !premiseText.trim()) return;
 
     try {
       setSubmitting(true);
       setError(null);
       const response = await apiClient.createProject({
         name: name.trim(),
-        script: script.trim(),
+        premiseText: premiseText.trim(),
       });
       navigate(`/projects/${response.id}`);
     } catch (err) {
@@ -67,16 +67,16 @@ export function NewProjectPage() {
 
         <div className="mb-6">
           <label
-            htmlFor="project-script"
+            htmlFor="project-premise"
             className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
           >
-            Script
+            Premise
           </label>
           <textarea
-            id="project-script"
-            value={script}
-            onChange={(e) => setScript(e.target.value)}
-            placeholder="Paste the source script for storyboard generation"
+            id="project-premise"
+            value={premiseText}
+            onChange={(e) => setPremiseText(e.target.value)}
+            placeholder="Describe the premise for master-plot generation"
             required
             disabled={submitting}
             rows={10}
@@ -87,7 +87,7 @@ export function NewProjectPage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={submitting || !name.trim() || !script.trim()}
+            disabled={submitting || !name.trim() || !premiseText.trim()}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? "Creating..." : "Create Project"}

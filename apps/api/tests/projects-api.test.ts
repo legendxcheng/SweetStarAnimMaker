@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../src/app";
 
 describe("projects api", () => {
+  const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
 
@@ -21,7 +22,7 @@ describe("projects api", () => {
     );
   });
 
-  it("creates a project and returns script metadata", async () => {
+  it("creates a project and returns premise metadata", async () => {
     const { app } = await createTempApp();
 
     const response = await app.inject({
@@ -29,7 +30,7 @@ describe("projects api", () => {
       url: "/projects",
       payload: {
         name: "My Story",
-        script: "Scene 1",
+        premiseText,
       },
     });
 
@@ -39,11 +40,11 @@ describe("projects api", () => {
         id: expect.stringContaining("proj_"),
         name: "My Story",
         slug: "my-story",
-        status: "script_ready",
-        currentStoryboard: null,
-        script: {
-          path: "script/original.txt",
-          bytes: 7,
+        status: "premise_ready",
+        currentMasterPlot: null,
+        premise: {
+          path: "premise/v1.md",
+          bytes: Buffer.byteLength(premiseText, "utf8"),
           updatedAt: expect.any(String),
         },
       }),
@@ -58,7 +59,7 @@ describe("projects api", () => {
       url: "/projects",
       payload: {
         name: "   ",
-        script: "",
+        premiseText: "   ",
       },
     });
 
@@ -72,7 +73,7 @@ describe("projects api", () => {
       url: "/projects",
       payload: {
         name: "My Story",
-        script: "Scene 1",
+        premiseText,
       },
     });
     const projectId = created.json().id as string;
@@ -86,10 +87,10 @@ describe("projects api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: projectId,
-        currentStoryboard: null,
-        script: expect.objectContaining({
-          path: "script/original.txt",
-          bytes: 7,
+        currentMasterPlot: null,
+        premise: expect.objectContaining({
+          path: "premise/v1.md",
+          bytes: Buffer.byteLength(premiseText, "utf8"),
         }),
       }),
     );
@@ -106,84 +107,14 @@ describe("projects api", () => {
     expect(response.statusCode).toBe(404);
   });
 
-  it("updates a project script and returns updated metadata", async () => {
-    const { app } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const projectId = created.json().id as string;
-
-    const response = await app.inject({
-      method: "PUT",
-      url: `/projects/${projectId}/script`,
-      payload: {
-        script: "Updated Scene 1",
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(
-      expect.objectContaining({
-        id: projectId,
-        currentStoryboard: null,
-        script: expect.objectContaining({
-          path: "script/original.txt",
-          bytes: 15,
-        }),
-      }),
-    );
-  });
-
-  it("returns 400 for an empty script update payload", async () => {
-    const { app } = await createTempApp();
-    const created = await app.inject({
-      method: "POST",
-      url: "/projects",
-      payload: {
-        name: "My Story",
-        script: "Scene 1",
-      },
-    });
-    const projectId = created.json().id as string;
-
-    const response = await app.inject({
-      method: "PUT",
-      url: `/projects/${projectId}/script`,
-      payload: {
-        script: "   ",
-      },
-    });
-
-    expect(response.statusCode).toBe(400);
-  });
-
-  it("returns 404 when updating a missing project", async () => {
-    const { app } = await createTempApp();
-
-    const response = await app.inject({
-      method: "PUT",
-      url: "/projects/missing-project/script",
-      payload: {
-        script: "Updated Scene 1",
-      },
-    });
-
-    expect(response.statusCode).toBe(404);
-  });
-
-  it("returns expanded storyboard workflow statuses from project detail", async () => {
+  it("returns expanded master-plot workflow statuses from project detail", async () => {
     const { app, tempDir } = await createTempApp();
     const created = await app.inject({
       method: "POST",
       url: "/projects",
       payload: {
         name: "My Story",
-        script: "Scene 1",
+        premiseText,
       },
     });
     const projectId = created.json().id as string;
@@ -193,7 +124,7 @@ describe("projects api", () => {
 
     repository.updateStatus({
       projectId,
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
       updatedAt: "2026-03-18T12:00:00.000Z",
     });
     db.close();
@@ -204,7 +135,7 @@ describe("projects api", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().status).toBe("storyboard_in_review");
+    expect(response.json().status).toBe("master_plot_in_review");
   });
 
   async function createTempApp() {

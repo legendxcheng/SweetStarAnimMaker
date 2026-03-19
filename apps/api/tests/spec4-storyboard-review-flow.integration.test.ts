@@ -11,13 +11,14 @@ import { startWorker } from "@sweet-star/worker";
 
 import { buildApp } from "../src/app";
 
+const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
 const tempDirs: string[] = [];
 const apps: FastifyInstance[] = [];
 const dbs: Array<{ close(): void }> = [];
 const workers: Array<{ close(): Promise<void> }> = [];
 const redisServers: RedisMemoryServer[] = [];
 
-describe("spec4 storyboard review flow", () => {
+describe("spec4 master plot review flow", () => {
   afterEach(async () => {
     await Promise.all(workers.splice(0).map((worker) => worker.close()));
     await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -32,7 +33,7 @@ describe("spec4 storyboard review flow", () => {
     );
   });
 
-  it("rejects the current storyboard and regenerates a new ai version", async () => {
+  it("rejects the current master plot and regenerates a new ai version", async () => {
     const { app, tempDir } = await createIntegrationContext([
       "task_20260318_first",
       "task_20260318_regen",
@@ -42,13 +43,13 @@ describe("spec4 storyboard review flow", () => {
     const worker = await startWorker({
       workspaceRoot: tempDir,
       redisUrl: app.redisUrl,
-      storyboardProvider: createReviewAwareStoryboardProvider(),
+      masterPlotProvider: createReviewAwareMasterPlotProvider(),
     });
     workers.push(worker);
 
     const createTaskResponse = await app.instance.inject({
       method: "POST",
-      url: `/projects/${project.id}/tasks/storyboard-generate`,
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
     });
     expect(createTaskResponse.statusCode).toBe(201);
 
@@ -64,11 +65,9 @@ describe("spec4 storyboard review flow", () => {
 
     const rejectResponse = await app.instance.inject({
       method: "POST",
-      url: `/projects/${project.id}/storyboard/reject`,
+      url: `/projects/${project.id}/master-plot/reject`,
       payload: {
-        storyboardVersionId: "sbv_20260318_first",
         reason: "Need stronger scene transitions.",
-        nextAction: "regenerate",
       },
     });
 
@@ -85,19 +84,19 @@ describe("spec4 storyboard review flow", () => {
       expect(response.json().status).toBe("succeeded");
     });
 
-    const currentStoryboardResponse = await app.instance.inject({
+    const projectDetailResponse = await app.instance.inject({
       method: "GET",
-      url: `/projects/${project.id}/storyboard/current`,
+      url: `/projects/${project.id}`,
     });
 
-    expect(currentStoryboardResponse.statusCode).toBe(200);
-    expect(currentStoryboardResponse.json()).toEqual(
+    expect(projectDetailResponse.statusCode).toBe(200);
+    expect(projectDetailResponse.json()).toEqual(
       expect.objectContaining({
-        id: "sbv_20260318_regen",
-        versionNumber: 2,
-        kind: "ai",
-        filePath: "storyboards/versions/v2-ai.json",
-        summary: "Regenerated storyboard summary",
+        status: "master_plot_in_review",
+        currentMasterPlot: expect.objectContaining({
+          title: "Regenerated Sky Choir",
+          sourceTaskId: "task_20260318_regen",
+        }),
       }),
     );
 
@@ -126,20 +125,20 @@ describe("spec4 storyboard review flow", () => {
     });
   });
 
-  it("rejects for manual editing, saves a human version, and approves it", async () => {
+  it("saves a human-edited master plot and approves it", async () => {
     const { app, tempDir } = await createIntegrationContext(["task_20260318_first"]);
     const project = await createProject(app);
 
     const worker = await startWorker({
       workspaceRoot: tempDir,
       redisUrl: app.redisUrl,
-      storyboardProvider: createReviewAwareStoryboardProvider(),
+      masterPlotProvider: createReviewAwareMasterPlotProvider(),
     });
     workers.push(worker);
 
     const createTaskResponse = await app.instance.inject({
       method: "POST",
-      url: `/projects/${project.id}/tasks/storyboard-generate`,
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
     });
     expect(createTaskResponse.statusCode).toBe(201);
 
@@ -153,43 +152,27 @@ describe("spec4 storyboard review flow", () => {
       expect(response.json().status).toBe("succeeded");
     });
 
-    const rejectResponse = await app.instance.inject({
-      method: "POST",
-      url: `/projects/${project.id}/storyboard/reject`,
-      payload: {
-        storyboardVersionId: "sbv_20260318_first",
-        reason: "Need stronger emotional beat.",
-        nextAction: "edit_manually",
-      },
-    });
-
-    expect(rejectResponse.statusCode).toBe(200);
-
     const saveResponse = await app.instance.inject({
-      method: "POST",
-      url: `/projects/${project.id}/storyboard/save-human-version`,
+      method: "PUT",
+      url: `/projects/${project.id}/master-plot`,
       payload: {
-        baseVersionId: "sbv_20260318_first",
-        summary: "Manual storyboard summary",
-        scenes: [
-          {
-            id: "scene_1",
-            sceneIndex: 1,
-            description: "A pauses and smiles.",
-            camera: "close-up",
-            characters: ["A"],
-            prompt: "close-up of character A smiling in warm light",
-          },
-        ],
+        title: "Manual Sky Choir",
+        logline: "Rin rewrites fate with a steadier hand.",
+        synopsis: "Rin refines the plan and leads the city toward a controlled ascent.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict: "She must trust others instead of carrying the city alone.",
+        emotionalArc: "Rin learns that leadership can be shared.",
+        endingBeat: "The city rises because Rin finally lets the choir sing together.",
+        targetDurationSec: 510,
       },
     });
 
     expect(saveResponse.statusCode).toBe(200);
     expect(saveResponse.json()).toEqual(
       expect.objectContaining({
-        versionNumber: 2,
-        kind: "human",
-        filePath: "storyboards/versions/v2-human.json",
+        id: `mp_${project.id.replace(/^proj_/, "")}`,
+        title: "Manual Sky Choir",
+        approvedAt: null,
       }),
     );
 
@@ -199,21 +182,17 @@ describe("spec4 storyboard review flow", () => {
           tempDir,
           ".local-data",
           project.storageDir,
-          "storyboards",
-          "versions",
-          "v2-human.json",
+          "master-plot",
+          "current.json",
         ),
         "utf8",
       ),
-    ).resolves.toContain("\"summary\": \"Manual storyboard summary\"");
+    ).resolves.toContain("\"title\": \"Manual Sky Choir\"");
 
     const approveResponse = await app.instance.inject({
       method: "POST",
-      url: `/projects/${project.id}/storyboard/approve`,
-      payload: {
-        storyboardVersionId: saveResponse.json().id,
-        note: "Approved after manual polish.",
-      },
+      url: `/projects/${project.id}/master-plot/approve`,
+      payload: {},
     });
 
     expect(approveResponse.statusCode).toBe(200);
@@ -226,10 +205,11 @@ describe("spec4 storyboard review flow", () => {
     expect(projectDetailResponse.statusCode).toBe(200);
     expect(projectDetailResponse.json()).toEqual(
       expect.objectContaining({
-        status: "storyboard_approved",
-        currentStoryboard: expect.objectContaining({
-          id: saveResponse.json().id,
-          kind: "human",
+        status: "master_plot_approved",
+        currentMasterPlot: expect.objectContaining({
+          id: `mp_${project.id.replace(/^proj_/, "")}`,
+          title: "Manual Sky Choir",
+          approvedAt: expect.any(String),
         }),
       }),
     );
@@ -269,7 +249,7 @@ async function createProject(app: { instance: FastifyInstance }) {
     url: "/projects",
     payload: {
       name: "My Story",
-      script: "Scene 1",
+      premiseText,
     },
   });
 
@@ -295,52 +275,48 @@ async function waitFor(assertion: () => Promise<void>, timeoutMs = 10000) {
   }
 }
 
-function createReviewAwareStoryboardProvider() {
+function createReviewAwareMasterPlotProvider() {
+  let callCount = 0;
+
   return {
-    async generateStoryboard(input: {
-      reviewContext?: { reason: string; rejectedVersionId: string };
-    }) {
-      if (input.reviewContext) {
+    async generateMasterPlot() {
+      callCount += 1;
+
+      if (callCount > 1) {
         return {
-          rawResponse: {
-            candidates: [{ content: { parts: [{ text: "{}" }] } }],
-          },
+          rawResponse: "{\"title\":\"Regenerated Sky Choir\"}",
           provider: "gemini",
           model: "gemini-3.1-pro-preview",
-          storyboard: {
-            summary: "Regenerated storyboard summary",
-            scenes: [
-              {
-                id: "scene_1",
-                sceneIndex: 1,
-                description: "A re-enters with clearer motivation.",
-                camera: "medium shot",
-                characters: ["A"],
-                prompt: "medium shot, character A returning with stronger emotion",
-              },
-            ],
+          masterPlot: {
+            title: "Regenerated Sky Choir",
+            logline: "Rin rebuilds the song with sharper transitions and higher stakes.",
+            synopsis:
+              "The city hears the comet again, and Rin shapes the chaos into a clearer ascent.",
+            mainCharacters: ["Rin", "Ivo"],
+            coreConflict:
+              "Rin must turn criticism into a stronger collective plan before the city collapses.",
+            emotionalArc: "She turns defensiveness into focused leadership.",
+            endingBeat: "The second chorus lands and the city rises cleanly.",
+            targetDurationSec: 500,
           },
         };
       }
 
       return {
-        rawResponse: {
-          candidates: [{ content: { parts: [{ text: "{}" }] } }],
-        },
+        rawResponse: "{\"title\":\"Initial Sky Choir\"}",
         provider: "gemini",
         model: "gemini-3.1-pro-preview",
-        storyboard: {
-          summary: "Initial storyboard summary",
-          scenes: [
-            {
-              id: "scene_1",
-              sceneIndex: 1,
-              description: "A enters the room",
-              camera: "medium shot",
-              characters: ["A"],
-              prompt: "medium shot, character A entering a dim room",
-            },
-          ],
+        masterPlot: {
+          title: "Initial Sky Choir",
+          logline: "Rin hears the comet but the plan lands without enough shape.",
+          synopsis:
+            "Rin begins the ascent, but the turning points still feel blunt and underdeveloped.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "She struggles to align the city's survival with her own unresolved bitterness.",
+          emotionalArc: "Rin moves from numbness toward responsibility.",
+          endingBeat: "The first chorus lifts the city, but the landing feels incomplete.",
+          targetDurationSec: 480,
         },
       };
     },

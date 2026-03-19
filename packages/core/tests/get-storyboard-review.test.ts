@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createGetStoryboardReviewUseCase } from "../src/index";
 
-describe("get storyboard review use case", () => {
-  it("returns the review workspace for the current storyboard", async () => {
+describe("get master plot review use case", () => {
+  it("returns the review workspace for the current master plot", async () => {
     const useCase = createGetStoryboardReviewUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -12,60 +12,46 @@ describe("get storyboard review use case", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260318_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 120,
-          status: "storyboard_in_review",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 120,
+          currentMasterPlotId: "mp_20260318_ab12cd",
+          status: "master_plot_in_review",
           createdAt: "2026-03-18T10:00:00.000Z",
           updatedAt: "2026-03-18T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-18T10:00:00.000Z",
+          premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
         }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn().mockResolvedValue({
-          id: "sbv_20260318_ab12cd",
-          projectId: "proj_20260318_ab12cd",
-          projectStorageDir: "projects/proj_20260318_ab12cd-my-story",
-          sourceTaskId: "task_20260318_ab12cd",
-          versionNumber: 1,
-          kind: "ai",
-          provider: "gemini",
-          model: "gemini-3.1-pro-preview",
-          storageDir: "projects/proj_20260318_ab12cd-my-story/storyboards/versions",
-          fileRelPath: "storyboards/versions/v1-ai.json",
-          rawResponseRelPath: "storyboards/raw/task_20260318_ab12cd-gemini-response.json",
-          createdAt: "2026-03-18T12:00:00.000Z",
-        }),
-        getNextVersionNumber: vi.fn(),
-      },
-      storyboardStorage: {
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn().mockResolvedValue({
-          summary: "Generated storyboard summary",
-          scenes: [
-            {
-              id: "scene_1",
-              sceneIndex: 1,
-              description: "A enters the room",
-              camera: "medium shot",
-              characters: ["A"],
-              prompt: "medium shot, character A entering a dim room",
-            },
-          ],
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn().mockResolvedValue({
+          id: "mp_20260318_ab12cd",
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+          sourceTaskId: "task_20260318_ab12cd",
+          updatedAt: "2026-03-18T12:00:00.000Z",
+          approvedAt: null,
         }),
       },
       storyboardReviewRepository: {
         insert: vi.fn(),
         findLatestByProjectId: vi.fn().mockResolvedValue({
-          id: "sbr_20260318_ab12cd",
+          id: "mpr_20260318_ab12cd",
           projectId: "proj_20260318_ab12cd",
-          storyboardVersionId: "sbv_20260318_ab12cd",
+          masterPlotId: "mp_20260318_ab12cd",
           action: "reject",
           reason: "Need better pacing.",
           triggeredTaskId: null,
@@ -78,9 +64,9 @@ describe("get storyboard review use case", () => {
         findLatestByProjectId: vi.fn().mockResolvedValue({
           id: "task_20260318_ab12cd",
           projectId: "proj_20260318_ab12cd",
-          type: "storyboard_generate",
+          type: "master_plot_generate",
           status: "succeeded",
-          queueName: "storyboard-generate",
+          queueName: "master-plot-generate",
           storageDir: "projects/proj_20260318_ab12cd-my-story/tasks/task_20260318_ab12cd",
           inputRelPath: "tasks/task_20260318_ab12cd/input.json",
           outputRelPath: "tasks/task_20260318_ab12cd/output.json",
@@ -102,12 +88,12 @@ describe("get storyboard review use case", () => {
       projectId: "proj_20260318_ab12cd",
     });
 
-    expect(result.projectStatus).toBe("storyboard_in_review");
-    expect(result.currentStoryboard.id).toBe("sbv_20260318_ab12cd");
+    expect(result.projectStatus).toBe("master_plot_in_review");
+    expect(result.currentMasterPlot.id).toBe("mp_20260318_ab12cd");
     expect(result.latestReview?.action).toBe("reject");
-    expect(result.latestStoryboardTask?.id).toBe("task_20260318_ab12cd");
+    expect(result.latestTask?.id).toBe("task_20260318_ab12cd");
     expect(result.availableActions).toEqual({
-      saveHumanVersion: true,
+      save: true,
       approve: true,
       reject: true,
     });

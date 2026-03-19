@@ -1,18 +1,19 @@
 import { initialProjectStatus, type ProjectStatus } from "@sweet-star/shared";
 
-import { originalScriptRelPath } from "./project-script";
+import { premiseRelPath } from "./project-premise";
 
 export interface ProjectRecord {
   id: string;
   name: string;
   slug: string;
   storageDir: string;
-  scriptRelPath: string;
-  scriptBytes: number;
+  premiseRelPath: string;
+  premiseBytes: number;
+  currentMasterPlotId: string | null;
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
-  scriptUpdatedAt: string;
+  premiseUpdatedAt: string;
 }
 
 export interface CreateProjectRecordInput {
@@ -21,8 +22,9 @@ export interface CreateProjectRecordInput {
   slug: string;
   createdAt: string;
   updatedAt: string;
-  scriptUpdatedAt: string;
-  scriptBytes?: number;
+  premiseUpdatedAt: string;
+  premiseBytes?: number;
+  currentMasterPlotId?: string | null;
   status?: ProjectStatus;
 }
 
@@ -43,9 +45,10 @@ export function toProjectSlug(name: string) {
 export function createProjectRecord(input: CreateProjectRecordInput): ProjectRecord {
   return {
     ...input,
-    scriptBytes: input.scriptBytes ?? 0,
+    premiseBytes: input.premiseBytes ?? 0,
+    currentMasterPlotId: input.currentMasterPlotId ?? null,
     status: input.status ?? initialProjectStatus,
     storageDir: toProjectStorageDir(input.id, input.slug),
-    scriptRelPath: originalScriptRelPath,
+    premiseRelPath: premiseRelPath,
   };
 }

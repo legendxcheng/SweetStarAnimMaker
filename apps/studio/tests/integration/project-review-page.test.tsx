@@ -8,54 +8,37 @@ vi.mock("../../src/services/api-client");
 
 const workspace = {
   projectId: "proj-1",
-  projectStatus: "storyboard_in_review" as const,
-  currentStoryboard: {
-    id: "sbv-1",
-    projectId: "proj-1",
-    versionNumber: 1,
-    kind: "ai" as const,
-    provider: "gemini",
-    model: "gemini-3.1-pro-preview",
-    filePath: "storyboards/versions/v1-ai.json",
-    createdAt: "2024-01-01T00:00:00Z",
+  projectStatus: "master_plot_in_review" as const,
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis: "Rin hears the comet sing and discovers how to lift the drowned city.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict: "Rin must choose between escape and saving the city.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "The city rises on a final chorus of light.",
+    targetDurationSec: 480,
     sourceTaskId: "task-1",
-    summary: "Initial storyboard summary",
-    scenes: [
-      {
-        id: "scene-1",
-        sceneIndex: 1,
-        description: "Opening shot",
-        camera: "wide shot",
-        characters: ["A"],
-        prompt: "wide shot prompt",
-      },
-    ],
+    updatedAt: "2024-01-01T00:00:00Z",
+    approvedAt: null,
   },
   latestReview: null,
   availableActions: {
-    saveHumanVersion: true,
+    save: true,
     approve: true,
     reject: true,
   },
-  latestStoryboardTask: null,
+  latestTask: null,
 };
 
 const refreshedWorkspace = {
   ...workspace,
-  currentStoryboard: {
-    ...workspace.currentStoryboard,
-    id: "sbv-2",
-    versionNumber: 2,
-    kind: "human" as const,
-    provider: "manual",
-    model: "manual-edit",
-    summary: "Updated storyboard summary",
-    scenes: [
-      {
-        ...workspace.currentStoryboard.scenes[0],
-        description: "Updated opening shot",
-      },
-    ],
+  currentMasterPlot: {
+    ...workspace.currentMasterPlot,
+    title: "The Last Sky Choir Revised",
+    synopsis: "Updated master plot synopsis",
+    updatedAt: "2024-01-01T00:00:02Z",
   },
 };
 
@@ -75,79 +58,81 @@ describe("Project Review Page", () => {
     globalThis.alert = vi.fn();
   });
 
-  it("loads the workspace and renders editable summary and scene fields", async () => {
+  it("loads the workspace and renders editable master-plot fields", async () => {
     vi.spyOn(apiModule.apiClient, "getReviewWorkspace").mockResolvedValue(workspace);
 
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Initial storyboard summary")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue("Opening shot")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("wide shot")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("wide shot prompt")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue(
+        "A disgraced pilot chases a cosmic song to save her flooded home.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Rin, Ivo")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("The city rises on a final chorus of light."),
+    ).toBeInTheDocument();
   });
 
   it("saves the edited draft and refreshes the workspace", async () => {
     vi.spyOn(apiModule.apiClient, "getReviewWorkspace")
       .mockResolvedValueOnce(workspace)
       .mockResolvedValueOnce(refreshedWorkspace);
-    vi.spyOn(apiModule.apiClient, "saveHumanVersion").mockResolvedValue(
-      refreshedWorkspace.currentStoryboard,
+    vi.spyOn(apiModule.apiClient, "saveMasterPlot").mockResolvedValue(
+      refreshedWorkspace.currentMasterPlot,
     );
 
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Initial storyboard summary")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Summary:"), {
-      target: { value: "Updated storyboard summary" },
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "The Last Sky Choir Revised" },
     });
-    fireEvent.change(screen.getByLabelText("Description:"), {
-      target: { value: "Updated opening shot" },
+    fireEvent.change(screen.getByLabelText("Synopsis"), {
+      target: { value: "Updated master plot synopsis" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.saveHumanVersion).toHaveBeenCalledWith("proj-1", {
-        baseVersionId: "sbv-1",
-        summary: "Updated storyboard summary",
-        scenes: [
-          {
-            id: "scene-1",
-            sceneIndex: 1,
-            description: "Updated opening shot",
-            camera: "wide shot",
-            characters: ["A"],
-            prompt: "wide shot prompt",
-          },
-        ],
+      expect(apiModule.apiClient.saveMasterPlot).toHaveBeenCalledWith("proj-1", {
+        title: "The Last Sky Choir Revised",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis: "Updated master plot synopsis",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict: "Rin must choose between escape and saving the city.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "The city rises on a final chorus of light.",
+        targetDurationSec: 480,
       });
     });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Updated storyboard summary")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("The Last Sky Choir Revised")).toBeInTheDocument();
     });
   });
 
   it("keeps edited draft values visible when save fails", async () => {
     vi.spyOn(apiModule.apiClient, "getReviewWorkspace").mockResolvedValue(workspace);
-    vi.spyOn(apiModule.apiClient, "saveHumanVersion").mockRejectedValue(
+    vi.spyOn(apiModule.apiClient, "saveMasterPlot").mockRejectedValue(
       new Error("Version conflict"),
     );
 
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Initial storyboard summary")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Summary:"), {
-      target: { value: "Draft summary that should stay visible" },
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Draft title that should stay visible" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
@@ -156,8 +141,6 @@ describe("Project Review Page", () => {
       expect(globalThis.alert).toHaveBeenCalledWith("Save failed: Version conflict");
     });
 
-    expect(
-      screen.getByDisplayValue("Draft summary that should stay visible"),
-    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Draft title that should stay visible")).toBeInTheDocument();
   });
 });

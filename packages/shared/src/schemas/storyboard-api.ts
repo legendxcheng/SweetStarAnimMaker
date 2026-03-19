@@ -1,75 +1,55 @@
 import { z } from "zod";
 
 import { projectStatuses } from "../constants/project-status";
-import { storyboardReviewActions } from "../constants/storyboard-review-action";
-import { storyboardReviewNextActions } from "../constants/storyboard-review-next-action";
-import { storyboardVersionKinds } from "../constants/storyboard-version-kind";
 import { taskDetailResponseSchema } from "./task-api";
 
-export const storyboardSceneSchema = z.object({
-  id: z.string(),
-  sceneIndex: z.number().int().positive(),
-  description: z.string(),
-  camera: z.string(),
-  characters: z.array(z.string()),
-  prompt: z.string(),
-});
-
-export const storyboardVersionResponseSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  versionNumber: z.number().int().positive(),
-  kind: z.enum(storyboardVersionKinds),
-  provider: z.string(),
-  model: z.string(),
-  filePath: z.string(),
-  createdAt: z.string(),
-  sourceTaskId: z.string(),
-});
-
-export const currentStoryboardResponseSchema = storyboardVersionResponseSchema.extend({
-  summary: z.string(),
-  scenes: z.array(storyboardSceneSchema),
-});
-
 const requiredTextSchema = z.string().trim().min(1);
-
-export const approveStoryboardRequestSchema = z.object({
-  storyboardVersionId: z.string(),
-  note: z.string().trim().min(1).optional(),
+const masterPlotReviewActions = ["approve", "reject"] as const;
+const editableMasterPlotSchema = z.object({
+  title: z.string().trim().min(1).nullable(),
+  logline: requiredTextSchema,
+  synopsis: requiredTextSchema,
+  mainCharacters: z.array(requiredTextSchema),
+  coreConflict: requiredTextSchema,
+  emotionalArc: requiredTextSchema,
+  endingBeat: requiredTextSchema,
+  targetDurationSec: z.number().int().positive().nullable(),
 });
 
-export const rejectStoryboardRequestSchema = z.object({
-  storyboardVersionId: z.string(),
+export const currentMasterPlotResponseSchema = editableMasterPlotSchema.extend({
+  id: z.string(),
+  sourceTaskId: z.string().nullable(),
+  updatedAt: z.string(),
+  approvedAt: z.string().nullable(),
+});
+
+export const approveMasterPlotRequestSchema = z.object({});
+
+export const rejectMasterPlotRequestSchema = z.object({
   reason: requiredTextSchema,
-  nextAction: z.enum(storyboardReviewNextActions),
 });
 
-export const saveHumanStoryboardVersionRequestSchema = z.object({
-  baseVersionId: z.string(),
-  summary: requiredTextSchema,
-  scenes: z.array(storyboardSceneSchema),
-});
+export const saveMasterPlotRequestSchema = editableMasterPlotSchema;
 
-export const storyboardReviewSummarySchema = z.object({
+export const masterPlotReviewSummarySchema = z.object({
   id: z.string(),
   projectId: z.string(),
-  storyboardVersionId: z.string(),
-  action: z.enum(storyboardReviewActions),
+  masterPlotId: z.string(),
+  action: z.enum(masterPlotReviewActions),
   reason: z.string().nullable(),
   triggeredTaskId: z.string().nullable(),
   createdAt: z.string(),
 });
 
-export const storyboardReviewWorkspaceResponseSchema = z.object({
+export const masterPlotReviewWorkspaceResponseSchema = z.object({
   projectId: z.string(),
   projectStatus: z.enum(projectStatuses),
-  currentStoryboard: currentStoryboardResponseSchema,
-  latestReview: storyboardReviewSummarySchema.nullable(),
+  currentMasterPlot: currentMasterPlotResponseSchema,
+  latestReview: masterPlotReviewSummarySchema.nullable(),
   availableActions: z.object({
-    saveHumanVersion: z.boolean(),
+    save: z.boolean(),
     approve: z.boolean(),
     reject: z.boolean(),
   }),
-  latestStoryboardTask: taskDetailResponseSchema.nullable(),
+  latestTask: taskDetailResponseSchema.nullable(),
 });

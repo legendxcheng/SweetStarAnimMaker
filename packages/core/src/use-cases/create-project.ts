@@ -5,12 +5,13 @@ import { ProjectValidationError } from "../errors/project-errors";
 import type { Clock } from "../ports/clock";
 import type { IdGenerator } from "../ports/id-generator";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { ScriptStorage } from "../ports/script-storage";
+import type { PremiseStorage } from "../ports/script-storage";
+import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import { toProjectDetailDto } from "./project-detail-dto";
 
 export interface CreateProjectInput {
   name: string;
-  script: string;
+  premiseText: string;
 }
 
 export interface CreateProjectUseCase {
@@ -19,7 +20,8 @@ export interface CreateProjectUseCase {
 
 export interface CreateProjectUseCaseDependencies {
   repository: ProjectRepository;
-  scriptStorage: ScriptStorage;
+  premiseStorage: PremiseStorage;
+  masterPlotStorage: MasterPlotStorage;
   idGenerator: IdGenerator;
   clock: Clock;
 }
@@ -30,7 +32,7 @@ export function createCreateProjectUseCase(
   return {
     async execute(input) {
       const name = requireNonEmptyText(input.name, "Project name is required");
-      const script = requireNonEmptyText(input.script, "Script is required");
+      const premiseText = requireNonEmptyText(input.premiseText, "Premise is required");
       const timestamp = dependencies.clock.now();
       const project = createProjectRecord({
         id: dependencies.idGenerator.generateProjectId(),
@@ -38,23 +40,29 @@ export function createCreateProjectUseCase(
         slug: toProjectSlug(name),
         createdAt: timestamp,
         updatedAt: timestamp,
-        scriptUpdatedAt: timestamp,
+        premiseUpdatedAt: timestamp,
       });
 
-      const storedScript = await dependencies.scriptStorage.writeOriginalScript({
+      const storedPremise = await dependencies.premiseStorage.writePremise({
         storageDir: project.storageDir,
-        script,
+        premiseText,
       });
+
+      await dependencies.masterPlotStorage.initializePromptTemplate({
+        storageDir: project.storageDir,
+        promptTemplateKey: "master_plot.generate",
+      });
+
       const persistedProject = {
         ...project,
-        scriptBytes: storedScript.scriptBytes,
-        scriptRelPath: storedScript.scriptRelPath,
+        premiseBytes: storedPremise.premiseBytes,
+        premiseRelPath: storedPremise.premiseRelPath,
       };
 
       try {
         await dependencies.repository.insert(persistedProject);
       } catch (error) {
-        await dependencies.scriptStorage.deleteOriginalScript({
+        await dependencies.premiseStorage.deletePremise({
           storageDir: project.storageDir,
         });
         throw error;

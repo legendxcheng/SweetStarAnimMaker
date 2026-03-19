@@ -50,8 +50,8 @@ describe("sqlite storyboard version repository", () => {
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
-      scriptBytes: 7,
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 7,
     });
     const version = createStoryboardVersionRecord({
       id: "sbv_20260317_ab12cd",
@@ -66,9 +66,9 @@ describe("sqlite storyboard version repository", () => {
 
     projectRepository.insert(project);
     storyboardVersionRepository.insert(version);
-    projectRepository.updateCurrentStoryboardVersion({
+    projectRepository.updateCurrentMasterPlot({
       projectId: project.id,
-      storyboardVersionId: version.id,
+      masterPlotId: version.id,
     });
 
     expect(
@@ -84,8 +84,8 @@ describe("sqlite storyboard version repository", () => {
       slug: "my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
-      scriptBytes: 7,
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 7,
     });
 
     projectRepository.insert(project);

@@ -1,60 +1,48 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  approveStoryboardRequestSchema,
-  rejectStoryboardRequestSchema,
-  saveHumanStoryboardVersionRequestSchema,
-  storyboardReviewSummarySchema,
-  storyboardReviewWorkspaceResponseSchema,
-} from "../src/index";
+import * as shared from "../src/index";
 
-describe("storyboard review api schema", () => {
+describe("master plot review api schema", () => {
   it("accepts an approve request payload", () => {
-    const parsed = approveStoryboardRequestSchema.parse({
-      storyboardVersionId: "sbv_20260318_ab12cd",
-      note: "Looks good.",
-    });
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).approveMasterPlotRequestSchema;
+    const parsed = schema.parse({});
 
-    expect(parsed.storyboardVersionId).toBe("sbv_20260318_ab12cd");
-    expect(parsed.note).toBe("Looks good.");
+    expect(parsed).toEqual({});
   });
 
   it("accepts a reject request payload", () => {
-    const parsed = rejectStoryboardRequestSchema.parse({
-      storyboardVersionId: "sbv_20260318_ab12cd",
-      reason: "Need stronger scene transitions.",
-      nextAction: "regenerate",
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).rejectMasterPlotRequestSchema;
+    const parsed = schema.parse({
+      reason: "Need a sharper emotional payoff.",
     });
 
-    expect(parsed.nextAction).toBe("regenerate");
+    expect(parsed.reason).toBe("Need a sharper emotional payoff.");
   });
 
-  it("accepts a save-human-version request payload", () => {
-    const parsed = saveHumanStoryboardVersionRequestSchema.parse({
-      baseVersionId: "sbv_20260318_ab12cd",
-      summary: "Updated storyboard summary.",
-      scenes: [
-        {
-          id: "scene_1",
-          sceneIndex: 1,
-          description: "A revised opening beat.",
-          camera: "wide shot",
-          characters: ["A"],
-          prompt: "wide shot of character A in a bright studio",
-        },
-      ],
+  it("accepts a save-current-master-plot request payload", () => {
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).saveMasterPlotRequestSchema;
+    const parsed = schema.parse({
+      title: "The Last Sky Choir",
+      logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+      synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+      mainCharacters: ["Rin", "Ivo"],
+      coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+      emotionalArc: "She moves from bitterness to sacrificial hope.",
+      endingBeat: "Rin turns the comet's music into a rising tide of light.",
+      targetDurationSec: 480,
     });
 
-    expect(parsed.scenes).toHaveLength(1);
+    expect(parsed.mainCharacters).toHaveLength(2);
   });
 
   it("accepts a latest review summary", () => {
-    const parsed = storyboardReviewSummarySchema.parse({
-      id: "sbr_20260318_ab12cd",
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).masterPlotReviewSummarySchema;
+    const parsed = schema.parse({
+      id: "mpr_20260318_ab12cd",
       projectId: "proj_20260318_ab12cd",
-      storyboardVersionId: "sbv_20260318_ab12cd",
+      masterPlotId: "mp_20260318_ab12cd",
       action: "reject",
-      reason: "Need stronger visual continuity.",
+      reason: "Need a stronger ending beat.",
       triggeredTaskId: "task_20260318_ab12cd",
       createdAt: "2026-03-18T12:00:00.000Z",
     });
@@ -63,50 +51,43 @@ describe("storyboard review api schema", () => {
     expect(parsed.triggeredTaskId).toBe("task_20260318_ab12cd");
   });
 
-  it("accepts a storyboard review workspace response", () => {
-    const parsed = storyboardReviewWorkspaceResponseSchema.parse({
+  it("accepts a master-plot review workspace response", () => {
+    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).masterPlotReviewWorkspaceResponseSchema;
+    const parsed = schema.parse({
       projectId: "proj_20260318_ab12cd",
-      projectStatus: "storyboard_in_review",
-      currentStoryboard: {
-        id: "sbv_20260318_ab12cd",
-        projectId: "proj_20260318_ab12cd",
-        versionNumber: 2,
-        kind: "human",
-        provider: "manual",
-        model: "manual-edit",
-        filePath: "storyboards/versions/v2-human.json",
-        createdAt: "2026-03-18T12:00:00.000Z",
+      projectStatus: "master_plot_in_review",
+      currentMasterPlot: {
+        id: "mp_20260318_ab12cd",
+        title: "The Last Sky Choir",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
         sourceTaskId: "task_20260318_ab12cd",
-        summary: "Updated storyboard summary.",
-        scenes: [
-          {
-            id: "scene_1",
-            sceneIndex: 1,
-            description: "A revised opening beat.",
-            camera: "wide shot",
-            characters: ["A"],
-            prompt: "wide shot of character A in a bright studio",
-          },
-        ],
+        updatedAt: "2026-03-18T12:00:00.000Z",
+        approvedAt: null,
       },
       latestReview: {
-        id: "sbr_20260318_ab12cd",
+        id: "mpr_20260318_ab12cd",
         projectId: "proj_20260318_ab12cd",
-        storyboardVersionId: "sbv_20260318_ab12cd",
+        masterPlotId: "mp_20260318_ab12cd",
         action: "approve",
         reason: "Final approved version.",
         triggeredTaskId: null,
         createdAt: "2026-03-18T13:00:00.000Z",
       },
       availableActions: {
-        saveHumanVersion: true,
+        save: true,
         approve: true,
         reject: true,
       },
-      latestStoryboardTask: {
+      latestTask: {
         id: "task_20260318_ab12cd",
         projectId: "proj_20260318_ab12cd",
-        type: "storyboard_generate",
+        type: "master_plot_generate",
         status: "succeeded",
         createdAt: "2026-03-18T11:55:00.000Z",
         updatedAt: "2026-03-18T12:00:00.000Z",
@@ -121,8 +102,8 @@ describe("storyboard review api schema", () => {
       },
     });
 
-    expect(parsed.projectStatus).toBe("storyboard_in_review");
-    expect(parsed.currentStoryboard.kind).toBe("human");
-    expect(parsed.availableActions.reject).toBe(true);
+    expect(parsed.projectStatus).toBe("master_plot_in_review");
+    expect(parsed.currentMasterPlot.title).toBe("The Last Sky Choir");
+    expect(parsed.availableActions.save).toBe(true);
   });
 });

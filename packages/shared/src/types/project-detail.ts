@@ -1,7 +1,7 @@
 import type { ProjectStatus } from "../constants/project-status";
-import type { StoryboardVersionSummary } from "./storyboard";
+import type { CurrentMasterPlot } from "./master-plot";
 
-export interface ProjectScriptMetadata {
+export interface ProjectPremiseMetadata {
   path: string;
   bytes: number;
   updatedAt: string;
@@ -15,6 +15,6 @@ export interface ProjectDetail {
   storageDir: string;
   createdAt: string;
   updatedAt: string;
-  script: ProjectScriptMetadata;
-  currentStoryboard: StoryboardVersionSummary | null;
+  premise: ProjectPremiseMetadata;
+  currentMasterPlot: CurrentMasterPlot | null;
 }

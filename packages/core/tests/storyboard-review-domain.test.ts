@@ -10,7 +10,7 @@ describe("storyboard review domain", () => {
     const review = createStoryboardReviewRecord({
       id: "sbr_20260318_ab12cd",
       projectId: "proj_20260318_ab12cd",
-      storyboardVersionId: "sbv_20260318_ab12cd",
+      masterPlotId: "mp_20260318_ab12cd",
       action: "approve",
       note: "Approved for production.",
       createdAt: "2026-03-18T12:00:00.000Z",
@@ -19,7 +19,7 @@ describe("storyboard review domain", () => {
     expect(review).toEqual({
       id: "sbr_20260318_ab12cd",
       projectId: "proj_20260318_ab12cd",
-      storyboardVersionId: "sbv_20260318_ab12cd",
+      masterPlotId: "mp_20260318_ab12cd",
       action: "approve",
       reason: "Approved for production.",
       triggeredTaskId: null,
@@ -32,7 +32,7 @@ describe("storyboard review domain", () => {
       createStoryboardReviewRecord({
         id: "sbr_20260318_ab12cd",
         projectId: "proj_20260318_ab12cd",
-        storyboardVersionId: "sbv_20260318_ab12cd",
+        masterPlotId: "mp_20260318_ab12cd",
         action: "reject",
         reason: "   ",
         createdAt: "2026-03-18T12:00:00.000Z",

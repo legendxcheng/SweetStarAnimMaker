@@ -1,11 +1,14 @@
-import { type StoryboardReviewAction, type StoryboardReviewRecord } from "@sweet-star/shared";
+import {
+  type MasterPlotReviewSummary,
+  type StoryboardReviewAction,
+} from "@sweet-star/shared";
 
 import { RejectStoryboardReasonRequiredError } from "../errors/storyboard-review-errors";
 
 export interface CreateStoryboardReviewRecordInput {
   id: string;
   projectId: string;
-  storyboardVersionId: string;
+  masterPlotId: string;
   action: StoryboardReviewAction;
   createdAt: string;
   note?: string;
@@ -15,7 +18,7 @@ export interface CreateStoryboardReviewRecordInput {
 
 export function createStoryboardReviewRecord(
   input: CreateStoryboardReviewRecordInput,
-): StoryboardReviewRecord {
+): MasterPlotReviewSummary {
   const note = input.note?.trim();
   const reason = input.reason?.trim();
 
@@ -26,7 +29,7 @@ export function createStoryboardReviewRecord(
   return {
     id: input.id,
     projectId: input.projectId,
-    storyboardVersionId: input.storyboardVersionId,
+    masterPlotId: input.masterPlotId,
     action: input.action,
     reason: input.action === "approve" ? note ?? null : reason ?? null,
     triggeredTaskId: input.triggeredTaskId ?? null,

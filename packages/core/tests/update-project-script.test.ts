@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("update project script use case", () => {
-  it("rewrites script metadata and timestamps", async () => {
+  it("rewrites premise metadata and timestamps", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue({
@@ -14,29 +14,30 @@ describe("update project script use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "script_ready",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 7,
+        currentMasterPlotId: null,
+        status: "premise_ready",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
       }),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
     };
-    const scriptStorage = {
-      writeOriginalScript: vi.fn().mockReturnValue({
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 15,
+    const premiseStorage = {
+      writePremise: vi.fn().mockReturnValue({
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 15,
       }),
-      readOriginalScript: vi.fn().mockReturnValue("Scene 1"),
-      deleteOriginalScript: vi.fn(),
+      readPremise: vi.fn().mockReturnValue("Old premise"),
+      deletePremise: vi.fn(),
     };
     const useCase = createUpdateProjectScriptUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
       clock: {
         now: () => "2026-03-17T01:00:00.000Z",
       },
@@ -44,21 +45,21 @@ describe("update project script use case", () => {
 
     const result = await useCase.execute({
       projectId: "proj_20260317_ab12cd",
-      script: "Updated Scene 1",
+      premiseText: "Updated premise",
     });
 
-    expect(repository.updateScriptMetadata).toHaveBeenCalledWith({
+    expect(repository.updatePremiseMetadata).toHaveBeenCalledWith({
       id: "proj_20260317_ab12cd",
-      scriptBytes: 15,
+      premiseBytes: 15,
       updatedAt: "2026-03-17T01:00:00.000Z",
-      scriptUpdatedAt: "2026-03-17T01:00:00.000Z",
+      premiseUpdatedAt: "2026-03-17T01:00:00.000Z",
     });
     expect(result.updatedAt).toBe("2026-03-17T01:00:00.000Z");
-    expect(result.script.updatedAt).toBe("2026-03-17T01:00:00.000Z");
-    expect(result.script.bytes).toBe(15);
+    expect(result.premise.updatedAt).toBe("2026-03-17T01:00:00.000Z");
+    expect(result.premise.bytes).toBe(15);
   });
 
-  it("restores the previous script when metadata persistence fails", async () => {
+  it("restores the previous premise when metadata persistence fails", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue({
@@ -66,37 +67,38 @@ describe("update project script use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "script_ready",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 7,
+        currentMasterPlotId: null,
+        status: "premise_ready",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T00:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
       }),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(() => {
+      updatePremiseMetadata: vi.fn(() => {
         throw new Error("update failed");
       }),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
     };
-    const scriptStorage = {
-      writeOriginalScript: vi
+    const premiseStorage = {
+      writePremise: vi
         .fn()
         .mockReturnValueOnce({
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 15,
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 15,
         })
         .mockReturnValueOnce({
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 7,
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 7,
         }),
-      readOriginalScript: vi.fn().mockReturnValue("Scene 1"),
-      deleteOriginalScript: vi.fn(),
+      readPremise: vi.fn().mockReturnValue("Old premise"),
+      deletePremise: vi.fn(),
     };
     const useCase = createUpdateProjectScriptUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
       clock: {
         now: () => "2026-03-17T01:00:00.000Z",
       },
@@ -105,13 +107,13 @@ describe("update project script use case", () => {
     await expect(
       useCase.execute({
         projectId: "proj_20260317_ab12cd",
-        script: "Updated Scene 1",
+        premiseText: "Updated premise",
       }),
     ).rejects.toThrow("update failed");
 
-    expect(scriptStorage.writeOriginalScript).toHaveBeenNthCalledWith(2, {
+    expect(premiseStorage.writePremise).toHaveBeenNthCalledWith(2, {
       storageDir: "projects/proj_20260317_ab12cd-my-story",
-      script: "Scene 1",
+      premiseText: "Old premise",
     });
   });
 
@@ -120,18 +122,18 @@ describe("update project script use case", () => {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue(null),
       listAll: vi.fn(),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
     };
-    const scriptStorage = {
-      writeOriginalScript: vi.fn(),
-      readOriginalScript: vi.fn(),
-      deleteOriginalScript: vi.fn(),
+    const premiseStorage = {
+      writePremise: vi.fn(),
+      readPremise: vi.fn(),
+      deletePremise: vi.fn(),
     };
     const useCase = createUpdateProjectScriptUseCase({
       repository,
-      scriptStorage,
+      premiseStorage,
       clock: {
         now: () => "2026-03-17T01:00:00.000Z",
       },
@@ -140,7 +142,7 @@ describe("update project script use case", () => {
     await expect(
       useCase.execute({
         projectId: "missing-project",
-        script: "Updated Scene 1",
+        premiseText: "Updated premise",
       }),
     ).rejects.toBeInstanceOf(ProjectNotFoundError);
   });

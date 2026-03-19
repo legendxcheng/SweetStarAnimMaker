@@ -1,26 +1,22 @@
-import type { CurrentStoryboard, SaveHumanStoryboardVersionRequest } from "@sweet-star/shared";
+import type { CurrentMasterPlot, SaveMasterPlotRequest } from "@sweet-star/shared";
 
-import { createStoryboardVersionRecord, toCurrentStoryboard } from "../domain/storyboard";
 import { ProjectNotFoundError } from "../errors/project-errors";
-import { CurrentStoryboardNotFoundError } from "../errors/storyboard-errors";
-import { StoryboardReviewVersionConflictError } from "../errors/storyboard-review-errors";
+import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { StoryboardStorage } from "../ports/storyboard-storage";
-import type { StoryboardVersionRepository } from "../ports/storyboard-version-repository";
+import type { MasterPlotStorage } from "../ports/storyboard-storage";
 
-export interface SaveHumanStoryboardVersionInput extends SaveHumanStoryboardVersionRequest {
+export interface SaveHumanStoryboardVersionInput extends SaveMasterPlotRequest {
   projectId: string;
 }
 
 export interface SaveHumanStoryboardVersionUseCase {
-  execute(input: SaveHumanStoryboardVersionInput): Promise<CurrentStoryboard>;
+  execute(input: SaveHumanStoryboardVersionInput): Promise<CurrentMasterPlot>;
 }
 
 export interface SaveHumanStoryboardVersionUseCaseDependencies {
   projectRepository: ProjectRepository;
-  storyboardVersionRepository: StoryboardVersionRepository;
-  storyboardStorage: StoryboardStorage;
+  masterPlotStorage: MasterPlotStorage;
   clock: Clock;
 }
 
@@ -35,58 +31,41 @@ export function createSaveHumanStoryboardVersionUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const currentVersion = await dependencies.storyboardVersionRepository.findCurrentByProjectId(
-        project.id,
-      );
-
-      if (!currentVersion) {
-        throw new CurrentStoryboardNotFoundError(project.id);
-      }
-
-      if (currentVersion.id !== input.baseVersionId) {
-        throw new StoryboardReviewVersionConflictError(input.baseVersionId);
-      }
-
-      const versionNumber =
-        (await dependencies.storyboardVersionRepository.getNextVersionNumber?.(project.id)) ??
-        currentVersion.versionNumber + 1;
-      const createdAt = dependencies.clock.now();
-      const version = createStoryboardVersionRecord({
-        id: toHumanStoryboardVersionId(project.id, versionNumber),
-        projectId: project.id,
-        projectStorageDir: project.storageDir,
-        sourceTaskId: currentVersion.sourceTaskId,
-        versionNumber,
-        provider: "manual",
-        model: "manual-edit",
-        createdAt,
-        kind: "human",
+      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
+        storageDir: project.storageDir,
       });
-      const storyboard = {
-        summary: input.summary,
-        scenes: input.scenes,
+
+      if (!currentMasterPlot) {
+        throw new CurrentMasterPlotNotFoundError(project.id);
+      }
+
+      const updatedAt = dependencies.clock.now();
+      const masterPlot: CurrentMasterPlot = {
+        id: currentMasterPlot.id,
+        title: input.title,
+        logline: input.logline,
+        synopsis: input.synopsis,
+        mainCharacters: input.mainCharacters,
+        coreConflict: input.coreConflict,
+        emotionalArc: input.emotionalArc,
+        endingBeat: input.endingBeat,
+        targetDurationSec: input.targetDurationSec,
+        sourceTaskId: currentMasterPlot.sourceTaskId,
+        updatedAt,
+        approvedAt: null,
       };
 
-      await dependencies.storyboardStorage.writeStoryboardVersion({
-        version,
-        storyboard,
-      });
-      await dependencies.storyboardVersionRepository.insert(version);
-      await dependencies.projectRepository.updateCurrentStoryboardVersion({
-        projectId: project.id,
-        storyboardVersionId: version.id,
+      await dependencies.masterPlotStorage.writeCurrentMasterPlot({
+        storageDir: project.storageDir,
+        masterPlot,
       });
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "storyboard_in_review",
-        updatedAt: createdAt,
+        status: "master_plot_in_review",
+        updatedAt,
       });
 
-      return toCurrentStoryboard(version, storyboard);
+      return masterPlot;
     },
   };
-}
-
-function toHumanStoryboardVersionId(projectId: string, versionNumber: number) {
-  return `sbv_${projectId.replace(/^proj_/, "")}_v${versionNumber}_human`;
 }

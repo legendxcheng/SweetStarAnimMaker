@@ -1,21 +1,20 @@
-import type { StoryboardGenerateReviewContext } from "../domain/task";
-import type { StoryboardDocument } from "../domain/storyboard";
+import type { SaveMasterPlotRequest } from "@sweet-star/shared";
 
-export interface GenerateStoryboardInput {
+export interface GenerateMasterPlotInput {
   projectId: string;
-  script: string;
-  reviewContext?: StoryboardGenerateReviewContext;
+  premiseText: string;
+  promptText: string;
 }
 
-export interface GenerateStoryboardResult {
-  rawResponse: unknown;
-  storyboard: StoryboardDocument;
+export interface GenerateMasterPlotResult {
+  rawResponse: string;
+  masterPlot: SaveMasterPlotRequest;
   provider: string;
   model: string;
 }
 
-export interface LlmStoryboardProvider {
-  generateStoryboard(
-    input: GenerateStoryboardInput,
-  ): Promise<GenerateStoryboardResult> | GenerateStoryboardResult;
+export interface MasterPlotProvider {
+  generateMasterPlot(
+    input: GenerateMasterPlotInput,
+  ): Promise<GenerateMasterPlotResult> | GenerateMasterPlotResult;
 }

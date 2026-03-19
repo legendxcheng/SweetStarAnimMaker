@@ -6,16 +6,16 @@ import {
   createProcessStoryboardGenerateTaskUseCase,
 } from "../src/index";
 
-describe("process storyboard generate task use case", () => {
-  it("persists raw response and storyboard version metadata before marking the task succeeded", async () => {
+describe("process master plot generate task use case", () => {
+  it("renders the prompt, persists the current master plot, and marks the task succeeded", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
         id: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        type: "storyboard_generate",
+        type: "master_plot_generate",
         status: "pending",
-        queueName: "storyboard-generate",
+        queueName: "master-plot-generate",
         storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
         inputRelPath: "tasks/task_20260317_ab12cd/input.json",
         outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -39,15 +39,16 @@ describe("process storyboard generate task use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "script_ready",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: null,
+        status: "master_plot_generating",
         createdAt: "2026-03-17T12:00:00.000Z",
         updatedAt: "2026-03-17T12:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T12:00:00.000Z",
       }),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -56,58 +57,48 @@ describe("process storyboard generate task use case", () => {
       readTaskInput: vi.fn().mockResolvedValue({
         taskId: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        taskType: "storyboard_generate",
-        scriptPath: "script/original.txt",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        taskType: "master_plot_generate",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        promptTemplateKey: "master_plot.generate",
       }),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
     };
-    const scriptStorage = {
-      readOriginalScript: vi.fn().mockResolvedValue("Scene 1: A enters the room"),
-      writeOriginalScript: vi.fn(),
-      deleteOriginalScript: vi.fn(),
-    };
-    const storyboardVersionRepository = {
-      insert: vi.fn(),
-      findById: vi.fn(),
-      findCurrentByProjectId: vi.fn(),
-      getNextVersionNumber: vi.fn().mockReturnValue(1),
-    };
-    const storyboardStorage = {
+    const masterPlotStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi
+        .fn()
+        .mockResolvedValue("Turn this premise into a master plot:\n{{premiseText}}"),
+      writePromptSnapshot: vi.fn(),
       writeRawResponse: vi.fn(),
-      writeStoryboardVersion: vi.fn(),
-      readStoryboardVersion: vi.fn(),
+      writeCurrentMasterPlot: vi.fn(),
+      readCurrentMasterPlot: vi.fn(),
+    };
+    const masterPlotProvider = {
+      generateMasterPlot: vi.fn().mockResolvedValue({
+        rawResponse: '{"title":"The Last Sky Choir"}',
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+      }),
     };
     const useCase = createProcessStoryboardGenerateTaskUseCase({
       taskRepository,
       projectRepository,
       taskFileStorage,
-      scriptStorage,
-      storyboardProvider: {
-        generateStoryboard: vi.fn().mockResolvedValue({
-          rawResponse: {
-            candidates: [{ content: { parts: [{ text: "{}" }] } }],
-          },
-          provider: "gemini",
-          model: "gemini-3.1-pro-preview",
-          storyboard: {
-            summary: "Generated storyboard summary",
-            scenes: [
-              {
-                id: "scene_1",
-                sceneIndex: 1,
-                description: "A enters the room",
-                camera: "medium shot",
-                characters: ["A"],
-                prompt: "medium shot, character A entering a dim room",
-              },
-            ],
-          },
-        }),
-      },
-      storyboardStorage,
-      storyboardVersionRepository,
+      masterPlotProvider,
+      masterPlotStorage,
       clock: {
         now: vi
           .fn()
@@ -123,45 +114,40 @@ describe("process storyboard generate task use case", () => {
       updatedAt: "2026-03-17T12:01:00.000Z",
       startedAt: "2026-03-17T12:01:00.000Z",
     });
-    expect(taskFileStorage.readTaskInput).toHaveBeenCalledWith({
-      task: expect.objectContaining({
-        id: "task_20260317_ab12cd",
-      }),
-    });
-    expect(scriptStorage.readOriginalScript).toHaveBeenCalledWith({
-      storageDir: "projects/proj_20260317_ab12cd-my-story",
-    });
-    expect(storyboardStorage.writeRawResponse).toHaveBeenCalledWith({
-      version: expect.objectContaining({
-        id: "sbv_20260317_ab12cd",
-        fileRelPath: "storyboards/versions/v1-ai.json",
-        rawResponseRelPath: "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
-      }),
-      rawResponse: {
-        candidates: [{ content: { parts: [{ text: "{}" }] } }],
+    expect(masterPlotStorage.writePromptSnapshot).toHaveBeenCalledWith({
+      taskStorageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+      promptText:
+        "Turn this premise into a master plot:\nA washed-up pilot discovers a singing comet above a drowned city.",
+      promptVariables: {
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
       },
     });
-    expect(storyboardStorage.writeStoryboardVersion).toHaveBeenCalledWith({
-      version: expect.objectContaining({
-        id: "sbv_20260317_ab12cd",
-      }),
-      storyboard: expect.objectContaining({
-        summary: "Generated storyboard summary",
+    expect(masterPlotProvider.generateMasterPlot).toHaveBeenCalledWith({
+      projectId: "proj_20260317_ab12cd",
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptText:
+        "Turn this premise into a master plot:\nA washed-up pilot discovers a singing comet above a drowned city.",
+    });
+    expect(masterPlotStorage.writeRawResponse).toHaveBeenCalledWith({
+      taskStorageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
+      rawResponse: '{"title":"The Last Sky Choir"}',
+    });
+    expect(masterPlotStorage.writeCurrentMasterPlot).toHaveBeenCalledWith({
+      storageDir: "projects/proj_20260317_ab12cd-my-story",
+      masterPlot: expect.objectContaining({
+        id: "mp_20260317_ab12cd",
+        title: "The Last Sky Choir",
+        sourceTaskId: "task_20260317_ab12cd",
+        approvedAt: null,
       }),
     });
-    expect(storyboardVersionRepository.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "sbv_20260317_ab12cd",
-        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-      }),
-    );
-    expect(projectRepository.updateCurrentStoryboardVersion).toHaveBeenCalledWith({
+    expect(projectRepository.updateCurrentMasterPlot).toHaveBeenCalledWith({
       projectId: "proj_20260317_ab12cd",
-      storyboardVersionId: "sbv_20260317_ab12cd",
+      masterPlotId: "mp_20260317_ab12cd",
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260317_ab12cd",
-      status: "storyboard_in_review",
+      status: "master_plot_in_review",
       updatedAt: "2026-03-17T12:02:00.000Z",
     });
     expect(taskFileStorage.writeTaskOutput).toHaveBeenCalledWith({
@@ -169,13 +155,10 @@ describe("process storyboard generate task use case", () => {
         id: "task_20260317_ab12cd",
       }),
       output: {
-        storyboardVersionId: "sbv_20260317_ab12cd",
-        versionNumber: 1,
-        kind: "ai",
+        masterPlotId: "mp_20260317_ab12cd",
         provider: "gemini",
         model: "gemini-3.1-pro-preview",
-        filePath: "storyboards/versions/v1-ai.json",
-        rawResponsePath: "storyboards/raw/task_20260317_ab12cd-gemini-response.json",
+        promptTemplateKey: "master_plot.generate",
       },
     });
     expect(taskRepository.markSucceeded).toHaveBeenCalledWith({
@@ -185,15 +168,15 @@ describe("process storyboard generate task use case", () => {
     });
   });
 
-  it("marks the task failed and leaves the current storyboard pointer unchanged when generation fails", async () => {
+  it("marks the task failed, logs the error, and returns the project to premise_ready", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
         id: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        type: "storyboard_generate",
+        type: "master_plot_generate",
         status: "pending",
-        queueName: "storyboard-generate",
+        queueName: "master-plot-generate",
         storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
         inputRelPath: "tasks/task_20260317_ab12cd/input.json",
         outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -217,15 +200,16 @@ describe("process storyboard generate task use case", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
-        scriptRelPath: "script/original.txt",
-        scriptBytes: 7,
-        status: "script_ready",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "mp_previous",
+        status: "master_plot_generating",
         createdAt: "2026-03-17T12:00:00.000Z",
         updatedAt: "2026-03-17T12:00:00.000Z",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T12:00:00.000Z",
       }),
-      updateScriptMetadata: vi.fn(),
-      updateCurrentStoryboardVersion: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -234,9 +218,9 @@ describe("process storyboard generate task use case", () => {
       readTaskInput: vi.fn().mockResolvedValue({
         taskId: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        taskType: "storyboard_generate",
-        scriptPath: "script/original.txt",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        taskType: "master_plot_generate",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        promptTemplateKey: "master_plot.generate",
       }),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
@@ -245,26 +229,18 @@ describe("process storyboard generate task use case", () => {
       taskRepository,
       projectRepository,
       taskFileStorage,
-      scriptStorage: {
-        readOriginalScript: vi.fn().mockResolvedValue("Scene 1"),
-        writeOriginalScript: vi.fn(),
-        deleteOriginalScript: vi.fn(),
-      },
-      storyboardProvider: {
-        generateStoryboard: async () => {
+      masterPlotProvider: {
+        generateMasterPlot: async () => {
           throw new Error("boom");
         },
       },
-      storyboardStorage: {
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn().mockResolvedValue("{{premiseText}}"),
+        writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn(),
-      },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn(),
-        getNextVersionNumber: vi.fn().mockReturnValue(1),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
       },
       clock: {
         now: vi
@@ -278,14 +254,24 @@ describe("process storyboard generate task use case", () => {
       "boom",
     );
 
-    expect(projectRepository.updateCurrentStoryboardVersion).not.toHaveBeenCalled();
-    expect(projectRepository.updateStatus).not.toHaveBeenCalled();
+    expect(projectRepository.updateCurrentMasterPlot).not.toHaveBeenCalled();
     expect(taskFileStorage.writeTaskOutput).not.toHaveBeenCalled();
+    expect(taskFileStorage.appendTaskLog).toHaveBeenCalledWith({
+      task: expect.objectContaining({
+        id: "task_20260317_ab12cd",
+      }),
+      message: "master plot generation failed: boom",
+    });
     expect(taskRepository.markFailed).toHaveBeenCalledWith({
       taskId: "task_20260317_ab12cd",
       errorMessage: "boom",
       updatedAt: "2026-03-17T12:02:00.000Z",
       finishedAt: "2026-03-17T12:02:00.000Z",
+    });
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_20260317_ab12cd",
+      status: "premise_ready",
+      updatedAt: "2026-03-17T12:02:00.000Z",
     });
   });
 
@@ -303,8 +289,8 @@ describe("process storyboard generate task use case", () => {
       projectRepository: {
         insert: vi.fn(),
         findById: vi.fn(),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -314,24 +300,16 @@ describe("process storyboard generate task use case", () => {
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
       },
-      scriptStorage: {
-        readOriginalScript: vi.fn(),
-        writeOriginalScript: vi.fn(),
-        deleteOriginalScript: vi.fn(),
+      masterPlotProvider: {
+        generateMasterPlot: vi.fn(),
       },
-      storyboardProvider: {
-        generateStoryboard: vi.fn(),
-      },
-      storyboardStorage: {
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn(),
-      },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn(),
-        getNextVersionNumber: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
       },
       clock: {
         now: vi.fn(),
@@ -350,9 +328,9 @@ describe("process storyboard generate task use case", () => {
         findById: vi.fn().mockResolvedValue({
           id: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          type: "storyboard_generate",
+          type: "master_plot_generate",
           status: "pending",
-          queueName: "storyboard-generate",
+          queueName: "master-plot-generate",
           storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
           inputRelPath: "tasks/task_20260317_ab12cd/input.json",
           outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -372,8 +350,8 @@ describe("process storyboard generate task use case", () => {
       projectRepository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue(null),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -382,31 +360,23 @@ describe("process storyboard generate task use case", () => {
         readTaskInput: vi.fn().mockResolvedValue({
           taskId: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          taskType: "storyboard_generate",
-          scriptPath: "script/original.txt",
-          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+          taskType: "master_plot_generate",
+          premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+          promptTemplateKey: "master_plot.generate",
         }),
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
       },
-      scriptStorage: {
-        readOriginalScript: vi.fn(),
-        writeOriginalScript: vi.fn(),
-        deleteOriginalScript: vi.fn(),
+      masterPlotProvider: {
+        generateMasterPlot: vi.fn(),
       },
-      storyboardProvider: {
-        generateStoryboard: vi.fn(),
-      },
-      storyboardStorage: {
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn().mockResolvedValue("{{premiseText}}"),
+        writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn(),
-      },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn(),
-        getNextVersionNumber: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
       },
       clock: {
         now: vi
@@ -419,116 +389,5 @@ describe("process storyboard generate task use case", () => {
     await expect(useCase.execute({ taskId: "task_20260317_ab12cd" })).rejects.toBeInstanceOf(
       ProjectNotFoundError,
     );
-  });
-
-  it("passes reject review context into storyboard generation", async () => {
-    const storyboardProvider = {
-      generateStoryboard: vi.fn().mockResolvedValue({
-        rawResponse: {
-          candidates: [{ content: { parts: [{ text: "{}" }] } }],
-        },
-        provider: "gemini",
-        model: "gemini-3.1-pro-preview",
-        storyboard: {
-          summary: "Generated storyboard summary",
-          scenes: [],
-        },
-      }),
-    };
-    const useCase = createProcessStoryboardGenerateTaskUseCase({
-      taskRepository: {
-        insert: vi.fn(),
-        findById: vi.fn().mockResolvedValue({
-          id: "task_20260317_ab12cd",
-          projectId: "proj_20260317_ab12cd",
-          type: "storyboard_generate",
-          status: "pending",
-          queueName: "storyboard-generate",
-          storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
-          inputRelPath: "tasks/task_20260317_ab12cd/input.json",
-          outputRelPath: "tasks/task_20260317_ab12cd/output.json",
-          logRelPath: "tasks/task_20260317_ab12cd/log.txt",
-          errorMessage: null,
-          createdAt: "2026-03-17T12:00:00.000Z",
-          updatedAt: "2026-03-17T12:00:00.000Z",
-          startedAt: null,
-          finishedAt: null,
-        }),
-        findLatestByProjectId: vi.fn(),
-        delete: vi.fn(),
-        markRunning: vi.fn(),
-        markSucceeded: vi.fn(),
-        markFailed: vi.fn(),
-      },
-      projectRepository: {
-        insert: vi.fn(),
-        findById: vi.fn().mockResolvedValue({
-          id: "proj_20260317_ab12cd",
-          name: "My Story",
-          slug: "my-story",
-          storageDir: "projects/proj_20260317_ab12cd-my-story",
-          scriptRelPath: "script/original.txt",
-          scriptBytes: 7,
-          status: "storyboard_generating",
-          createdAt: "2026-03-17T12:00:00.000Z",
-          updatedAt: "2026-03-17T12:00:00.000Z",
-          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
-        }),
-        updateScriptMetadata: vi.fn(),
-        updateCurrentStoryboardVersion: vi.fn(),
-        updateStatus: vi.fn(),
-        listAll: vi.fn(),
-      },
-      taskFileStorage: {
-        createTaskArtifacts: vi.fn(),
-        readTaskInput: vi.fn().mockResolvedValue({
-          taskId: "task_20260317_ab12cd",
-          projectId: "proj_20260317_ab12cd",
-          taskType: "storyboard_generate",
-          scriptPath: "script/original.txt",
-          scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
-          reviewContext: {
-            reason: "Need a brighter ending.",
-            rejectedVersionId: "sbv_20260317_prev",
-          },
-        }),
-        writeTaskOutput: vi.fn(),
-        appendTaskLog: vi.fn(),
-      },
-      scriptStorage: {
-        readOriginalScript: vi.fn().mockResolvedValue("Scene 1: A enters the room"),
-        writeOriginalScript: vi.fn(),
-        deleteOriginalScript: vi.fn(),
-      },
-      storyboardProvider,
-      storyboardStorage: {
-        writeRawResponse: vi.fn(),
-        writeStoryboardVersion: vi.fn(),
-        readStoryboardVersion: vi.fn(),
-      },
-      storyboardVersionRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findCurrentByProjectId: vi.fn(),
-        getNextVersionNumber: vi.fn().mockReturnValue(2),
-      },
-      clock: {
-        now: vi
-          .fn()
-          .mockReturnValueOnce("2026-03-17T12:01:00.000Z")
-          .mockReturnValueOnce("2026-03-17T12:02:00.000Z"),
-      },
-    });
-
-    await useCase.execute({ taskId: "task_20260317_ab12cd" });
-
-    expect(storyboardProvider.generateStoryboard).toHaveBeenCalledWith({
-      projectId: "proj_20260317_ab12cd",
-      script: "Scene 1: A enters the room",
-      reviewContext: {
-        reason: "Need a brighter ending.",
-        rejectedVersionId: "sbv_20260317_prev",
-      },
-    });
   });
 });

@@ -84,7 +84,7 @@ export function createSqliteStoryboardVersionRepository(
               sv.created_at
             FROM projects p
             JOIN storyboard_versions sv
-              ON sv.id = p.current_storyboard_version_id
+              ON sv.id = p.current_master_plot_id
             WHERE p.id = ?
           `,
         )
