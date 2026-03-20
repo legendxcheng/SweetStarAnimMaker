@@ -1,15 +1,14 @@
 import path from "node:path";
-import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { buildApp } from "../../apps/api/src/app.ts";
 import { loadRootEnv } from "../env/load-env.mjs";
+import { resolveRootRedisUrl } from "./backend-launch-config.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "../..");
 loadRootEnv();
-const redisUrlFile = path.join(workspaceRoot, ".codex-runtime", "redis-url.txt");
-const redisUrl = process.env.REDIS_URL ?? (await waitForRedisUrl(redisUrlFile));
+const redisUrl = await resolveRootRedisUrl({ workspaceRoot });
 
 const app = buildApp({
   dataRoot: workspaceRoot,
@@ -35,15 +34,3 @@ await app.listen({
 });
 
 console.log("api listening on http://127.0.0.1:3000");
-
-async function waitForRedisUrl(filePath) {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    if (fs.existsSync(filePath)) {
-      return fs.readFileSync(filePath, "utf8").trim();
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  throw new Error(`Timed out waiting for Redis URL file: ${filePath}`);
-}

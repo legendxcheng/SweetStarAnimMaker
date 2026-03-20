@@ -18,6 +18,12 @@ test("matches the smoke backend and frontend launcher processes", () => {
   );
   assert.equal(
     isSmokeProcessCommandLine(
+      'node apps\\worker\\node_modules\\tsx\\dist\\cli.mjs tooling\\scripts\\start-worker-root.mjs',
+    ),
+    true,
+  );
+  assert.equal(
+    isSmokeProcessCommandLine(
       'node apps\\worker\\node_modules\\tsx\\dist\\cli.mjs tooling\\scripts\\start-worker-smoke.mjs',
     ),
     true,

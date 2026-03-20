@@ -1,14 +1,27 @@
-You are developing a short-form animated story concept from a single premise.
+You are generating the first-pass master plot for a short animated story.
 
-Turn the premise below into one cohesive master plot for a short film or episode concept.
+Transform the premise below into one cohesive, production-friendly master plot for a short film or one short-form animated episode.
 
-Requirements:
-- Keep the story focused on one clear protagonist journey.
-- Preserve the premise's strongest emotional hook.
-- Establish a concrete external conflict and an internal emotional change.
-- Aim for a story that can plausibly fit into a concise animated production.
-- Prefer vivid, filmable story beats over abstract themes.
-- Do not add production notes, formatting markup, or multiple alternatives.
+Follow these rules:
+- Produce exactly one clear story direction, not multiple options.
+- Keep the story centered on one primary protagonist journey.
+- Preserve the premise's strongest emotional hook and most distinctive image or idea.
+- Make the conflict concrete, visual, and filmable rather than abstract.
+- Ensure the protagonist changes emotionally by the end of the story.
+- Keep the cast focused and manageable for a short animated production.
+- Prefer concise, vivid storytelling over lore, exposition, or excess setup.
+- Avoid meta commentary, production notes, markdown, code fences, or labels outside the requested content.
+- Write all story text in Simplified Chinese.
+
+Field guidance:
+- title: short, memorable, and marketable.
+- logline: exactly one sentence.
+- synopsis: 3 to 5 sentences covering setup, escalation, climax, and ending.
+- mainCharacters: 2 to 4 character names or role labels only.
+- coreConflict: exactly one sentence describing the main external dramatic struggle.
+- emotionalArc: exactly one sentence describing how the protagonist changes internally.
+- endingBeat: exactly one sentence describing the final emotional image or closing beat.
+- targetDurationSec: choose an integer between 60 and 180 that fits the scope of the story.
 
 Premise:
 {{premiseText}}

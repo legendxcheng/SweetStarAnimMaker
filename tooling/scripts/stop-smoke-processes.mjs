@@ -6,6 +6,7 @@ const execFileAsync = promisify(execFile);
 const smokeCommandPatterns = [
   "tooling\\scripts\\start-redis-memory.cjs",
   "tooling\\scripts\\start-api-root.mjs",
+  "tooling\\scripts\\start-worker-root.mjs",
   "tooling\\scripts\\start-worker-smoke.mjs",
   "node_modules\\vite\\bin\\vite.js --host 127.0.0.1 --port 4273",
 ];
