@@ -7,6 +7,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app";
+import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 describe("projects api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -141,6 +142,7 @@ describe("projects api", () => {
   async function createTempApp() {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-api-"));
     tempDirs.push(tempDir);
+    await ensureTestPromptTemplate(tempDir);
 
     const app = buildApp({ dataRoot: tempDir });
     apps.push(app);

@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { startWorker } from "@sweet-star/worker";
 
 import { buildApp } from "../src/app";
+import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 describe("spec2 task flow", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -31,6 +32,7 @@ describe("spec2 task flow", () => {
   it("processes a master-plot task through api, redis, worker, sqlite, and disk", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-spec2-flow-"));
     tempDirs.push(tempDir);
+    await ensureTestPromptTemplate(tempDir);
 
     const redisServer = new RedisMemoryServer();
     redisServers.push(redisServer);

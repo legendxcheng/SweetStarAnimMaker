@@ -10,6 +10,7 @@ import { createLocalDataPaths, createSqliteDb } from "@sweet-star/services";
 import { startWorker } from "@sweet-star/worker";
 
 import { buildApp } from "../src/app";
+import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 describe("spec3 master plot flow", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -36,6 +37,7 @@ describe("spec3 master plot flow", () => {
   it("processes a master-plot task and exposes the review workspace", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-spec3-flow-"));
     tempDirs.push(tempDir);
+    await ensureTestPromptTemplate(tempDir);
 
     const redisServer = new RedisMemoryServer();
     redisServers.push(redisServer);

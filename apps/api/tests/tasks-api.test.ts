@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../src/app";
+import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 describe("tasks api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -122,6 +123,7 @@ describe("tasks api", () => {
   async function createTempApp(options: { taskQueue: { enqueue: ReturnType<typeof vi.fn> } }) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-task-api-"));
     tempDirs.push(tempDir);
+    await ensureTestPromptTemplate(tempDir);
 
     const app = buildApp({
       dataRoot: tempDir,

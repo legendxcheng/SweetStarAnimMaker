@@ -10,6 +10,7 @@ import { createLocalDataPaths, createSqliteDb } from "@sweet-star/services";
 import { startWorker } from "@sweet-star/worker";
 
 import { buildApp } from "../src/app";
+import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
 const tempDirs: string[] = [];
@@ -219,6 +220,7 @@ describe("spec4 master plot review flow", () => {
 async function createIntegrationContext(taskIds: string[]) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-spec4-flow-"));
   tempDirs.push(tempDir);
+  await ensureTestPromptTemplate(tempDir);
 
   const redisServer = new RedisMemoryServer();
   redisServers.push(redisServer);

@@ -13,6 +13,8 @@ export interface LocalDataPaths {
   sqliteDir: string;
   sqliteDbPath: string;
   projectsDir: string;
+  globalPromptTemplatesDir: string;
+  globalPromptTemplatePath(promptTemplateKey: string): string;
   projectPath(storageDir: string): string;
   projectPremisePath(storageDir: string): string;
   projectTaskInputPath(taskStorageDir: string): string;
@@ -26,6 +28,7 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
   const dataRootDir = path.join(workspaceRoot, ".local-data");
   const sqliteDir = path.join(dataRootDir, "sqlite");
   const projectsDir = path.join(dataRootDir, "projects");
+  const globalPromptTemplatesDir = path.join(workspaceRoot, "prompt-templates");
 
   return {
     workspaceRoot,
@@ -33,6 +36,10 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
     sqliteDir,
     sqliteDbPath: path.join(sqliteDir, "app.db"),
     projectsDir,
+    globalPromptTemplatesDir,
+    globalPromptTemplatePath(promptTemplateKey) {
+      return path.join(globalPromptTemplatesDir, `${promptTemplateKey}.txt`);
+    },
     projectPath(storageDir) {
       return path.join(dataRootDir, storageDir);
     },

@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createLocalDataPaths, createSqliteDb } from "@sweet-star/services";
 
 import { buildApp } from "../src/app";
+import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 describe("spec1 project flow", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -31,6 +32,7 @@ describe("spec1 project flow", () => {
   it("creates and queries a project across http, sqlite, and disk", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-flow-"));
     tempDirs.push(tempDir);
+    await ensureTestPromptTemplate(tempDir);
 
     const app = buildApp({ dataRoot: tempDir });
     apps.push(app);

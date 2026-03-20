@@ -19,9 +19,7 @@ export interface CreateStoryboardStorageOptions {
 const promptTemplateDirectoryName = "prompt-templates";
 const promptSnapshotFileName = "prompt-snapshot.json";
 const rawResponseFileName = "raw-response.txt";
-const defaultPromptTemplates = {
-  "master_plot.generate": "Turn this premise into a master plot:\n{{premiseText}}",
-} as const;
+type PromptTemplateKey = "master_plot.generate";
 
 export function createStoryboardStorage(
   options: CreateStoryboardStorageOptions,
@@ -66,20 +64,40 @@ export function createStoryboardStorage(
       return JSON.parse(await fs.readFile(versionPath, "utf8"));
     },
     async initializePromptTemplate(input) {
-      const promptTemplatePath = toPromptTemplatePath(input.storageDir, input.promptTemplateKey);
+      const promptTemplatePath = toProjectPromptTemplatePath(
+        input.storageDir,
+        input.promptTemplateKey,
+      );
+      const globalPromptTemplatePath = options.paths.globalPromptTemplatePath(
+        input.promptTemplateKey,
+      );
 
       await ensureParentDirectory(promptTemplatePath);
-      await fs.writeFile(
-        promptTemplatePath,
-        defaultPromptTemplates[input.promptTemplateKey],
-        "utf8",
-      );
+      await fs.copyFile(globalPromptTemplatePath, promptTemplatePath);
     },
     async readPromptTemplate(input) {
-      return fs.readFile(
-        toPromptTemplatePath(input.storageDir, input.promptTemplateKey),
-        "utf8",
+      const projectPromptTemplatePath = toProjectPromptTemplatePath(
+        input.storageDir,
+        input.promptTemplateKey,
       );
+
+      try {
+        return await fs.readFile(projectPromptTemplatePath, "utf8");
+      } catch (error) {
+        if (!isMissingFileError(error)) {
+          throw error;
+        }
+      }
+
+      try {
+        return await fs.readFile(options.paths.globalPromptTemplatePath(input.promptTemplateKey), "utf8");
+      } catch (error) {
+        if (isMissingFileError(error)) {
+          throw new Error(`Prompt template not found: ${input.promptTemplateKey}`);
+        }
+
+        throw error;
+      }
     },
     async writeCurrentMasterPlot(input) {
       const jsonPath = path.join(
@@ -135,9 +153,9 @@ export function createStoryboardStorage(
     },
   };
 
-  function toPromptTemplatePath(
+  function toProjectPromptTemplatePath(
     storageDir: string,
-    promptTemplateKey: keyof typeof defaultPromptTemplates,
+    promptTemplateKey: PromptTemplateKey,
   ) {
     return path.join(
       options.paths.projectPath(storageDir),
