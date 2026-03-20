@@ -1,0 +1,14 @@
+You are developing a short-form animated story concept from a single premise.
+
+Turn the premise below into one cohesive master plot for a short film or episode concept.
+
+Requirements:
+- Keep the story focused on one clear protagonist journey.
+- Preserve the premise's strongest emotional hook.
+- Establish a concrete external conflict and an internal emotional change.
+- Aim for a story that can plausibly fit into a concise animated production.
+- Prefer vivid, filmable story beats over abstract themes.
+- Do not add production notes, formatting markup, or multiple alternatives.
+
+Premise:
+{{premiseText}}

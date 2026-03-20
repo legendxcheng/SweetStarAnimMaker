@@ -48,6 +48,15 @@ describe("local data paths", () => {
     ).toMatch(/tasks[\\/]+task_20260317_ab12cd[\\/]+log\.txt$/);
   });
 
+  it("resolves the global prompt template path at the repo root", () => {
+    const paths = createLocalDataPaths("E:/repo");
+
+    expect(paths.globalPromptTemplatesDir).toBe(path.join("E:/repo", "prompt-templates"));
+    expect(paths.globalPromptTemplatePath("master_plot.generate")).toBe(
+      path.join("E:/repo", "prompt-templates", "master_plot.generate.txt"),
+    );
+  });
+
   it("builds the current storyboard version path inside the project", () => {
     const paths = createLocalDataPaths("C:/repo");
 
