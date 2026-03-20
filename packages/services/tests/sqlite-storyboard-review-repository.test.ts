@@ -117,15 +117,97 @@ describe("sqlite storyboard review repository", () => {
       createdAt: "2026-03-18T12:10:00.000Z",
     });
   });
+
+  it("migrates a legacy storyboard_reviews table that lacks master_plot_id", async () => {
+    const { db, repository } = await createRepositoryContext({
+      legacyStoryboardReviewsTable: true,
+      seedLegacyStoryboardReview: {
+        id: "sbr_20260318_legacy",
+        project_id: "proj_20260318_ab12cd",
+        storyboard_version_id: "mp_20260318_legacy",
+        action: "reject",
+        reason: "Legacy row",
+        triggered_task_id: null,
+        created_at: "2026-03-18T12:00:00.000Z",
+      },
+    });
+
+    const columns = db
+      .prepare("PRAGMA table_info(storyboard_reviews)")
+      .all() as Array<{ name: string }>;
+
+    expect(columns.map((column) => column.name)).toContain("master_plot_id");
+    expect(repository.findLatestByProjectId("proj_20260318_ab12cd")).toEqual({
+      id: "sbr_20260318_legacy",
+      projectId: "proj_20260318_ab12cd",
+      masterPlotId: "mp_20260318_legacy",
+      action: "reject",
+      reason: "Legacy row",
+      triggeredTaskId: null,
+      createdAt: "2026-03-18T12:00:00.000Z",
+    });
+  });
 });
 
-async function createRepositoryContext() {
+async function createRepositoryContext(
+  options: {
+    legacyStoryboardReviewsTable?: boolean;
+    seedLegacyStoryboardReview?: {
+      id: string;
+      project_id: string;
+      storyboard_version_id: string;
+      action: string;
+      reason: string | null;
+      triggered_task_id: string | null;
+      created_at: string;
+    };
+  } = {},
+) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-review-sqlite-"));
   const paths = createLocalDataPaths(tempDir);
   const db = createSqliteDb({ paths });
 
   tempDirs.push(tempDir);
   dbs.push(db);
+
+  if (options.legacyStoryboardReviewsTable) {
+    db.exec(`
+      CREATE TABLE storyboard_reviews (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        storyboard_version_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        reason TEXT,
+        triggered_task_id TEXT,
+        created_at TEXT NOT NULL
+      )
+    `);
+
+    if (options.seedLegacyStoryboardReview) {
+      db.prepare(
+        `
+          INSERT INTO storyboard_reviews (
+            id,
+            project_id,
+            storyboard_version_id,
+            action,
+            reason,
+            triggered_task_id,
+            created_at
+          ) VALUES (
+            @id,
+            @project_id,
+            @storyboard_version_id,
+            @action,
+            @reason,
+            @triggered_task_id,
+            @created_at
+          )
+        `,
+      ).run(options.seedLegacyStoryboardReview);
+    }
+  }
+
   initializeSqliteSchema(db);
 
   return {

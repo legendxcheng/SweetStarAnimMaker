@@ -28,6 +28,8 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   initializeSqliteStoryboardSchema(db);
   initializeSqliteTaskSchema(db);
   initializeSqliteStoryboardReviewSchema(db);
+  ensureStoryboardReviewsColumn(db, "master_plot_id", "TEXT NOT NULL DEFAULT ''");
+  backfillStoryboardReviewMasterPlotId(db);
 }
 
 function ensureProjectsColumn(
@@ -40,4 +42,50 @@ function ensureProjectsColumn(
   if (!columns.some((column) => column.name === columnName)) {
     db.exec(`ALTER TABLE projects ADD COLUMN ${columnName} ${columnDefinition}`);
   }
+}
+
+function ensureStoryboardReviewsColumn(
+  db: SqliteDatabase,
+  columnName: string,
+  columnDefinition: string,
+) {
+  const table = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'storyboard_reviews'")
+    .get() as { name: string } | undefined;
+
+  if (!table) {
+    return;
+  }
+
+  const columns = db
+    .prepare("PRAGMA table_info(storyboard_reviews)")
+    .all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE storyboard_reviews ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
+}
+
+function backfillStoryboardReviewMasterPlotId(db: SqliteDatabase) {
+  const table = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'storyboard_reviews'")
+    .get() as { name: string } | undefined;
+
+  if (!table) {
+    return;
+  }
+
+  const columns = db
+    .prepare("PRAGMA table_info(storyboard_reviews)")
+    .all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === "storyboard_version_id")) {
+    return;
+  }
+
+  db.exec(`
+    UPDATE storyboard_reviews
+    SET master_plot_id = storyboard_version_id
+    WHERE master_plot_id = ''
+  `);
 }

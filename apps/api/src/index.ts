@@ -1,10 +1,13 @@
 import { fileURLToPath } from "node:url";
 
 import { buildApp } from "./app";
+// @ts-expect-error runtime env loader lives outside this app tsconfig root
+import { loadRootEnv } from "../../../tooling/env/load-env.mjs";
 
 export { buildApp } from "./app";
 
 async function start() {
+  loadRootEnv();
   const app = buildApp();
 
   try {

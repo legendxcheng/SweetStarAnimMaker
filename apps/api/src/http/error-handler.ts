@@ -12,7 +12,7 @@ import { ZodError } from "zod";
 export function createApiErrorHandler() {
   return function apiErrorHandler(
     error: FastifyError | Error,
-    _request: FastifyRequest,
+    request: FastifyRequest,
     reply: FastifyReply,
   ) {
     if (error instanceof ProjectValidationError || error instanceof ZodError) {
@@ -42,6 +42,11 @@ export function createApiErrorHandler() {
         message: error.message,
       });
     }
+
+    console.error(
+      `[api] unhandled request error: ${request.method} ${request.url}`,
+      error,
+    );
 
     return reply.status(500).send({
       message: "Internal Server Error",

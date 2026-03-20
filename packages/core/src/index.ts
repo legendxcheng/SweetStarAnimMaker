@@ -56,6 +56,11 @@ export {
   type TaskRecord,
 } from "./domain/task";
 export {
+  originalScriptFileName,
+  originalScriptRelPath,
+  projectScriptDirectory,
+} from "./domain/project-script";
+export {
   premiseFileName,
   premiseRelPath,
   projectPremiseDirectory,

@@ -3,9 +3,11 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { buildApp } from "../../apps/api/src/app.ts";
+import { loadRootEnv } from "../env/load-env.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "../..");
+loadRootEnv();
 const redisUrlFile = path.join(workspaceRoot, ".codex-runtime", "redis-url.txt");
 const redisUrl = process.env.REDIS_URL ?? (await waitForRedisUrl(redisUrlFile));
 

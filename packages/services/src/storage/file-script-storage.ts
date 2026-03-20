@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 
 import type {
   DeletePremiseInput,
@@ -6,7 +7,7 @@ import type {
   StoredPremiseMetadata,
   WritePremiseInput,
 } from "@sweet-star/core";
-import { premiseRelPath } from "@sweet-star/core";
+import { originalScriptRelPath, premiseRelPath } from "@sweet-star/core";
 
 import { ensureParentDirectory, removeDirectory } from "./fs-utils";
 import type { LocalDataPaths } from "./local-data-paths";
@@ -25,9 +26,28 @@ export interface CreateFileScriptStorageOptions {
 export function createFileScriptStorage(
   options: CreateFileScriptStorageOptions,
 ): FileScriptStorage & PremiseStorage {
+  function getLegacyScriptPath(storageDir: string) {
+    return path.join(
+      options.paths.projectPath(storageDir),
+      ...originalScriptRelPath.split("/"),
+    );
+  }
+
+  function isMissingFileError(error: unknown): error is NodeJS.ErrnoException {
+    return error instanceof Error && "code" in error && error.code === "ENOENT";
+  }
+
   return {
     async readPremise(input) {
-      return fs.readFile(options.paths.projectPremisePath(input.storageDir), "utf8");
+      try {
+        return await fs.readFile(options.paths.projectPremisePath(input.storageDir), "utf8");
+      } catch (error) {
+        if (!isMissingFileError(error)) {
+          throw error;
+        }
+
+        return fs.readFile(getLegacyScriptPath(input.storageDir), "utf8");
+      }
     },
     async writePremise(input) {
       const premisePath = options.paths.projectPremisePath(input.storageDir);

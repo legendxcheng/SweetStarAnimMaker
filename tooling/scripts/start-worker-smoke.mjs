@@ -4,16 +4,18 @@ import { fileURLToPath } from "node:url";
 
 import { startWorker } from "../../apps/worker/src/index.ts";
 import { createSmokeStoryboardProvider } from "../../apps/worker/src/dev/smoke-storyboard-provider.ts";
+import { loadRootEnv } from "../env/load-env.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "../..");
+loadRootEnv();
 const redisUrlFile = path.join(workspaceRoot, ".codex-runtime", "redis-url.txt");
 const redisUrl = process.env.REDIS_URL ?? (await waitForRedisUrl(redisUrlFile));
 
 const worker = await startWorker({
   workspaceRoot,
   redisUrl,
-  storyboardProvider: createSmokeStoryboardProvider(),
+  masterPlotProvider: createSmokeStoryboardProvider(),
 });
 
 const shutdown = async () => {

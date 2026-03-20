@@ -119,6 +119,43 @@ describe("tasks api", () => {
     expect(response.statusCode).toBe(404);
   });
 
+  it("creates a master-plot task for a legacy project that only has script/original.txt", async () => {
+    const enqueue = vi.fn();
+    const app = await createTempApp({
+      taskQueue: { enqueue },
+    });
+
+    const createProjectResponse = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: { name: "My Story", premiseText },
+    });
+    const project = createProjectResponse.json();
+    const projectsDir = path.join(tempDirs.at(-1)!, ".local-data", "projects");
+    const [projectDirName] = await fs.readdir(projectsDir);
+    const premisePath = path.join(projectsDir, projectDirName, "premise", "v1.md");
+    const legacyScriptPath = path.join(projectsDir, projectDirName, "script", "original.txt");
+
+    await fs.mkdir(path.dirname(legacyScriptPath), { recursive: true });
+    await fs.copyFile(premisePath, legacyScriptPath);
+    await fs.rm(path.join(projectsDir, projectDirName, "premise"), {
+      recursive: true,
+      force: true,
+    });
+
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
+    });
+
+    expect(taskResponse.statusCode).toBe(201);
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260317_ab12cd",
+      queueName: "master-plot-generate",
+      taskType: "master_plot_generate",
+    });
+  });
+
   async function createTempApp(options: { taskQueue: { enqueue: ReturnType<typeof vi.fn> } }) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-task-api-"));
     tempDirs.push(tempDir);

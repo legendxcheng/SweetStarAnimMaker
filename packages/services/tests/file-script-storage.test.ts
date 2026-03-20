@@ -75,4 +75,29 @@ describe("file premise storage", () => {
       "Updated Scene 1",
     );
   });
+
+  it("reads the legacy script file when the new premise file is missing", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-services-"));
+    tempDirs.push(tempDir);
+
+    const storage = createFileScriptStorage({
+      paths: createLocalDataPaths(tempDir),
+    });
+    const storageDir = "projects/proj_20260317_ab12cd-my-story";
+    const legacyScriptPath = path.join(
+      tempDir,
+      ".local-data",
+      "projects",
+      "proj_20260317_ab12cd-my-story",
+      "script",
+      "original.txt",
+    );
+
+    await fs.mkdir(path.dirname(legacyScriptPath), { recursive: true });
+    await fs.writeFile(legacyScriptPath, "Legacy premise text", "utf8");
+
+    await expect(storage.readPremise({ storageDir })).resolves.toBe(
+      "Legacy premise text",
+    );
+  });
 });

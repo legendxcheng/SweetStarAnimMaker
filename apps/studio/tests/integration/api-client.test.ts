@@ -48,4 +48,41 @@ describe("API Client", () => {
 
     await expect(apiClient.getProjectDetail("proj-1")).rejects.toThrow();
   });
+
+  it("does not send a JSON content-type header for POST requests without a body", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "task_1",
+        projectId: "proj_1",
+        type: "master_plot_generate",
+        status: "pending",
+        createdAt: "2026-03-20T00:00:00.000Z",
+        updatedAt: "2026-03-20T00:00:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_1/input.json",
+          outputPath: "tasks/task_1/output.json",
+          logPath: "tasks/task_1/log.txt",
+        },
+      }),
+    });
+    global.fetch = mockFetch;
+
+    await apiClient.createMasterPlotGenerateTask("proj_1");
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0]?.[0]).toBe(
+      `${config.apiBaseUrl}/projects/proj_1/tasks/master-plot-generate`,
+    );
+    expect(mockFetch.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.has("Content-Type")).toBe(false);
+  });
 });

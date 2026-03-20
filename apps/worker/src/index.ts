@@ -3,6 +3,8 @@ import IORedis from "ioredis";
 import type { MasterPlotProvider } from "@sweet-star/core";
 
 import { buildSpec2WorkerServices } from "./bootstrap/build-spec2-worker-services";
+// @ts-expect-error runtime env loader lives outside this app tsconfig root
+import { loadRootEnv } from "../../../tooling/env/load-env.mjs";
 
 export interface WorkerJob {
   data: {
@@ -37,6 +39,7 @@ export interface StartWorkerOptions {
 export async function startWorker(
   options: StartWorkerOptions = {},
 ): Promise<StartWorkerResult> {
+  loadRootEnv();
   const services =
     options.services ??
     buildSpec2WorkerServices({

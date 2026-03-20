@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { createProjectRecord } from "@sweet-star/core";
+import { createProjectRecord, premiseRelPath } from "@sweet-star/core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -142,15 +142,139 @@ describe("sqlite project repository", () => {
       updatedAt: "2026-03-17T01:00:00.000Z",
     });
   });
+
+  it("maps legacy persisted statuses to the master-plot workflow when reading", async () => {
+    const { db, repository } = await createRepositoryContext();
+
+    const insertLegacyProject = db.prepare(
+      `
+        INSERT INTO projects (
+          id,
+          name,
+          slug,
+          storage_dir,
+          premise_rel_path,
+          premise_bytes,
+          status,
+          created_at,
+          updated_at,
+          premise_updated_at,
+          current_master_plot_id
+        ) VALUES (
+          @id,
+          @name,
+          @slug,
+          @storage_dir,
+          @premise_rel_path,
+          @premise_bytes,
+          @status,
+          @created_at,
+          @updated_at,
+          @premise_updated_at,
+          @current_master_plot_id
+        )
+      `,
+    );
+
+    const legacyRows = [
+      ["proj_legacy_01", "script_ready", "premise_ready"],
+      ["proj_legacy_02", "storyboard_generating", "master_plot_generating"],
+      ["proj_legacy_03", "storyboard_in_review", "master_plot_in_review"],
+      ["proj_legacy_04", "storyboard_approved", "master_plot_approved"],
+    ] as const;
+
+    for (const [id, legacyStatus] of legacyRows) {
+      insertLegacyProject.run({
+        id,
+        name: `Legacy ${id}`,
+        slug: id,
+        storage_dir: `projects/${id}`,
+        premise_rel_path: "premise/v1.md",
+        premise_bytes: 42,
+        status: legacyStatus,
+        created_at: "2026-03-17T00:00:00.000Z",
+        updated_at: "2026-03-17T00:00:00.000Z",
+        premise_updated_at: "2026-03-17T00:00:00.000Z",
+        current_master_plot_id: null,
+      });
+    }
+
+    const projectStatusById = new Map(
+      repository.listAll().map((project) => [project.id, project.status]),
+    );
+
+    for (const [id, legacyStatus, expectedStatus] of legacyRows) {
+      expect(repository.findById(id)?.status, legacyStatus).toBe(expectedStatus);
+      expect(projectStatusById.get(id), legacyStatus).toBe(expectedStatus);
+    }
+  });
+
+  it("inserts a project into a legacy schema that still requires script columns", async () => {
+    const { db } = await createRepositoryContext({
+      legacyProjectsTable: true,
+    });
+    const repository = createSqliteProjectRepository({ db });
+    const project = createProjectRecord({
+      id: "proj_20260317_legacy",
+      name: "Legacy Insert",
+      slug: "legacy-insert",
+      createdAt: "2026-03-17T00:00:00.000Z",
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      premiseBytes: 55,
+    });
+
+    expect(() => repository.insert(project)).not.toThrow();
+
+    const row = db
+      .prepare(
+        `
+          SELECT script_rel_path, script_bytes, script_updated_at
+          FROM projects
+          WHERE id = ?
+        `,
+      )
+      .get(project.id) as
+      | {
+          script_rel_path: string;
+          script_bytes: number;
+          script_updated_at: string;
+        }
+      | undefined;
+
+    expect(row).toEqual({
+      script_rel_path: premiseRelPath,
+      script_bytes: project.premiseBytes,
+      script_updated_at: project.premiseUpdatedAt,
+    });
+  });
 });
 
-async function createRepositoryContext() {
+async function createRepositoryContext(options: { legacyProjectsTable?: boolean } = {}) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-sqlite-"));
   const paths = createLocalDataPaths(tempDir);
   const db = createSqliteDb({ paths });
 
   tempDirs.push(tempDir);
   dbs.push(db);
+
+  if (options.legacyProjectsTable) {
+    db.exec(`
+      CREATE TABLE projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        storage_dir TEXT NOT NULL,
+        script_rel_path TEXT NOT NULL,
+        script_bytes INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        script_updated_at TEXT NOT NULL
+      )
+    `);
+  }
+
   initializeSqliteSchema(db);
 
   return {
