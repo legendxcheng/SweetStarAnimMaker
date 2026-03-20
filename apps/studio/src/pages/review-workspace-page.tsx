@@ -34,6 +34,11 @@ function parseCharacterList(value: string) {
     .filter((item) => item.length > 0);
 }
 
+const REVIEW_ACTION_LABELS = {
+  approve: "通过",
+  reject: "驳回",
+} as const;
+
 export function ReviewWorkspacePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -89,7 +94,7 @@ export function ReviewWorkspacePage() {
       });
       await loadWorkspace();
     } catch (err) {
-      alert(`Save failed: ${(err as Error).message}`);
+      alert(`保存失败：${(err as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -97,14 +102,14 @@ export function ReviewWorkspacePage() {
 
   const handleApprove = async () => {
     if (!workspace || !projectId) return;
-    if (!confirm("Are you sure you want to approve this master plot?")) return;
+    if (!confirm("确认要通过这个主情节吗？")) return;
     try {
       setSubmittingAction(true);
       await apiClient.approveMasterPlot(projectId, {});
-      alert("Master plot approved successfully!");
+      alert("主情节已通过！");
       navigate(`/projects/${projectId}`);
     } catch (err) {
-      alert(`Approve failed: ${(err as Error).message}`);
+      alert(`通过失败：${(err as Error).message}`);
     } finally {
       setSubmittingAction(false);
     }
@@ -118,7 +123,7 @@ export function ReviewWorkspacePage() {
   const handleRejectSubmit = async () => {
     if (!workspace || !projectId) return;
     if (!rejectReason.trim()) {
-      alert("Please provide a reason for rejection");
+      alert("请填写驳回原因");
       return;
     }
     try {
@@ -127,10 +132,10 @@ export function ReviewWorkspacePage() {
         reason: rejectReason.trim(),
       });
       closeRejectDialog();
-      alert("Master plot rejected. Regeneration task created.");
+      alert("主情节已驳回，已创建重新生成任务。");
       navigate(`/projects/${projectId}`);
     } catch (err) {
-      alert(`Reject failed: ${(err as Error).message}`);
+      alert(`驳回失败：${(err as Error).message}`);
     } finally {
       setSubmittingAction(false);
     }
@@ -153,11 +158,11 @@ export function ReviewWorkspacePage() {
                     onClick={() => navigate(`/projects/${projectId}`)}
                     className="text-sm text-(--color-text-muted) hover:text-(--color-text-primary) transition-colors"
                   >
-                    ← Back
+                    ← 返回
                   </button>
                   <span className="text-(--color-border-muted)">|</span>
                   <span className="text-sm font-semibold text-(--color-text-primary)">
-                    Master Plot Review
+                    主情节审核
                   </span>
                   <StatusBadge status={ws.projectStatus} />
                 </div>
@@ -170,7 +175,7 @@ export function ReviewWorkspacePage() {
                       disabled={saving}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {saving ? "Saving..." : "Save Changes"}
+                      {saving ? "保存中..." : "保存修改"}
                     </button>
                   )}
                   {!hasChanges && ws.availableActions.approve && (
@@ -181,7 +186,7 @@ export function ReviewWorkspacePage() {
                       disabled={submittingAction}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-success)/10 text-(--color-success) border border-(--color-success)/30 hover:bg-(--color-success)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      Approve
+                      通过
                     </button>
                   )}
                   {!hasChanges && ws.availableActions.reject && (
@@ -190,7 +195,7 @@ export function ReviewWorkspacePage() {
                       disabled={submittingAction}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      Reject
+                      驳回
                     </button>
                   )}
                 </div>
@@ -198,9 +203,9 @@ export function ReviewWorkspacePage() {
 
               {ws.latestReview && (
                 <div className="mx-6 mt-3 px-4 py-2.5 rounded-lg bg-(--color-bg-surface) border border-(--color-border) text-sm text-(--color-text-muted) shrink-0">
-                  <span className="font-medium text-(--color-text-primary)">Latest review:</span>{" "}
-                  {ws.latestReview.action}
-                  {ws.latestReview.reason && ` — ${ws.latestReview.reason}`}
+                  <span className="font-medium text-(--color-text-primary)">最新审核：</span>
+                  {REVIEW_ACTION_LABELS[ws.latestReview.action]}
+                  {ws.latestReview.reason && `：${ws.latestReview.reason}`}
                 </div>
               )}
 
@@ -210,7 +215,7 @@ export function ReviewWorkspacePage() {
                     htmlFor="title-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Title
+                    标题
                   </label>
                   <input
                     id="title-input"
@@ -225,11 +230,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="logline-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Logline
+                    一句话梗概
                   </label>
                   <textarea
                     id="logline-input"
-                    aria-label="Logline"
+                    aria-label="一句话梗概"
                     value={currentDraft.logline}
                     onChange={(e) => updateDraft("logline", e.target.value)}
                     rows={2}
@@ -242,11 +247,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="synopsis-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Synopsis
+                    剧情简介
                   </label>
                   <textarea
                     id="synopsis-input"
-                    aria-label="Synopsis"
+                    aria-label="剧情简介"
                     value={currentDraft.synopsis}
                     onChange={(e) => updateDraft("synopsis", e.target.value)}
                     rows={5}
@@ -259,11 +264,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="characters-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Main Characters
+                    主要角色
                   </label>
                   <input
                     id="characters-input"
-                    aria-label="Main Characters"
+                    aria-label="主要角色"
                     value={charactersText}
                     onChange={(e) => {
                       setCharactersText(e.target.value);
@@ -278,11 +283,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="core-conflict-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Core Conflict
+                    核心冲突
                   </label>
                   <textarea
                     id="core-conflict-input"
-                    aria-label="Core Conflict"
+                    aria-label="核心冲突"
                     value={currentDraft.coreConflict}
                     onChange={(e) => updateDraft("coreConflict", e.target.value)}
                     rows={3}
@@ -295,11 +300,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="emotional-arc-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Emotional Arc
+                    情感弧线
                   </label>
                   <textarea
                     id="emotional-arc-input"
-                    aria-label="Emotional Arc"
+                    aria-label="情感弧线"
                     value={currentDraft.emotionalArc}
                     onChange={(e) => updateDraft("emotionalArc", e.target.value)}
                     rows={3}
@@ -312,11 +317,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="ending-beat-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Ending Beat
+                    结局节点
                   </label>
                   <textarea
                     id="ending-beat-input"
-                    aria-label="Ending Beat"
+                    aria-label="结局节点"
                     value={currentDraft.endingBeat}
                     onChange={(e) => updateDraft("endingBeat", e.target.value)}
                     rows={3}
@@ -329,11 +334,11 @@ export function ReviewWorkspacePage() {
                     htmlFor="duration-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    Target Duration (sec)
+                    目标时长（秒）
                   </label>
                   <input
                     id="duration-input"
-                    aria-label="Target Duration (sec)"
+                    aria-label="目标时长（秒）"
                     type="number"
                     value={currentDraft.targetDurationSec ?? ""}
                     onChange={(e) =>
@@ -351,7 +356,7 @@ export function ReviewWorkspacePage() {
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                   <div className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-6 w-full max-w-md mx-4">
                     <h3 className="text-base font-semibold text-(--color-text-primary) mb-4">
-                      Reject Master Plot
+                      驳回主情节
                     </h3>
 
                     <div className="mb-5">
@@ -359,14 +364,14 @@ export function ReviewWorkspacePage() {
                         htmlFor="reject-reason"
                         className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                       >
-                        Reason
+                        原因
                       </label>
                       <textarea
                         id="reject-reason"
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         rows={3}
-                        placeholder="Explain why you're rejecting this master plot..."
+                        placeholder="请说明驳回原因..."
                         className={`${inputClass} resize-y`}
                       />
                     </div>
@@ -379,14 +384,14 @@ export function ReviewWorkspacePage() {
                         disabled={submittingAction}
                         className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Submit Rejection
+                        提交驳回
                       </button>
                       <button
                         onClick={closeRejectDialog}
                         disabled={submittingAction}
                         className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Cancel
+                        取消
                       </button>
                     </div>
                   </div>

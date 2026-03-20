@@ -85,8 +85,8 @@ describe("Review Actions", () => {
 
     renderPage();
 
-    const approveButton = await screen.findByRole("button", { name: "Approve" });
-    const rejectButton = screen.getByRole("button", { name: "Reject" });
+    const approveButton = await screen.findByRole("button", { name: "通过" });
+    const rejectButton = screen.getByRole("button", { name: "驳回" });
 
     fireEvent.click(approveButton);
 
@@ -125,11 +125,11 @@ describe("Review Actions", () => {
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
-    fireEvent.change(screen.getByPlaceholderText(/explain why/i), {
+    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+    fireEvent.change(screen.getByPlaceholderText(/请说明驳回原因/), {
       target: { value: "Need stronger framing" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
+    fireEvent.click(screen.getByRole("button", { name: /提交驳回/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {
@@ -143,13 +143,13 @@ describe("Review Actions", () => {
   it("reject validation keeps the dialog open when reason is blank", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
-    fireEvent.change(screen.getByPlaceholderText(/explain why/i), {
+    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+    fireEvent.change(screen.getByPlaceholderText(/请说明驳回原因/), {
       target: { value: "   " },
     });
-    fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
+    fireEvent.click(screen.getByRole("button", { name: /提交驳回/i }));
 
-    expect(globalThis.alert).toHaveBeenCalledWith("Please provide a reason for rejection");
+    expect(globalThis.alert).toHaveBeenCalledWith("请填写驳回原因");
     expect(apiModule.apiClient.rejectMasterPlot).not.toHaveBeenCalled();
   });
 });

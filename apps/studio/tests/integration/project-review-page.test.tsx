@@ -92,14 +92,14 @@ describe("Project Review Page", () => {
       expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Title"), {
+    fireEvent.change(screen.getByLabelText("标题"), {
       target: { value: "The Last Sky Choir Revised" },
     });
-    fireEvent.change(screen.getByLabelText("Synopsis"), {
+    fireEvent.change(screen.getByLabelText("剧情简介"), {
       target: { value: "Updated master plot synopsis" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.saveMasterPlot).toHaveBeenCalledWith("proj-1", {
@@ -131,14 +131,14 @@ describe("Project Review Page", () => {
       expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Title"), {
+    fireEvent.change(screen.getByLabelText("标题"), {
       target: { value: "Draft title that should stay visible" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
 
     await waitFor(() => {
-      expect(globalThis.alert).toHaveBeenCalledWith("Save failed: Version conflict");
+      expect(globalThis.alert).toHaveBeenCalledWith("保存失败：Version conflict");
     });
 
     expect(screen.getByDisplayValue("Draft title that should stay visible")).toBeInTheDocument();

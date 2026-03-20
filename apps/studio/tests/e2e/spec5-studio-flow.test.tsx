@@ -154,17 +154,17 @@ describe("Spec5 Studio Flow", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText(/no projects yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/还没有项目/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /create project/i }));
-    fireEvent.change(screen.getByLabelText("Project Name"), {
+    fireEvent.click(screen.getByRole("link", { name: "创建项目" }));
+    fireEvent.change(screen.getByLabelText("项目名称"), {
       target: { value: "Flow Project" },
     });
-    fireEvent.change(screen.getByLabelText("Premise"), {
+    fireEvent.change(screen.getByLabelText("项目前提"), {
       target: { value: "A washed-up pilot discovers a singing comet above a drowned city." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create Project" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建项目" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createProject).toHaveBeenCalledWith({
@@ -177,7 +177,7 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
+    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
@@ -190,21 +190,21 @@ describe("Spec5 Studio Flow", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /enter review/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入审核/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("link", { name: /enter review/i }));
+    fireEvent.click(screen.getByRole("link", { name: /进入审核/i }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Title"), {
+    fireEvent.change(screen.getByLabelText("标题"), {
       target: { value: "The Last Sky Choir Revised" },
     });
-    fireEvent.change(screen.getByLabelText("Synopsis"), {
+    fireEvent.change(screen.getByLabelText("剧情简介"), {
       target: { value: "Updated master plot synopsis" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.saveMasterPlot).toHaveBeenCalledWith("proj-1", {
@@ -223,11 +223,11 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByDisplayValue("The Last Sky Choir Revised")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
-    fireEvent.change(screen.getByPlaceholderText(/explain why/i), {
+    fireEvent.click(screen.getByRole("button", { name: "驳回" }));
+    fireEvent.change(screen.getByPlaceholderText(/请说明驳回原因/), {
       target: { value: "Try a different draft" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /submit rejection/i }));
+    fireEvent.click(screen.getByRole("button", { name: /提交驳回/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {

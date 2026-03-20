@@ -13,7 +13,7 @@ describe("App Shell", () => {
           children: [
             {
               path: "projects",
-              element: <div>Projects Page</div>,
+              element: <div>项目页面</div>,
             },
           ],
         },
@@ -25,8 +25,8 @@ describe("App Shell", () => {
 
     render(<RouterProvider router={router} />);
 
-    expect(screen.getByText("Sweet Star Studio")).toBeInTheDocument();
-    expect(screen.getByText("Projects Page")).toBeInTheDocument();
+    expect(screen.getByText("甜星工坊")).toBeInTheDocument();
+    expect(screen.getByText("项目页面")).toBeInTheDocument();
   });
 
   it("renders the /projects route", () => {
@@ -38,7 +38,7 @@ describe("App Shell", () => {
           children: [
             {
               path: "projects",
-              element: <div>Projects Page</div>,
+              element: <div>项目页面</div>,
             },
           ],
         },
@@ -50,7 +50,7 @@ describe("App Shell", () => {
 
     render(<RouterProvider router={router} />);
 
-    expect(screen.getByText("Projects Page")).toBeInTheDocument();
+    expect(screen.getByText("项目页面")).toBeInTheDocument();
   });
 
   it("shows not-found state for unknown routes", () => {
@@ -66,7 +66,7 @@ describe("App Shell", () => {
             },
             {
               path: "*",
-              element: <div>Not Found</div>,
+              element: <div>未找到页面</div>,
             },
           ],
         },
@@ -78,6 +78,6 @@ describe("App Shell", () => {
 
     render(<RouterProvider router={router} />);
 
-    expect(screen.getByText("Not Found")).toBeInTheDocument();
+    expect(screen.getByText("未找到页面")).toBeInTheDocument();
   });
 });

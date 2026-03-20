@@ -22,7 +22,7 @@ describe("Projects Page", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByText("加载中...")).toBeInTheDocument();
   });
 
   it("displays project list when loaded", async () => {
@@ -60,7 +60,8 @@ describe("Projects Page", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/no projects/i)).toBeInTheDocument();
+      expect(screen.getByText(/还没有项目/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "创建项目" })).toBeInTheDocument();
     });
   });
 
@@ -76,6 +77,7 @@ describe("Projects Page", () => {
     );
 
     await waitFor(() => {
+      expect(screen.getByText("错误")).toBeInTheDocument();
       expect(screen.getByText(/failed to fetch projects/i)).toBeInTheDocument();
     });
   });

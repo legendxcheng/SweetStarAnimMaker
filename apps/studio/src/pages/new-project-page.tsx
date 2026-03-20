@@ -34,7 +34,7 @@ export function NewProjectPage() {
 
   return (
     <div>
-      <PageHeader title="Create New Project" />
+      <PageHeader title="新建项目" />
 
       {error && (
         <div className="mb-6">
@@ -51,14 +51,14 @@ export function NewProjectPage() {
             htmlFor="project-name"
             className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
           >
-            Project Name
+            项目名称
           </label>
           <input
             id="project-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Enter project name"
+            placeholder="请输入项目名称"
             required
             disabled={submitting}
             className={inputClass}
@@ -70,13 +70,13 @@ export function NewProjectPage() {
             htmlFor="project-premise"
             className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
           >
-            Premise
+            项目前提
           </label>
           <textarea
             id="project-premise"
             value={premiseText}
             onChange={(e) => setPremiseText(e.target.value)}
-            placeholder="Describe the premise for master-plot generation"
+            placeholder="请描述用于生成主情节的项目前提"
             required
             disabled={submitting}
             rows={10}
@@ -90,7 +90,7 @@ export function NewProjectPage() {
             disabled={submitting || !name.trim() || !premiseText.trim()}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? "Creating..." : "Create Project"}
+            {submitting ? "创建中..." : "创建项目"}
           </button>
           <button
             type="button"
@@ -98,7 +98,7 @@ export function NewProjectPage() {
             disabled={submitting}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Cancel
+            取消
           </button>
         </div>
       </form>

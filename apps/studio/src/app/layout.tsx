@@ -11,7 +11,7 @@ export function Layout() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-(--color-accent) to-(--color-accent-end) flex items-center justify-center shrink-0">
               <span className="text-xs font-bold text-(--color-bg-base)">S</span>
             </div>
-            <span className="text-sm font-semibold text-(--color-text-primary)">Sweet Star Studio</span>
+            <span className="text-sm font-semibold text-(--color-text-primary)">甜星工坊</span>
           </div>
         </div>
 
@@ -27,7 +27,7 @@ export function Layout() {
               }`
             }
           >
-            Projects
+            项目列表
           </NavLink>
         </nav>
 
@@ -37,7 +37,7 @@ export function Layout() {
             to="/projects/new"
             className="flex items-center justify-center w-full px-3 py-2 rounded-md text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity"
           >
-            + New Project
+            + 新建项目
           </NavLink>
         </div>
       </aside>

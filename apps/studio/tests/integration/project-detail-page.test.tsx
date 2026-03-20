@@ -110,7 +110,7 @@ describe("Project Detail Page", () => {
       expect(screen.getByText("Test Project")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
+    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
@@ -118,8 +118,8 @@ describe("Project Detail Page", () => {
       );
     });
 
-    expect(screen.getByText(/task status/i)).toBeInTheDocument();
-    expect(screen.getByText(/running/i)).toBeInTheDocument();
+    expect(screen.getByText(/任务状态/i)).toBeInTheDocument();
+    expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
   it("refreshes generating projects even when no local task id is available", async () => {
@@ -136,7 +136,7 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/master plot generation in progress/i)).toBeInTheDocument();
+      expect(screen.getByText(/主情节生成中/)).toBeInTheDocument();
     });
 
     expect(refreshTimer).toBeDefined();
@@ -146,7 +146,7 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /enter review/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入审核/i })).toBeInTheDocument();
   });
 
   it("polls task detail until success, refreshes the project, and shows the review entry", async () => {
@@ -173,10 +173,10 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /generate master plot/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /生成主情节/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
+    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
@@ -197,7 +197,7 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /enter review/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入审核/i })).toBeInTheDocument();
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
 
@@ -219,10 +219,10 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /generate master plot/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /生成主情节/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /generate master plot/i }));
+    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(

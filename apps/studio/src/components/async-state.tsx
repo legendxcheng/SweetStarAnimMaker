@@ -17,7 +17,7 @@ export function AsyncState<T>({
   children,
   loadingFallback = (
     <div className="flex items-center justify-center py-12">
-      <p className="text-sm text-(--color-text-muted)">Loading...</p>
+      <p className="text-sm text-(--color-text-muted)">加载中...</p>
     </div>
   ),
   errorFallback = (err) => <ErrorState error={err} />,

@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "*",
-        element: <div>Not Found</div>,
+        element: <div>未找到页面</div>,
       },
     ],
   },

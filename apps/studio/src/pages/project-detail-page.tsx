@@ -12,6 +12,13 @@ function isActiveTask(task: TaskDetail | null) {
   return task?.status === "pending" || task?.status === "running";
 }
 
+const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
+  pending: "排队中",
+  running: "执行中",
+  succeeded: "已完成",
+  failed: "失败",
+};
+
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -96,7 +103,7 @@ export function ProjectDetailPage() {
                   to="/projects"
                   className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors no-underline"
                 >
-                  ← Back to Projects
+                  ← 返回项目列表
                 </Link>
               }
             />
@@ -107,32 +114,32 @@ export function ProjectDetailPage() {
               </div>
               <div className="grid gap-3">
                 <div>
-                  <p className={metaLabelClass}>Project ID</p>
+                  <p className={metaLabelClass}>项目 ID</p>
                   <p className={`${metaValueClass} font-mono text-xs`}>{currentProject.id}</p>
                 </div>
                 <div>
-                  <p className={metaLabelClass}>Slug</p>
+                  <p className={metaLabelClass}>别名</p>
                   <p className={metaValueClass}>{currentProject.slug}</p>
                 </div>
                 <div>
-                  <p className={metaLabelClass}>Premise</p>
+                  <p className={metaLabelClass}>项目前提</p>
                   <p className={metaValueClass}>
                     {currentProject.premise.path}{" "}
                     <span className="text-(--color-text-muted)">
-                      ({currentProject.premise.bytes} bytes)
+                      ({currentProject.premise.bytes} 字节)
                     </span>
                   </p>
                 </div>
                 <div>
-                  <p className={metaLabelClass}>Created</p>
+                  <p className={metaLabelClass}>创建时间</p>
                   <p className={metaValueClass}>
-                    {new Date(currentProject.createdAt).toLocaleString()}
+                    {new Date(currentProject.createdAt).toLocaleString("zh-CN")}
                   </p>
                 </div>
                 <div>
-                  <p className={metaLabelClass}>Updated</p>
+                  <p className={metaLabelClass}>更新时间</p>
                   <p className={metaValueClass}>
-                    {new Date(currentProject.updatedAt).toLocaleString()}
+                    {new Date(currentProject.updatedAt).toLocaleString("zh-CN")}
                   </p>
                 </div>
               </div>
@@ -146,7 +153,7 @@ export function ProjectDetailPage() {
                   disabled={creatingTask || isActiveTask(task)}
                   className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {creatingTask ? "Starting..." : "Generate Master Plot"}
+                  {creatingTask ? "启动中..." : "生成主情节"}
                 </button>
               </div>
             </div>
@@ -154,21 +161,21 @@ export function ProjectDetailPage() {
             {task && (
               <div className={cardClass}>
                 <h3 className="text-base font-semibold text-(--color-text-primary) mb-3">
-                  Task Status
+                  任务状态
                 </h3>
                 <div className="grid gap-2">
                   <div>
-                    <p className={metaLabelClass}>Task ID</p>
+                    <p className={metaLabelClass}>任务 ID</p>
                     <p className={`${metaValueClass} font-mono text-xs`}>{task.id}</p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Status</p>
-                    <p className={metaValueClass}>{task.status}</p>
+                    <p className={metaLabelClass}>状态</p>
+                    <p className={metaValueClass}>{TASK_STATUS_LABELS[task.status]}</p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Updated</p>
+                    <p className={metaLabelClass}>更新时间</p>
                     <p className={metaValueClass}>
-                      {new Date(task.updatedAt).toLocaleString()}
+                      {new Date(task.updatedAt).toLocaleString("zh-CN")}
                     </p>
                   </div>
                   {task.errorMessage && (
@@ -187,7 +194,7 @@ export function ProjectDetailPage() {
             {currentProject.status === "master_plot_generating" && !task && (
               <div className="bg-(--color-warning)/10 border border-(--color-warning)/30 rounded-xl p-4 mb-4">
                 <p className="text-sm text-(--color-warning)">
-                  Master plot generation in progress... auto-refreshing project status.
+                  主情节生成中，正在自动刷新项目状态。
                 </p>
               </div>
             )}
@@ -195,29 +202,29 @@ export function ProjectDetailPage() {
             {currentProject.currentMasterPlot && (
               <div className={cardClass}>
                 <h3 className="text-base font-semibold text-(--color-text-primary) mb-3">
-                  Current Master Plot
+                  当前主情节
                 </h3>
                 <div className="grid gap-2 mb-4">
                   <div>
-                    <p className={metaLabelClass}>Title</p>
+                    <p className={metaLabelClass}>标题</p>
                     <p className={metaValueClass}>
-                      {currentProject.currentMasterPlot.title ?? "Untitled"}
+                      {currentProject.currentMasterPlot.title ?? "未命名"}
                     </p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Logline</p>
+                    <p className={metaLabelClass}>一句话梗概</p>
                     <p className={metaValueClass}>{currentProject.currentMasterPlot.logline}</p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Main Characters</p>
+                    <p className={metaLabelClass}>主要角色</p>
                     <p className={metaValueClass}>
-                      {currentProject.currentMasterPlot.mainCharacters.join(", ")}
+                      {currentProject.currentMasterPlot.mainCharacters.join("，")}
                     </p>
                   </div>
                   <div>
-                    <p className={metaLabelClass}>Updated</p>
+                    <p className={metaLabelClass}>更新时间</p>
                     <p className={metaValueClass}>
-                      {new Date(currentProject.currentMasterPlot.updatedAt).toLocaleString()}
+                      {new Date(currentProject.currentMasterPlot.updatedAt).toLocaleString("zh-CN")}
                     </p>
                   </div>
                 </div>
@@ -227,7 +234,7 @@ export function ProjectDetailPage() {
                     to={`/projects/${currentProject.id}/review`}
                     className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity no-underline"
                   >
-                    Enter Review →
+                    进入审核 →
                   </Link>
                 )}
               </div>

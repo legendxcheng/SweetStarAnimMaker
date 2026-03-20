@@ -41,15 +41,15 @@ describe("New Project Page", () => {
 
     render(<NewProjectPage />);
 
-    fireEvent.change(screen.getByLabelText("Project Name"), {
+    fireEvent.change(screen.getByLabelText("项目名称"), {
       target: { value: "Test Project" },
     });
-    fireEvent.change(screen.getByLabelText("Premise"), {
+    fireEvent.change(screen.getByLabelText("项目前提"), {
       target: {
         value: "A washed-up pilot discovers a singing comet above a drowned city.",
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create Project" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建项目" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createProject).toHaveBeenCalledWith({

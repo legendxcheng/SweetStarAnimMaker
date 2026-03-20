@@ -32,7 +32,7 @@ export function ProjectsPage() {
 
   return (
     <div>
-      <PageHeader title="Projects" />
+      <PageHeader title="项目列表" />
 
       <AsyncState
         data={data}
@@ -43,13 +43,13 @@ export function ProjectsPage() {
         {(projects) =>
           projects.length === 0 ? (
             <EmptyState
-              message="No projects yet. Create your first project to get started."
+              message="还没有项目。先创建一个项目开始使用。"
               action={
                 <Link
                   to="/projects/new"
                   className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity"
                 >
-                  Create Project
+                  创建项目
                 </Link>
               }
             />
@@ -69,7 +69,7 @@ export function ProjectsPage() {
                       <StatusBadge status={project.status} />
                     </div>
                     <p className="text-xs text-(--color-text-muted)">
-                      Updated: {new Date(project.updatedAt).toLocaleDateString()}
+                      更新于：{new Date(project.updatedAt).toLocaleDateString("zh-CN")}
                     </p>
                   </div>
                 </Link>
