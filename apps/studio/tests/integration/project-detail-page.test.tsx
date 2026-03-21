@@ -98,6 +98,54 @@ describe("Project Detail Page", () => {
     vi.clearAllMocks();
   });
 
+  it("shows the phase navigation with premise selected by default", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "前提" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
+
+    expect(screen.getByRole("button", { name: "主情节" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+    expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /生成主情节/i })).not.toBeInTheDocument();
+  });
+
+  it("switches to the master-plot panel when the user clicks 主情节", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+
+    expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成主情节/i })).toBeInTheDocument();
+    expect(screen.queryByText("项目 ID")).not.toBeInTheDocument();
+  });
+
+  it("keeps future phases disabled and ignores clicks on them", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+
+    expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
+  });
+
   it("loads project detail and lets the user start master-plot generation", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
     vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
@@ -107,9 +155,10 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Test Project")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
     fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
@@ -118,7 +167,7 @@ describe("Project Detail Page", () => {
       );
     });
 
-    expect(screen.getByText(/任务状态/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
     expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
@@ -136,9 +185,11 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/主情节生成中/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+    expect(screen.getByText(/主情节生成中/)).toBeInTheDocument();
     expect(refreshTimer).toBeDefined();
 
     await act(async () => {
@@ -146,7 +197,7 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toBeInTheDocument();
   });
 
   it("polls task detail until success, refreshes the project, and shows the review entry", async () => {
@@ -173,9 +224,10 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /生成主情节/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
     fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
@@ -197,7 +249,7 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toBeInTheDocument();
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
 
@@ -219,9 +271,10 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /生成主情节/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
     fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {

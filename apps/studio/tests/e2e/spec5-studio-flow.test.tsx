@@ -186,6 +186,7 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
     fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
@@ -199,9 +200,9 @@ describe("Spec5 Studio Flow", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("link", { name: /进入审核/i }));
+    fireEvent.click(screen.getByRole("link", { name: /进入主情节审核/i }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
@@ -303,6 +304,7 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
     fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
 
     await waitFor(() => {
@@ -316,7 +318,7 @@ describe("Spec5 Studio Flow", () => {
       await flushMicrotasks();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /进入审核/i }));
+    fireEvent.click(screen.getByRole("link", { name: /进入主情节审核/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "通过" })).toBeInTheDocument();
@@ -332,6 +334,6 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("已通过")).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole("link", { name: /进入审核/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /进入主情节审核/i })).not.toBeInTheDocument();
   });
 });
