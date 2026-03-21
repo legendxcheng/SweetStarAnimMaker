@@ -25,6 +25,10 @@ export {
 } from "./schemas/project-api";
 export {
   currentMasterPlotResponseSchema,
+  currentStoryboardSummaryResponseSchema,
+  currentStoryboardResponseSchema,
+  storyboardReviewWorkspaceResponseSchema,
+  saveStoryboardRequestSchema,
   approveMasterPlotRequestSchema,
   rejectMasterPlotRequestSchema,
   saveMasterPlotRequestSchema,
@@ -33,6 +37,7 @@ export {
 } from "./schemas/storyboard-api";
 export {
   createMasterPlotGenerateTaskResponseSchema,
+  createStoryboardGenerateTaskResponseSchema,
   taskDetailResponseSchema,
 } from "./schemas/task-api";
 export type { ProjectDetail, ProjectPremiseMetadata } from "./types/project-detail";
@@ -41,7 +46,9 @@ export type {
   CurrentMasterPlot,
 } from "./types/master-plot";
 export type {
+  CurrentStoryboardSummary,
   CurrentStoryboard,
+  StoryboardSegment,
   StoryboardScene,
   StoryboardVersionSummary,
 } from "./types/storyboard";
@@ -53,4 +60,11 @@ export type {
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
 } from "./types/master-plot-review";
+export type {
+  ApproveStoryboardRequest,
+  RejectStoryboardRequest,
+  SaveStoryboardRequest,
+  StoryboardReviewAvailableActions,
+  StoryboardReviewWorkspace,
+} from "./types/storyboard-review";
 export type { TaskDetail, TaskFileMetadata } from "./types/task-detail";

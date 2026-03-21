@@ -23,6 +23,71 @@ export const currentMasterPlotResponseSchema = editableMasterPlotSchema.extend({
   approvedAt: z.string().nullable(),
 });
 
+const storyboardSegmentResponseSchema = z.object({
+  id: z.string(),
+  order: z.number().int().nonnegative(),
+  durationSec: z.number().int().positive().max(15).nullable(),
+  visual: requiredTextSchema,
+  characterAction: requiredTextSchema,
+  dialogue: z.string(),
+  voiceOver: z.string(),
+  audio: z.string(),
+  purpose: requiredTextSchema,
+});
+
+const storyboardSceneResponseSchema = z.object({
+  id: z.string(),
+  order: z.number().int().nonnegative(),
+  name: requiredTextSchema,
+  dramaticPurpose: requiredTextSchema,
+  segments: z.array(storyboardSegmentResponseSchema).min(1),
+});
+
+export const currentStoryboardSummaryResponseSchema = z.object({
+  id: z.string(),
+  title: z.string().trim().min(1).nullable(),
+  episodeTitle: z.string().trim().min(1).nullable(),
+  sourceMasterPlotId: z.string(),
+  sourceTaskId: z.string().nullable(),
+  updatedAt: z.string(),
+  approvedAt: z.string().nullable(),
+  sceneCount: z.number().int().positive(),
+  segmentCount: z.number().int().positive(),
+  totalDurationSec: z.number().int().positive().nullable(),
+});
+
+export const currentStoryboardResponseSchema = z.object({
+  id: z.string(),
+  title: z.string().trim().min(1).nullable(),
+  episodeTitle: z.string().trim().min(1).nullable(),
+  sourceMasterPlotId: z.string(),
+  sourceTaskId: z.string().nullable(),
+  updatedAt: z.string(),
+  approvedAt: z.string().nullable(),
+  scenes: z.array(storyboardSceneResponseSchema).min(1),
+});
+
+export const saveStoryboardRequestSchema = z.object({
+  title: z.string().trim().min(1).nullable(),
+  episodeTitle: z.string().trim().min(1).nullable(),
+  sourceMasterPlotId: z.string(),
+  sourceTaskId: z.string().nullable(),
+  scenes: z.array(storyboardSceneResponseSchema).min(1),
+});
+
+export const storyboardReviewWorkspaceResponseSchema = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  projectStatus: z.literal("storyboard_in_review"),
+  currentStoryboard: currentStoryboardResponseSchema,
+  latestTask: taskDetailResponseSchema.nullable(),
+  availableActions: z.object({
+    save: z.boolean(),
+    approve: z.boolean(),
+    reject: z.boolean(),
+  }),
+});
+
 export const approveMasterPlotRequestSchema = z.object({});
 
 export const rejectMasterPlotRequestSchema = z.object({

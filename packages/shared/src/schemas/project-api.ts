@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { initialProjectStatus, projectStatuses } from "../constants/project-status";
-import { currentMasterPlotResponseSchema } from "./storyboard-api";
+import {
+  currentMasterPlotResponseSchema,
+  currentStoryboardSummaryResponseSchema,
+} from "./storyboard-api";
 
 const requiredTextSchema = z.string().trim().min(1);
 const premiseMetadataSchema = z.object({
@@ -24,6 +27,7 @@ export const projectSummaryResponseSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
+  currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
 });
 
 export const projectListResponseSchema = z.array(projectSummaryResponseSchema);
@@ -38,4 +42,5 @@ export const projectDetailResponseSchema = z.object({
   updatedAt: z.string(),
   premise: premiseMetadataSchema,
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
+  currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
 });
