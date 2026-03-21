@@ -1,33 +1,33 @@
 import type { TaskDetail } from "@sweet-star/shared";
 
 import {
+  characterSheetGenerateQueueName,
   createTaskRecord,
-  storyboardGenerateQueueName,
-  type StoryboardGenerateTaskInput,
+  type CharacterSheetGenerateTaskInput,
 } from "../domain/task";
-import { CurrentCharacterSheetBatchNotFoundError } from "../errors/character-sheet-errors";
-import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
-import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
+import { CharacterSheetNotFoundError } from "../errors/character-sheet-errors";
+import { ProjectNotFoundError } from "../errors/project-errors";
+import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
-import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import { toTaskDetailDto } from "./task-detail-dto";
 
-export interface CreateStoryboardGenerateTaskInput {
+export interface RegenerateCharacterSheetInput {
   projectId: string;
+  characterId: string;
 }
 
-export interface CreateStoryboardGenerateTaskUseCase {
-  execute(input: CreateStoryboardGenerateTaskInput): Promise<TaskDetail>;
+export interface RegenerateCharacterSheetUseCase {
+  execute(input: RegenerateCharacterSheetInput): Promise<TaskDetail>;
 }
 
-export interface CreateStoryboardGenerateTaskUseCaseDependencies {
+export interface RegenerateCharacterSheetUseCaseDependencies {
   projectRepository: ProjectRepository;
-  masterPlotStorage: MasterPlotStorage;
+  characterSheetRepository: CharacterSheetRepository;
   taskRepository: TaskRepository;
   taskFileStorage: TaskFileStorage;
   taskQueue: TaskQueue;
@@ -35,9 +35,9 @@ export interface CreateStoryboardGenerateTaskUseCaseDependencies {
   clock: Clock;
 }
 
-export function createCreateStoryboardGenerateTaskUseCase(
-  dependencies: CreateStoryboardGenerateTaskUseCaseDependencies,
-): CreateStoryboardGenerateTaskUseCase {
+export function createRegenerateCharacterSheetUseCase(
+  dependencies: RegenerateCharacterSheetUseCaseDependencies,
+): RegenerateCharacterSheetUseCase {
   return {
     async execute(input) {
       const project = await dependencies.projectRepository.findById(input.projectId);
@@ -46,22 +46,12 @@ export function createCreateStoryboardGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      if (project.status !== "character_sheets_approved") {
-        throw new ProjectValidationError(
-          "Storyboard generation requires character_sheets_approved",
-        );
-      }
+      const character = await dependencies.characterSheetRepository.findCharacterById(
+        input.characterId,
+      );
 
-      if (!project.currentCharacterSheetBatchId) {
-        throw new CurrentCharacterSheetBatchNotFoundError(project.id);
-      }
-
-      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
-        storageDir: project.storageDir,
-      });
-
-      if (!currentMasterPlot || !currentMasterPlot.approvedAt) {
-        throw new CurrentMasterPlotNotFoundError(project.id);
+      if (!character || character.projectId !== project.id) {
+        throw new CharacterSheetNotFoundError(input.characterId);
       }
 
       const timestamp = dependencies.clock.now();
@@ -69,27 +59,20 @@ export function createCreateStoryboardGenerateTaskUseCase(
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,
         projectStorageDir: project.storageDir,
-        type: "storyboard_generate",
-        queueName: storyboardGenerateQueueName,
+        type: "character_sheet_generate",
+        queueName: characterSheetGenerateQueueName,
         createdAt: timestamp,
       });
-      const taskInput: StoryboardGenerateTaskInput = {
+      const taskInput: CharacterSheetGenerateTaskInput = {
         taskId: task.id,
         projectId: project.id,
-        taskType: "storyboard_generate",
-        sourceMasterPlotId: currentMasterPlot.id,
-        masterPlot: {
-          title: currentMasterPlot.title,
-          logline: currentMasterPlot.logline,
-          synopsis: currentMasterPlot.synopsis,
-          mainCharacters: currentMasterPlot.mainCharacters,
-          coreConflict: currentMasterPlot.coreConflict,
-          emotionalArc: currentMasterPlot.emotionalArc,
-          endingBeat: currentMasterPlot.endingBeat,
-          targetDurationSec: currentMasterPlot.targetDurationSec,
-        },
-        promptTemplateKey: "storyboard.generate",
-        model: "gemini-3.1-pro-preview",
+        taskType: "character_sheet_generate",
+        batchId: character.batchId,
+        characterId: character.id,
+        sourceMasterPlotId: character.sourceMasterPlotId,
+        characterName: character.characterName,
+        promptTextCurrent: character.promptTextCurrent,
+        imagePromptTemplateKey: "character_sheet.turnaround.generate",
       };
 
       await dependencies.taskRepository.insert(task);
@@ -104,6 +87,16 @@ export function createCreateStoryboardGenerateTaskUseCase(
         throw error;
       }
 
+      const generatingCharacter = {
+        ...character,
+        status: "generating" as const,
+        approvedAt: null,
+        updatedAt: timestamp,
+        sourceTaskId: task.id,
+      };
+
+      await dependencies.characterSheetRepository.updateCharacter(generatingCharacter);
+
       try {
         await dependencies.taskQueue.enqueue({
           taskId: task.id,
@@ -112,7 +105,7 @@ export function createCreateStoryboardGenerateTaskUseCase(
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "storyboard_generating",
+          status: "character_sheets_generating",
           updatedAt: timestamp,
         });
       } catch (error) {

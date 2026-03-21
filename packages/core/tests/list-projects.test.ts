@@ -16,6 +16,7 @@ describe("list projects use case", () => {
           premiseRelPath: "premise/v1.md",
           premiseBytes: 100,
           currentMasterPlotId: "mp_20260320_ab12cd",
+          currentCharacterSheetBatchId: "char_batch_v1",
           currentStoryboardId: null,
           status: "master_plot_in_review",
           createdAt: "2026-03-20T10:00:00.000Z",
@@ -30,6 +31,7 @@ describe("list projects use case", () => {
           premiseRelPath: "premise/v1.md",
           premiseBytes: 120,
           currentMasterPlotId: null,
+          currentCharacterSheetBatchId: null,
           currentStoryboardId: null,
           status: "premise_ready",
           createdAt: "2026-03-20T11:00:00.000Z",
@@ -70,10 +72,32 @@ describe("list projects use case", () => {
       writeCurrentStoryboard: vi.fn(),
       readCurrentStoryboard: vi.fn(),
     };
+    const characterSheetRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn().mockResolvedValue({
+        id: "char_batch_v1",
+        projectId: "proj_20260320_ab12cd",
+        projectStorageDir: "projects/proj_20260320_ab12cd-sky-choir",
+        sourceMasterPlotId: "mp_20260320_ab12cd",
+        characterCount: 2,
+        storageDir: "projects/proj_20260320_ab12cd-sky-choir/character-sheets/batches/char_batch_v1",
+        manifestRelPath: "character-sheets/batches/char_batch_v1/manifest.json",
+        createdAt: "2026-03-20T10:00:00.000Z",
+        updatedAt: "2026-03-20T10:35:00.000Z",
+      }),
+      listCharactersByBatchId: vi.fn().mockResolvedValue([
+        { id: "char_rin_1", status: "approved" },
+        { id: "char_ivo_2", status: "in_review" },
+      ]),
+      insertCharacter: vi.fn(),
+      findCharacterById: vi.fn(),
+      updateCharacter: vi.fn(),
+    };
     const useCase = createListProjectsUseCase({
       repository,
       masterPlotStorage,
       storyboardStorage,
+      characterSheetRepository,
     });
 
     const result = await useCase.execute();
@@ -83,6 +107,8 @@ describe("list projects use case", () => {
       storageDir: "projects/proj_20260320_ab12cd-sky-choir",
     });
     expect(result[0].currentMasterPlot?.title).toBe("The Last Sky Choir");
+    expect(result[0].currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result[1].currentMasterPlot).toBeNull();
+    expect(result[1].currentCharacterSheetBatch).toBeNull();
   });
 });

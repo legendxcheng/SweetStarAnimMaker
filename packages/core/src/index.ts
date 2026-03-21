@@ -119,6 +119,10 @@ export {
   ProjectValidationError,
 } from "./errors/project-errors";
 export {
+  CharacterSheetNotFoundError,
+  CurrentCharacterSheetBatchNotFoundError,
+} from "./errors/character-sheet-errors";
+export {
   CurrentMasterPlotNotFoundError,
   CurrentStoryboardNotFoundError,
 } from "./errors/storyboard-errors";
@@ -207,11 +211,29 @@ export {
   type CreateProjectUseCaseDependencies,
 } from "./use-cases/create-project";
 export {
+  createCreateCharacterSheetsGenerateTaskUseCase,
+  type CreateCharacterSheetsGenerateTaskInput,
+  type CreateCharacterSheetsGenerateTaskUseCase,
+  type CreateCharacterSheetsGenerateTaskUseCaseDependencies,
+} from "./use-cases/create-character-sheets-generate-task";
+export {
   createCreateStoryboardGenerateTaskUseCase,
   type CreateStoryboardGenerateTaskInput,
   type CreateStoryboardGenerateTaskUseCase,
   type CreateStoryboardGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-storyboard-generate-task";
+export {
+  createListCharacterSheetsUseCase,
+  type ListCharacterSheetsInput,
+  type ListCharacterSheetsUseCase,
+  type ListCharacterSheetsUseCaseDependencies,
+} from "./use-cases/list-character-sheets";
+export {
+  createGetCharacterSheetUseCase,
+  type GetCharacterSheetInput,
+  type GetCharacterSheetUseCase,
+  type GetCharacterSheetUseCaseDependencies,
+} from "./use-cases/get-character-sheet";
 export {
   createGetCurrentStoryboardUseCase,
   type GetCurrentStoryboardInput,
@@ -247,6 +269,36 @@ export {
   type ProcessStoryboardGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-storyboard-generate-task";
+export {
+  createProcessCharacterSheetsGenerateTaskUseCase,
+  type ProcessCharacterSheetsGenerateTaskInput,
+  type ProcessCharacterSheetsGenerateTaskUseCase,
+  type ProcessCharacterSheetsGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-character-sheets-generate-task";
+export {
+  createProcessCharacterSheetGenerateTaskUseCase,
+  type ProcessCharacterSheetGenerateTaskInput,
+  type ProcessCharacterSheetGenerateTaskUseCase,
+  type ProcessCharacterSheetGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-character-sheet-generate-task";
+export {
+  createUpdateCharacterSheetPromptUseCase,
+  type UpdateCharacterSheetPromptInput,
+  type UpdateCharacterSheetPromptUseCase,
+  type UpdateCharacterSheetPromptUseCaseDependencies,
+} from "./use-cases/update-character-sheet-prompt";
+export {
+  createRegenerateCharacterSheetUseCase,
+  type RegenerateCharacterSheetInput,
+  type RegenerateCharacterSheetUseCase,
+  type RegenerateCharacterSheetUseCaseDependencies,
+} from "./use-cases/regenerate-character-sheet";
+export {
+  createApproveCharacterSheetUseCase,
+  type ApproveCharacterSheetInput,
+  type ApproveCharacterSheetUseCase,
+  type ApproveCharacterSheetUseCaseDependencies,
+} from "./use-cases/approve-character-sheet";
 export {
   createSaveHumanStoryboardVersionUseCase,
   type SaveHumanStoryboardVersionInput,

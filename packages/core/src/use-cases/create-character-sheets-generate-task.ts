@@ -1,11 +1,10 @@
 import type { TaskDetail } from "@sweet-star/shared";
 
 import {
+  characterSheetsGenerateQueueName,
   createTaskRecord,
-  storyboardGenerateQueueName,
-  type StoryboardGenerateTaskInput,
+  type CharacterSheetsGenerateTaskInput,
 } from "../domain/task";
-import { CurrentCharacterSheetBatchNotFoundError } from "../errors/character-sheet-errors";
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
@@ -17,15 +16,15 @@ import type { TaskRepository } from "../ports/task-repository";
 import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import { toTaskDetailDto } from "./task-detail-dto";
 
-export interface CreateStoryboardGenerateTaskInput {
+export interface CreateCharacterSheetsGenerateTaskInput {
   projectId: string;
 }
 
-export interface CreateStoryboardGenerateTaskUseCase {
-  execute(input: CreateStoryboardGenerateTaskInput): Promise<TaskDetail>;
+export interface CreateCharacterSheetsGenerateTaskUseCase {
+  execute(input: CreateCharacterSheetsGenerateTaskInput): Promise<TaskDetail>;
 }
 
-export interface CreateStoryboardGenerateTaskUseCaseDependencies {
+export interface CreateCharacterSheetsGenerateTaskUseCaseDependencies {
   projectRepository: ProjectRepository;
   masterPlotStorage: MasterPlotStorage;
   taskRepository: TaskRepository;
@@ -35,9 +34,9 @@ export interface CreateStoryboardGenerateTaskUseCaseDependencies {
   clock: Clock;
 }
 
-export function createCreateStoryboardGenerateTaskUseCase(
-  dependencies: CreateStoryboardGenerateTaskUseCaseDependencies,
-): CreateStoryboardGenerateTaskUseCase {
+export function createCreateCharacterSheetsGenerateTaskUseCase(
+  dependencies: CreateCharacterSheetsGenerateTaskUseCaseDependencies,
+): CreateCharacterSheetsGenerateTaskUseCase {
   return {
     async execute(input) {
       const project = await dependencies.projectRepository.findById(input.projectId);
@@ -46,14 +45,10 @@ export function createCreateStoryboardGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      if (project.status !== "character_sheets_approved") {
+      if (project.status !== "master_plot_approved") {
         throw new ProjectValidationError(
-          "Storyboard generation requires character_sheets_approved",
+          "Character sheets generation requires master_plot_approved",
         );
-      }
-
-      if (!project.currentCharacterSheetBatchId) {
-        throw new CurrentCharacterSheetBatchNotFoundError(project.id);
       }
 
       const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
@@ -69,27 +64,16 @@ export function createCreateStoryboardGenerateTaskUseCase(
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,
         projectStorageDir: project.storageDir,
-        type: "storyboard_generate",
-        queueName: storyboardGenerateQueueName,
+        type: "character_sheets_generate",
+        queueName: characterSheetsGenerateQueueName,
         createdAt: timestamp,
       });
-      const taskInput: StoryboardGenerateTaskInput = {
+      const taskInput: CharacterSheetsGenerateTaskInput = {
         taskId: task.id,
         projectId: project.id,
-        taskType: "storyboard_generate",
+        taskType: "character_sheets_generate",
         sourceMasterPlotId: currentMasterPlot.id,
-        masterPlot: {
-          title: currentMasterPlot.title,
-          logline: currentMasterPlot.logline,
-          synopsis: currentMasterPlot.synopsis,
-          mainCharacters: currentMasterPlot.mainCharacters,
-          coreConflict: currentMasterPlot.coreConflict,
-          emotionalArc: currentMasterPlot.emotionalArc,
-          endingBeat: currentMasterPlot.endingBeat,
-          targetDurationSec: currentMasterPlot.targetDurationSec,
-        },
-        promptTemplateKey: "storyboard.generate",
-        model: "gemini-3.1-pro-preview",
+        mainCharacters: currentMasterPlot.mainCharacters,
       };
 
       await dependencies.taskRepository.insert(task);
@@ -112,7 +96,7 @@ export function createCreateStoryboardGenerateTaskUseCase(
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "storyboard_generating",
+          status: "character_sheets_generating",
           updatedAt: timestamp,
         });
       } catch (error) {

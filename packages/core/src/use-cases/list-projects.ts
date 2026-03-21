@@ -1,5 +1,7 @@
 import type { ProjectSummary } from "@sweet-star/shared";
 
+import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
+import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
@@ -13,6 +15,7 @@ export interface ListProjectsUseCaseDependencies {
   repository: ProjectRepository;
   masterPlotStorage: MasterPlotStorage;
   storyboardStorage: StoryboardStorage;
+  characterSheetRepository: CharacterSheetRepository;
 }
 
 export function createListProjectsUseCase(
@@ -34,10 +37,25 @@ export function createListProjectsUseCase(
                 storageDir: project.storageDir,
               })
             : null;
+          const currentCharacterSheetBatch = project.currentCharacterSheetBatchId
+            ? await dependencies.characterSheetRepository
+                .findBatchById(project.currentCharacterSheetBatchId)
+                .then(async (batch) => {
+                  if (!batch) {
+                    return null;
+                  }
+
+                  const characters = await dependencies.characterSheetRepository.listCharactersByBatchId(
+                    batch.id,
+                  );
+
+                  return toCurrentCharacterSheetBatchSummary(batch, characters);
+                })
+            : null;
           return toProjectSummaryDto(
             project,
             currentMasterPlot,
-            null,
+            currentCharacterSheetBatch,
             currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
           );
         }),

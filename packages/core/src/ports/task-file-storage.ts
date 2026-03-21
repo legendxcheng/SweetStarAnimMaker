@@ -1,4 +1,6 @@
 import type {
+  CharacterSheetGenerateTaskInput,
+  CharacterSheetsGenerateTaskInput,
   MasterPlotGenerateTaskInput,
   StoryboardGenerateTaskInput,
   TaskRecord,
@@ -6,7 +8,11 @@ import type {
 
 export interface CreateTaskArtifactsInput {
   task: TaskRecord;
-  input: MasterPlotGenerateTaskInput | StoryboardGenerateTaskInput;
+  input:
+    | MasterPlotGenerateTaskInput
+    | CharacterSheetsGenerateTaskInput
+    | CharacterSheetGenerateTaskInput
+    | StoryboardGenerateTaskInput;
 }
 
 export interface ReadTaskInputInput {
@@ -28,8 +34,15 @@ export interface TaskFileStorage {
   readTaskInput(
     input: ReadTaskInputInput,
   ):
-    | Promise<MasterPlotGenerateTaskInput | StoryboardGenerateTaskInput>
+    | Promise<
+        | MasterPlotGenerateTaskInput
+        | CharacterSheetsGenerateTaskInput
+        | CharacterSheetGenerateTaskInput
+        | StoryboardGenerateTaskInput
+      >
     | MasterPlotGenerateTaskInput
+    | CharacterSheetsGenerateTaskInput
+    | CharacterSheetGenerateTaskInput
     | StoryboardGenerateTaskInput;
   writeTaskOutput(input: WriteTaskOutputInput): Promise<void> | void;
   appendTaskLog(input: AppendTaskLogInput): Promise<void> | void;

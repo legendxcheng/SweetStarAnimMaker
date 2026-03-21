@@ -1,15 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  CurrentCharacterSheetBatchNotFoundError,
   CurrentMasterPlotNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
-  createCreateStoryboardGenerateTaskUseCase,
+  createCreateCharacterSheetsGenerateTaskUseCase,
 } from "../src/index";
 
-describe("create storyboard generate task use case", () => {
-  it("creates a pending task from the approved current master plot, snapshots input, and enqueues it", async () => {
+describe("create character sheets generate task use case", () => {
+  it("creates a pending batch task from the approved current master plot and enqueues it", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -20,9 +19,9 @@ describe("create storyboard generate task use case", () => {
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
         currentMasterPlotId: "mp_20260321_ab12cd",
-        currentCharacterSheetBatchId: "char_batch_v1",
+        currentCharacterSheetBatchId: null,
         currentStoryboardId: null,
-        status: "character_sheets_approved",
+        status: "master_plot_approved",
         createdAt: "2026-03-21T11:59:00.000Z",
         updatedAt: "2026-03-21T12:00:00.000Z",
         premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
@@ -75,72 +74,55 @@ describe("create storyboard generate task use case", () => {
         approvedAt: "2026-03-21T11:59:00.000Z",
       }),
     };
-    const useCase = createCreateStoryboardGenerateTaskUseCase({
+    const useCase = createCreateCharacterSheetsGenerateTaskUseCase({
       projectRepository,
       masterPlotStorage,
       taskRepository,
       taskFileStorage,
       taskQueue,
       taskIdGenerator: {
-        generateTaskId: () => "task_20260321_storyboard",
+        generateTaskId: () => "task_20260321_character_sheets",
       },
       clock: {
         now: () => "2026-03-21T12:00:00.000Z",
       },
     });
 
-    const result = await useCase.execute({
-      projectId: "proj_20260321_ab12cd",
-    });
+    const result = await useCase.execute({ projectId: "proj_20260321_ab12cd" });
 
     expect(taskRepository.insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "task_20260321_storyboard",
+        id: "task_20260321_character_sheets",
         projectId: "proj_20260321_ab12cd",
-        type: "storyboard_generate",
+        type: "character_sheets_generate",
         status: "pending",
       }),
     );
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith({
-      task: expect.objectContaining({
-        id: "task_20260321_storyboard",
-      }),
+      task: expect.objectContaining({ id: "task_20260321_character_sheets" }),
       input: {
-        taskId: "task_20260321_storyboard",
+        taskId: "task_20260321_character_sheets",
         projectId: "proj_20260321_ab12cd",
-        taskType: "storyboard_generate",
+        taskType: "character_sheets_generate",
         sourceMasterPlotId: "mp_20260321_ab12cd",
-        masterPlot: {
-          title: "The Last Sky Choir",
-          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-          synopsis:
-            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-          mainCharacters: ["Rin", "Ivo"],
-          coreConflict:
-            "Rin must choose between private escape and saving the city that exiled her.",
-          emotionalArc: "She moves from bitterness to sacrificial hope.",
-          endingBeat: "Rin turns the comet's music into a rising tide of light.",
-          targetDurationSec: 480,
-        },
-        promptTemplateKey: "storyboard.generate",
-        model: "gemini-3.1-pro-preview",
+        mainCharacters: ["Rin", "Ivo"],
       },
+    });
+    expect(taskQueue.enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_character_sheets",
+      queueName: "character-sheets-generate",
+      taskType: "character_sheets_generate",
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260321_ab12cd",
-      status: "storyboard_generating",
+      status: "character_sheets_generating",
       updatedAt: "2026-03-21T12:00:00.000Z",
     });
-    expect(taskQueue.enqueue).toHaveBeenCalledWith({
-      taskId: "task_20260321_storyboard",
-      queueName: "storyboard-generate",
-      taskType: "storyboard_generate",
-    });
-    expect(result.type).toBe("storyboard_generate");
+    expect(result.type).toBe("character_sheets_generate");
   });
 
   it("throws when the project does not exist", async () => {
-    const useCase = createCreateStoryboardGenerateTaskUseCase({
+    const useCase = createCreateCharacterSheetsGenerateTaskUseCase({
       projectRepository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue(null),
@@ -174,107 +156,18 @@ describe("create storyboard generate task use case", () => {
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
       },
-      taskQueue: {
-        enqueue: vi.fn(),
-      },
-      taskIdGenerator: {
-        generateTaskId: () => "task_20260321_storyboard",
-      },
-      clock: {
-        now: () => "2026-03-21T12:00:00.000Z",
-      },
+      taskQueue: { enqueue: vi.fn() },
+      taskIdGenerator: { generateTaskId: () => "task_20260321_character_sheets" },
+      clock: { now: () => "2026-03-21T12:00:00.000Z" },
     });
 
-    await expect(
-      useCase.execute({
-        projectId: "missing-project",
-      }),
-    ).rejects.toBeInstanceOf(ProjectNotFoundError);
+    await expect(useCase.execute({ projectId: "missing-project" })).rejects.toBeInstanceOf(
+      ProjectNotFoundError,
+    );
   });
 
-  it("throws when the approved current master plot is missing", async () => {
-    const useCase = createCreateStoryboardGenerateTaskUseCase({
-      projectRepository: {
-        insert: vi.fn(),
-        findById: vi.fn().mockResolvedValue({
-          id: "proj_20260321_ab12cd",
-          name: "My Story",
-          slug: "my-story",
-          storageDir: "projects/proj_20260321_ab12cd-my-story",
-          premiseRelPath: "premise/v1.md",
-          premiseBytes: 88,
-          currentMasterPlotId: null,
-          currentCharacterSheetBatchId: "char_batch_v1",
-          currentStoryboardId: null,
-          status: "character_sheets_approved",
-        createdAt: "2026-03-21T11:59:00.000Z",
-        updatedAt: "2026-03-21T12:00:00.000Z",
-        premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
-        }),
-        updatePremiseMetadata: vi.fn(),
-        updateCurrentMasterPlot: vi.fn(),
-        updateCurrentCharacterSheetBatch: vi.fn(),
-        updateCurrentStoryboard: vi.fn(),
-        updateStatus: vi.fn(),
-        listAll: vi.fn(),
-      },
-      masterPlotStorage: {
-        initializePromptTemplate: vi.fn(),
-        readPromptTemplate: vi.fn(),
-        writePromptSnapshot: vi.fn(),
-        writeRawResponse: vi.fn(),
-        writeCurrentMasterPlot: vi.fn(),
-        readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
-      },
-      taskRepository: {
-        insert: vi.fn(),
-        findById: vi.fn(),
-        findLatestByProjectId: vi.fn(),
-        delete: vi.fn(),
-        markRunning: vi.fn(),
-        markSucceeded: vi.fn(),
-        markFailed: vi.fn(),
-      },
-      taskFileStorage: {
-        createTaskArtifacts: vi.fn(),
-        readTaskInput: vi.fn(),
-        writeTaskOutput: vi.fn(),
-        appendTaskLog: vi.fn(),
-      },
-      taskQueue: {
-        enqueue: vi.fn(),
-      },
-      taskIdGenerator: {
-        generateTaskId: () => "task_20260321_storyboard",
-      },
-      clock: {
-        now: () => "2026-03-21T12:00:00.000Z",
-      },
-    });
-
-    await expect(
-      useCase.execute({
-        projectId: "proj_20260321_ab12cd",
-      }),
-    ).rejects.toBeInstanceOf(CurrentMasterPlotNotFoundError);
-  });
-
-  it("marks the task failed when enqueueing fails", async () => {
-    const taskRepository = {
-      insert: vi.fn(),
-      findById: vi.fn(),
-      findLatestByProjectId: vi.fn(),
-      delete: vi.fn(),
-      markRunning: vi.fn(),
-      markSucceeded: vi.fn(),
-      markFailed: vi.fn(),
-    };
-    const taskQueue = {
-      enqueue: vi.fn(() => {
-        throw new Error("redis down");
-      }),
-    };
-    const useCase = createCreateStoryboardGenerateTaskUseCase({
+  it("throws when the project is not ready for character sheets", async () => {
+    const useCase = createCreateCharacterSheetsGenerateTaskUseCase({
       projectRepository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue({
@@ -285,88 +178,9 @@ describe("create storyboard generate task use case", () => {
           premiseRelPath: "premise/v1.md",
           premiseBytes: 88,
           currentMasterPlotId: "mp_20260321_ab12cd",
-          currentCharacterSheetBatchId: "char_batch_v1",
+          currentCharacterSheetBatchId: null,
           currentStoryboardId: null,
-          status: "character_sheets_approved",
-          createdAt: "2026-03-21T11:59:00.000Z",
-          updatedAt: "2026-03-21T12:00:00.000Z",
-          premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
-        }),
-        updatePremiseMetadata: vi.fn(),
-        updateCurrentMasterPlot: vi.fn(),
-        updateCurrentCharacterSheetBatch: vi.fn(),
-        updateCurrentStoryboard: vi.fn(),
-        updateStatus: vi.fn(),
-        listAll: vi.fn(),
-      },
-      masterPlotStorage: {
-        initializePromptTemplate: vi.fn(),
-        readPromptTemplate: vi.fn(),
-        writePromptSnapshot: vi.fn(),
-        writeRawResponse: vi.fn(),
-        writeCurrentMasterPlot: vi.fn(),
-        readCurrentMasterPlot: vi.fn().mockResolvedValue({
-          id: "mp_20260321_ab12cd",
-          title: "The Last Sky Choir",
-          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-          synopsis:
-            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-          mainCharacters: ["Rin", "Ivo"],
-          coreConflict:
-            "Rin must choose between private escape and saving the city that exiled her.",
-          emotionalArc: "She moves from bitterness to sacrificial hope.",
-          endingBeat: "Rin turns the comet's music into a rising tide of light.",
-          targetDurationSec: 480,
-          sourceTaskId: "task_master_plot",
-          updatedAt: "2026-03-21T11:58:00.000Z",
-          approvedAt: "2026-03-21T11:59:00.000Z",
-        }),
-      },
-      taskRepository,
-      taskFileStorage: {
-        createTaskArtifacts: vi.fn(),
-        readTaskInput: vi.fn(),
-        writeTaskOutput: vi.fn(),
-        appendTaskLog: vi.fn(),
-      },
-      taskQueue,
-      taskIdGenerator: {
-        generateTaskId: () => "task_20260321_storyboard",
-      },
-      clock: {
-        now: () => "2026-03-21T12:00:00.000Z",
-      },
-    });
-
-    await expect(
-      useCase.execute({
-        projectId: "proj_20260321_ab12cd",
-      }),
-    ).rejects.toThrow("redis down");
-
-    expect(taskRepository.markFailed).toHaveBeenCalledWith({
-      taskId: "task_20260321_storyboard",
-      errorMessage: "redis down",
-      updatedAt: "2026-03-21T12:00:00.000Z",
-      finishedAt: "2026-03-21T12:00:00.000Z",
-    });
-  });
-
-  it("throws when the project is not yet character_sheets_approved", async () => {
-    const useCase = createCreateStoryboardGenerateTaskUseCase({
-      projectRepository: {
-        insert: vi.fn(),
-        findById: vi.fn().mockResolvedValue({
-          id: "proj_20260321_ab12cd",
-          name: "My Story",
-          slug: "my-story",
-          storageDir: "projects/proj_20260321_ab12cd-my-story",
-          premiseRelPath: "premise/v1.md",
-          premiseBytes: 88,
-          currentMasterPlotId: "mp_20260321_ab12cd",
-          currentCharacterSheetBatchId: "char_batch_v1",
-          currentStoryboardId: null,
-          status: "character_sheets_in_review",
+          status: "master_plot_in_review",
           createdAt: "2026-03-21T11:59:00.000Z",
           updatedAt: "2026-03-21T12:00:00.000Z",
           premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
@@ -402,12 +216,71 @@ describe("create storyboard generate task use case", () => {
         appendTaskLog: vi.fn(),
       },
       taskQueue: { enqueue: vi.fn() },
-      taskIdGenerator: { generateTaskId: () => "task_20260321_storyboard" },
+      taskIdGenerator: { generateTaskId: () => "task_20260321_character_sheets" },
       clock: { now: () => "2026-03-21T12:00:00.000Z" },
     });
 
     await expect(
       useCase.execute({ projectId: "proj_20260321_ab12cd" }),
     ).rejects.toBeInstanceOf(ProjectValidationError);
+  });
+
+  it("throws when the approved current master plot is missing", async () => {
+    const useCase = createCreateCharacterSheetsGenerateTaskUseCase({
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_20260321_ab12cd",
+          name: "My Story",
+          slug: "my-story",
+          storageDir: "projects/proj_20260321_ab12cd-my-story",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 88,
+          currentMasterPlotId: null,
+          currentCharacterSheetBatchId: null,
+          currentStoryboardId: null,
+          status: "master_plot_approved",
+          createdAt: "2026-03-21T11:59:00.000Z",
+          updatedAt: "2026-03-21T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
+        }),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateStatus: vi.fn(),
+        listAll: vi.fn(),
+      },
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
+      },
+      taskRepository: {
+        insert: vi.fn(),
+        findById: vi.fn(),
+        findLatestByProjectId: vi.fn(),
+        delete: vi.fn(),
+        markRunning: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+      taskFileStorage: {
+        createTaskArtifacts: vi.fn(),
+        readTaskInput: vi.fn(),
+        writeTaskOutput: vi.fn(),
+        appendTaskLog: vi.fn(),
+      },
+      taskQueue: { enqueue: vi.fn() },
+      taskIdGenerator: { generateTaskId: () => "task_20260321_character_sheets" },
+      clock: { now: () => "2026-03-21T12:00:00.000Z" },
+    });
+
+    await expect(
+      useCase.execute({ projectId: "proj_20260321_ab12cd" }),
+    ).rejects.toBeInstanceOf(CurrentMasterPlotNotFoundError);
   });
 });

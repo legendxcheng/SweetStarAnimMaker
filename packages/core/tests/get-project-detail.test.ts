@@ -17,6 +17,7 @@ describe("get project detail use case", () => {
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
         currentMasterPlotId: "mp_20260317_ab12cd",
+        currentCharacterSheetBatchId: "char_batch_v1",
         currentStoryboardId: "storyboard_20260321_ab12cd",
         status: "master_plot_in_review",
         createdAt: "2026-03-17T00:00:00.000Z",
@@ -88,6 +89,27 @@ describe("get project detail use case", () => {
           ],
         }),
       },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "char_batch_v1",
+          projectId: "proj_20260317_ab12cd",
+          projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
+          sourceMasterPlotId: "mp_20260317_ab12cd",
+          characterCount: 2,
+          storageDir: "projects/proj_20260317_ab12cd-my-story/character-sheets/batches/char_batch_v1",
+          manifestRelPath: "character-sheets/batches/char_batch_v1/manifest.json",
+          createdAt: "2026-03-17T00:00:00.000Z",
+          updatedAt: "2026-03-21T11:00:00.000Z",
+        }),
+        listCharactersByBatchId: vi.fn().mockResolvedValue([
+          { id: "char_rin_1", status: "approved" },
+          { id: "char_ivo_2", status: "in_review" },
+        ]),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
     });
 
     const result = await useCase.execute({
@@ -97,6 +119,7 @@ describe("get project detail use case", () => {
     expect(result.premise.bytes).toBe(88);
     expect(result.premise.path).toBe("premise/v1.md");
     expect(result.currentMasterPlot?.title).toBe("The Last Sky Choir");
+    expect(result.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result.currentStoryboard).toEqual(
       expect.objectContaining({
         id: "storyboard_20260321_ab12cd",
@@ -133,6 +156,14 @@ describe("get project detail use case", () => {
         readStoryboardVersion: vi.fn(),
         writeCurrentStoryboard: vi.fn(),
         readCurrentStoryboard: vi.fn(),
+      },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn(),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
       },
     });
 
