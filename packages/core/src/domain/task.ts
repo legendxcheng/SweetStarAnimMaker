@@ -1,6 +1,8 @@
 import { type TaskStatus, type TaskType } from "@sweet-star/shared";
 
 export const masterPlotGenerateQueueName = "master-plot-generate";
+export const characterSheetsGenerateQueueName = "character-sheets-generate";
+export const characterSheetGenerateQueueName = "character-sheet-generate";
 export const storyboardGenerateQueueName = "storyboard-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
@@ -49,6 +51,26 @@ export interface StoryboardGenerateTaskInput {
   };
   promptTemplateKey: "storyboard.generate";
   model: "gemini-3.1-pro-preview";
+}
+
+export interface CharacterSheetsGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "character_sheets_generate";
+  sourceMasterPlotId: string;
+  mainCharacters: string[];
+}
+
+export interface CharacterSheetGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "character_sheet_generate";
+  batchId: string;
+  characterId: string;
+  sourceMasterPlotId: string;
+  characterName: string;
+  promptTextCurrent: string;
+  imagePromptTemplateKey: "character_sheet.turnaround.generate";
 }
 
 export interface CreateTaskRecordInput {

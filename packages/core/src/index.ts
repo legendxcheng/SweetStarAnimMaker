@@ -6,6 +6,10 @@ export {
   toProjectStorageDir,
 } from "./domain/project";
 export type {
+  CharacterSheetListResponse,
+  CharacterSheetRecord,
+  CharacterSheetStatus,
+  CurrentCharacterSheetBatchSummary,
   CurrentMasterPlot,
   CurrentStoryboard,
   CurrentStoryboardSummary,
@@ -14,6 +18,37 @@ export type {
   MasterPlotReviewWorkspace,
   TaskDetail,
 } from "@sweet-star/shared";
+export {
+  characterSheetBatchesDirectoryName,
+  characterSheetCharactersDirectoryName,
+  characterSheetCurrentBatchFileName,
+  characterSheetCurrentImageFileName,
+  characterSheetCurrentMetadataFileName,
+  characterSheetImagePromptFileName,
+  characterSheetManifestFileName,
+  characterSheetPromptCurrentFileName,
+  characterSheetPromptGeneratedFileName,
+  characterSheetPromptVariablesFileName,
+  characterSheetVersionsDirectoryName,
+  characterSheetsDirectoryName,
+  createCharacterSheetBatchRecord,
+  createCharacterSheetRecord,
+  toCharacterSheetBatchManifestRelPath,
+  toCharacterSheetBatchStorageDir,
+  toCharacterSheetCurrentImageRelPath,
+  toCharacterSheetCurrentMetadataRelPath,
+  toCharacterSheetImagePromptRelPath,
+  toCharacterSheetPromptCurrentRelPath,
+  toCharacterSheetPromptGeneratedRelPath,
+  toCharacterSheetPromptVariablesRelPath,
+  toCharacterSheetStorageDir,
+  toCharacterSheetVersionsStorageDir,
+  toCurrentCharacterSheetBatchSummary,
+  type CharacterSheetBatchRecord,
+  type CharacterSheetRecordEntity,
+  type CreateCharacterSheetBatchRecordInput,
+  type CreateCharacterSheetRecordInput,
+} from "./domain/character-sheet";
 export {
   currentMasterPlotJsonFileName,
   currentMasterPlotJsonRelPath,
@@ -49,6 +84,8 @@ export {
   type CreateStoryboardReviewRecordInput,
 } from "./domain/storyboard-review";
 export {
+  characterSheetGenerateQueueName,
+  characterSheetsGenerateQueueName,
   createTaskRecord,
   masterPlotGenerateQueueName,
   storyboardGenerateQueueName,
@@ -61,6 +98,8 @@ export {
   toTaskOutputRelPath,
   toTaskStorageDir,
   type CreateTaskRecordInput,
+  type CharacterSheetGenerateTaskInput,
+  type CharacterSheetsGenerateTaskInput,
   type MasterPlotGenerateTaskInput,
   type StoryboardGenerateTaskInput,
   type TaskRecord,
@@ -89,7 +128,28 @@ export {
 } from "./errors/storyboard-review-errors";
 export { TaskNotFoundError } from "./errors/task-errors";
 export type {
+  CharacterSheetPromptProvider,
+  CharacterSheetImageProvider,
+  GenerateCharacterSheetImageInput,
+  GenerateCharacterSheetImageResult,
+  GenerateCharacterSheetPromptInput,
+  GenerateCharacterSheetPromptResult,
+} from "./ports/character-sheet-provider";
+export type {
+  CharacterSheetRepository,
+} from "./ports/character-sheet-repository";
+export type {
+  CharacterSheetStorage,
+  InitializeCharacterSheetPromptTemplateInput,
+  ReadCharacterSheetPromptTemplateInput,
+  WriteCharacterSheetBatchManifestInput,
+  WriteCurrentCharacterSheetImageInput,
+  WriteGeneratedCharacterPromptInput,
+  WriteCharacterSheetImageVersionInput,
+} from "./ports/character-sheet-storage";
+export type {
   ProjectRepository,
+  UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentMasterPlotInput,
   UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,

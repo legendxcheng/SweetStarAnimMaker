@@ -1,4 +1,5 @@
 import type {
+  CurrentCharacterSheetBatchSummary,
   CurrentMasterPlot,
   CurrentStoryboardSummary,
   ProjectSummary,
@@ -9,6 +10,7 @@ import type { ProjectRecord } from "../domain/project";
 export function toProjectSummaryDto(
   project: ProjectRecord,
   currentMasterPlot: CurrentMasterPlot | null,
+  currentCharacterSheetBatch: CurrentCharacterSheetBatchSummary | null = null,
   currentStoryboard: CurrentStoryboardSummary | null = null,
 ): ProjectSummary {
   return {
@@ -20,6 +22,7 @@ export function toProjectSummaryDto(
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     currentMasterPlot,
+    currentCharacterSheetBatch,
     currentStoryboard,
   };
 }

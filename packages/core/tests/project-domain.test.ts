@@ -15,6 +15,7 @@ describe("project domain", () => {
     expect(project.storageDir).toBe("projects/proj_20260317_ab12cd-my-story");
     expect(project.premiseRelPath).toBe("premise/v1.md");
     expect(project.status).toBe("premise_ready");
+    expect(project.currentCharacterSheetBatchId).toBeNull();
     expect(project.currentStoryboardId).toBeNull();
   });
 
@@ -28,8 +29,16 @@ describe("project domain", () => {
       premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
     });
 
-    const detail = toProjectDetailDto(project, null, null);
-    const summary = toProjectSummaryDto(project, null, null);
+    const currentCharacterSheetBatch = {
+      id: "char_batch_v1",
+      sourceMasterPlotId: "master_plot_v1",
+      characterCount: 2,
+      approvedCharacterCount: 1,
+      updatedAt: "2026-03-17T01:00:00.000Z",
+    };
+
+    const detail = toProjectDetailDto(project, null, currentCharacterSheetBatch, null);
+    const summary = toProjectSummaryDto(project, null, currentCharacterSheetBatch, null);
 
     expect(detail.premise).toEqual({
       path: "premise/v1.md",
@@ -37,8 +46,10 @@ describe("project domain", () => {
       updatedAt: "2026-03-17T00:00:00.000Z",
     });
     expect(detail.currentMasterPlot).toBeNull();
+    expect(detail.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(detail.currentStoryboard).toBeNull();
     expect(summary.currentMasterPlot).toBeNull();
+    expect(summary.currentCharacterSheetBatch?.characterCount).toBe(2);
     expect(summary.currentStoryboard).toBeNull();
   });
 });

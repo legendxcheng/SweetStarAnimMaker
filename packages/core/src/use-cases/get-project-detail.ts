@@ -45,6 +45,7 @@ export function createGetProjectDetailUseCase(
       return toProjectDetailDto(
         project,
         currentMasterPlot,
+        null,
         currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
       );
     },

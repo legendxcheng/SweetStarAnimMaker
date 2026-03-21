@@ -14,6 +14,11 @@ export interface UpdateCurrentMasterPlotInput {
   masterPlotId: string | null;
 }
 
+export interface UpdateCurrentCharacterSheetBatchInput {
+  projectId: string;
+  batchId: string | null;
+}
+
 export interface UpdateCurrentStoryboardInput {
   projectId: string;
   storyboardId: string | null;
@@ -34,6 +39,9 @@ export interface ProjectRepository {
   ): Promise<void> | void;
   updateCurrentMasterPlot(
     input: UpdateCurrentMasterPlotInput,
+  ): Promise<void> | void;
+  updateCurrentCharacterSheetBatch(
+    input: UpdateCurrentCharacterSheetBatchInput,
   ): Promise<void> | void;
   updateCurrentStoryboard(
     input: UpdateCurrentStoryboardInput,

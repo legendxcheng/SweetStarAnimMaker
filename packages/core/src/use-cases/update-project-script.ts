@@ -71,6 +71,8 @@ export function createUpdateProjectScriptUseCase(
           premiseUpdatedAt: timestamp,
         },
         null,
+        null,
+        null,
       );
     },
   };

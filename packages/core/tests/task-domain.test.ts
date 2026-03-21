@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createTaskRecord, storyboardGenerateQueueName } from "../src/index";
+import {
+  characterSheetGenerateQueueName,
+  characterSheetsGenerateQueueName,
+  createTaskRecord,
+  storyboardGenerateQueueName,
+} from "../src/index";
 
 describe("task domain", () => {
   it("derives master-plot task storage and queue metadata", () => {
@@ -38,5 +43,29 @@ describe("task domain", () => {
     );
     expect(task.type).toBe("storyboard_generate");
     expect(task.queueName).toBe("storyboard-generate");
+  });
+
+  it("derives character-sheet batch and per-character task storage and queue metadata", () => {
+    const batchTask = createTaskRecord({
+      id: "task_20260321_batch",
+      projectId: "proj_20260321_ab12cd",
+      projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
+      type: "character_sheets_generate",
+      queueName: characterSheetsGenerateQueueName,
+      createdAt: "2026-03-21T12:00:00.000Z",
+    });
+    const characterTask = createTaskRecord({
+      id: "task_20260321_char_rin",
+      projectId: "proj_20260321_ab12cd",
+      projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
+      type: "character_sheet_generate",
+      queueName: characterSheetGenerateQueueName,
+      createdAt: "2026-03-21T12:01:00.000Z",
+    });
+
+    expect(batchTask.type).toBe("character_sheets_generate");
+    expect(batchTask.queueName).toBe("character-sheets-generate");
+    expect(characterTask.type).toBe("character_sheet_generate");
+    expect(characterTask.queueName).toBe("character-sheet-generate");
   });
 });

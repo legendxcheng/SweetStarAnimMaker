@@ -37,6 +37,7 @@ export function createListProjectsUseCase(
           return toProjectSummaryDto(
             project,
             currentMasterPlot,
+            null,
             currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
           );
         }),
