@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { apiClient, ApiError } from "../../src/services/api-client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ApiError, apiClient } from "../../src/services/api-client";
 import { config } from "../../src/services/config";
 
 describe("API Client", () => {
@@ -55,7 +56,7 @@ describe("API Client", () => {
       json: async () => ({
         id: "task_1",
         projectId: "proj_1",
-        type: "master_plot_generate",
+        type: "storyboard_generate",
         status: "pending",
         createdAt: "2026-03-20T00:00:00.000Z",
         updatedAt: "2026-03-20T00:00:00.000Z",
@@ -71,11 +72,11 @@ describe("API Client", () => {
     });
     global.fetch = mockFetch;
 
-    await apiClient.createMasterPlotGenerateTask("proj_1");
+    await apiClient.createStoryboardGenerateTask("proj_1");
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(mockFetch.mock.calls[0]?.[0]).toBe(
-      `${config.apiBaseUrl}/projects/proj_1/tasks/master-plot-generate`,
+      `${config.apiBaseUrl}/projects/proj_1/tasks/storyboard-generate`,
     );
     expect(mockFetch.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({

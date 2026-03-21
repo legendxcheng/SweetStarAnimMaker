@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+
 import { Layout } from "../../src/app/layout";
 import { NewProjectPage } from "../../src/pages/new-project-page";
 import { ProjectDetailPage } from "../../src/pages/project-detail-page";
@@ -24,12 +25,32 @@ const createdProject = {
     updatedAt: "2024-01-01T00:00:00Z",
   },
   currentMasterPlot: null,
+  currentStoryboard: null,
+};
+
+const masterPlotApprovedProject = {
+  ...createdProject,
+  status: "master_plot_approved" as const,
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis: "Rin hears the comet sing and discovers how to lift the drowned city.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict: "Rin must choose between escape and saving the city.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "The city rises on a final chorus of light.",
+    targetDurationSec: 480,
+    sourceTaskId: "task-master-plot",
+    updatedAt: "2024-01-01T00:00:02Z",
+    approvedAt: "2024-01-01T00:00:03Z",
+  },
 };
 
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
-  type: "master_plot_generate" as const,
+  type: "storyboard_generate" as const,
   status: "running" as const,
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:01Z",
@@ -43,39 +64,66 @@ const runningTask = {
   },
 };
 
-const reviewedProject = {
-  ...createdProject,
-  status: "master_plot_in_review" as const,
-  currentMasterPlot: {
-    id: "mp-1",
+const storyboardInReviewProject = {
+  ...masterPlotApprovedProject,
+  status: "storyboard_in_review" as const,
+  currentStoryboard: {
+    id: "storyboard-1",
     title: "The Last Sky Choir",
-    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-    synopsis: "Rin hears the comet sing and discovers how to lift the drowned city.",
-    mainCharacters: ["Rin", "Ivo"],
-    coreConflict: "Rin must choose between escape and saving the city.",
-    emotionalArc: "She moves from bitterness to sacrificial hope.",
-    endingBeat: "The city rises on a final chorus of light.",
-    targetDurationSec: 480,
+    episodeTitle: "Episode 1",
+    sourceMasterPlotId: "mp-1",
     sourceTaskId: "task-1",
-    updatedAt: "2024-01-01T00:00:02Z",
+    updatedAt: "2024-01-01T00:00:04Z",
     approvedAt: null,
+    sceneCount: 2,
+    segmentCount: 5,
+    totalDurationSec: 42,
   },
 };
 
-const approvedProject = {
-  ...createdProject,
-  status: "master_plot_approved" as const,
-  currentMasterPlot: {
-    ...reviewedProject.currentMasterPlot,
-    approvedAt: "2024-01-01T00:00:04Z",
+const storyboardApprovedProject = {
+  ...storyboardInReviewProject,
+  status: "storyboard_approved" as const,
+  currentStoryboard: {
+    ...storyboardInReviewProject.currentStoryboard,
+    approvedAt: "2024-01-01T00:00:05Z",
   },
 };
 
 const reviewWorkspace = {
   projectId: "proj-1",
-  projectStatus: "master_plot_in_review" as const,
-  currentMasterPlot: reviewedProject.currentMasterPlot,
-  latestReview: null,
+  projectName: "Flow Project",
+  projectStatus: "storyboard_in_review" as const,
+  currentStoryboard: {
+    id: "storyboard-1",
+    title: "The Last Sky Choir",
+    episodeTitle: "Episode 1",
+    sourceMasterPlotId: "mp-1",
+    sourceTaskId: "task-1",
+    updatedAt: "2024-01-01T00:00:04Z",
+    approvedAt: null,
+    scenes: [
+      {
+        id: "scene-1",
+        order: 1,
+        name: "Opening",
+        dramaticPurpose: "Introduce Rin and the comet.",
+        segments: [
+          {
+            id: "segment-1",
+            order: 1,
+            durationSec: 6,
+            visual: "Rain shakes across the cockpit glass.",
+            characterAction: "Rin looks up.",
+            dialogue: "",
+            voiceOver: "That sound again.",
+            audio: "A comet hum under thunder.",
+            purpose: "Start the mystery.",
+          },
+        ],
+      },
+    ],
+  },
   availableActions: {
     save: true,
     approve: true,
@@ -86,11 +134,10 @@ const reviewWorkspace = {
 
 const refreshedWorkspace = {
   ...reviewWorkspace,
-  currentMasterPlot: {
-    ...reviewWorkspace.currentMasterPlot,
+  currentStoryboard: {
+    ...reviewWorkspace.currentStoryboard,
     title: "The Last Sky Choir Revised",
-    synopsis: "Updated master plot synopsis",
-    updatedAt: "2024-01-01T00:00:03Z",
+    updatedAt: "2024-01-01T00:00:05Z",
   },
 };
 
@@ -119,9 +166,10 @@ describe("Spec5 Studio Flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     globalThis.alert = vi.fn();
+    globalThis.confirm = vi.fn(() => true);
   });
 
-  it("completes the browser-only master-plot flow from create to reject-and-regenerate", async () => {
+  it("completes the browser-only storyboard flow from create to reject-and-regenerate", async () => {
     let pollTimer: (() => void) | undefined;
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
       pollTimer = callback as () => void;
@@ -132,32 +180,37 @@ describe("Spec5 Studio Flow", () => {
     vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
     vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(createdProject)
-      .mockResolvedValueOnce(reviewedProject)
-      .mockResolvedValueOnce(createdProject);
-    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
-      runningTask,
-    );
+      .mockResolvedValueOnce(masterPlotApprovedProject)
+      .mockResolvedValueOnce(storyboardInReviewProject)
+      .mockResolvedValueOnce(masterPlotApprovedProject);
+    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
       ...runningTask,
       status: "succeeded",
       finishedAt: "2024-01-01T00:00:02Z",
       updatedAt: "2024-01-01T00:00:02Z",
     });
-    vi.spyOn(apiModule.apiClient, "getReviewWorkspace")
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace")
       .mockResolvedValueOnce(reviewWorkspace)
       .mockResolvedValueOnce(refreshedWorkspace);
-    vi.spyOn(apiModule.apiClient, "saveMasterPlot").mockResolvedValue(
-      refreshedWorkspace.currentMasterPlot,
+    vi.spyOn(apiModule.apiClient, "saveStoryboard").mockResolvedValue(
+      refreshedWorkspace.currentStoryboard,
     );
-    vi.spyOn(apiModule.apiClient, "rejectMasterPlot").mockResolvedValue({
-      id: "review-1",
+    vi.spyOn(apiModule.apiClient, "rejectStoryboard").mockResolvedValue({
+      id: "task-2",
       projectId: "proj-1",
-      masterPlotId: "mp-1",
-      action: "reject",
-      reason: "Try a different draft",
-      triggeredTaskId: "task-2",
-      createdAt: "2024-01-01T00:00:03Z",
+      type: "storyboard_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:05Z",
+      updatedAt: "2024-01-01T00:00:05Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-2/input.json",
+        outputPath: "tasks/task-2/output.json",
+        logPath: "tasks/task-2/log.txt",
+      },
     });
 
     renderApp();
@@ -186,13 +239,11 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
-        "proj-1",
-      );
+      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
     });
 
     await act(async () => {
@@ -200,9 +251,9 @@ describe("Spec5 Studio Flow", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("link", { name: /进入主情节审核/i }));
+    fireEvent.click(screen.getByRole("link", { name: /进入分镜审核/i }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
@@ -211,38 +262,22 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.change(screen.getByLabelText("标题"), {
       target: { value: "The Last Sky Choir Revised" },
     });
-    fireEvent.change(screen.getByLabelText("剧情简介"), {
-      target: { value: "Updated master plot synopsis" },
-    });
     fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.saveMasterPlot).toHaveBeenCalledWith("proj-1", {
+      expect(apiModule.apiClient.saveStoryboard).toHaveBeenCalledWith("proj-1", {
         title: "The Last Sky Choir Revised",
-        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-        synopsis: "Updated master plot synopsis",
-        mainCharacters: ["Rin", "Ivo"],
-        coreConflict: "Rin must choose between escape and saving the city.",
-        emotionalArc: "She moves from bitterness to sacrificial hope.",
-        endingBeat: "The city rises on a final chorus of light.",
-        targetDurationSec: 480,
+        episodeTitle: "Episode 1",
+        sourceMasterPlotId: "mp-1",
+        sourceTaskId: "task-1",
+        scenes: reviewWorkspace.currentStoryboard.scenes,
       });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue("The Last Sky Choir Revised")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "驳回" }));
-    fireEvent.change(screen.getByPlaceholderText(/请说明驳回原因/), {
-      target: { value: "Try a different draft" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /提交驳回/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {
-        reason: "Try a different draft",
-      });
+      expect(apiModule.apiClient.rejectStoryboard).toHaveBeenCalledWith("proj-1", {});
     });
 
     await waitFor(() => {
@@ -250,39 +285,34 @@ describe("Spec5 Studio Flow", () => {
     });
   });
 
-  it("returns to project detail and shows approved status after approving the master plot", async () => {
+  it("returns to project detail and shows approved status after approving the storyboard", async () => {
     let pollTimer: (() => void) | undefined;
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
       pollTimer = callback as () => void;
       return 1 as unknown as ReturnType<typeof setInterval>;
     }) as typeof setInterval);
     vi.spyOn(global, "clearInterval").mockImplementation(() => undefined);
-    globalThis.confirm = vi.fn(() => true);
 
     vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
     vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(createdProject)
-      .mockResolvedValueOnce(reviewedProject)
-      .mockResolvedValueOnce(approvedProject);
-    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
-      runningTask,
-    );
+      .mockResolvedValueOnce(masterPlotApprovedProject)
+      .mockResolvedValueOnce(storyboardInReviewProject)
+      .mockResolvedValueOnce(storyboardApprovedProject);
+    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
       ...runningTask,
       status: "succeeded",
       finishedAt: "2024-01-01T00:00:02Z",
       updatedAt: "2024-01-01T00:00:02Z",
     });
-    vi.spyOn(apiModule.apiClient, "getReviewWorkspace").mockResolvedValue(reviewWorkspace);
-    vi.spyOn(apiModule.apiClient, "approveMasterPlot").mockResolvedValue({
-      id: "review-approve-1",
-      projectId: "proj-1",
-      masterPlotId: "mp-1",
-      action: "approve",
-      reason: null,
-      triggeredTaskId: null,
-      createdAt: "2024-01-01T00:00:04Z",
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace").mockResolvedValue(
+      reviewWorkspace,
+    );
+    vi.spyOn(apiModule.apiClient, "approveStoryboard").mockResolvedValue({
+      ...reviewWorkspace.currentStoryboard,
+      approvedAt: "2024-01-01T00:00:05Z",
+      updatedAt: "2024-01-01T00:00:05Z",
     });
 
     renderApp();
@@ -304,13 +334,11 @@ describe("Spec5 Studio Flow", () => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
-        "proj-1",
-      );
+      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
     });
 
     await act(async () => {
@@ -318,7 +346,7 @@ describe("Spec5 Studio Flow", () => {
       await flushMicrotasks();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /进入主情节审核/i }));
+    fireEvent.click(screen.getByRole("link", { name: /进入分镜审核/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "通过" })).toBeInTheDocument();
@@ -327,13 +355,13 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "通过" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.approveMasterPlot).toHaveBeenCalledWith("proj-1", {});
+      expect(apiModule.apiClient.approveStoryboard).toHaveBeenCalledWith("proj-1", {});
     });
 
     await waitFor(() => {
       expect(screen.getByText("已通过")).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole("link", { name: /进入主情节审核/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /进入分镜审核/i })).not.toBeInTheDocument();
   });
 });

@@ -40,23 +40,41 @@ describe("storyboard worker integration", () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it("forwards premise-driven prompt input into the configured master-plot provider", async () => {
-    const masterPlotProvider = {
-      generateMasterPlot: vi.fn().mockResolvedValue({
-        rawResponse: "{\"title\":\"Generated master plot\"}",
+  it("forwards master-plot task input into the configured storyboard provider", async () => {
+    const storyboardProvider = {
+      generateStoryboard: vi.fn().mockResolvedValue({
+        rawResponse: "{\"title\":\"Generated storyboard\"}",
         provider: "gemini",
         model: "gemini-3.1-pro-preview",
-        masterPlot: {
-          title: "Generated master plot",
-          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-          synopsis:
-            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-          mainCharacters: ["Rin", "Ivo"],
-          coreConflict:
-            "Rin must choose between private escape and saving the city that exiled her.",
-          emotionalArc: "She moves from bitterness to sacrificial hope.",
-          endingBeat: "Rin turns the comet's music into a rising tide of light.",
-          targetDurationSec: 480,
+        storyboard: {
+          id: "storyboard_generated",
+          title: "Generated storyboard",
+          episodeTitle: "Episode 1",
+          sourceMasterPlotId: "mp_20260317_ab12cd",
+          sourceTaskId: null,
+          updatedAt: "pending_updated_at",
+          approvedAt: null,
+          scenes: [
+            {
+              id: "scene_1",
+              order: 1,
+              name: "Opening",
+              dramaticPurpose: "Set the emotional stakes.",
+              segments: [
+                {
+                  id: "segment_1",
+                  order: 1,
+                  durationSec: 6,
+                  visual: "Rain across a cracked cockpit canopy.",
+                  characterAction: "Rin looks up toward the comet.",
+                  dialogue: "",
+                  voiceOver: "That song again.",
+                  audio: "Low engine hum.",
+                  purpose: "Start the mystery.",
+                },
+              ],
+            },
+          ],
         },
       }),
     };
@@ -66,9 +84,9 @@ describe("storyboard worker integration", () => {
         findById: vi.fn().mockResolvedValue({
           id: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          type: "master_plot_generate",
+          type: "storyboard_generate",
           status: "pending",
-          queueName: "master-plot-generate",
+          queueName: "storyboard-generate",
           storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
           inputRelPath: "tasks/task_20260317_ab12cd/input.json",
           outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -94,14 +112,16 @@ describe("storyboard worker integration", () => {
           storageDir: "projects/proj_20260317_ab12cd-my-story",
           premiseRelPath: "premise/v1.md",
           premiseBytes: 88,
-          currentMasterPlotId: null,
-          status: "master_plot_generating",
+          currentMasterPlotId: "mp_20260317_ab12cd",
+          currentStoryboardId: null,
+          status: "storyboard_generating",
           createdAt: "2026-03-17T10:00:00.000Z",
           updatedAt: "2026-03-17T12:00:00.000Z",
           premiseUpdatedAt: "2026-03-17T10:00:00.000Z",
         }),
         updatePremiseMetadata: vi.fn(),
         updateCurrentMasterPlot: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -110,9 +130,22 @@ describe("storyboard worker integration", () => {
         readTaskInput: vi.fn().mockResolvedValue({
           taskId: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          taskType: "master_plot_generate",
-          premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
-          promptTemplateKey: "master_plot.generate",
+          taskType: "storyboard_generate",
+          sourceMasterPlotId: "mp_20260317_ab12cd",
+          masterPlot: {
+            title: "Generated master plot",
+            logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+            synopsis:
+              "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+            mainCharacters: ["Rin", "Ivo"],
+            coreConflict:
+              "Rin must choose between private escape and saving the city that exiled her.",
+            emotionalArc: "She moves from bitterness to sacrificial hope.",
+            endingBeat: "Rin turns the comet's music into a rising tide of light.",
+            targetDurationSec: 480,
+          },
+          promptTemplateKey: "storyboard.generate",
+          model: "gemini-3.1-pro-preview",
         }),
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
@@ -121,13 +154,22 @@ describe("storyboard worker integration", () => {
         initializePromptTemplate: vi.fn(),
         readPromptTemplate: vi
           .fn()
-          .mockResolvedValue("Turn this premise into a master plot:\n{{premiseText}}"),
+          .mockResolvedValue(
+            "Turn this master plot into storyboard scenes:\n{{masterPlot.logline}}\n{{masterPlot.synopsis}}",
+          ),
         writePromptSnapshot: vi.fn(),
         writeRawResponse: vi.fn(),
         writeCurrentMasterPlot: vi.fn(),
         readCurrentMasterPlot: vi.fn(),
       },
-      masterPlotProvider,
+      storyboardStorage: {
+        writeRawResponse: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+        writeCurrentStoryboard: vi.fn(),
+        readCurrentStoryboard: vi.fn(),
+      },
+      storyboardProvider,
       clock: {
         now: vi
           .fn()
@@ -140,11 +182,22 @@ describe("storyboard worker integration", () => {
       taskId: "task_20260317_ab12cd",
     });
 
-    expect(masterPlotProvider.generateMasterPlot).toHaveBeenCalledWith({
+    expect(storyboardProvider.generateStoryboard).toHaveBeenCalledWith({
       projectId: "proj_20260317_ab12cd",
-      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      masterPlot: {
+        title: "Generated master plot",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis:
+          "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict:
+          "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
+      },
       promptText:
-        "Turn this premise into a master plot:\nA washed-up pilot discovers a singing comet above a drowned city.",
+        "Turn this master plot into storyboard scenes:\nA disgraced pilot chases a cosmic song to save her flooded home.\nA fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
     });
   });
 });

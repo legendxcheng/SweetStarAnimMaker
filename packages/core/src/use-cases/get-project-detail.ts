@@ -2,7 +2,8 @@ import type { ProjectDetail } from "@sweet-star/shared";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { MasterPlotStorage } from "../ports/storyboard-storage";
+import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
+import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { toProjectDetailDto } from "./project-detail-dto";
 
 export interface GetProjectDetailInput {
@@ -16,6 +17,7 @@ export interface GetProjectDetailUseCase {
 export interface GetProjectDetailUseCaseDependencies {
   repository: ProjectRepository;
   masterPlotStorage: MasterPlotStorage;
+  storyboardStorage: StoryboardStorage;
 }
 
 export function createGetProjectDetailUseCase(
@@ -34,8 +36,17 @@ export function createGetProjectDetailUseCase(
             storageDir: project.storageDir,
           })
         : null;
+      const currentStoryboard = project.currentStoryboardId
+        ? await dependencies.storyboardStorage.readCurrentStoryboard({
+            storageDir: project.storageDir,
+          })
+        : null;
 
-      return toProjectDetailDto(project, currentMasterPlot);
+      return toProjectDetailDto(
+        project,
+        currentMasterPlot,
+        currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
+      );
     },
   };
 }

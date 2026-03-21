@@ -18,7 +18,8 @@ export const currentStoryboardMarkdownRelPath =
   `${currentStoryboardDirectoryName}/${currentStoryboardMarkdownFileName}`;
 
 export interface StoryboardDocument {
-  summary: string;
+  title: string | null;
+  episodeTitle: string | null;
   scenes: StoryboardScene[];
 }
 
@@ -112,8 +113,13 @@ export function toCurrentStoryboard(
   document: StoryboardDocument,
 ): CurrentStoryboard {
   return {
-    ...toStoryboardVersionSummary(version),
-    summary: document.summary,
+    id: version.id,
+    title: document.title,
+    episodeTitle: document.episodeTitle,
+    sourceMasterPlotId: "pending_source_master_plot_id",
+    sourceTaskId: version.sourceTaskId,
+    updatedAt: version.createdAt,
+    approvedAt: null,
     scenes: document.scenes,
   };
 }

@@ -1,9 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import {
-  approveMasterPlotRequestSchema,
-  rejectMasterPlotRequestSchema,
-  saveMasterPlotRequestSchema,
+  saveStoryboardRequestSchema,
 } from "@sweet-star/shared";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
@@ -28,17 +26,9 @@ export function registerStoryboardRoutes(
     });
   });
 
-  app.get("/projects/:projectId/master-plot/review", async (request) => {
+  app.put("/projects/:projectId/storyboard", async (request) => {
     const params = request.params as { projectId: string };
-
-    return services.getStoryboardReview.execute({
-      projectId: params.projectId,
-    });
-  });
-
-  app.put("/projects/:projectId/master-plot", async (request) => {
-    const params = request.params as { projectId: string };
-    const payload = saveMasterPlotRequestSchema.parse(request.body);
+    const payload = saveStoryboardRequestSchema.parse(request.body);
 
     return services.saveHumanStoryboardVersion.execute({
       projectId: params.projectId,
@@ -46,23 +36,19 @@ export function registerStoryboardRoutes(
     });
   });
 
-  app.post("/projects/:projectId/master-plot/approve", async (request) => {
+  app.post("/projects/:projectId/storyboard/approve", async (request) => {
     const params = request.params as { projectId: string };
-    const payload = approveMasterPlotRequestSchema.parse(request.body);
 
     return services.approveStoryboard.execute({
       projectId: params.projectId,
-      ...payload,
     });
   });
 
-  app.post("/projects/:projectId/master-plot/reject", async (request) => {
+  app.post("/projects/:projectId/storyboard/reject", async (request) => {
     const params = request.params as { projectId: string };
-    const payload = rejectMasterPlotRequestSchema.parse(request.body);
 
     return services.rejectStoryboard.execute({
       projectId: params.projectId,
-      ...payload,
     });
   });
 }

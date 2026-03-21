@@ -25,6 +25,7 @@ describe("update project script use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -80,6 +81,7 @@ describe("update project script use case", () => {
         throw new Error("update failed");
       }),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -124,6 +126,7 @@ describe("update project script use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {

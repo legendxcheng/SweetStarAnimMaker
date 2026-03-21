@@ -6,7 +6,7 @@ export function registerTaskRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
-  app.post("/projects/:projectId/tasks/master-plot-generate", async (request, reply) => {
+  app.post("/projects/:projectId/tasks/storyboard-generate", async (request, reply) => {
     const params = request.params as { projectId: string };
     const task = await services.createStoryboardGenerateTask.execute({
       projectId: params.projectId,

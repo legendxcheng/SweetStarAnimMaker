@@ -1,17 +1,17 @@
 import type {
-  GenerateMasterPlotInput,
-  GenerateMasterPlotResult,
-  MasterPlotProvider,
+  GenerateStoryboardInput,
+  GenerateStoryboardResult,
+  StoryboardProvider,
 } from "@sweet-star/core";
 
 const provider = "gemini";
 const model = "gemini-3.1-pro-preview";
 
-export function createSmokeStoryboardProvider(): MasterPlotProvider {
+export function createSmokeStoryboardProvider(): StoryboardProvider {
   return {
-    async generateMasterPlot(
-      input: GenerateMasterPlotInput,
-    ): Promise<GenerateMasterPlotResult> {
+    async generateStoryboard(
+      input: GenerateStoryboardInput,
+    ): Promise<GenerateStoryboardResult> {
       const title = input.promptText.includes("second pass")
         ? "Refined Sky Choir"
         : "Initial Sky Choir";
@@ -20,17 +20,35 @@ export function createSmokeStoryboardProvider(): MasterPlotProvider {
         rawResponse: JSON.stringify({ title }),
         provider,
         model,
-        masterPlot: {
+        storyboard: {
+          id: "storyboard_generated",
           title,
-          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-          synopsis:
-            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-          mainCharacters: ["Rin", "Ivo"],
-          coreConflict:
-            "Rin must choose between private escape and saving the city that exiled her.",
-          emotionalArc: "She moves from bitterness to sacrificial hope.",
-          endingBeat: "Rin turns the comet's music into a rising tide of light.",
-          targetDurationSec: 480,
+          episodeTitle: "Episode 1",
+          sourceMasterPlotId: "pending_source_master_plot_id",
+          sourceTaskId: null,
+          updatedAt: "pending_updated_at",
+          approvedAt: null,
+          scenes: [
+            {
+              id: "scene_1",
+              order: 1,
+              name: "Rin Hears The Sky",
+              dramaticPurpose: "Trigger the inciting beat.",
+              segments: [
+                {
+                  id: "segment_1",
+                  order: 1,
+                  durationSec: 6,
+                  visual: "Rain shakes across the cockpit glass.",
+                  characterAction: "Rin looks up.",
+                  dialogue: "",
+                  voiceOver: "That sound again.",
+                  audio: "",
+                  purpose: "Start the mystery.",
+                },
+              ],
+            },
+          ],
         },
       };
     },

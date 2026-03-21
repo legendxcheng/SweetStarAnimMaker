@@ -10,6 +10,7 @@ describe("create project use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -84,6 +85,7 @@ describe("create project use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {

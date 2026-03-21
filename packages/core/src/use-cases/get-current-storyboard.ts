@@ -1,9 +1,9 @@
 import type { CurrentStoryboard } from "@sweet-star/shared";
 
-import { toCurrentStoryboard } from "../domain/storyboard";
-import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
+import { ProjectNotFoundError } from "../errors/project-errors";
+import { CurrentStoryboardNotFoundError } from "../errors/storyboard-errors";
+import type { ProjectRepository } from "../ports/project-repository";
 import type { StoryboardStorage } from "../ports/storyboard-storage";
-import type { StoryboardVersionRepository } from "../ports/storyboard-version-repository";
 
 export interface GetCurrentStoryboardInput {
   projectId: string;
@@ -14,7 +14,7 @@ export interface GetCurrentStoryboardUseCase {
 }
 
 export interface GetCurrentStoryboardUseCaseDependencies {
-  storyboardVersionRepository: StoryboardVersionRepository;
+  projectRepository: ProjectRepository;
   storyboardStorage: StoryboardStorage;
 }
 
@@ -23,19 +23,21 @@ export function createGetCurrentStoryboardUseCase(
 ): GetCurrentStoryboardUseCase {
   return {
     async execute(input) {
-      const currentVersion = await dependencies.storyboardVersionRepository.findCurrentByProjectId(
-        input.projectId,
-      );
+      const project = await dependencies.projectRepository.findById(input.projectId);
 
-      if (!currentVersion) {
-        throw new CurrentMasterPlotNotFoundError(input.projectId);
+      if (!project) {
+        throw new ProjectNotFoundError(input.projectId);
       }
 
-      const storyboard = await dependencies.storyboardStorage.readStoryboardVersion({
-        version: currentVersion,
+      const storyboard = await dependencies.storyboardStorage.readCurrentStoryboard({
+        storageDir: project.storageDir,
       });
 
-      return toCurrentStoryboard(currentVersion, storyboard);
+      if (!storyboard) {
+        throw new CurrentStoryboardNotFoundError(project.id);
+      }
+
+      return storyboard;
     },
   };
 }

@@ -1,5 +1,6 @@
 import {
   CurrentMasterPlotNotFoundError,
+  CurrentStoryboardNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
   RejectStoryboardReasonRequiredError,
@@ -29,6 +30,7 @@ export function createApiErrorHandler() {
 
     if (
       error instanceof CurrentMasterPlotNotFoundError ||
+      error instanceof CurrentStoryboardNotFoundError ||
       error instanceof ProjectNotFoundError ||
       error instanceof TaskNotFoundError
     ) {

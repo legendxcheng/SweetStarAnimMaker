@@ -1,68 +1,43 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { CurrentMasterPlot, MasterPlotReviewWorkspace } from "@sweet-star/shared";
+import type {
+  CurrentStoryboard,
+  SaveStoryboardRequest,
+  StoryboardReviewWorkspace,
+} from "@sweet-star/shared";
+
 import { AsyncState } from "../components/async-state";
 import { StatusBadge } from "../components/status-badge";
 import { apiClient } from "../services/api-client";
 
-type EditableMasterPlot = Omit<
-  CurrentMasterPlot,
-  "id" | "sourceTaskId" | "updatedAt" | "approvedAt"
->;
-
-function toEditableMasterPlot(masterPlot: CurrentMasterPlot): EditableMasterPlot {
+function toEditableStoryboard(storyboard: CurrentStoryboard): SaveStoryboardRequest {
   return {
-    title: masterPlot.title,
-    logline: masterPlot.logline,
-    synopsis: masterPlot.synopsis,
-    mainCharacters: masterPlot.mainCharacters,
-    coreConflict: masterPlot.coreConflict,
-    emotionalArc: masterPlot.emotionalArc,
-    endingBeat: masterPlot.endingBeat,
-    targetDurationSec: masterPlot.targetDurationSec,
+    title: storyboard.title,
+    episodeTitle: storyboard.episodeTitle,
+    sourceMasterPlotId: storyboard.sourceMasterPlotId,
+    sourceTaskId: storyboard.sourceTaskId,
+    scenes: storyboard.scenes,
   };
 }
-
-function serializeCharacterList(value: string[]) {
-  return value.join(", ");
-}
-
-function parseCharacterList(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-}
-
-const REVIEW_ACTION_LABELS = {
-  approve: "通过",
-  reject: "驳回",
-} as const;
 
 export function ReviewWorkspacePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const [workspace, setWorkspace] = useState<MasterPlotReviewWorkspace | null>(null);
+  const [workspace, setWorkspace] = useState<StoryboardReviewWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [draft, setDraft] = useState<EditableMasterPlot | null>(null);
-  const [charactersText, setCharactersText] = useState("");
+  const [draft, setDraft] = useState<SaveStoryboardRequest | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
 
   const loadWorkspace = async () => {
     if (!projectId) return;
     try {
       setLoading(true);
-      const data = await apiClient.getReviewWorkspace(projectId);
-      const editable = toEditableMasterPlot(data.currentMasterPlot);
-
+      const data = await apiClient.getStoryboardReviewWorkspace(projectId);
       setWorkspace(data);
-      setDraft(editable);
-      setCharactersText(serializeCharacterList(editable.mainCharacters));
+      setDraft(toEditableStoryboard(data.currentStoryboard));
       setHasChanges(false);
       setError(null);
     } catch (err) {
@@ -76,22 +51,78 @@ export function ReviewWorkspacePage() {
     void loadWorkspace();
   }, [projectId]);
 
-  const updateDraft = <K extends keyof EditableMasterPlot>(
+  const updateDraft = <K extends keyof SaveStoryboardRequest>(
     field: K,
-    value: EditableMasterPlot[K],
+    value: SaveStoryboardRequest[K],
   ) => {
     setDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
     setHasChanges(true);
   };
 
+  const updateScene = (
+    sceneIndex: number,
+    field: "name" | "dramaticPurpose",
+    value: string,
+  ) => {
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        scenes: prev.scenes.map((scene, index) =>
+          index === sceneIndex ? { ...scene, [field]: value } : scene,
+        ),
+      };
+    });
+    setHasChanges(true);
+  };
+
+  const updateSegment = (
+    sceneIndex: number,
+    segmentIndex: number,
+    field:
+      | "durationSec"
+      | "visual"
+      | "characterAction"
+      | "dialogue"
+      | "voiceOver"
+      | "audio"
+      | "purpose",
+    value: number | string | null,
+  ) => {
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        scenes: prev.scenes.map((scene, currentSceneIndex) => {
+          if (currentSceneIndex !== sceneIndex) {
+            return scene;
+          }
+
+          return {
+            ...scene,
+            segments: scene.segments.map((segment, currentSegmentIndex) =>
+              currentSegmentIndex === segmentIndex
+                ? { ...segment, [field]: value }
+                : segment,
+            ),
+          };
+        }),
+      };
+    });
+    setHasChanges(true);
+  };
+
   const handleSave = async () => {
-    if (!workspace || !projectId || !draft) return;
+    if (!projectId || !draft) return;
     try {
       setSaving(true);
-      await apiClient.saveMasterPlot(projectId, {
-        ...draft,
-        mainCharacters: parseCharacterList(charactersText),
-      });
+      await apiClient.saveStoryboard(projectId, draft);
       await loadWorkspace();
     } catch (err) {
       alert(`保存失败：${(err as Error).message}`);
@@ -101,12 +132,12 @@ export function ReviewWorkspacePage() {
   };
 
   const handleApprove = async () => {
-    if (!workspace || !projectId) return;
-    if (!confirm("确认要通过这个主情节吗？")) return;
+    if (!projectId) return;
+    if (!confirm("确认要通过这个分镜吗？")) return;
     try {
       setSubmittingAction(true);
-      await apiClient.approveMasterPlot(projectId, {});
-      alert("主情节已通过！");
+      await apiClient.approveStoryboard(projectId, {});
+      alert("分镜已通过！");
       navigate(`/projects/${projectId}`);
     } catch (err) {
       alert(`通过失败：${(err as Error).message}`);
@@ -115,24 +146,13 @@ export function ReviewWorkspacePage() {
     }
   };
 
-  const closeRejectDialog = () => {
-    setShowRejectDialog(false);
-    setRejectReason("");
-  };
-
-  const handleRejectSubmit = async () => {
-    if (!workspace || !projectId) return;
-    if (!rejectReason.trim()) {
-      alert("请填写驳回原因");
-      return;
-    }
+  const handleReject = async () => {
+    if (!projectId) return;
+    if (!confirm("确认要驳回当前分镜并重新生成吗？")) return;
     try {
       setSubmittingAction(true);
-      await apiClient.rejectMasterPlot(projectId, {
-        reason: rejectReason.trim(),
-      });
-      closeRejectDialog();
-      alert("主情节已驳回，已创建重新生成任务。");
+      await apiClient.rejectStoryboard(projectId, {});
+      alert("分镜已驳回，已创建重新生成任务。");
       navigate(`/projects/${projectId}`);
     } catch (err) {
       alert(`驳回失败：${(err as Error).message}`);
@@ -148,7 +168,7 @@ export function ReviewWorkspacePage() {
     <div className="flex flex-col h-full -m-6">
       <AsyncState loading={loading} error={error} data={workspace}>
         {(ws) => {
-          const currentDraft = draft ?? toEditableMasterPlot(ws.currentMasterPlot);
+          const currentDraft = draft ?? toEditableStoryboard(ws.currentStoryboard);
 
           return (
             <>
@@ -162,7 +182,7 @@ export function ReviewWorkspacePage() {
                   </button>
                   <span className="text-(--color-border-muted)">|</span>
                   <span className="text-sm font-semibold text-(--color-text-primary)">
-                    主情节审核
+                    分镜审核
                   </span>
                   <StatusBadge status={ws.projectStatus} />
                 </div>
@@ -191,7 +211,9 @@ export function ReviewWorkspacePage() {
                   )}
                   {!hasChanges && ws.availableActions.reject && (
                     <button
-                      onClick={() => setShowRejectDialog(true)}
+                      onClick={() => {
+                        void handleReject();
+                      }}
                       disabled={submittingAction}
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -200,14 +222,6 @@ export function ReviewWorkspacePage() {
                   )}
                 </div>
               </div>
-
-              {ws.latestReview && (
-                <div className="mx-6 mt-3 px-4 py-2.5 rounded-lg bg-(--color-bg-surface) border border-(--color-border) text-sm text-(--color-text-muted) shrink-0">
-                  <span className="font-medium text-(--color-text-primary)">最新审核：</span>
-                  {REVIEW_ACTION_LABELS[ws.latestReview.action]}
-                  {ws.latestReview.reason && `：${ws.latestReview.reason}`}
-                </div>
-              )}
 
               <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
                 <div>
@@ -220,183 +234,255 @@ export function ReviewWorkspacePage() {
                   <input
                     id="title-input"
                     value={currentDraft.title ?? ""}
-                    onChange={(e) => updateDraft("title", e.target.value || null)}
+                    onChange={(event) => updateDraft("title", event.target.value || null)}
                     className={inputClass}
                   />
                 </div>
 
                 <div>
                   <label
-                    htmlFor="logline-input"
+                    htmlFor="episode-title-input"
                     className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                   >
-                    一句话梗概
-                  </label>
-                  <textarea
-                    id="logline-input"
-                    aria-label="一句话梗概"
-                    value={currentDraft.logline}
-                    onChange={(e) => updateDraft("logline", e.target.value)}
-                    rows={2}
-                    className={`${inputClass} resize-y`}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="synopsis-input"
-                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                  >
-                    剧情简介
-                  </label>
-                  <textarea
-                    id="synopsis-input"
-                    aria-label="剧情简介"
-                    value={currentDraft.synopsis}
-                    onChange={(e) => updateDraft("synopsis", e.target.value)}
-                    rows={5}
-                    className={`${inputClass} resize-y`}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="characters-input"
-                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                  >
-                    主要角色
+                    集标题
                   </label>
                   <input
-                    id="characters-input"
-                    aria-label="主要角色"
-                    value={charactersText}
-                    onChange={(e) => {
-                      setCharactersText(e.target.value);
-                      setHasChanges(true);
-                    }}
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="core-conflict-input"
-                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                  >
-                    核心冲突
-                  </label>
-                  <textarea
-                    id="core-conflict-input"
-                    aria-label="核心冲突"
-                    value={currentDraft.coreConflict}
-                    onChange={(e) => updateDraft("coreConflict", e.target.value)}
-                    rows={3}
-                    className={`${inputClass} resize-y`}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="emotional-arc-input"
-                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                  >
-                    情感弧线
-                  </label>
-                  <textarea
-                    id="emotional-arc-input"
-                    aria-label="情感弧线"
-                    value={currentDraft.emotionalArc}
-                    onChange={(e) => updateDraft("emotionalArc", e.target.value)}
-                    rows={3}
-                    className={`${inputClass} resize-y`}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="ending-beat-input"
-                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                  >
-                    结局节点
-                  </label>
-                  <textarea
-                    id="ending-beat-input"
-                    aria-label="结局节点"
-                    value={currentDraft.endingBeat}
-                    onChange={(e) => updateDraft("endingBeat", e.target.value)}
-                    rows={3}
-                    className={`${inputClass} resize-y`}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="duration-input"
-                    className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                  >
-                    目标时长（秒）
-                  </label>
-                  <input
-                    id="duration-input"
-                    aria-label="目标时长（秒）"
-                    type="number"
-                    value={currentDraft.targetDurationSec ?? ""}
-                    onChange={(e) =>
-                      updateDraft(
-                        "targetDurationSec",
-                        e.target.value ? Number(e.target.value) : null,
-                      )
+                    id="episode-title-input"
+                    value={currentDraft.episodeTitle ?? ""}
+                    onChange={(event) =>
+                      updateDraft("episodeTitle", event.target.value || null)
                     }
                     className={inputClass}
                   />
                 </div>
-              </div>
 
-              {showRejectDialog && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                  <div className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-6 w-full max-w-md mx-4">
-                    <h3 className="text-base font-semibold text-(--color-text-primary) mb-4">
-                      驳回主情节
+                {currentDraft.scenes.map((scene, sceneIndex) => (
+                  <section
+                    key={scene.id}
+                    className="rounded-xl border border-(--color-border) bg-(--color-bg-surface) p-4"
+                  >
+                    <h3 className="text-sm font-semibold text-(--color-text-primary) mb-4">
+                      场景 {scene.order}
                     </h3>
+                    <div className="grid gap-4">
+                      <div>
+                        <label
+                          htmlFor={`scene-${sceneIndex}-name`}
+                          className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                        >
+                          场景 {scene.order} 名称
+                        </label>
+                        <input
+                          id={`scene-${sceneIndex}-name`}
+                          value={scene.name}
+                          onChange={(event) =>
+                            updateScene(sceneIndex, "name", event.target.value)
+                          }
+                          className={inputClass}
+                        />
+                      </div>
 
-                    <div className="mb-5">
-                      <label
-                        htmlFor="reject-reason"
-                        className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
-                      >
-                        原因
-                      </label>
-                      <textarea
-                        id="reject-reason"
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        rows={3}
-                        placeholder="请说明驳回原因..."
-                        className={`${inputClass} resize-y`}
-                      />
-                    </div>
+                      <div>
+                        <label
+                          htmlFor={`scene-${sceneIndex}-purpose`}
+                          className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                        >
+                          场景 {scene.order} 戏剧目的
+                        </label>
+                        <textarea
+                          id={`scene-${sceneIndex}-purpose`}
+                          aria-label={`场景 ${scene.order} 戏剧目的`}
+                          value={scene.dramaticPurpose}
+                          onChange={(event) =>
+                            updateScene(sceneIndex, "dramaticPurpose", event.target.value)
+                          }
+                          rows={3}
+                          className={`${inputClass} resize-y`}
+                        />
+                      </div>
 
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          void handleRejectSubmit();
-                        }}
-                        disabled={submittingAction}
-                        className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        提交驳回
-                      </button>
-                      <button
-                        onClick={closeRejectDialog}
-                        disabled={submittingAction}
-                        className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        取消
-                      </button>
+                      {scene.segments.map((segment, segmentIndex) => (
+                        <div
+                          key={segment.id}
+                          className="rounded-lg border border-(--color-border-muted) bg-(--color-bg-base) p-4 grid gap-4"
+                        >
+                          <h4 className="text-sm font-medium text-(--color-text-primary)">
+                            段落 {segment.order}
+                          </h4>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-visual`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 画面
+                            </label>
+                            <textarea
+                              id={`segment-${sceneIndex}-${segmentIndex}-visual`}
+                              aria-label={`段落 ${segment.order} 画面`}
+                              value={segment.visual}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "visual",
+                                  event.target.value,
+                                )
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-y`}
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-action`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 动作
+                            </label>
+                            <textarea
+                              id={`segment-${sceneIndex}-${segmentIndex}-action`}
+                              aria-label={`段落 ${segment.order} 动作`}
+                              value={segment.characterAction}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "characterAction",
+                                  event.target.value,
+                                )
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-y`}
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-dialogue`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 对白
+                            </label>
+                            <textarea
+                              id={`segment-${sceneIndex}-${segmentIndex}-dialogue`}
+                              aria-label={`段落 ${segment.order} 对白`}
+                              value={segment.dialogue}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "dialogue",
+                                  event.target.value,
+                                )
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-y`}
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-voiceover`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 旁白
+                            </label>
+                            <textarea
+                              id={`segment-${sceneIndex}-${segmentIndex}-voiceover`}
+                              aria-label={`段落 ${segment.order} 旁白`}
+                              value={segment.voiceOver}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "voiceOver",
+                                  event.target.value,
+                                )
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-y`}
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-audio`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 音频
+                            </label>
+                            <textarea
+                              id={`segment-${sceneIndex}-${segmentIndex}-audio`}
+                              aria-label={`段落 ${segment.order} 音频`}
+                              value={segment.audio}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "audio",
+                                  event.target.value,
+                                )
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-y`}
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-purpose`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 目的
+                            </label>
+                            <textarea
+                              id={`segment-${sceneIndex}-${segmentIndex}-purpose`}
+                              aria-label={`段落 ${segment.order} 目的`}
+                              value={segment.purpose}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "purpose",
+                                  event.target.value,
+                                )
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-y`}
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor={`segment-${sceneIndex}-${segmentIndex}-duration`}
+                              className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                            >
+                              段落 {segment.order} 时长（秒）
+                            </label>
+                            <input
+                              id={`segment-${sceneIndex}-${segmentIndex}-duration`}
+                              aria-label={`段落 ${segment.order} 时长（秒）`}
+                              type="number"
+                              value={segment.durationSec ?? ""}
+                              onChange={(event) =>
+                                updateSegment(
+                                  sceneIndex,
+                                  segmentIndex,
+                                  "durationSec",
+                                  event.target.value ? Number(event.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                </div>
-              )}
+                  </section>
+                ))}
+              </div>
             </>
           );
         }}

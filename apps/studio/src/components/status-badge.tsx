@@ -31,6 +31,22 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotClass: "bg-(--color-success)",
     pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
   },
+  storyboard_generating: {
+    label: "生成中",
+    dotClass: "bg-(--color-warning)",
+    pillClass: "bg-(--color-warning)/10 border-(--color-warning)/30 text-(--color-warning)",
+    pulse: true,
+  },
+  storyboard_in_review: {
+    label: "审核中",
+    dotClass: "bg-(--color-accent)",
+    pillClass: "bg-(--color-accent)/10 border-(--color-accent)/30 text-(--color-accent)",
+  },
+  storyboard_approved: {
+    label: "已通过",
+    dotClass: "bg-(--color-success)",
+    pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
+  },
 };
 
 const FALLBACK_CONFIG: StatusConfig = {

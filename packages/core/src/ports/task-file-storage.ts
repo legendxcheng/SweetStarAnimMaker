@@ -1,8 +1,12 @@
-import type { MasterPlotGenerateTaskInput, TaskRecord } from "../domain/task";
+import type {
+  MasterPlotGenerateTaskInput,
+  StoryboardGenerateTaskInput,
+  TaskRecord,
+} from "../domain/task";
 
 export interface CreateTaskArtifactsInput {
   task: TaskRecord;
-  input: MasterPlotGenerateTaskInput;
+  input: MasterPlotGenerateTaskInput | StoryboardGenerateTaskInput;
 }
 
 export interface ReadTaskInputInput {
@@ -23,7 +27,10 @@ export interface TaskFileStorage {
   createTaskArtifacts(input: CreateTaskArtifactsInput): Promise<void> | void;
   readTaskInput(
     input: ReadTaskInputInput,
-  ): Promise<MasterPlotGenerateTaskInput> | MasterPlotGenerateTaskInput;
+  ):
+    | Promise<MasterPlotGenerateTaskInput | StoryboardGenerateTaskInput>
+    | MasterPlotGenerateTaskInput
+    | StoryboardGenerateTaskInput;
   writeTaskOutput(input: WriteTaskOutputInput): Promise<void> | void;
   appendTaskLog(input: AppendTaskLogInput): Promise<void> | void;
 }

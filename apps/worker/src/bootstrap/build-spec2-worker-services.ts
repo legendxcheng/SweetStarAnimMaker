@@ -1,10 +1,11 @@
 import {
   createProcessStoryboardGenerateTaskUseCase,
   type Clock,
-  type MasterPlotProvider,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProjectRepository,
   type MasterPlotStorage,
+  type StoryboardProvider,
+  type StoryboardStorage,
   type TaskFileStorage,
   type TaskRepository,
 } from "@sweet-star/core";
@@ -25,7 +26,8 @@ export interface BuildSpec2WorkerServicesOptions {
   taskRepository?: TaskRepository;
   taskFileStorage?: TaskFileStorage;
   masterPlotStorage?: MasterPlotStorage;
-  masterPlotProvider?: MasterPlotProvider;
+  storyboardStorage?: StoryboardStorage;
+  storyboardProvider?: StoryboardProvider;
   clock?: Clock;
 }
 
@@ -39,6 +41,7 @@ export function buildSpec2WorkerServices(
 ): Spec2WorkerServices {
   const paths = options.workspaceRoot ? createLocalDataPaths(options.workspaceRoot) : null;
   const db = paths ? createSqliteDb({ paths }) : null;
+  const defaultStorage = paths ? createStoryboardStorage({ paths }) : null;
 
   if (db) {
     initializeSqliteSchema(db);
@@ -50,10 +53,10 @@ export function buildSpec2WorkerServices(
     options.projectRepository ?? (db ? createSqliteProjectRepository({ db }) : null);
   const taskFileStorage =
     options.taskFileStorage ?? (paths ? createTaskFileStorage({ paths }) : null);
-  const masterPlotStorage =
-    options.masterPlotStorage ?? (paths ? createStoryboardStorage({ paths }) : null);
-  const masterPlotProvider =
-    options.masterPlotProvider ??
+  const storyboardStorage = options.storyboardStorage ?? defaultStorage;
+  const masterPlotStorage = options.masterPlotStorage ?? defaultStorage;
+  const storyboardProvider =
+    options.storyboardProvider ??
     createGeminiStoryboardProvider({
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
@@ -64,7 +67,8 @@ export function buildSpec2WorkerServices(
     !taskRepository ||
     !projectRepository ||
     !taskFileStorage ||
-    !masterPlotStorage
+    !masterPlotStorage ||
+    !storyboardStorage
   ) {
     throw new Error(
       "buildSpec2WorkerServices requires either workspaceRoot or explicit task dependencies",
@@ -76,8 +80,9 @@ export function buildSpec2WorkerServices(
       taskRepository,
       projectRepository,
       taskFileStorage,
-      masterPlotProvider,
+      storyboardProvider,
       masterPlotStorage,
+      storyboardStorage,
       clock: options.clock ?? {
         now: () => new Date().toISOString(),
       },

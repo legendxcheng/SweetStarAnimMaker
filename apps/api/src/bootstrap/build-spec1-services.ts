@@ -11,8 +11,8 @@ import {
   createListProjectsUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanStoryboardVersionUseCase,
-  masterPlotGenerateQueueName,
   createUpdateProjectScriptUseCase,
+  storyboardGenerateQueueName,
   type TaskIdGenerator,
   type TaskQueue,
 } from "@sweet-star/core";
@@ -22,8 +22,6 @@ import {
   createLocalDataPaths,
   createSqliteDb,
   createSqliteProjectRepository,
-  createSqliteStoryboardReviewRepository,
-  createSqliteStoryboardVersionRepository,
   createSqliteTaskRepository,
   createStoryboardStorage,
   createTaskFileStorage,
@@ -49,8 +47,6 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const premiseStorage = createFileScriptStorage({ paths });
   const taskRepository = createSqliteTaskRepository({ db });
   const taskFileStorage = createTaskFileStorage({ paths });
-  const storyboardVersionRepository = createSqliteStoryboardVersionRepository({ db });
-  const storyboardReviewRepository = createSqliteStoryboardReviewRepository({ db });
   const storyboardStorage = createStoryboardStorage({ paths });
   const masterPlotStorage = storyboardStorage;
   const clock = {
@@ -81,7 +77,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
         maxRetriesPerRequest: null,
       },
     );
-    bullMqQueue = new Queue(masterPlotGenerateQueueName, {
+    bullMqQueue = new Queue(storyboardGenerateQueueName, {
       connection: redisConnection,
     });
     taskQueue = createBullMqTaskQueue({
@@ -93,7 +89,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
 
   const createStoryboardGenerateTask = createCreateStoryboardGenerateTaskUseCase({
     projectRepository: repository,
-    premiseStorage,
+    masterPlotStorage,
     taskRepository,
     taskFileStorage,
     taskQueue: {
@@ -129,19 +125,20 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     listProjects: createListProjectsUseCase({
       repository,
       masterPlotStorage,
+      storyboardStorage,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
       masterPlotStorage,
+      storyboardStorage,
     }),
     getCurrentStoryboard: createGetCurrentStoryboardUseCase({
-      storyboardVersionRepository,
       storyboardStorage,
+      projectRepository: repository,
     }),
     getStoryboardReview: createGetStoryboardReviewUseCase({
       projectRepository: repository,
-      masterPlotStorage,
-      storyboardReviewRepository,
+      storyboardStorage,
       taskRepository,
     }),
     updateProjectScript: createUpdateProjectScriptUseCase({
@@ -151,21 +148,18 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     saveHumanStoryboardVersion: createSaveHumanStoryboardVersionUseCase({
       projectRepository: repository,
-      masterPlotStorage,
+      storyboardStorage,
       clock,
     }),
     approveStoryboard: createApproveStoryboardUseCase({
       projectRepository: repository,
-      masterPlotStorage,
-      storyboardReviewRepository,
+      storyboardStorage,
       clock,
     }),
     rejectStoryboard: createRejectStoryboardUseCase({
       projectRepository: repository,
-      masterPlotStorage,
-      storyboardReviewRepository,
+      storyboardStorage,
       createStoryboardGenerateTask,
-      clock,
     }),
     createStoryboardGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({

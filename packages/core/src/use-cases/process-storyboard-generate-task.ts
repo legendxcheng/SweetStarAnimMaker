@@ -49,6 +49,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
 
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
+        assertStoryboardTaskInput(taskInput);
         const project = await dependencies.projectRepository.findById(task.projectId);
 
         if (!project) {
@@ -144,6 +145,31 @@ export function createProcessStoryboardGenerateTaskUseCase(
       }
     },
   };
+}
+
+function assertStoryboardTaskInput(input: {
+  taskType: string;
+}): asserts input is {
+  taskId: string;
+  projectId: string;
+  taskType: "storyboard_generate";
+  sourceMasterPlotId: string;
+  masterPlot: {
+    title: string | null;
+    logline: string;
+    synopsis: string;
+    mainCharacters: string[];
+    coreConflict: string;
+    emotionalArc: string;
+    endingBeat: string;
+    targetDurationSec: number | null;
+  };
+  promptTemplateKey: "storyboard.generate";
+  model: "gemini-3.1-pro-preview";
+} {
+  if (input.taskType !== "storyboard_generate") {
+    throw new Error(`Unsupported task input for storyboard processing: ${input.taskType}`);
+  }
 }
 
 function renderPromptTemplate(
