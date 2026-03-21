@@ -18,6 +18,14 @@ interface MasterPlotPhasePanelProps {
   onGenerate: () => void;
 }
 
+function formatCharacters(characters: string[]) {
+  return characters.length > 0 ? characters.join("，") : "暂无";
+}
+
+function formatDuration(durationSec: number | null) {
+  return durationSec === null ? "未设置" : `${durationSec} 秒`;
+}
+
 export function MasterPlotPhasePanel({
   project,
   task,
@@ -98,18 +106,56 @@ export function MasterPlotPhasePanel({
               </Link>
             )}
           </div>
-          <div className="grid gap-2">
-            <div>
-              <p className={metaLabelClass}>标题</p>
-              <p className={metaValueClass}>{project.currentMasterPlot.title ?? "未命名"}</p>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="grid gap-4">
+              <div>
+                <p className={metaLabelClass}>标题</p>
+                <p className={`${metaValueClass} text-base font-semibold`}>
+                  {project.currentMasterPlot.title ?? "未命名"}
+                </p>
+              </div>
+              <div>
+                <p className={metaLabelClass}>一句话梗概</p>
+                <p className={`${metaValueClass} leading-7`}>{project.currentMasterPlot.logline}</p>
+              </div>
+              <div>
+                <p className={metaLabelClass}>主要角色</p>
+                <p className={metaValueClass}>
+                  {formatCharacters(project.currentMasterPlot.mainCharacters)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className={metaLabelClass}>一句话梗概</p>
-              <p className={metaValueClass}>{project.currentMasterPlot.logline}</p>
+
+            <div className="grid gap-4">
+              <div>
+                <p className={metaLabelClass}>剧情简介</p>
+                <p className={`${metaValueClass} leading-7`}>{project.currentMasterPlot.synopsis}</p>
+              </div>
+              <div>
+                <p className={metaLabelClass}>核心冲突</p>
+                <p className={`${metaValueClass} leading-7`}>
+                  {project.currentMasterPlot.coreConflict}
+                </p>
+              </div>
+              <div>
+                <p className={metaLabelClass}>情感弧光</p>
+                <p className={`${metaValueClass} leading-7`}>
+                  {project.currentMasterPlot.emotionalArc}
+                </p>
+              </div>
+              <div>
+                <p className={metaLabelClass}>结局落点</p>
+                <p className={`${metaValueClass} leading-7`}>{project.currentMasterPlot.endingBeat}</p>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div>
-              <p className={metaLabelClass}>主要角色</p>
-              <p className={metaValueClass}>{project.currentMasterPlot.mainCharacters.join("，")}</p>
+              <p className={metaLabelClass}>目标时长</p>
+              <p className={metaValueClass}>
+                {formatDuration(project.currentMasterPlot.targetDurationSec)}
+              </p>
             </div>
             <div>
               <p className={metaLabelClass}>更新时间</p>
