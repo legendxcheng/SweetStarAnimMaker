@@ -65,4 +65,21 @@ describe("local data paths", () => {
       paths.projectStoryboardCurrentMarkdownPath("projects/proj_20260321_ab12cd-my-story"),
     ).toMatch(/storyboard[\\/]+current\.md$/);
   });
+
+  it("builds character-sheet paths inside the project", () => {
+    const paths = createLocalDataPaths("C:/repo");
+
+    expect(
+      paths.projectCharacterSheetBatchManifestPath(
+        "projects/proj_20260321_ab12cd-my-story",
+        "character-sheets/batches/char_batch_v1/manifest.json",
+      ),
+    ).toMatch(/character-sheets[\\/]+batches[\\/]+char_batch_v1[\\/]+manifest\.json$/);
+    expect(
+      paths.projectCharacterSheetAssetPath(
+        "projects/proj_20260321_ab12cd-my-story",
+        "character-sheets/batches/char_batch_v1/characters/char_rin_1/current.png",
+      ),
+    ).toMatch(/character-sheets[\\/]+batches[\\/]+char_batch_v1[\\/]+characters[\\/]+char_rin_1[\\/]+current\.png$/);
+  });
 });

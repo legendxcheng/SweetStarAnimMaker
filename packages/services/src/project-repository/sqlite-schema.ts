@@ -2,6 +2,7 @@ import type { SqliteDatabase } from "./sqlite-db";
 import { initializeSqliteTaskSchema } from "../task-repository/sqlite-task-schema";
 import { initializeSqliteStoryboardSchema } from "../storyboard-repository/sqlite-storyboard-schema";
 import { initializeSqliteStoryboardReviewSchema } from "../storyboard-repository/sqlite-storyboard-review-schema";
+import { initializeSqliteCharacterSheetSchema } from "../character-sheet-repository/sqlite-character-sheet-schema";
 
 export function initializeSqliteSchema(db: SqliteDatabase) {
   db.exec(`
@@ -17,6 +18,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
       updated_at TEXT NOT NULL,
       premise_updated_at TEXT NOT NULL,
       current_master_plot_id TEXT NULL,
+      current_character_sheet_batch_id TEXT NULL,
       current_storyboard_id TEXT NULL
     )
   `);
@@ -25,9 +27,11 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   ensureProjectsColumn(db, "premise_bytes", "INTEGER NULL");
   ensureProjectsColumn(db, "premise_updated_at", "TEXT NULL");
   ensureProjectsColumn(db, "current_master_plot_id", "TEXT NULL");
+  ensureProjectsColumn(db, "current_character_sheet_batch_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_storyboard_id", "TEXT NULL");
 
   initializeSqliteStoryboardSchema(db);
+  initializeSqliteCharacterSheetSchema(db);
   initializeSqliteTaskSchema(db);
   initializeSqliteStoryboardReviewSchema(db);
   ensureStoryboardReviewsColumn(db, "master_plot_id", "TEXT NOT NULL DEFAULT ''");

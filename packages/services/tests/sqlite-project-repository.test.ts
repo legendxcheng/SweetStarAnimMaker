@@ -39,6 +39,7 @@ describe("sqlite project repository", () => {
     const columns = db.prepare("PRAGMA table_info(projects)").all() as Array<{ name: string }>;
 
     expect(columns.map((column) => column.name)).toContain("current_master_plot_id");
+    expect(columns.map((column) => column.name)).toContain("current_character_sheet_batch_id");
     expect(columns.map((column) => column.name)).toContain("current_storyboard_id");
   });
 
@@ -104,6 +105,10 @@ describe("sqlite project repository", () => {
       projectId: "proj_20260321_ab12cd",
       masterPlotId: "mp_20260321_ab12cd",
     });
+    repository.updateCurrentCharacterSheetBatch({
+      projectId: "proj_20260321_ab12cd",
+      batchId: "char_batch_v1",
+    });
     repository.updateCurrentStoryboard({
       projectId: "proj_20260321_ab12cd",
       storyboardId: "storyboard_20260321_ab12cd",
@@ -111,14 +116,19 @@ describe("sqlite project repository", () => {
 
     const row = db
       .prepare(
-        "SELECT current_master_plot_id, current_storyboard_id FROM projects WHERE id = ?",
+        "SELECT current_master_plot_id, current_character_sheet_batch_id, current_storyboard_id FROM projects WHERE id = ?",
       )
       .get("proj_20260321_ab12cd") as
-      | { current_master_plot_id: string | null; current_storyboard_id: string | null }
+      | {
+          current_master_plot_id: string | null;
+          current_character_sheet_batch_id: string | null;
+          current_storyboard_id: string | null;
+        }
       | undefined;
 
     expect(row).toEqual({
       current_master_plot_id: "mp_20260321_ab12cd",
+      current_character_sheet_batch_id: "char_batch_v1",
       current_storyboard_id: "storyboard_20260321_ab12cd",
     });
   });

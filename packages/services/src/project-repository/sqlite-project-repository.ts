@@ -1,6 +1,7 @@
 import type {
   ProjectRecord,
   ProjectRepository,
+  UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentMasterPlotInput,
   UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,
@@ -20,6 +21,7 @@ interface SqliteProjectRow {
   updated_at: string;
   premise_updated_at: string | null;
   current_master_plot_id: string | null;
+  current_character_sheet_batch_id: string | null;
   current_storyboard_id: string | null;
   script_rel_path?: string | null;
   script_bytes?: number | null;
@@ -65,6 +67,7 @@ export function createSqliteProjectRepository(
                 updated_at,
                 premise_updated_at,
                 current_master_plot_id,
+                current_character_sheet_batch_id,
                 current_storyboard_id,
                 script_rel_path,
                 script_bytes,
@@ -81,6 +84,7 @@ export function createSqliteProjectRepository(
                 @updated_at,
                 @premise_updated_at,
                 @current_master_plot_id,
+                @current_character_sheet_batch_id,
                 @current_storyboard_id,
                 @script_rel_path,
                 @script_bytes,
@@ -107,6 +111,7 @@ export function createSqliteProjectRepository(
               updated_at,
               premise_updated_at,
               current_master_plot_id,
+              current_character_sheet_batch_id,
               current_storyboard_id
             ) VALUES (
               @id,
@@ -120,6 +125,7 @@ export function createSqliteProjectRepository(
               @updated_at,
               @premise_updated_at,
               @current_master_plot_id,
+              @current_character_sheet_batch_id,
               @current_storyboard_id
             )
           `,
@@ -142,6 +148,7 @@ export function createSqliteProjectRepository(
               updated_at,
               premise_updated_at,
               current_master_plot_id,
+              current_character_sheet_batch_id,
               current_storyboard_id${legacySelectColumns}
             FROM projects
             WHERE id = ?
@@ -167,6 +174,7 @@ export function createSqliteProjectRepository(
               updated_at,
               premise_updated_at,
               current_master_plot_id,
+              current_character_sheet_batch_id,
               current_storyboard_id${legacySelectColumns}
             FROM projects
             ORDER BY updated_at DESC
@@ -220,6 +228,9 @@ export function createSqliteProjectRepository(
     updateCurrentMasterPlot(input) {
       updateCurrentMasterPlot(options.db, input);
     },
+    updateCurrentCharacterSheetBatch(input) {
+      updateCurrentCharacterSheetBatch(options.db, input);
+    },
     updateCurrentStoryboard(input) {
       updateCurrentStoryboard(options.db, input);
     },
@@ -239,6 +250,22 @@ function updateCurrentMasterPlot(db: SqliteDatabase, input: UpdateCurrentMasterP
   ).run({
     project_id: input.projectId,
     current_master_plot_id: input.masterPlotId,
+  });
+}
+
+function updateCurrentCharacterSheetBatch(
+  db: SqliteDatabase,
+  input: UpdateCurrentCharacterSheetBatchInput,
+) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET current_character_sheet_batch_id = @current_character_sheet_batch_id
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    current_character_sheet_batch_id: input.batchId,
   });
 }
 
@@ -284,6 +311,7 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     updated_at: project.updatedAt,
     premise_updated_at: project.premiseUpdatedAt,
     current_master_plot_id: project.currentMasterPlotId,
+    current_character_sheet_batch_id: project.currentCharacterSheetBatchId,
     current_storyboard_id: project.currentStoryboardId,
     script_rel_path: project.premiseRelPath,
     script_bytes: project.premiseBytes,
@@ -308,6 +336,7 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     premiseRelPath,
     premiseBytes,
     currentMasterPlotId: row.current_master_plot_id,
+    currentCharacterSheetBatchId: row.current_character_sheet_batch_id,
     currentStoryboardId: row.current_storyboard_id,
     status: normalizeProjectStatus(row.status),
     createdAt: row.created_at,
@@ -329,6 +358,9 @@ function normalizeProjectStatus(status: string): ProjectRecord["status"] {
     case "master_plot_generating":
     case "master_plot_in_review":
     case "master_plot_approved":
+    case "character_sheets_generating":
+    case "character_sheets_in_review":
+    case "character_sheets_approved":
     case "storyboard_generating":
     case "storyboard_in_review":
     case "storyboard_approved":

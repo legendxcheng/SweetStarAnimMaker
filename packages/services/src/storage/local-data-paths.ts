@@ -26,6 +26,8 @@ export interface LocalDataPaths {
   projectStoryboardCurrentMarkdownPath(projectStorageDir: string): string;
   projectStoryboardRawResponsePath(projectStorageDir: string, rawResponseRelPath: string): string;
   projectStoryboardVersionPath(projectStorageDir: string, versionRelPath: string): string;
+  projectCharacterSheetBatchManifestPath(projectStorageDir: string, manifestRelPath: string): string;
+  projectCharacterSheetAssetPath(projectStorageDir: string, assetRelPath: string): string;
 }
 
 export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
@@ -70,6 +72,12 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
     },
     projectStoryboardVersionPath(projectStorageDir, versionRelPath) {
       return path.join(dataRootDir, projectStorageDir, versionRelPath);
+    },
+    projectCharacterSheetBatchManifestPath(projectStorageDir, manifestRelPath) {
+      return path.join(dataRootDir, projectStorageDir, manifestRelPath);
+    },
+    projectCharacterSheetAssetPath(projectStorageDir, assetRelPath) {
+      return path.join(dataRootDir, projectStorageDir, assetRelPath);
     },
   };
 }
