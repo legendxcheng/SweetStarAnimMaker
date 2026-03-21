@@ -1,6 +1,6 @@
 # Premise To Master Plot Progress Summary
 
-**Date:** 2026-03-19
+**Date:** 2026-03-21
 **Worktree:** `E:\SweetStarAnimMaker\.worktrees\premise-to-master-plot`
 **Branch:** `premise-to-master-plot`
 **Related Spec:** `docs/superpowers/specs/2026-03-19-premise-to-master-plot-design.md`
@@ -8,7 +8,7 @@
 
 ## Current Status
 
-The `premise -> master_plot` migration is functionally complete across:
+The first-stage `premise -> master_plot` implementation is now complete for the main delivery path across:
 
 - `packages/shared`
 - `packages/core`
@@ -17,10 +17,15 @@ The `premise -> master_plot` migration is functionally complete across:
 - `apps/worker`
 - `apps/studio`
 
-The remaining work is final verification and naming/type cleanup:
+As of 2026-03-21, the end-to-end flow through `Generate Master Plot` has been manually exercised successfully:
 
-- workspace `typecheck`
-- stale compatibility names that no longer match the first-stage `premise/master_plot` model
+- create project with `premiseText`
+- create `master_plot_generate` task from Studio/API
+- enqueue and process the task in worker flow
+- persist the generated current master plot
+- return the project to Studio with the generated master plot available for review
+
+This means the core milestone for this migration is no longer blocked on generation-path implementation. The remaining work is follow-up verification and cleanup rather than missing first-stage functionality.
 
 ## Already Completed
 
@@ -122,27 +127,32 @@ Additional focused verification run on 2026-03-21:
   - navigating back to project detail
   - showing `master_plot_approved` / `已通过`
 
-## Current Blockers
+Manual smoke verification on 2026-03-21 additionally confirmed:
 
-### Final Typecheck And Naming Cleanup
+- the full path up to generated `master_plot` completion works in real usage
+- the first-stage generation milestone should now be treated as complete
 
-The remaining blockers are no longer transport or API wiring issues. They are final consistency issues surfaced by `typecheck`.
+## Remaining Follow-Up
 
-Observed failure pattern:
+### Final Verification And Naming Cleanup
 
-- schema tests using over-broad `Record<string, ...>` casts instead of concrete exported schemas
-- core files still referencing old shared type names such as `StoryboardReviewWorkspace`
-- some first-stage list/review helpers still use stale local variable or dependency names from the old storyboard path
+There is no known blocker left on the main generation path. The remaining work is to finish consistency checks around the completed implementation:
+
+- rerun workspace `test` / `typecheck` in the current branch state
+- clean up any stale compatibility names that still reference old first-stage storyboard terminology
+- do one final smoke pass for review actions if a release-ready checkpoint is needed
 
 ## Recommended Next Steps
 
-1. Fix `packages/shared` schema tests so `typecheck` uses concrete schema exports
-2. Fix `packages/core` stale type references and list-project master-plot loading
-3. Re-run:
+1. Re-run:
    - `corepack pnpm -r test`
    - `corepack pnpm -r typecheck`
-4. Run a final naming drift check for old first-stage identifiers in active code
-5. Remove or quarantine any remaining compatibility-only old names if they are no longer needed
+2. Run a final naming drift check for old first-stage identifiers in active code
+3. Remove or quarantine any remaining compatibility-only old names if they are no longer needed
+4. If needed, do one last manual pass over:
+   - review save
+   - approve
+   - reject and regenerate
 
 ## Useful Commands For The Next Session
 
@@ -186,5 +196,6 @@ apps/studio
 
 - The current worktree is dirty by design; do not discard existing changes.
 - `apps/api/src/app.ts` already contains the CORS baseline fix.
-- Core and services are in a good checkpoint to branch from for API/worker/studio migration.
-- The Studio approve flow is implemented and regression-covered; it should no longer be tracked as a remaining missing step.
+- The first-stage generation path is now manually confirmed complete through generated `master_plot`.
+- The Studio approve flow is implemented and regression-covered; it should not be tracked as missing implementation work.
+- Remaining work should be treated as release hardening, not core feature delivery.

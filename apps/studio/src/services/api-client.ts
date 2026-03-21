@@ -100,6 +100,15 @@ export const apiClient = {
       },
     ),
 
+  getCurrentStoryboard: (projectId: string) =>
+    request<CurrentStoryboard>(
+      `/projects/${projectId}/storyboard/current`,
+      currentStoryboardResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
   saveStoryboard: (projectId: string, data: SaveStoryboardRequest) =>
     request<CurrentStoryboard>(
       `/projects/${projectId}/storyboard`,

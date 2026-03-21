@@ -92,6 +92,46 @@ const reviewedProject = {
   },
 };
 
+const storyboardApprovedProject = {
+  ...approvedMasterPlotProject,
+  status: "storyboard_approved" as const,
+  currentStoryboard: {
+    ...reviewedProject.currentStoryboard,
+    approvedAt: "2024-01-01T00:00:05Z",
+  },
+};
+
+const fullStoryboard = {
+  id: "storyboard-1",
+  title: "The Last Sky Choir",
+  episodeTitle: "Episode 1",
+  sourceMasterPlotId: "mp-1",
+  sourceTaskId: "task-1",
+  updatedAt: "2024-01-01T00:00:03Z",
+  approvedAt: "2024-01-01T00:00:05Z",
+  scenes: [
+    {
+      id: "scene-1",
+      order: 1,
+      name: "Opening",
+      dramaticPurpose: "Introduce Rin and the comet.",
+      segments: [
+        {
+          id: "segment-1",
+          order: 1,
+          durationSec: 6,
+          visual: "Rain shakes across the cockpit glass.",
+          characterAction: "Rin looks up.",
+          dialogue: "",
+          voiceOver: "That sound again.",
+          audio: "A comet hum under thunder.",
+          purpose: "Start the mystery.",
+        },
+      ],
+    },
+  ],
+};
+
 const generatingProject = {
   ...approvedMasterPlotProject,
   status: "storyboard_generating" as const,
@@ -204,6 +244,60 @@ describe("Project Detail Page", () => {
 
     expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
     expect(screen.getByText("执行中")).toBeInTheDocument();
+  });
+
+  it("shows full current storyboard details in the storyboard phase panel", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      storyboardApprovedProject,
+    );
+    const getCurrentStoryboard = vi
+      .spyOn(apiModule.apiClient, "getCurrentStoryboard")
+      .mockResolvedValue(fullStoryboard);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+
+    await waitFor(() => {
+      expect(getCurrentStoryboard).toHaveBeenCalledWith("proj-1");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Introduce Rin and the comet.")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Rain shakes across the cockpit glass.")).toBeInTheDocument();
+    expect(screen.getByText("That sound again.")).toBeInTheDocument();
+    expect(screen.getByText("Start the mystery.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /进入分镜审核/i })).not.toBeInTheDocument();
+  });
+
+  it("shows an inline detail error while keeping the storyboard summary visible", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      storyboardApprovedProject,
+    );
+    vi.spyOn(apiModule.apiClient, "getCurrentStoryboard").mockRejectedValue(
+      new Error("Storyboard detail unavailable"),
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Storyboard detail unavailable/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("当前分镜文案")).toBeInTheDocument();
+    expect(screen.getByText("The Last Sky Choir")).toBeInTheDocument();
   });
 
   it("refreshes generating storyboard projects even when no local task id is available", async () => {

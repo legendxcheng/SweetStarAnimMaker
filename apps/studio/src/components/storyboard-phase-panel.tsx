@@ -1,7 +1,9 @@
-import type { ProjectDetail, TaskDetail } from "@sweet-star/shared";
+import { useEffect, useState } from "react";
+import type { CurrentStoryboard, ProjectDetail, TaskDetail } from "@sweet-star/shared";
 import { Link } from "react-router-dom";
 
 import { ErrorState } from "./error-state";
+import { apiClient } from "../services/api-client";
 
 const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -31,10 +33,53 @@ export function StoryboardPhasePanel({
   disableGenerate,
   onGenerate,
 }: StoryboardPhasePanelProps) {
+  const [currentStoryboard, setCurrentStoryboard] = useState<CurrentStoryboard | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<Error | null>(null);
+  const [detailRequestVersion, setDetailRequestVersion] = useState(0);
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
+
+  useEffect(() => {
+    if (!project.currentStoryboard) {
+      setCurrentStoryboard(null);
+      setDetailError(null);
+      setDetailLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCurrentStoryboard() {
+      setDetailLoading(true);
+      try {
+        const detail = await apiClient.getCurrentStoryboard(project.id);
+        if (cancelled) {
+          return;
+        }
+        setCurrentStoryboard(detail);
+        setDetailError(null);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setCurrentStoryboard(null);
+        setDetailError(error as Error);
+      } finally {
+        if (!cancelled) {
+          setDetailLoading(false);
+        }
+      }
+    }
+
+    void loadCurrentStoryboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, project.currentStoryboard?.id, detailRequestVersion]);
 
   return (
     <section aria-label="分镜工作区">
@@ -138,6 +183,129 @@ export function StoryboardPhasePanel({
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {project.currentStoryboard && (
+        <div className={cardClass}>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <h4 className="text-base font-semibold text-(--color-text-primary)">分镜详情</h4>
+              <p className="text-sm text-(--color-text-muted) mt-1">
+                当前分镜的完整只读内容，便于在项目详情页直接查看。
+              </p>
+            </div>
+          </div>
+
+          {detailLoading && (
+            <div className="py-6">
+              <p className="text-sm text-(--color-text-muted)">正在加载分镜详情...</p>
+            </div>
+          )}
+
+          {detailError && !detailLoading && (
+            <ErrorState
+              error={detailError}
+              retry={() => {
+                setDetailError(null);
+                setCurrentStoryboard(null);
+                setDetailRequestVersion((value) => value + 1);
+              }}
+            />
+          )}
+
+          {currentStoryboard && !detailLoading && !detailError && (
+            <div className="grid gap-5">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <p className={metaLabelClass}>标题</p>
+                  <p className={`${metaValueClass} text-base font-semibold`}>
+                    {currentStoryboard.title ?? "未命名"}
+                  </p>
+                </div>
+                <div>
+                  <p className={metaLabelClass}>集标题</p>
+                  <p className={metaValueClass}>{currentStoryboard.episodeTitle ?? "未命名"}</p>
+                </div>
+              </div>
+
+              {currentStoryboard.scenes.map((scene) => (
+                <section
+                  key={scene.id}
+                  className="rounded-xl border border-(--color-border-muted) bg-(--color-bg-base) p-4"
+                >
+                  <div className="grid gap-3">
+                    <div>
+                      <p className={metaLabelClass}>场景 {scene.order}</p>
+                      <p className="text-base font-semibold text-(--color-text-primary)">
+                        {scene.name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={metaLabelClass}>戏剧目的</p>
+                      <p className="text-sm leading-7 text-(--color-text-primary)">
+                        {scene.dramaticPurpose}
+                      </p>
+                    </div>
+
+                    {scene.segments.map((segment) => (
+                      <article
+                        key={segment.id}
+                        className="rounded-lg border border-(--color-border) bg-(--color-bg-surface) p-4"
+                      >
+                        <div className="grid gap-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <h5 className="text-sm font-semibold text-(--color-text-primary)">
+                              段落 {segment.order}
+                            </h5>
+                            <span className="text-xs text-(--color-text-muted)">
+                              时长：{formatDuration(segment.durationSec)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className={metaLabelClass}>画面</p>
+                            <p className="text-sm leading-7 text-(--color-text-primary)">
+                              {segment.visual}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={metaLabelClass}>动作</p>
+                            <p className="text-sm leading-7 text-(--color-text-primary)">
+                              {segment.characterAction}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={metaLabelClass}>对白</p>
+                            <p className="text-sm leading-7 text-(--color-text-primary)">
+                              {segment.dialogue || "无"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={metaLabelClass}>旁白</p>
+                            <p className="text-sm leading-7 text-(--color-text-primary)">
+                              {segment.voiceOver || "无"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={metaLabelClass}>音频</p>
+                            <p className="text-sm leading-7 text-(--color-text-primary)">
+                              {segment.audio || "无"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={metaLabelClass}>目的</p>
+                            <p className="text-sm leading-7 text-(--color-text-primary)">
+                              {segment.purpose}
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
