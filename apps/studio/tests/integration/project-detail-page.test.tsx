@@ -73,6 +73,16 @@ const reviewedProject = {
   },
 };
 
+const reviewedProjectWithMissingDisplayValues = {
+  ...reviewedProject,
+  currentMasterPlot: {
+    ...reviewedProject.currentMasterPlot,
+    title: null,
+    mainCharacters: [],
+    targetDurationSec: null,
+  },
+};
+
 const generatingProject = {
   ...baseProject,
   status: "master_plot_generating" as const,
@@ -144,6 +154,47 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
 
     expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
+  });
+
+  it("shows the full current master-plot details in the 主情节 workspace", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(reviewedProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+
+    expect(screen.getByText("剧情简介")).toBeInTheDocument();
+    expect(screen.getByText(reviewedProject.currentMasterPlot.synopsis)).toBeInTheDocument();
+    expect(screen.getByText("核心冲突")).toBeInTheDocument();
+    expect(screen.getByText(reviewedProject.currentMasterPlot.coreConflict)).toBeInTheDocument();
+    expect(screen.getByText("情感弧光")).toBeInTheDocument();
+    expect(screen.getByText(reviewedProject.currentMasterPlot.emotionalArc)).toBeInTheDocument();
+    expect(screen.getByText("结局落点")).toBeInTheDocument();
+    expect(screen.getByText(reviewedProject.currentMasterPlot.endingBeat)).toBeInTheDocument();
+    expect(screen.getByText("目标时长")).toBeInTheDocument();
+    expect(screen.getByText("480 秒")).toBeInTheDocument();
+  });
+
+  it("shows master-plot fallback values for missing title, characters, and duration", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      reviewedProjectWithMissingDisplayValues,
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+
+    expect(screen.getByText("未命名")).toBeInTheDocument();
+    expect(screen.getByText("暂无")).toBeInTheDocument();
+    expect(screen.getByText("未设置")).toBeInTheDocument();
   });
 
   it("loads project detail and lets the user start master-plot generation", async () => {
