@@ -1,6 +1,8 @@
 import path from "node:path";
 
 import {
+  currentStoryboardJsonRelPath,
+  currentStoryboardMarkdownRelPath,
   premiseRelPath,
   taskInputFileName,
   taskLogFileName,
@@ -20,6 +22,8 @@ export interface LocalDataPaths {
   projectTaskInputPath(taskStorageDir: string): string;
   projectTaskOutputPath(taskStorageDir: string): string;
   projectTaskLogPath(taskStorageDir: string): string;
+  projectStoryboardCurrentJsonPath(projectStorageDir: string): string;
+  projectStoryboardCurrentMarkdownPath(projectStorageDir: string): string;
   projectStoryboardRawResponsePath(projectStorageDir: string, rawResponseRelPath: string): string;
   projectStoryboardVersionPath(projectStorageDir: string, versionRelPath: string): string;
 }
@@ -54,6 +58,12 @@ export function createLocalDataPaths(workspaceRoot: string): LocalDataPaths {
     },
     projectTaskLogPath(taskStorageDir) {
       return path.join(dataRootDir, taskStorageDir, taskLogFileName);
+    },
+    projectStoryboardCurrentJsonPath(projectStorageDir) {
+      return path.join(dataRootDir, projectStorageDir, currentStoryboardJsonRelPath);
+    },
+    projectStoryboardCurrentMarkdownPath(projectStorageDir) {
+      return path.join(dataRootDir, projectStorageDir, currentStoryboardMarkdownRelPath);
     },
     projectStoryboardRawResponsePath(projectStorageDir, rawResponseRelPath) {
       return path.join(dataRootDir, projectStorageDir, rawResponseRelPath);

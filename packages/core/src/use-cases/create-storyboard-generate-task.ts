@@ -2,17 +2,18 @@ import type { TaskDetail } from "@sweet-star/shared";
 
 import {
   createTaskRecord,
-  masterPlotGenerateQueueName,
-  type MasterPlotGenerateTaskInput,
+  storyboardGenerateQueueName,
+  type StoryboardGenerateTaskInput,
 } from "../domain/task";
 import { ProjectNotFoundError } from "../errors/project-errors";
+import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { PremiseStorage } from "../ports/script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface CreateStoryboardGenerateTaskInput {
@@ -25,7 +26,7 @@ export interface CreateStoryboardGenerateTaskUseCase {
 
 export interface CreateStoryboardGenerateTaskUseCaseDependencies {
   projectRepository: ProjectRepository;
-  premiseStorage: PremiseStorage;
+  masterPlotStorage: MasterPlotStorage;
   taskRepository: TaskRepository;
   taskFileStorage: TaskFileStorage;
   taskQueue: TaskQueue;
@@ -44,24 +45,40 @@ export function createCreateStoryboardGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const premiseText = await dependencies.premiseStorage.readPremise({
+      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
         storageDir: project.storageDir,
       });
+
+      if (!currentMasterPlot || !currentMasterPlot.approvedAt) {
+        throw new CurrentMasterPlotNotFoundError(project.id);
+      }
+
       const timestamp = dependencies.clock.now();
       const task = createTaskRecord({
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,
         projectStorageDir: project.storageDir,
-        type: "master_plot_generate",
-        queueName: masterPlotGenerateQueueName,
+        type: "storyboard_generate",
+        queueName: storyboardGenerateQueueName,
         createdAt: timestamp,
       });
-      const taskInput: MasterPlotGenerateTaskInput = {
+      const taskInput: StoryboardGenerateTaskInput = {
         taskId: task.id,
         projectId: project.id,
-        taskType: "master_plot_generate",
-        premiseText,
-        promptTemplateKey: "master_plot.generate",
+        taskType: "storyboard_generate",
+        sourceMasterPlotId: currentMasterPlot.id,
+        masterPlot: {
+          title: currentMasterPlot.title,
+          logline: currentMasterPlot.logline,
+          synopsis: currentMasterPlot.synopsis,
+          mainCharacters: currentMasterPlot.mainCharacters,
+          coreConflict: currentMasterPlot.coreConflict,
+          emotionalArc: currentMasterPlot.emotionalArc,
+          endingBeat: currentMasterPlot.endingBeat,
+          targetDurationSec: currentMasterPlot.targetDurationSec,
+        },
+        promptTemplateKey: "storyboard.generate",
+        model: "gemini-3.1-pro-preview",
       };
 
       await dependencies.taskRepository.insert(task);
@@ -84,7 +101,7 @@ export function createCreateStoryboardGenerateTaskUseCase(
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "master_plot_generating",
+          status: "storyboard_generating",
           updatedAt: timestamp,
         });
       } catch (error) {

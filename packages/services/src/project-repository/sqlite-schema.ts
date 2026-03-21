@@ -16,7 +16,8 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       premise_updated_at TEXT NOT NULL,
-      current_master_plot_id TEXT NULL
+      current_master_plot_id TEXT NULL,
+      current_storyboard_id TEXT NULL
     )
   `);
 
@@ -24,6 +25,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   ensureProjectsColumn(db, "premise_bytes", "INTEGER NULL");
   ensureProjectsColumn(db, "premise_updated_at", "TEXT NULL");
   ensureProjectsColumn(db, "current_master_plot_id", "TEXT NULL");
+  ensureProjectsColumn(db, "current_storyboard_id", "TEXT NULL");
 
   initializeSqliteStoryboardSchema(db);
   initializeSqliteTaskSchema(db);

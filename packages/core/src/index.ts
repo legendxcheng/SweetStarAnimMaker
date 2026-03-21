@@ -79,7 +79,10 @@ export {
   ProjectNotFoundError,
   ProjectValidationError,
 } from "./errors/project-errors";
-export { CurrentMasterPlotNotFoundError } from "./errors/storyboard-errors";
+export {
+  CurrentMasterPlotNotFoundError,
+  CurrentStoryboardNotFoundError,
+} from "./errors/storyboard-errors";
 export {
   RejectStoryboardReasonRequiredError,
   StoryboardReviewVersionConflictError,
