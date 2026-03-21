@@ -1,10 +1,15 @@
-import type { CurrentMasterPlot, ProjectSummary } from "@sweet-star/shared";
+import type {
+  CurrentMasterPlot,
+  CurrentStoryboardSummary,
+  ProjectSummary,
+} from "@sweet-star/shared";
 
 import type { ProjectRecord } from "../domain/project";
 
 export function toProjectSummaryDto(
   project: ProjectRecord,
   currentMasterPlot: CurrentMasterPlot | null,
+  currentStoryboard: CurrentStoryboardSummary | null = null,
 ): ProjectSummary {
   return {
     id: project.id,
@@ -15,5 +20,6 @@ export function toProjectSummaryDto(
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     currentMasterPlot,
+    currentStoryboard,
   };
 }

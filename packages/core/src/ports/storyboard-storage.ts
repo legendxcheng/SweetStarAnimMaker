@@ -1,4 +1,4 @@
-import type { CurrentMasterPlot } from "@sweet-star/shared";
+import type { CurrentMasterPlot, CurrentStoryboard } from "@sweet-star/shared";
 import type { StoryboardDocument, StoryboardVersionRecord } from "../domain/storyboard";
 
 export interface WriteStoryboardRawResponseInput {
@@ -25,6 +25,21 @@ export interface StoryboardStorage {
   readStoryboardVersion(
     input: ReadStoryboardVersionInput,
   ): Promise<StoryboardDocument> | StoryboardDocument;
+  writeCurrentStoryboard(
+    input: WriteCurrentStoryboardInput,
+  ): Promise<void> | void;
+  readCurrentStoryboard(
+    input: ReadCurrentStoryboardInput,
+  ): Promise<CurrentStoryboard | null> | CurrentStoryboard | null;
+}
+
+export interface WriteCurrentStoryboardInput {
+  storageDir: string;
+  storyboard: CurrentStoryboard;
+}
+
+export interface ReadCurrentStoryboardInput {
+  storageDir: string;
 }
 
 export interface WriteCurrentMasterPlotInput {
@@ -34,12 +49,12 @@ export interface WriteCurrentMasterPlotInput {
 
 export interface InitializePromptTemplateInput {
   storageDir: string;
-  promptTemplateKey: "master_plot.generate";
+  promptTemplateKey: "master_plot.generate" | "storyboard.generate";
 }
 
 export interface ReadPromptTemplateInput {
   storageDir: string;
-  promptTemplateKey: "master_plot.generate";
+  promptTemplateKey: "master_plot.generate" | "storyboard.generate";
 }
 
 export interface ReadCurrentMasterPlotInput {

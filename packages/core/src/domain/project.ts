@@ -10,6 +10,7 @@ export interface ProjectRecord {
   premiseRelPath: string;
   premiseBytes: number;
   currentMasterPlotId: string | null;
+  currentStoryboardId: string | null;
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
@@ -25,6 +26,7 @@ export interface CreateProjectRecordInput {
   premiseUpdatedAt: string;
   premiseBytes?: number;
   currentMasterPlotId?: string | null;
+  currentStoryboardId?: string | null;
   status?: ProjectStatus;
 }
 
@@ -47,6 +49,7 @@ export function createProjectRecord(input: CreateProjectRecordInput): ProjectRec
     ...input,
     premiseBytes: input.premiseBytes ?? 0,
     currentMasterPlotId: input.currentMasterPlotId ?? null,
+    currentStoryboardId: input.currentStoryboardId ?? null,
     status: input.status ?? initialProjectStatus,
     storageDir: toProjectStorageDir(input.id, input.slug),
     premiseRelPath: premiseRelPath,

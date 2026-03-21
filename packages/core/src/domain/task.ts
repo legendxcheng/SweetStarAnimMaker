@@ -1,6 +1,7 @@
 import { type TaskStatus, type TaskType } from "@sweet-star/shared";
 
 export const masterPlotGenerateQueueName = "master-plot-generate";
+export const storyboardGenerateQueueName = "storyboard-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -29,6 +30,25 @@ export interface MasterPlotGenerateTaskInput {
   taskType: "master_plot_generate";
   premiseText: string;
   promptTemplateKey: "master_plot.generate";
+}
+
+export interface StoryboardGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "storyboard_generate";
+  sourceMasterPlotId: string;
+  masterPlot: {
+    title: string | null;
+    logline: string;
+    synopsis: string;
+    mainCharacters: string[];
+    coreConflict: string;
+    emotionalArc: string;
+    endingBeat: string;
+    targetDurationSec: number | null;
+  };
+  promptTemplateKey: "storyboard.generate";
+  model: "gemini-3.1-pro-preview";
 }
 
 export interface CreateTaskRecordInput {
