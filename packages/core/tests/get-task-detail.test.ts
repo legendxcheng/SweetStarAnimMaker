@@ -10,9 +10,9 @@ describe("get task detail use case", () => {
         findById: vi.fn().mockResolvedValue({
           id: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          type: "storyboard_generate",
+          type: "master_plot_generate",
           status: "succeeded",
-          queueName: "storyboard-generate",
+          queueName: "master-plot-generate",
           storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
           inputRelPath: "tasks/task_20260317_ab12cd/input.json",
           outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -38,7 +38,7 @@ describe("get task detail use case", () => {
     expect(result).toEqual({
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
-      type: "storyboard_generate",
+      type: "master_plot_generate",
       status: "succeeded",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:03:00.000Z",

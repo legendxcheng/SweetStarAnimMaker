@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+title SweetStar Backend
+
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
 
@@ -20,12 +22,6 @@ if not exist "apps\worker\node_modules\tsx\dist\cli.mjs" (
 
 del ".codex-runtime\redis-url.txt" >nul 2>nul
 
-start "SweetStar Redis" cmd /k "cd /d ""%ROOT%"" && node tooling\scripts\start-redis-memory.cjs"
+set "STUDIO_ORIGIN=http://127.0.0.1:14273,http://localhost:5173"
 
-start "SweetStar API" cmd /k "cd /d ""%ROOT%"" && node apps\api\node_modules\tsx\dist\cli.mjs tooling\scripts\start-api-root.mjs"
-start "SweetStar Worker" cmd /k "cd /d ""%ROOT%"" && node apps\worker\node_modules\tsx\dist\cli.mjs tooling\scripts\start-worker-root.mjs"
-
-echo Backend stack started.
-echo API: http://127.0.0.1:3000
-echo Redis URL file: .codex-runtime\redis-url.txt
-echo Worker mode: real when VECTORENGINE_API_TOKEN is configured, otherwise smoke.
+node tooling\scripts\start-backend-stack.mjs

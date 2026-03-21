@@ -1,4 +1,4 @@
-import type { StoryboardReviewWorkspace } from "@sweet-star/shared";
+import type { MasterPlotReviewWorkspace } from "@sweet-star/shared";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
@@ -13,7 +13,7 @@ export interface GetStoryboardReviewInput {
 }
 
 export interface GetStoryboardReviewUseCase {
-  execute(input: GetStoryboardReviewInput): Promise<StoryboardReviewWorkspace>;
+  execute(input: GetStoryboardReviewInput): Promise<MasterPlotReviewWorkspace>;
 }
 
 export interface GetStoryboardReviewUseCaseDependencies {

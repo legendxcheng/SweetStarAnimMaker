@@ -30,6 +30,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   initializeSqliteStoryboardReviewSchema(db);
   ensureStoryboardReviewsColumn(db, "master_plot_id", "TEXT NOT NULL DEFAULT ''");
   backfillStoryboardReviewMasterPlotId(db);
+  migrateLegacyStoryboardReviewsTable(db);
 }
 
 function ensureProjectsColumn(
@@ -87,5 +88,68 @@ function backfillStoryboardReviewMasterPlotId(db: SqliteDatabase) {
     UPDATE storyboard_reviews
     SET master_plot_id = storyboard_version_id
     WHERE master_plot_id = ''
+  `);
+}
+
+function migrateLegacyStoryboardReviewsTable(db: SqliteDatabase) {
+  const table = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'storyboard_reviews'")
+    .get() as { name: string } | undefined;
+
+  if (!table) {
+    return;
+  }
+
+  const columns = db
+    .prepare("PRAGMA table_info(storyboard_reviews)")
+    .all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === "storyboard_version_id")) {
+    return;
+  }
+
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+    BEGIN TRANSACTION;
+
+    CREATE TABLE storyboard_reviews__migrated (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      master_plot_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      reason TEXT,
+      triggered_task_id TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(project_id) REFERENCES projects(id),
+      FOREIGN KEY(triggered_task_id) REFERENCES tasks(id)
+    );
+
+    INSERT INTO storyboard_reviews__migrated (
+      id,
+      project_id,
+      master_plot_id,
+      action,
+      reason,
+      triggered_task_id,
+      created_at
+    )
+    SELECT
+      id,
+      project_id,
+      CASE
+        WHEN master_plot_id IS NOT NULL AND master_plot_id != '' THEN master_plot_id
+        ELSE storyboard_version_id
+      END,
+      action,
+      reason,
+      triggered_task_id,
+      created_at
+    FROM storyboard_reviews;
+
+    DROP TABLE storyboard_reviews;
+    ALTER TABLE storyboard_reviews__migrated RENAME TO storyboard_reviews;
+
+    COMMIT;
+    PRAGMA foreign_keys = ON;
   `);
 }

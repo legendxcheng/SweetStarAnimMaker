@@ -4,11 +4,12 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const smokeCommandPatterns = [
+  "tooling\\scripts\\start-backend-stack.mjs",
   "tooling\\scripts\\start-redis-memory.cjs",
   "tooling\\scripts\\start-api-root.mjs",
   "tooling\\scripts\\start-worker-root.mjs",
   "tooling\\scripts\\start-worker-smoke.mjs",
-  "node_modules\\vite\\bin\\vite.js --host 127.0.0.1 --port 4273",
+  "node_modules\\vite\\bin\\vite.js --host 127.0.0.1 --port 14273",
 ];
 
 export function isSmokeProcessCommandLine(commandLine) {

@@ -44,8 +44,8 @@ describe("sqlite task repository", () => {
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
       projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-      type: "storyboard_generate",
-      queueName: "storyboard-generate",
+      type: "master_plot_generate",
+      queueName: "master-plot-generate",
       createdAt: "2026-03-17T12:00:00.000Z",
     });
 
@@ -60,8 +60,8 @@ describe("sqlite task repository", () => {
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
       projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-      type: "storyboard_generate",
-      queueName: "storyboard-generate",
+      type: "master_plot_generate",
+      queueName: "master-plot-generate",
       createdAt: "2026-03-17T12:00:00.000Z",
     });
 
@@ -96,7 +96,7 @@ describe("sqlite task repository", () => {
     });
   });
 
-  it("finds the latest storyboard generate task for a project", async () => {
+  it("finds the latest master-plot generate task for a project", async () => {
     const { repository } = await createRepositoryContext();
 
     repository.insert(
@@ -104,8 +104,8 @@ describe("sqlite task repository", () => {
         id: "task_20260317_old",
         projectId: "proj_20260317_ab12cd",
         projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-        type: "storyboard_generate",
-        queueName: "storyboard-generate",
+        type: "master_plot_generate",
+        queueName: "master-plot-generate",
         createdAt: "2026-03-17T12:00:00.000Z",
       }),
     );
@@ -114,14 +114,14 @@ describe("sqlite task repository", () => {
         id: "task_20260317_new",
         projectId: "proj_20260317_ab12cd",
         projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-        type: "storyboard_generate",
-        queueName: "storyboard-generate",
+        type: "master_plot_generate",
+        queueName: "master-plot-generate",
         createdAt: "2026-03-17T12:05:00.000Z",
       }),
     );
 
     expect(
-      repository.findLatestByProjectId("proj_20260317_ab12cd", "storyboard_generate"),
+      repository.findLatestByProjectId("proj_20260317_ab12cd", "master_plot_generate"),
     ).toEqual(
       expect.objectContaining({
         id: "task_20260317_new",

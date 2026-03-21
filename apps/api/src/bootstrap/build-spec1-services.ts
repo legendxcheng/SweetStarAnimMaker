@@ -128,7 +128,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     listProjects: createListProjectsUseCase({
       repository,
-      storyboardVersionRepository,
+      masterPlotStorage,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,

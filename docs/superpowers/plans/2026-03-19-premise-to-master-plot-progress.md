@@ -8,17 +8,19 @@
 
 ## Current Status
 
-The `premise -> master_plot` migration is complete for:
+The `premise -> master_plot` migration is functionally complete across:
 
 - `packages/shared`
 - `packages/core`
 - `packages/services`
-
-The migration is **not yet complete** for:
-
 - `apps/api`
 - `apps/worker`
 - `apps/studio`
+
+The remaining work is final verification and naming/type cleanup:
+
+- workspace `typecheck`
+- stale compatibility names that no longer match the first-stage `premise/master_plot` model
 
 ## Already Completed
 
@@ -87,7 +89,7 @@ Completed the storage and SQLite persistence migration:
 
 ## Verification Already Run
 
-These commands passed in the current worktree:
+These commands passed in the current workspace:
 
 ```powershell
 corepack pnpm exec vitest run
@@ -95,72 +97,52 @@ corepack pnpm exec vitest run
 
 Run in:
 
+- `packages/shared`
 - `packages/core`
 - `packages/services`
+- `apps/api`
+- `apps/worker`
+- `apps/studio`
 
 More specifically:
 
+- `packages/shared`: 4 files, 17 tests passed
 - `packages/core`: 15 files, 32 tests passed
-- `packages/services`: 10 files, 28 tests passed
+- `packages/services`: 11 files, 38 tests passed
+- `apps/api`: 11 files, 27 tests passed
+- `apps/worker`: 3 files, 5 tests passed
+- `apps/studio`: 8 files, 23 tests passed
+
+Additional focused verification run on 2026-03-21:
+
+- `apps/studio/tests/e2e/spec5-studio-flow.test.tsx` now explicitly covers:
+  - generating a master plot
+  - entering review
+  - clicking `通过`
+  - navigating back to project detail
+  - showing `master_plot_approved` / `已通过`
 
 ## Current Blockers
 
-### API Layer Still On Old Transport Semantics
+### Final Typecheck And Naming Cleanup
 
-`apps/api` is still wired for old first-stage routes and payloads.
-
-Main problem files:
-
-- `apps/api/src/bootstrap/build-spec1-services.ts`
-- `apps/api/src/http/register-project-routes.ts`
-- `apps/api/src/http/register-task-routes.ts`
-- `apps/api/src/http/register-storyboard-routes.ts`
-
-Current issues:
-
-- still injects old `scriptStorage` / storyboard-specific dependencies
-- still exposes old route names like `/tasks/storyboard-generate`
-- still expects old project payload fields like `script`
-- still uses old review route shapes and request schemas
-
-### API Tests Currently Failing
-
-`apps/api` full test run is still red.
+The remaining blockers are no longer transport or API wiring issues. They are final consistency issues surfaced by `typecheck`.
 
 Observed failure pattern:
 
-- project create tests return `400` because tests/routes still use old `script` payloads
-- many project/task endpoints return `500` because service wiring still points at old use-case dependencies
-- storyboard API tests still seed old storyboard-version/project fixtures
+- schema tests using over-broad `Record<string, ...>` casts instead of concrete exported schemas
+- core files still referencing old shared type names such as `StoryboardReviewWorkspace`
+- some first-stage list/review helpers still use stale local variable or dependency names from the old storyboard path
 
 ## Recommended Next Steps
 
-1. Refactor `apps/api/src/bootstrap/build-spec1-services.ts`
-   - wire `premiseStorage` and `masterPlotStorage`
-   - remove old first-stage storyboard dependency assumptions
-   - change queue name wiring to `master-plot-generate`
-
-2. Refactor project routes
-   - `POST /projects` should accept `{ name, premiseText }`
-   - remove or repurpose old `/projects/:projectId/script` update route
-
-3. Refactor task routes
-   - switch create route to `/projects/:projectId/tasks/master-plot-generate`
-
-4. Refactor review routes
-   - switch to:
-     - `GET /projects/:projectId/master-plot/review`
-     - `PUT /projects/:projectId/master-plot`
-     - `POST /projects/:projectId/master-plot/approve`
-     - `POST /projects/:projectId/master-plot/reject`
-
-5. Rewrite `apps/api` tests to use:
-   - `premiseText`
-   - `currentMasterPlot`
-   - `master_plot_generate`
-   - new route paths
-
-6. After API is green, move to `apps/worker`, then `apps/studio`
+1. Fix `packages/shared` schema tests so `typecheck` uses concrete schema exports
+2. Fix `packages/core` stale type references and list-project master-plot loading
+3. Re-run:
+   - `corepack pnpm -r test`
+   - `corepack pnpm -r typecheck`
+4. Run a final naming drift check for old first-stage identifiers in active code
+5. Remove or quarantine any remaining compatibility-only old names if they are no longer needed
 
 ## Useful Commands For The Next Session
 
@@ -205,3 +187,4 @@ apps/studio
 - The current worktree is dirty by design; do not discard existing changes.
 - `apps/api/src/app.ts` already contains the CORS baseline fix.
 - Core and services are in a good checkpoint to branch from for API/worker/studio migration.
+- The Studio approve flow is implemented and regression-covered; it should no longer be tracked as a remaining missing step.

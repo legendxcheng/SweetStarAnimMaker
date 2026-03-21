@@ -147,6 +147,46 @@ describe("sqlite storyboard review repository", () => {
       createdAt: "2026-03-18T12:00:00.000Z",
     });
   });
+
+  it("allows inserting new master-plot reviews after migrating a legacy storyboard_reviews table", async () => {
+    const { projectRepository, repository } = await createRepositoryContext({
+      legacyStoryboardReviewsTable: true,
+    });
+    projectRepository.insert(
+      createProjectRecord({
+        id: "proj_20260321_ab12cd",
+        name: "Migrated Review Project",
+        slug: "migrated-review-project",
+        createdAt: "2026-03-21T09:00:00.000Z",
+        updatedAt: "2026-03-21T09:00:00.000Z",
+        premiseUpdatedAt: "2026-03-21T09:00:00.000Z",
+        premiseBytes: 128,
+      }),
+    );
+
+    expect(() =>
+      repository.insert(
+        createStoryboardReviewRecord({
+          id: "sbr_20260321_new",
+          projectId: "proj_20260321_ab12cd",
+          masterPlotId: "mp_20260321_ab12cd",
+          action: "approve",
+          note: "Approved after migration.",
+          createdAt: "2026-03-21T10:00:00.000Z",
+        }),
+      ),
+    ).not.toThrow();
+
+    expect(repository.findLatestByProjectId("proj_20260321_ab12cd")).toEqual({
+      id: "sbr_20260321_new",
+      projectId: "proj_20260321_ab12cd",
+      masterPlotId: "mp_20260321_ab12cd",
+      action: "approve",
+      reason: "Approved after migration.",
+      triggeredTaskId: null,
+      createdAt: "2026-03-21T10:00:00.000Z",
+    });
+  });
 });
 
 async function createRepositoryContext(

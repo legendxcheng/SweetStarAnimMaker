@@ -62,6 +62,15 @@ const reviewedProject = {
   },
 };
 
+const approvedProject = {
+  ...createdProject,
+  status: "master_plot_approved" as const,
+  currentMasterPlot: {
+    ...reviewedProject.currentMasterPlot,
+    approvedAt: "2024-01-01T00:00:04Z",
+  },
+};
+
 const reviewWorkspace = {
   projectId: "proj-1",
   projectStatus: "master_plot_in_review" as const,
@@ -238,5 +247,91 @@ describe("Spec5 Studio Flow", () => {
     await waitFor(() => {
       expect(screen.getByText("Flow Project")).toBeInTheDocument();
     });
+  });
+
+  it("returns to project detail and shows approved status after approving the master plot", async () => {
+    let pollTimer: (() => void) | undefined;
+    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
+      pollTimer = callback as () => void;
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+    vi.spyOn(global, "clearInterval").mockImplementation(() => undefined);
+    globalThis.confirm = vi.fn(() => true);
+
+    vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
+    vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
+    vi.spyOn(apiModule.apiClient, "getProjectDetail")
+      .mockResolvedValueOnce(createdProject)
+      .mockResolvedValueOnce(reviewedProject)
+      .mockResolvedValueOnce(approvedProject);
+    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
+      runningTask,
+    );
+    vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
+      ...runningTask,
+      status: "succeeded",
+      finishedAt: "2024-01-01T00:00:02Z",
+      updatedAt: "2024-01-01T00:00:02Z",
+    });
+    vi.spyOn(apiModule.apiClient, "getReviewWorkspace").mockResolvedValue(reviewWorkspace);
+    vi.spyOn(apiModule.apiClient, "approveMasterPlot").mockResolvedValue({
+      id: "review-approve-1",
+      projectId: "proj-1",
+      masterPlotId: "mp-1",
+      action: "approve",
+      reason: null,
+      triggeredTaskId: null,
+      createdAt: "2024-01-01T00:00:04Z",
+    });
+
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByText(/还没有项目/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: "创建项目" }));
+    fireEvent.change(screen.getByLabelText("项目名称"), {
+      target: { value: "Flow Project" },
+    });
+    fireEvent.change(screen.getByLabelText("项目前提"), {
+      target: { value: "A washed-up pilot discovers a singing comet above a drowned city." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建项目" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Flow Project")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
+        "proj-1",
+      );
+    });
+
+    await act(async () => {
+      pollTimer?.();
+      await flushMicrotasks();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: /进入审核/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "通过" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "通过" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.approveMasterPlot).toHaveBeenCalledWith("proj-1", {});
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("已通过")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("link", { name: /进入审核/i })).not.toBeInTheDocument();
   });
 });

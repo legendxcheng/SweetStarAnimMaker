@@ -200,11 +200,11 @@ describe("sqlite project repository", () => {
     }
 
     const projectStatusById = new Map(
-      repository.listAll().map((project) => [project.id, project.status]),
+      (await repository.listAll()).map((project) => [project.id, project.status]),
     );
 
     for (const [id, legacyStatus, expectedStatus] of legacyRows) {
-      expect(repository.findById(id)?.status, legacyStatus).toBe(expectedStatus);
+      expect((await repository.findById(id))?.status, legacyStatus).toBe(expectedStatus);
       expect(projectStatusById.get(id), legacyStatus).toBe(expectedStatus);
     }
   });

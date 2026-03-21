@@ -13,7 +13,7 @@ describe("project domain", () => {
     });
 
     expect(project.storageDir).toBe("projects/proj_20260317_ab12cd-my-story");
-    expect((project as Record<string, unknown>).premiseRelPath).toBe("premise/v1.md");
+    expect(project.premiseRelPath).toBe("premise/v1.md");
     expect(project.status).toBe("premise_ready");
   });
 
@@ -30,12 +30,12 @@ describe("project domain", () => {
     const detail = toProjectDetailDto(project, null);
     const summary = toProjectSummaryDto(project, null);
 
-    expect((detail as Record<string, unknown>).premise).toEqual({
+    expect(detail.premise).toEqual({
       path: "premise/v1.md",
       bytes: 0,
       updatedAt: "2026-03-17T00:00:00.000Z",
     });
-    expect((detail as Record<string, unknown>).currentMasterPlot).toBeNull();
-    expect((summary as Record<string, unknown>).currentMasterPlot).toBeNull();
+    expect(detail.currentMasterPlot).toBeNull();
+    expect(summary.currentMasterPlot).toBeNull();
   });
 });

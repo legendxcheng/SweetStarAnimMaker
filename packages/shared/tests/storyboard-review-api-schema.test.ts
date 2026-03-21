@@ -4,15 +4,13 @@ import * as shared from "../src/index";
 
 describe("master plot review api schema", () => {
   it("accepts an approve request payload", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).approveMasterPlotRequestSchema;
-    const parsed = schema.parse({});
+    const parsed = shared.approveMasterPlotRequestSchema.parse({});
 
     expect(parsed).toEqual({});
   });
 
   it("accepts a reject request payload", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).rejectMasterPlotRequestSchema;
-    const parsed = schema.parse({
+    const parsed = shared.rejectMasterPlotRequestSchema.parse({
       reason: "Need a sharper emotional payoff.",
     });
 
@@ -20,8 +18,7 @@ describe("master plot review api schema", () => {
   });
 
   it("accepts a save-current-master-plot request payload", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).saveMasterPlotRequestSchema;
-    const parsed = schema.parse({
+    const parsed = shared.saveMasterPlotRequestSchema.parse({
       title: "The Last Sky Choir",
       logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
       synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
@@ -36,8 +33,7 @@ describe("master plot review api schema", () => {
   });
 
   it("accepts a latest review summary", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).masterPlotReviewSummarySchema;
-    const parsed = schema.parse({
+    const parsed = shared.masterPlotReviewSummarySchema.parse({
       id: "mpr_20260318_ab12cd",
       projectId: "proj_20260318_ab12cd",
       masterPlotId: "mp_20260318_ab12cd",
@@ -52,8 +48,7 @@ describe("master plot review api schema", () => {
   });
 
   it("accepts a master-plot review workspace response", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).masterPlotReviewWorkspaceResponseSchema;
-    const parsed = schema.parse({
+    const parsed = shared.masterPlotReviewWorkspaceResponseSchema.parse({
       projectId: "proj_20260318_ab12cd",
       projectStatus: "master_plot_in_review",
       currentMasterPlot: {

@@ -4,14 +4,13 @@ import * as shared from "../src/index";
 
 describe("master plot api schema", () => {
   it("exports a current master-plot schema", () => {
-    const schema = (shared as Record<string, unknown>).currentMasterPlotResponseSchema;
+    const schema = shared.currentMasterPlotResponseSchema;
 
     expect(schema).toBeDefined();
   });
 
   it("accepts a current master plot response", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).currentMasterPlotResponseSchema;
-    const parsed = schema.parse({
+    const parsed = shared.currentMasterPlotResponseSchema.parse({
       id: "mp_20260317_ab12cd",
       title: "The Last Sky Choir",
       logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
@@ -30,8 +29,7 @@ describe("master plot api schema", () => {
   });
 
   it("accepts a current master plot response with a nullable title", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).currentMasterPlotResponseSchema;
-    const parsed = schema.parse({
+    const parsed = shared.currentMasterPlotResponseSchema.parse({
       id: "mp_20260318_hu12cd",
       title: null,
       logline: "A lonely mechanic bargains with a star trapped in iron.",

@@ -41,6 +41,11 @@ export type {
   CurrentMasterPlot,
 } from "./types/master-plot";
 export type {
+  CurrentStoryboard,
+  StoryboardScene,
+  StoryboardVersionSummary,
+} from "./types/storyboard";
+export type {
   ApproveMasterPlotRequest,
   RejectMasterPlotRequest,
   SaveMasterPlotRequest,

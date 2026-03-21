@@ -17,7 +17,7 @@ export interface BuildAppOptions {
 }
 
 const defaultStudioOrigins = [
-  "http://127.0.0.1:4273",
+  "http://127.0.0.1:14273",
   "http://localhost:5173",
 ];
 
@@ -36,7 +36,7 @@ export function buildApp(options: BuildAppOptions = {}) {
 
   app.register(cors, {
     origin(origin, callback) {
-      callback(null, Boolean(origin) && allowedStudioOrigins.has(origin));
+      callback(null, origin !== undefined && allowedStudioOrigins.has(origin));
     },
     credentials: true,
   });

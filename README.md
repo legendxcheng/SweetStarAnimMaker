@@ -47,14 +47,14 @@ The Studio app will be available at `http://localhost:5173`.
 Studio and API local browser config:
 
 ```bash
-set VITE_API_BASE_URL=http://localhost:3000
+set VITE_API_BASE_URL=http://localhost:13000
 set STUDIO_ORIGIN=http://localhost:5173
 ```
 
 On macOS/Linux:
 
 ```bash
-export VITE_API_BASE_URL=http://localhost:3000
+export VITE_API_BASE_URL=http://localhost:13000
 export STUDIO_ORIGIN=http://localhost:5173
 ```
 
@@ -152,4 +152,4 @@ The Studio app provides a browser-based UI for the complete storyboard workflow:
 8. Edit summary or scenes, then click "Save Changes" to create a human storyboard version
 9. Approve the storyboard, reject for manual editing, or reject with regeneration to return to project detail and track the next task
 
-The Studio app communicates with the API at `http://localhost:3000` (configurable via `VITE_API_BASE_URL`).
+The Studio app communicates with the API at `http://localhost:13000` (configurable via `VITE_API_BASE_URL`).

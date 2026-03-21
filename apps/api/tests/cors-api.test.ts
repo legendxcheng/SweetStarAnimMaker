@@ -27,13 +27,13 @@ describe("cors api", () => {
       method: "OPTIONS",
       url: "/projects",
       headers: {
-        origin: "http://127.0.0.1:4273",
+        origin: "http://127.0.0.1:14273",
         "access-control-request-method": "GET",
       },
     });
 
     expect(response.statusCode).toBe(204);
-    expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:4273");
+    expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:14273");
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });
 

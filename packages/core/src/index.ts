@@ -100,6 +100,7 @@ export type {
   MasterPlotStorage,
   ReadPromptTemplateInput,
   ReadCurrentMasterPlotInput,
+  StoryboardStorage,
   WriteCurrentMasterPlotInput,
   WritePromptSnapshotInput,
   WriteRawResponseInput,

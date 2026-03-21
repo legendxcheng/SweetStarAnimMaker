@@ -22,6 +22,11 @@ describe("create project use case", () => {
     };
     const masterPlotStorage = {
       initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writeCurrentMasterPlot: vi.fn(),
+      readCurrentMasterPlot: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
     };
     const useCase = createCreateProjectUseCase({
       repository,
@@ -93,6 +98,11 @@ describe("create project use case", () => {
       premiseStorage,
       masterPlotStorage: {
         initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
       },
       idGenerator: {
         generateProjectId: () => "proj_20260317_ab12cd",

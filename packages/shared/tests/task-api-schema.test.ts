@@ -3,14 +3,13 @@ import * as shared from "../src/index";
 
 describe("task api schema", () => {
   it("exports a master-plot task response schema", () => {
-    const schema = (shared as Record<string, unknown>).createMasterPlotGenerateTaskResponseSchema;
+    const schema = shared.createMasterPlotGenerateTaskResponseSchema;
 
     expect(schema).toBeDefined();
   });
 
   it("accepts a master-plot task response", () => {
-    const schema = (shared as Record<string, { parse: (value: unknown) => unknown }>).createMasterPlotGenerateTaskResponseSchema;
-    const parsed = schema.parse({
+    const parsed = shared.createMasterPlotGenerateTaskResponseSchema.parse({
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
       type: "master_plot_generate",

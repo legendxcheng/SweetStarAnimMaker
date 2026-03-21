@@ -1,27 +1,30 @@
-You are generating the first-pass master plot for a short animated story.
+你是一名擅长 AI 漫剧短剧开发的编剧策划。现在请你根据我提供的简易创意，生成一个可继续用于后续大纲与分镜拆解的第一版 master plot。
 
-Transform the premise below into one cohesive, production-friendly master plot for a short film or one short-form animated episode.
+你的目标不是提供多个方案，而是产出一个唯一、完整、可拍、可继续细化的单集短剧故事方向。
 
-Follow these rules:
-- Produce exactly one clear story direction, not multiple options.
-- Keep the story centered on one primary protagonist journey.
-- Preserve the premise's strongest emotional hook and most distinctive image or idea.
-- Make the conflict concrete, visual, and filmable rather than abstract.
-- Ensure the protagonist changes emotionally by the end of the story.
-- Keep the cast focused and manageable for a short animated production.
-- Prefer concise, vivid storytelling over lore, exposition, or excess setup.
-- Avoid meta commentary, production notes, markdown, code fences, or labels outside the requested content.
-- Write all story text in Simplified Chinese.
+必须遵守以下规则：
+- 只生成一个明确故事方向，不要提供多个备选方案。
+- 故事必须围绕一个主角展开，并围绕一个主冲突推进。
+- 只写能被镜头直接呈现的内容；抽象情绪要改写成可见的表情、动作、环境变化、特效外显或结果状态。
+- 主角的判断、计划和意图，必须通过对白、OS 或具体行动体现，不要写小说式心理描写。
+- 保留原始创意里最强的情绪钩子，以及最有辨识度的视觉意象或设定。
+- 节奏保持短剧化快推进，但不能只报流水账；剧情里要看得到“冲突 -> 升级 -> 反击或反转 -> 结果”。
+- synopsis 必须形成单集内部的小闭环，但结尾必须留下强钩子。
+- 角色数量控制在适合短篇动画制作的范围内，不写无关支线，不堆砌背景设定，不做冗长世界观讲解。
+- 偏好简洁、鲜明、可视化的叙事表达，避免空话、套话和泛泛而谈的主题总结。
+- 不要输出元评论、制作说明、Markdown、代码块，或字段之外的额外标签。
+- 所有故事文本都使用简体中文。
+- 直接输出一个 JSON 对象，字段名保持英文，并严格遵守下列字段说明。
 
-Field guidance:
-- title: short, memorable, and marketable.
-- logline: exactly one sentence.
-- synopsis: 3 to 5 sentences covering setup, escalation, climax, and ending.
-- mainCharacters: 2 to 4 character names or role labels only.
-- coreConflict: exactly one sentence describing the main external dramatic struggle.
-- emotionalArc: exactly one sentence describing how the protagonist changes internally.
-- endingBeat: exactly one sentence describing the final emotional image or closing beat.
-- targetDurationSec: choose an integer between 60 and 180 that fits the scope of the story.
+字段说明：
+- title: 简短、好记、有传播感；如果暂时没有合适标题，可以填 null。
+- logline: 恰好 1 句话，说清主角、本集目标、核心阻力或代价。
+- synopsis: 3 到 5 句话，按“起势、升级、反击或反转、结果与结尾钩子”展开，必须可拍、可视化。
+- mainCharacters: 只填 2 到 4 个主要角色名或角色标签，使用字符串数组。
+- coreConflict: 恰好 1 句话，描述本集最核心的外部戏剧冲突。
+- emotionalArc: 恰好 1 句话，描述主角在本集中的内在变化。
+- endingBeat: 恰好 1 句话，描述结尾最后一个情绪画面或钩子落点。
+- targetDurationSec: 根据故事体量填写 60 到 180 之间的整数。
 
-Premise:
+简易创意：
 {{premiseText}}

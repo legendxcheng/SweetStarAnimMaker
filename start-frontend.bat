@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+title SweetStar Studio
+
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
 
@@ -10,7 +12,9 @@ if not exist "apps\studio\node_modules\vite\bin\vite.js" (
   exit /b 1
 )
 
-start "SweetStar Studio" cmd /k "cd /d ""%ROOT%apps\studio"" && set ""VITE_API_BASE_URL=http://127.0.0.1:3000"" && node node_modules\vite\bin\vite.js --host 127.0.0.1 --port 4273"
+echo Studio starting at http://127.0.0.1:14273
+echo API base URL: http://127.0.0.1:13000
 
-echo Studio starting at http://127.0.0.1:4273
-echo API base URL: http://127.0.0.1:3000
+cd /d "%ROOT%apps\studio"
+set "VITE_API_BASE_URL=http://127.0.0.1:13000"
+node node_modules\vite\bin\vite.js --host 127.0.0.1 --port 14273

@@ -28,9 +28,9 @@ describe("task file storage", () => {
       task: {
         id: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        type: "storyboard_generate",
+        type: "master_plot_generate",
         status: "pending",
-        queueName: "storyboard-generate",
+        queueName: "master-plot-generate",
         storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
         inputRelPath: "tasks/task_20260317_ab12cd/input.json",
         outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -44,9 +44,9 @@ describe("task file storage", () => {
       input: {
         taskId: "task_20260317_ab12cd",
         projectId: "proj_20260317_ab12cd",
-        taskType: "storyboard_generate",
-        scriptPath: "script/original.txt",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        taskType: "master_plot_generate",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        promptTemplateKey: "master_plot.generate",
       },
     });
 
@@ -63,15 +63,15 @@ describe("task file storage", () => {
         ),
         "utf8",
       ),
-    ).resolves.toContain("\"taskType\": \"storyboard_generate\"");
+    ).resolves.toContain("\"taskType\": \"master_plot_generate\"");
     await expect(
       storage.readTaskInput({
         task: {
           id: "task_20260317_ab12cd",
           projectId: "proj_20260317_ab12cd",
-          type: "storyboard_generate",
+          type: "master_plot_generate",
           status: "pending",
-          queueName: "storyboard-generate",
+          queueName: "master-plot-generate",
           storageDir:
             "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
           inputRelPath: "tasks/task_20260317_ab12cd/input.json",
@@ -87,9 +87,9 @@ describe("task file storage", () => {
     ).resolves.toEqual({
       taskId: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
-      taskType: "storyboard_generate",
-      scriptPath: "script/original.txt",
-      scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+      taskType: "master_plot_generate",
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptTemplateKey: "master_plot.generate",
     });
   });
 
@@ -103,9 +103,9 @@ describe("task file storage", () => {
     const task = {
       id: "task_20260317_ab12cd",
       projectId: "proj_20260317_ab12cd",
-      type: "storyboard_generate" as const,
+      type: "master_plot_generate" as const,
       status: "pending" as const,
-      queueName: "storyboard-generate",
+      queueName: "master-plot-generate",
       storageDir: "projects/proj_20260317_ab12cd-my-story/tasks/task_20260317_ab12cd",
       inputRelPath: "tasks/task_20260317_ab12cd/input.json",
       outputRelPath: "tasks/task_20260317_ab12cd/output.json",
@@ -122,9 +122,9 @@ describe("task file storage", () => {
       input: {
         taskId: task.id,
         projectId: task.projectId,
-        taskType: "storyboard_generate",
-        scriptPath: "script/original.txt",
-        scriptUpdatedAt: "2026-03-17T12:00:00.000Z",
+        taskType: "master_plot_generate",
+        premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        promptTemplateKey: "master_plot.generate",
       },
     });
     await storage.writeTaskOutput({

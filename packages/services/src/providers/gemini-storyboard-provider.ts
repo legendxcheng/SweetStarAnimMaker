@@ -166,15 +166,20 @@ function normalizeMasterPlotPayload(payload: unknown): GenerateMasterPlotResult[
     throw new Error("Gemini master plot provider returned invalid mainCharacters");
   }
 
-  const targetDurationSec = (payload as { targetDurationSec?: unknown }).targetDurationSec;
+  const rawTargetDurationSec = (payload as { targetDurationSec?: unknown }).targetDurationSec;
 
   if (
-    targetDurationSec !== undefined &&
-    targetDurationSec !== null &&
-    (!Number.isInteger(targetDurationSec) || targetDurationSec <= 0)
+    rawTargetDurationSec !== undefined &&
+    rawTargetDurationSec !== null &&
+    (typeof rawTargetDurationSec !== "number" ||
+      !Number.isInteger(rawTargetDurationSec) ||
+      rawTargetDurationSec <= 0)
   ) {
     throw new Error("Gemini master plot provider returned invalid targetDurationSec");
   }
+
+  const normalizedTargetDurationSec =
+    typeof rawTargetDurationSec === "number" ? rawTargetDurationSec : null;
 
   return {
     title: readNullableString((payload as { title?: unknown }).title, "title"),
@@ -190,7 +195,7 @@ function normalizeMasterPlotPayload(payload: unknown): GenerateMasterPlotResult[
       "emotionalArc",
     ),
     endingBeat: readNonEmptyString((payload as { endingBeat?: unknown }).endingBeat, "endingBeat"),
-    targetDurationSec: targetDurationSec ?? null,
+    targetDurationSec: normalizedTargetDurationSec,
   };
 }
 

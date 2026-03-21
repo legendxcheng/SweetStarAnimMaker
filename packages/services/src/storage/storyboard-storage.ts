@@ -4,10 +4,10 @@ import path from "node:path";
 import {
   currentMasterPlotJsonRelPath,
   currentMasterPlotMarkdownRelPath,
+  type CurrentMasterPlot,
   type MasterPlotStorage,
   type StoryboardStorage,
 } from "@sweet-star/core";
-import type { CurrentMasterPlot } from "@sweet-star/shared";
 
 import { ensureParentDirectory } from "./fs-utils";
 import type { LocalDataPaths } from "./local-data-paths";
@@ -90,7 +90,10 @@ export function createStoryboardStorage(
       }
 
       try {
-        return await fs.readFile(options.paths.globalPromptTemplatePath(input.promptTemplateKey), "utf8");
+        return await fs.readFile(
+          options.paths.globalPromptTemplatePath(input.promptTemplateKey),
+          "utf8",
+        );
       } catch (error) {
         if (isMissingFileError(error)) {
           throw new Error(`Prompt template not found: ${input.promptTemplateKey}`);

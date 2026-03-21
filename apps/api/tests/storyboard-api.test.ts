@@ -189,6 +189,39 @@ describe("master plot api", () => {
     expect(detailResponse.json().currentMasterPlot.approvedAt).toEqual(expect.any(String));
   });
 
+  it("approves the current master plot after migrating a legacy storyboard_reviews table", async () => {
+    const { app, tempDir } = await createTempApp({
+      legacyStoryboardReviewsTable: true,
+    });
+    const project = await createProject(app);
+
+    await seedCurrentMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
+    });
+    setProjectStatus({
+      tempDir,
+      projectId: project.id,
+      status: "master_plot_in_review",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/master-plot/approve`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        action: "approve",
+        masterPlotId: baseMasterPlot.id,
+      }),
+    );
+  });
+
   it("rejects the current master plot and triggers regeneration", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
@@ -270,12 +303,30 @@ describe("master plot api", () => {
   });
 
   async function createTempApp(options?: {
+    legacyStoryboardReviewsTable?: boolean;
     taskQueue?: { enqueue: ReturnType<typeof vi.fn> };
     taskIdGenerator?: { generateTaskId(): string };
   }) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-api-"));
     tempDirs.push(tempDir);
     await ensureTestPromptTemplate(tempDir);
+
+    if (options?.legacyStoryboardReviewsTable) {
+      const paths = createLocalDataPaths(tempDir);
+      const db = createSqliteDb({ paths });
+      db.exec(`
+        CREATE TABLE storyboard_reviews (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          storyboard_version_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          reason TEXT,
+          triggered_task_id TEXT,
+          created_at TEXT NOT NULL
+        )
+      `);
+      db.close();
+    }
 
     const app = buildApp({
       dataRoot: tempDir,

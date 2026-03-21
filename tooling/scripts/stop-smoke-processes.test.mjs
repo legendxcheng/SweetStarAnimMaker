@@ -30,7 +30,13 @@ test("matches the smoke backend and frontend launcher processes", () => {
   );
   assert.equal(
     isSmokeProcessCommandLine(
-      'node node_modules\\vite\\bin\\vite.js --host 127.0.0.1 --port 4273',
+      'node tooling\\scripts\\start-backend-stack.mjs',
+    ),
+    true,
+  );
+  assert.equal(
+    isSmokeProcessCommandLine(
+      'node node_modules\\vite\\bin\\vite.js --host 127.0.0.1 --port 14273',
     ),
     true,
   );
