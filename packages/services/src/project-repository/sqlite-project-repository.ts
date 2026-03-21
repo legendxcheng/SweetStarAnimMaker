@@ -2,6 +2,7 @@ import type {
   ProjectRecord,
   ProjectRepository,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,
 } from "@sweet-star/core";
 
@@ -19,6 +20,7 @@ interface SqliteProjectRow {
   updated_at: string;
   premise_updated_at: string | null;
   current_master_plot_id: string | null;
+  current_storyboard_id: string | null;
   script_rel_path?: string | null;
   script_bytes?: number | null;
   script_updated_at?: string | null;
@@ -63,6 +65,7 @@ export function createSqliteProjectRepository(
                 updated_at,
                 premise_updated_at,
                 current_master_plot_id,
+                current_storyboard_id,
                 script_rel_path,
                 script_bytes,
                 script_updated_at
@@ -78,6 +81,7 @@ export function createSqliteProjectRepository(
                 @updated_at,
                 @premise_updated_at,
                 @current_master_plot_id,
+                @current_storyboard_id,
                 @script_rel_path,
                 @script_bytes,
                 @script_updated_at
@@ -102,7 +106,8 @@ export function createSqliteProjectRepository(
               created_at,
               updated_at,
               premise_updated_at,
-              current_master_plot_id
+              current_master_plot_id,
+              current_storyboard_id
             ) VALUES (
               @id,
               @name,
@@ -114,7 +119,8 @@ export function createSqliteProjectRepository(
               @created_at,
               @updated_at,
               @premise_updated_at,
-              @current_master_plot_id
+              @current_master_plot_id,
+              @current_storyboard_id
             )
           `,
         )
@@ -135,7 +141,8 @@ export function createSqliteProjectRepository(
               created_at,
               updated_at,
               premise_updated_at,
-              current_master_plot_id${legacySelectColumns}
+              current_master_plot_id,
+              current_storyboard_id${legacySelectColumns}
             FROM projects
             WHERE id = ?
           `,
@@ -159,7 +166,8 @@ export function createSqliteProjectRepository(
               created_at,
               updated_at,
               premise_updated_at,
-              current_master_plot_id${legacySelectColumns}
+              current_master_plot_id,
+              current_storyboard_id${legacySelectColumns}
             FROM projects
             ORDER BY updated_at DESC
           `,
@@ -212,16 +220,16 @@ export function createSqliteProjectRepository(
     updateCurrentMasterPlot(input) {
       updateCurrentMasterPlot(options.db, input);
     },
+    updateCurrentStoryboard(input) {
+      updateCurrentStoryboard(options.db, input);
+    },
     updateStatus(input) {
       updateProjectStatus(options.db, input);
     },
   };
 }
 
-function updateCurrentMasterPlot(
-  db: SqliteDatabase,
-  input: UpdateCurrentMasterPlotInput,
-) {
+function updateCurrentMasterPlot(db: SqliteDatabase, input: UpdateCurrentMasterPlotInput) {
   db.prepare(
     `
       UPDATE projects
@@ -231,6 +239,19 @@ function updateCurrentMasterPlot(
   ).run({
     project_id: input.projectId,
     current_master_plot_id: input.masterPlotId,
+  });
+}
+
+function updateCurrentStoryboard(db: SqliteDatabase, input: UpdateCurrentStoryboardInput) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET current_storyboard_id = @current_storyboard_id
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    current_storyboard_id: input.storyboardId,
   });
 }
 
@@ -263,6 +284,7 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     updated_at: project.updatedAt,
     premise_updated_at: project.premiseUpdatedAt,
     current_master_plot_id: project.currentMasterPlotId,
+    current_storyboard_id: project.currentStoryboardId,
     script_rel_path: project.premiseRelPath,
     script_bytes: project.premiseBytes,
     script_updated_at: project.premiseUpdatedAt,
@@ -286,6 +308,7 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     premiseRelPath,
     premiseBytes,
     currentMasterPlotId: row.current_master_plot_id,
+    currentStoryboardId: row.current_storyboard_id,
     status: normalizeProjectStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -302,16 +325,13 @@ function normalizeProjectStatus(status: string): ProjectRecord["status"] {
   switch (status) {
     case "script_ready":
       return "premise_ready";
-    case "storyboard_generating":
-      return "master_plot_generating";
-    case "storyboard_in_review":
-      return "master_plot_in_review";
-    case "storyboard_approved":
-      return "master_plot_approved";
     case "premise_ready":
     case "master_plot_generating":
     case "master_plot_in_review":
     case "master_plot_approved":
+    case "storyboard_generating":
+    case "storyboard_in_review":
+    case "storyboard_approved":
       return status;
     default:
       throw new Error(`Unknown project status in sqlite storage: ${status}`);

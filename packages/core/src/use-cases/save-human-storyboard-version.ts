@@ -1,22 +1,22 @@
-import type { CurrentMasterPlot, SaveMasterPlotRequest } from "@sweet-star/shared";
+import type { CurrentStoryboard, SaveStoryboardRequest } from "@sweet-star/shared";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
-import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
+import { CurrentStoryboardNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { MasterPlotStorage } from "../ports/storyboard-storage";
+import type { StoryboardStorage } from "../ports/storyboard-storage";
 
-export interface SaveHumanStoryboardVersionInput extends SaveMasterPlotRequest {
+export interface SaveHumanStoryboardVersionInput extends SaveStoryboardRequest {
   projectId: string;
 }
 
 export interface SaveHumanStoryboardVersionUseCase {
-  execute(input: SaveHumanStoryboardVersionInput): Promise<CurrentMasterPlot>;
+  execute(input: SaveHumanStoryboardVersionInput): Promise<CurrentStoryboard>;
 }
 
 export interface SaveHumanStoryboardVersionUseCaseDependencies {
   projectRepository: ProjectRepository;
-  masterPlotStorage: MasterPlotStorage;
+  storyboardStorage: StoryboardStorage;
   clock: Clock;
 }
 
@@ -31,41 +31,37 @@ export function createSaveHumanStoryboardVersionUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
+      const currentStoryboard = await dependencies.storyboardStorage.readCurrentStoryboard({
         storageDir: project.storageDir,
       });
 
-      if (!currentMasterPlot) {
-        throw new CurrentMasterPlotNotFoundError(project.id);
+      if (!currentStoryboard) {
+        throw new CurrentStoryboardNotFoundError(project.id);
       }
 
       const updatedAt = dependencies.clock.now();
-      const masterPlot: CurrentMasterPlot = {
-        id: currentMasterPlot.id,
+      const storyboard: CurrentStoryboard = {
+        id: currentStoryboard.id,
         title: input.title,
-        logline: input.logline,
-        synopsis: input.synopsis,
-        mainCharacters: input.mainCharacters,
-        coreConflict: input.coreConflict,
-        emotionalArc: input.emotionalArc,
-        endingBeat: input.endingBeat,
-        targetDurationSec: input.targetDurationSec,
-        sourceTaskId: currentMasterPlot.sourceTaskId,
+        episodeTitle: input.episodeTitle,
+        sourceMasterPlotId: input.sourceMasterPlotId,
+        sourceTaskId: input.sourceTaskId,
         updatedAt,
         approvedAt: null,
+        scenes: input.scenes,
       };
 
-      await dependencies.masterPlotStorage.writeCurrentMasterPlot({
+      await dependencies.storyboardStorage.writeCurrentStoryboard({
         storageDir: project.storageDir,
-        masterPlot,
+        storyboard,
       });
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "master_plot_in_review",
+        status: "storyboard_in_review",
         updatedAt,
       });
 
-      return masterPlot;
+      return storyboard;
     },
   };
 }

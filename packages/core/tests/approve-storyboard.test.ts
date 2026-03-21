@@ -1,132 +1,136 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  CurrentStoryboardNotFoundError,
   createApproveStoryboardUseCase,
 } from "../src/index";
 
-describe("approve master plot use case", () => {
-  it("throws when there is no current master plot", async () => {
+describe("approve storyboard use case", () => {
+  it("throws when there is no current storyboard", async () => {
     const useCase = createApproveStoryboardUseCase({
       projectRepository: {
         insert: vi.fn(),
         findById: vi.fn().mockResolvedValue({
-          id: "proj_20260318_ab12cd",
+          id: "proj_20260321_ab12cd",
           name: "My Story",
           slug: "my-story",
-          storageDir: "projects/proj_20260318_ab12cd-my-story",
+          storageDir: "projects/proj_20260321_ab12cd-my-story",
           premiseRelPath: "premise/v1.md",
           premiseBytes: 120,
-          currentMasterPlotId: null,
-          status: "master_plot_in_review",
-          createdAt: "2026-03-18T10:00:00.000Z",
-          updatedAt: "2026-03-18T12:00:00.000Z",
-          premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
+          currentMasterPlotId: "mp_20260321_ab12cd",
+          currentStoryboardId: null,
+          status: "storyboard_in_review",
+          createdAt: "2026-03-21T10:00:00.000Z",
+          updatedAt: "2026-03-21T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-21T10:00:00.000Z",
         }),
         updatePremiseMetadata: vi.fn(),
         updateCurrentMasterPlot: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
-      masterPlotStorage: {
-        initializePromptTemplate: vi.fn(),
-        readPromptTemplate: vi.fn(),
-        writePromptSnapshot: vi.fn(),
+      storyboardStorage: {
         writeRawResponse: vi.fn(),
-        readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
-        writeCurrentMasterPlot: vi.fn(),
-      },
-      storyboardReviewRepository: {
-        insert: vi.fn(),
-        findLatestByProjectId: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+        readCurrentStoryboard: vi.fn().mockResolvedValue(null),
+        writeCurrentStoryboard: vi.fn(),
       },
       clock: {
-        now: () => "2026-03-18T12:40:00.000Z",
+        now: () => "2026-03-21T12:40:00.000Z",
       },
     });
 
     await expect(
       useCase.execute({
-        projectId: "proj_20260318_ab12cd",
+        projectId: "proj_20260321_ab12cd",
       }),
-    ).rejects.toThrow("Current master plot not found");
+    ).rejects.toBeInstanceOf(CurrentStoryboardNotFoundError);
   });
 
-  it("writes an approve review record, stamps approvedAt, and updates the project status", async () => {
+  it("stamps approvedAt and updates the project status", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
-        id: "proj_20260318_ab12cd",
+        id: "proj_20260321_ab12cd",
         name: "My Story",
         slug: "my-story",
-        storageDir: "projects/proj_20260318_ab12cd-my-story",
+        storageDir: "projects/proj_20260321_ab12cd-my-story",
         premiseRelPath: "premise/v1.md",
         premiseBytes: 120,
-        currentMasterPlotId: "mp_current",
-        status: "master_plot_in_review",
-        createdAt: "2026-03-18T10:00:00.000Z",
-        updatedAt: "2026-03-18T12:00:00.000Z",
-        premiseUpdatedAt: "2026-03-18T10:00:00.000Z",
+        currentMasterPlotId: "mp_20260321_ab12cd",
+        currentStoryboardId: "storyboard_20260321_ab12cd",
+        status: "storyboard_in_review",
+        createdAt: "2026-03-21T10:00:00.000Z",
+        updatedAt: "2026-03-21T12:00:00.000Z",
+        premiseUpdatedAt: "2026-03-21T10:00:00.000Z",
       }),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
-    const storyboardReviewRepository = {
-      insert: vi.fn(),
-      findLatestByProjectId: vi.fn(),
-    };
-    const masterPlotStorage = {
-      initializePromptTemplate: vi.fn(),
-      readPromptTemplate: vi.fn(),
-      writePromptSnapshot: vi.fn(),
+    const storyboardStorage = {
       writeRawResponse: vi.fn(),
-      readCurrentMasterPlot: vi.fn().mockResolvedValue({
-        id: "mp_current",
+      writeStoryboardVersion: vi.fn(),
+      readStoryboardVersion: vi.fn(),
+      readCurrentStoryboard: vi.fn().mockResolvedValue({
+        id: "storyboard_20260321_ab12cd",
         title: "The Last Sky Choir",
-        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-        synopsis: "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-        mainCharacters: ["Rin", "Ivo"],
-        coreConflict: "Rin must choose between private escape and saving the city that exiled her.",
-        emotionalArc: "She moves from bitterness to sacrificial hope.",
-        endingBeat: "Rin turns the comet's music into a rising tide of light.",
-        targetDurationSec: 480,
-        sourceTaskId: "task_20260318_ab12cd",
-        updatedAt: "2026-03-18T12:00:00.000Z",
+        episodeTitle: "Episode 1",
+        sourceMasterPlotId: "mp_20260321_ab12cd",
+        sourceTaskId: "task_20260321_storyboard",
+        updatedAt: "2026-03-21T12:00:00.000Z",
         approvedAt: null,
+        scenes: [
+          {
+            id: "scene_1",
+            order: 1,
+            name: "Rin Hears The Sky",
+            dramaticPurpose: "Trigger the inciting beat.",
+            segments: [
+              {
+                id: "segment_1",
+                order: 1,
+                durationSec: 6,
+                visual: "Rain shakes across the cockpit glass.",
+                characterAction: "Rin looks up.",
+                dialogue: "",
+                voiceOver: "That sound again.",
+                audio: "",
+                purpose: "Start the mystery.",
+              },
+            ],
+          },
+        ],
       }),
-      writeCurrentMasterPlot: vi.fn(),
+      writeCurrentStoryboard: vi.fn(),
     };
     const useCase = createApproveStoryboardUseCase({
       projectRepository,
-      masterPlotStorage,
-      storyboardReviewRepository,
+      storyboardStorage,
       clock: {
-        now: () => "2026-03-18T12:40:00.000Z",
+        now: () => "2026-03-21T12:40:00.000Z",
       },
     });
 
     const result = await useCase.execute({
-      projectId: "proj_20260318_ab12cd",
+      projectId: "proj_20260321_ab12cd",
     });
 
-    expect(masterPlotStorage.writeCurrentMasterPlot).toHaveBeenCalledWith({
-      storageDir: "projects/proj_20260318_ab12cd-my-story",
-      masterPlot: expect.objectContaining({
-        approvedAt: "2026-03-18T12:40:00.000Z",
+    expect(storyboardStorage.writeCurrentStoryboard).toHaveBeenCalledWith({
+      storageDir: "projects/proj_20260321_ab12cd-my-story",
+      storyboard: expect.objectContaining({
+        approvedAt: "2026-03-21T12:40:00.000Z",
       }),
     });
-    expect(storyboardReviewRepository.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "approve",
-        reason: null,
-      }),
-    );
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
-      projectId: "proj_20260318_ab12cd",
-      status: "master_plot_approved",
-      updatedAt: "2026-03-18T12:40:00.000Z",
+      projectId: "proj_20260321_ab12cd",
+      status: "storyboard_approved",
+      updatedAt: "2026-03-21T12:40:00.000Z",
     });
-    expect(result.action).toBe("approve");
+    expect(result.approvedAt).toBe("2026-03-21T12:40:00.000Z");
   });
 });

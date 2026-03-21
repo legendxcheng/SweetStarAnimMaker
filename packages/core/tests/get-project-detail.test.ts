@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("get project detail use case", () => {
-  it("returns premise metadata and the current master plot", async () => {
+  it("returns premise metadata, the current master plot, and the current storyboard summary", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue({
@@ -17,6 +17,7 @@ describe("get project detail use case", () => {
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
         currentMasterPlotId: "mp_20260317_ab12cd",
+        currentStoryboardId: "storyboard_20260321_ab12cd",
         status: "master_plot_in_review",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
@@ -25,6 +26,7 @@ describe("get project detail use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -50,6 +52,42 @@ describe("get project detail use case", () => {
           approvedAt: null,
         }),
       },
+      storyboardStorage: {
+        writeRawResponse: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+        writeCurrentStoryboard: vi.fn(),
+        readCurrentStoryboard: vi.fn().mockResolvedValue({
+          id: "storyboard_20260321_ab12cd",
+          title: "The Last Sky Choir",
+          episodeTitle: "Episode 1",
+          sourceMasterPlotId: "mp_20260317_ab12cd",
+          sourceTaskId: "task_20260321_storyboard",
+          updatedAt: "2026-03-21T12:00:00.000Z",
+          approvedAt: null,
+          scenes: [
+            {
+              id: "scene_1",
+              order: 1,
+              name: "Rin Hears The Sky",
+              dramaticPurpose: "Trigger the inciting beat.",
+              segments: [
+                {
+                  id: "segment_1",
+                  order: 1,
+                  durationSec: 6,
+                  visual: "Rain shakes across the cockpit glass.",
+                  characterAction: "Rin looks up.",
+                  dialogue: "",
+                  voiceOver: "That sound again.",
+                  audio: "A comet hum under distant thunder.",
+                  purpose: "Start the mystery.",
+                },
+              ],
+            },
+          ],
+        }),
+      },
     });
 
     const result = await useCase.execute({
@@ -59,6 +97,14 @@ describe("get project detail use case", () => {
     expect(result.premise.bytes).toBe(88);
     expect(result.premise.path).toBe("premise/v1.md");
     expect(result.currentMasterPlot?.title).toBe("The Last Sky Choir");
+    expect(result.currentStoryboard).toEqual(
+      expect.objectContaining({
+        id: "storyboard_20260321_ab12cd",
+        title: "The Last Sky Choir",
+        sceneCount: 1,
+        segmentCount: 1,
+      }),
+    );
   });
 
   it("throws when the project does not exist", async () => {
@@ -68,6 +114,7 @@ describe("get project detail use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -79,6 +126,13 @@ describe("get project detail use case", () => {
         writeRawResponse: vi.fn(),
         writeCurrentMasterPlot: vi.fn(),
         readCurrentMasterPlot: vi.fn(),
+      },
+      storyboardStorage: {
+        writeRawResponse: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+        writeCurrentStoryboard: vi.fn(),
+        readCurrentStoryboard: vi.fn(),
       },
     });
 

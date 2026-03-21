@@ -1,5 +1,6 @@
 import {
   type CurrentStoryboard,
+  type CurrentStoryboardSummary,
   type StoryboardScene,
   type StoryboardVersionKind,
   type StoryboardVersionSummary,
@@ -8,9 +9,17 @@ import {
 export const storyboardDirectoryName = "storyboards";
 export const storyboardRawDirectoryName = "raw";
 export const storyboardVersionsDirectoryName = "versions";
+export const currentStoryboardDirectoryName = "storyboard";
+export const currentStoryboardJsonFileName = "current.json";
+export const currentStoryboardMarkdownFileName = "current.md";
+export const currentStoryboardJsonRelPath =
+  `${currentStoryboardDirectoryName}/${currentStoryboardJsonFileName}`;
+export const currentStoryboardMarkdownRelPath =
+  `${currentStoryboardDirectoryName}/${currentStoryboardMarkdownFileName}`;
 
 export interface StoryboardDocument {
-  summary: string;
+  title: string | null;
+  episodeTitle: string | null;
   scenes: StoryboardScene[];
 }
 
@@ -104,8 +113,40 @@ export function toCurrentStoryboard(
   document: StoryboardDocument,
 ): CurrentStoryboard {
   return {
-    ...toStoryboardVersionSummary(version),
-    summary: document.summary,
+    id: version.id,
+    title: document.title,
+    episodeTitle: document.episodeTitle,
+    sourceMasterPlotId: "pending_source_master_plot_id",
+    sourceTaskId: version.sourceTaskId,
+    updatedAt: version.createdAt,
+    approvedAt: null,
     scenes: document.scenes,
+  };
+}
+
+export function toCurrentStoryboardSummary(
+  storyboard: CurrentStoryboard,
+): CurrentStoryboardSummary {
+  const sceneCount = storyboard.scenes.length;
+  const segments = storyboard.scenes.flatMap((scene) => scene.segments);
+  const segmentCount = segments.length;
+  const durationValues = segments
+    .map((segment) => segment.durationSec)
+    .filter((duration): duration is number => typeof duration === "number");
+
+  return {
+    id: storyboard.id,
+    title: storyboard.title,
+    episodeTitle: storyboard.episodeTitle,
+    sourceMasterPlotId: storyboard.sourceMasterPlotId,
+    sourceTaskId: storyboard.sourceTaskId,
+    updatedAt: storyboard.updatedAt,
+    approvedAt: storyboard.approvedAt,
+    sceneCount,
+    segmentCount,
+    totalDurationSec:
+      durationValues.length > 0
+        ? durationValues.reduce((total, duration) => total + duration, 0)
+        : null,
   };
 }

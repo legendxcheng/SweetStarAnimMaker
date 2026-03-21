@@ -10,6 +10,7 @@ describe("create project use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -71,6 +72,7 @@ describe("create project use case", () => {
         updatedAt: "2026-03-17T00:00:00.000Z",
       },
       currentMasterPlot: null,
+      currentStoryboard: null,
     });
   });
 
@@ -83,6 +85,7 @@ describe("create project use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {

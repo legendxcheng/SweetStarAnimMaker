@@ -1,23 +1,17 @@
 import {
-  approveMasterPlotRequestSchema,
-  createMasterPlotGenerateTaskResponseSchema,
+  createStoryboardGenerateTaskResponseSchema,
   createProjectRequestSchema,
-  currentMasterPlotResponseSchema,
-  masterPlotReviewSummarySchema,
-  masterPlotReviewWorkspaceResponseSchema,
+  currentStoryboardResponseSchema,
+  storyboardReviewWorkspaceResponseSchema,
   projectDetailResponseSchema,
   projectListResponseSchema,
-  rejectMasterPlotRequestSchema,
-  saveMasterPlotRequestSchema,
+  saveStoryboardRequestSchema,
   taskDetailResponseSchema,
-  type ApproveMasterPlotRequest,
-  type CurrentMasterPlot,
-  type MasterPlotReviewSummary,
-  type MasterPlotReviewWorkspace,
+  type CurrentStoryboard,
   type ProjectDetail,
   type ProjectSummary,
-  type RejectMasterPlotRequest,
-  type SaveMasterPlotRequest,
+  type SaveStoryboardRequest,
+  type StoryboardReviewWorkspace,
   type TaskDetail,
 } from "@sweet-star/shared";
 import { config } from "./config";
@@ -83,10 +77,10 @@ export const apiClient = {
       method: "GET",
     }),
 
-  createMasterPlotGenerateTask: (projectId: string) =>
+  createStoryboardGenerateTask: (projectId: string) =>
     request<TaskDetail>(
-      `/projects/${projectId}/tasks/master-plot-generate`,
-      createMasterPlotGenerateTaskResponseSchema,
+      `/projects/${projectId}/tasks/storyboard-generate`,
+      createStoryboardGenerateTaskResponseSchema,
       {
         method: "POST",
       },
@@ -97,42 +91,42 @@ export const apiClient = {
       method: "GET",
     }),
 
-  getReviewWorkspace: (projectId: string) =>
-    request<MasterPlotReviewWorkspace>(
-      `/projects/${projectId}/master-plot/review`,
-      masterPlotReviewWorkspaceResponseSchema,
+  getStoryboardReviewWorkspace: (projectId: string) =>
+    request<StoryboardReviewWorkspace>(
+      `/projects/${projectId}/storyboard/review`,
+      storyboardReviewWorkspaceResponseSchema,
       {
         method: "GET",
       },
     ),
 
-  saveMasterPlot: (projectId: string, data: SaveMasterPlotRequest) =>
-    request<CurrentMasterPlot>(
-      `/projects/${projectId}/master-plot`,
-      currentMasterPlotResponseSchema,
+  saveStoryboard: (projectId: string, data: SaveStoryboardRequest) =>
+    request<CurrentStoryboard>(
+      `/projects/${projectId}/storyboard`,
+      currentStoryboardResponseSchema,
       {
         method: "PUT",
-        body: JSON.stringify(saveMasterPlotRequestSchema.parse(data)),
+        body: JSON.stringify(saveStoryboardRequestSchema.parse(data)),
       },
     ),
 
-  approveMasterPlot: (projectId: string, data: ApproveMasterPlotRequest = {}) =>
-    request<MasterPlotReviewSummary>(
-      `/projects/${projectId}/master-plot/approve`,
-      masterPlotReviewSummarySchema,
+  approveStoryboard: (projectId: string, data: Record<string, never> = {}) =>
+    request<CurrentStoryboard>(
+      `/projects/${projectId}/storyboard/approve`,
+      currentStoryboardResponseSchema,
       {
         method: "POST",
-        body: JSON.stringify(approveMasterPlotRequestSchema.parse(data)),
+        body: JSON.stringify(data),
       },
     ),
 
-  rejectMasterPlot: (projectId: string, data: RejectMasterPlotRequest) =>
-    request<MasterPlotReviewSummary>(
-      `/projects/${projectId}/master-plot/reject`,
-      masterPlotReviewSummarySchema,
+  rejectStoryboard: (projectId: string, data: Record<string, never> = {}) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/storyboard/reject`,
+      taskDetailResponseSchema,
       {
         method: "POST",
-        body: JSON.stringify(rejectMasterPlotRequestSchema.parse(data)),
+        body: JSON.stringify(data),
       },
     ),
 };

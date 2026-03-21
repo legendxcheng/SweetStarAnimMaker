@@ -5,6 +5,7 @@ import {
   currentMasterPlotJsonRelPath,
   currentMasterPlotMarkdownRelPath,
   type CurrentMasterPlot,
+  type CurrentStoryboard,
   type MasterPlotStorage,
   type StoryboardStorage,
 } from "@sweet-star/core";
@@ -19,7 +20,7 @@ export interface CreateStoryboardStorageOptions {
 const promptTemplateDirectoryName = "prompt-templates";
 const promptSnapshotFileName = "prompt-snapshot.json";
 const rawResponseFileName = "raw-response.txt";
-type PromptTemplateKey = "master_plot.generate";
+type PromptTemplateKey = "master_plot.generate" | "storyboard.generate";
 
 export function createStoryboardStorage(
   options: CreateStoryboardStorageOptions,
@@ -62,6 +63,28 @@ export function createStoryboardStorage(
       );
 
       return JSON.parse(await fs.readFile(versionPath, "utf8"));
+    },
+    async writeCurrentStoryboard(input) {
+      const jsonPath = options.paths.projectStoryboardCurrentJsonPath(input.storageDir);
+      const markdownPath = options.paths.projectStoryboardCurrentMarkdownPath(input.storageDir);
+
+      await ensureParentDirectory(jsonPath);
+      await ensureParentDirectory(markdownPath);
+      await fs.writeFile(jsonPath, JSON.stringify(input.storyboard, null, 2), "utf8");
+      await fs.writeFile(markdownPath, renderStoryboardMarkdown(input.storyboard), "utf8");
+    },
+    async readCurrentStoryboard(input) {
+      try {
+        const jsonPath = options.paths.projectStoryboardCurrentJsonPath(input.storageDir);
+
+        return JSON.parse(await fs.readFile(jsonPath, "utf8"));
+      } catch (error) {
+        if (isMissingFileError(error)) {
+          return null;
+        }
+
+        throw error;
+      }
     },
     async initializePromptTemplate(input) {
       const promptTemplatePath = toProjectPromptTemplatePath(
@@ -160,6 +183,16 @@ export function createStoryboardStorage(
     storageDir: string,
     promptTemplateKey: PromptTemplateKey,
   ) {
+    if (promptTemplateKey === "storyboard.generate") {
+      return path.join(
+        options.paths.projectPath(storageDir),
+        "prompts",
+        "storyboard",
+        "project",
+        "active.template.txt",
+      );
+    }
+
     return path.join(
       options.paths.projectPath(storageDir),
       promptTemplateDirectoryName,
@@ -206,4 +239,32 @@ function renderMasterPlotMarkdown(masterPlot: CurrentMasterPlot) {
     masterPlot.approvedAt ?? "Not approved",
     "",
   ].join("\n");
+}
+
+function renderStoryboardMarkdown(storyboard: CurrentStoryboard) {
+  const lines = [
+    `# ${storyboard.title ?? "Untitled Storyboard"}`,
+    "",
+    `Episode: ${storyboard.episodeTitle ?? "Untitled Episode"}`,
+    "",
+  ];
+
+  for (const scene of storyboard.scenes) {
+    lines.push(`## Scene ${scene.order}: ${scene.name}`);
+    lines.push(scene.dramaticPurpose);
+    lines.push("");
+
+    for (const segment of scene.segments) {
+      lines.push(`### Segment ${segment.order}`);
+      lines.push(`Purpose: ${segment.purpose}`);
+      lines.push(`Visual: ${segment.visual}`);
+      lines.push(`Action: ${segment.characterAction}`);
+      lines.push(`Dialogue: ${segment.dialogue || "(none)"}`);
+      lines.push(`Voice Over: ${segment.voiceOver || "(none)"}`);
+      lines.push(`Audio: ${segment.audio || "(none)"}`);
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
 }

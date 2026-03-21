@@ -1,11 +1,12 @@
-import type { CurrentMasterPlot } from "@sweet-star/shared";
+import type { CurrentStoryboard } from "@sweet-star/shared";
 
+import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { MasterPlotProvider } from "../ports/storyboard-provider";
-import type { MasterPlotStorage } from "../ports/storyboard-storage";
+import type { StoryboardProvider } from "../ports/storyboard-provider";
+import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
 
@@ -21,8 +22,9 @@ export interface ProcessStoryboardGenerateTaskUseCaseDependencies {
   taskRepository: TaskRepository;
   projectRepository: ProjectRepository;
   taskFileStorage: TaskFileStorage;
-  masterPlotProvider: MasterPlotProvider;
+  storyboardProvider: StoryboardProvider;
   masterPlotStorage: MasterPlotStorage;
+  storyboardStorage: StoryboardStorage;
   clock: Clock;
 }
 
@@ -47,6 +49,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
 
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
+        assertStoryboardTaskInput(taskInput);
         const project = await dependencies.projectRepository.findById(task.projectId);
 
         if (!project) {
@@ -57,19 +60,19 @@ export function createProcessStoryboardGenerateTaskUseCase(
           storageDir: project.storageDir,
           promptTemplateKey: taskInput.promptTemplateKey,
         });
-        const promptText = renderPromptTemplate(promptTemplate, taskInput.premiseText);
+        const promptText = renderPromptTemplate(promptTemplate, taskInput.masterPlot);
 
         await dependencies.masterPlotStorage.writePromptSnapshot({
           taskStorageDir: task.storageDir,
           promptText,
           promptVariables: {
-            premiseText: taskInput.premiseText,
+            masterPlot: taskInput.masterPlot,
           },
         });
 
-        const providerResult = await dependencies.masterPlotProvider.generateMasterPlot({
+        const providerResult = await dependencies.storyboardProvider.generateStoryboard({
           projectId: project.id,
-          premiseText: taskInput.premiseText,
+          masterPlot: taskInput.masterPlot,
           promptText,
         });
         const finishedAt = dependencies.clock.now();
@@ -79,38 +82,39 @@ export function createProcessStoryboardGenerateTaskUseCase(
           rawResponse: providerResult.rawResponse,
         });
 
-        const masterPlot = createCurrentMasterPlot({
-          projectId: project.id,
+        const storyboard = normalizeStoryboard({
+          storyboard: providerResult.storyboard,
+          sourceMasterPlotId: taskInput.sourceMasterPlotId,
           taskId: task.id,
           updatedAt: finishedAt,
-          masterPlot: providerResult.masterPlot,
         });
+        const summary = toCurrentStoryboardSummary(storyboard);
 
-        await dependencies.masterPlotStorage.writeCurrentMasterPlot({
+        await dependencies.storyboardStorage.writeCurrentStoryboard({
           storageDir: project.storageDir,
-          masterPlot,
+          storyboard,
         });
-        await dependencies.projectRepository.updateCurrentMasterPlot({
+        await dependencies.projectRepository.updateCurrentStoryboard({
           projectId: project.id,
-          masterPlotId: masterPlot.id,
+          storyboardId: storyboard.id,
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "master_plot_in_review",
+          status: "storyboard_in_review",
           updatedAt: finishedAt,
         });
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
           output: {
-            masterPlotId: masterPlot.id,
-            provider: providerResult.provider,
-            model: providerResult.model,
-            promptTemplateKey: taskInput.promptTemplateKey,
+            storyboardId: storyboard.id,
+            sceneCount: summary.sceneCount,
+            segmentCount: summary.segmentCount,
+            totalDurationSec: summary.totalDurationSec,
           },
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: "master plot generation succeeded",
+          message: "storyboard generation succeeded",
         });
         await dependencies.taskRepository.markSucceeded({
           taskId: task.id,
@@ -123,7 +127,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `master plot generation failed: ${errorMessage}`,
+          message: `storyboard generation failed: ${errorMessage}`,
         });
         await dependencies.taskRepository.markFailed({
           taskId: task.id,
@@ -133,7 +137,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
         });
         await dependencies.projectRepository.updateStatus({
           projectId: task.projectId,
-          status: "premise_ready",
+          status: "master_plot_approved",
           updatedAt: finishedAt,
         });
 
@@ -143,25 +147,69 @@ export function createProcessStoryboardGenerateTaskUseCase(
   };
 }
 
-function renderPromptTemplate(template: string, premiseText: string) {
-  return template.replaceAll("{{premiseText}}", premiseText);
+function assertStoryboardTaskInput(input: {
+  taskType: string;
+}): asserts input is {
+  taskId: string;
+  projectId: string;
+  taskType: "storyboard_generate";
+  sourceMasterPlotId: string;
+  masterPlot: {
+    title: string | null;
+    logline: string;
+    synopsis: string;
+    mainCharacters: string[];
+    coreConflict: string;
+    emotionalArc: string;
+    endingBeat: string;
+    targetDurationSec: number | null;
+  };
+  promptTemplateKey: "storyboard.generate";
+  model: "gemini-3.1-pro-preview";
+} {
+  if (input.taskType !== "storyboard_generate") {
+    throw new Error(`Unsupported task input for storyboard processing: ${input.taskType}`);
+  }
 }
 
-function createCurrentMasterPlot(input: {
-  projectId: string;
+function renderPromptTemplate(
+  template: string,
+  masterPlot: {
+    title: string | null;
+    logline: string;
+    synopsis: string;
+    mainCharacters: string[];
+    coreConflict: string;
+    emotionalArc: string;
+    endingBeat: string;
+    targetDurationSec: number | null;
+  },
+) {
+  return template
+    .replaceAll("{{masterPlot.title}}", masterPlot.title ?? "")
+    .replaceAll("{{masterPlot.logline}}", masterPlot.logline)
+    .replaceAll("{{masterPlot.synopsis}}", masterPlot.synopsis)
+    .replaceAll("{{masterPlot.mainCharacters}}", masterPlot.mainCharacters.join(", "))
+    .replaceAll("{{masterPlot.coreConflict}}", masterPlot.coreConflict)
+    .replaceAll("{{masterPlot.emotionalArc}}", masterPlot.emotionalArc)
+    .replaceAll("{{masterPlot.endingBeat}}", masterPlot.endingBeat)
+    .replaceAll(
+      "{{masterPlot.targetDurationSec}}",
+      masterPlot.targetDurationSec === null ? "" : String(masterPlot.targetDurationSec),
+    );
+}
+
+function normalizeStoryboard(input: {
+  storyboard: CurrentStoryboard;
+  sourceMasterPlotId: string;
   taskId: string;
   updatedAt: string;
-  masterPlot: Omit<CurrentMasterPlot, "id" | "sourceTaskId" | "updatedAt" | "approvedAt">;
-}): CurrentMasterPlot {
+}): CurrentStoryboard {
   return {
-    id: toMasterPlotId(input.projectId),
-    ...input.masterPlot,
+    ...input.storyboard,
+    sourceMasterPlotId: input.sourceMasterPlotId,
     sourceTaskId: input.taskId,
     updatedAt: input.updatedAt,
     approvedAt: null,
   };
-}
-
-function toMasterPlotId(projectId: string) {
-  return `mp_${projectId.replace(/^proj_/, "")}`;
 }

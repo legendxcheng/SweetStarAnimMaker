@@ -1,4 +1,4 @@
-import type { SaveMasterPlotRequest } from "@sweet-star/shared";
+import type { CurrentStoryboard, SaveMasterPlotRequest } from "@sweet-star/shared";
 
 export interface GenerateMasterPlotInput {
   projectId: string;
@@ -17,4 +17,23 @@ export interface MasterPlotProvider {
   generateMasterPlot(
     input: GenerateMasterPlotInput,
   ): Promise<GenerateMasterPlotResult> | GenerateMasterPlotResult;
+}
+
+export interface GenerateStoryboardInput {
+  projectId: string;
+  masterPlot: SaveMasterPlotRequest;
+  promptText: string;
+}
+
+export interface GenerateStoryboardResult {
+  rawResponse: string;
+  storyboard: CurrentStoryboard;
+  provider: string;
+  model: string;
+}
+
+export interface StoryboardProvider {
+  generateStoryboard(
+    input: GenerateStoryboardInput,
+  ): Promise<GenerateStoryboardResult> | GenerateStoryboardResult;
 }

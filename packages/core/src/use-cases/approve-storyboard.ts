@@ -1,25 +1,22 @@
-import type { ApproveMasterPlotRequest, MasterPlotReviewSummary } from "@sweet-star/shared";
+import type { ApproveStoryboardRequest, CurrentStoryboard } from "@sweet-star/shared";
 
-import { createStoryboardReviewRecord } from "../domain/storyboard-review";
 import { ProjectNotFoundError } from "../errors/project-errors";
-import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
+import { CurrentStoryboardNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
-import type { StoryboardReviewRepository } from "../ports/storyboard-review-repository";
-import type { MasterPlotStorage } from "../ports/storyboard-storage";
+import type { StoryboardStorage } from "../ports/storyboard-storage";
 
-export interface ApproveStoryboardInput extends ApproveMasterPlotRequest {
+export interface ApproveStoryboardInput extends ApproveStoryboardRequest {
   projectId: string;
 }
 
 export interface ApproveStoryboardUseCase {
-  execute(input: ApproveStoryboardInput): Promise<MasterPlotReviewSummary>;
+  execute(input: ApproveStoryboardInput): Promise<CurrentStoryboard>;
 }
 
 export interface ApproveStoryboardUseCaseDependencies {
   projectRepository: ProjectRepository;
-  masterPlotStorage: MasterPlotStorage;
-  storyboardReviewRepository: StoryboardReviewRepository;
+  storyboardStorage: StoryboardStorage;
   clock: Clock;
 }
 
@@ -34,49 +31,32 @@ export function createApproveStoryboardUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const currentMasterPlot = await dependencies.masterPlotStorage.readCurrentMasterPlot({
+      const currentStoryboard = await dependencies.storyboardStorage.readCurrentStoryboard({
         storageDir: project.storageDir,
       });
 
-      if (!currentMasterPlot) {
-        throw new CurrentMasterPlotNotFoundError(project.id);
+      if (!currentStoryboard) {
+        throw new CurrentStoryboardNotFoundError(project.id);
       }
 
-      const createdAt = dependencies.clock.now();
+      const approvedAt = dependencies.clock.now();
+      const storyboard: CurrentStoryboard = {
+        ...currentStoryboard,
+        updatedAt: approvedAt,
+        approvedAt,
+      };
 
-      await dependencies.masterPlotStorage.writeCurrentMasterPlot({
+      await dependencies.storyboardStorage.writeCurrentStoryboard({
         storageDir: project.storageDir,
-        masterPlot: {
-          ...currentMasterPlot,
-          updatedAt: createdAt,
-          approvedAt: createdAt,
-        },
+        storyboard,
       });
-
-      const review = createStoryboardReviewRecord({
-        id: toStoryboardReviewId(project.id, "approve", createdAt),
-        projectId: project.id,
-        masterPlotId: currentMasterPlot.id,
-        action: "approve",
-        createdAt,
-      });
-
-      await dependencies.storyboardReviewRepository.insert(review);
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "master_plot_approved",
-        updatedAt: createdAt,
+        status: "storyboard_approved",
+        updatedAt: approvedAt,
       });
 
-      return review;
+      return storyboard;
     },
   };
-}
-
-function toStoryboardReviewId(
-  projectId: string,
-  action: "approve" | "reject",
-  createdAt: string,
-) {
-  return `sbr_${projectId.replace(/^proj_/, "")}_${action}_${createdAt.replace(/\W/g, "")}`;
 }

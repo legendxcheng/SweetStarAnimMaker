@@ -27,6 +27,7 @@ describe("project api schema", () => {
         updatedAt: "2026-03-17T12:00:00.000Z",
       },
       currentMasterPlot: null,
+      currentStoryboard: null,
     });
 
     expect(parsed.currentMasterPlot).toBeNull();
@@ -38,6 +39,9 @@ describe("project api schema", () => {
       "master_plot_generating",
       "master_plot_in_review",
       "master_plot_approved",
+      "storyboard_generating",
+      "storyboard_in_review",
+      "storyboard_approved",
     ]);
   });
 
@@ -51,6 +55,7 @@ describe("project api schema", () => {
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
       currentMasterPlot: null,
+      currentStoryboard: null,
     });
 
     expect(parsed.id).toBe("proj_20260317_ab12cd");
@@ -80,6 +85,7 @@ describe("project api schema", () => {
         updatedAt: "2026-03-17T12:05:00.000Z",
         approvedAt: null,
       },
+      currentStoryboard: null,
     });
 
     expect(parsed.currentMasterPlot).not.toBeNull();
@@ -97,6 +103,7 @@ describe("project api schema", () => {
         createdAt: "2026-03-17T12:00:00.000Z",
         updatedAt: "2026-03-17T12:00:00.000Z",
         currentMasterPlot: null,
+        currentStoryboard: null,
       },
       {
         id: "proj_2",
@@ -120,11 +127,60 @@ describe("project api schema", () => {
           updatedAt: "2026-03-17T13:05:00.000Z",
           approvedAt: "2026-03-17T13:15:00.000Z",
         },
+        currentStoryboard: null,
       },
     ]);
 
     expect(parsed).toHaveLength(2);
     expect(parsed[0].name).toBe("Project One");
     expect(parsed[1].currentMasterPlot?.approvedAt).toBe("2026-03-17T13:15:00.000Z");
+  });
+
+  it("accepts project detail with a current storyboard summary", () => {
+    const parsed = shared.projectDetailResponseSchema.parse({
+      id: "proj_20260321_ab12cd",
+      name: "My Story",
+      slug: "my-story",
+      status: "storyboard_in_review",
+      storageDir: "projects/proj_20260321_ab12cd-my-story",
+      createdAt: "2026-03-21T12:00:00.000Z",
+      updatedAt: "2026-03-21T12:30:00.000Z",
+      premise: {
+        path: "premise/v1.md",
+        bytes: 123,
+        updatedAt: "2026-03-21T12:00:00.000Z",
+      },
+      currentMasterPlot: {
+        id: "master_plot_v1",
+        title: "The Last Sky Choir",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis:
+          "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict:
+          "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
+        sourceTaskId: "task_123",
+        updatedAt: "2026-03-21T12:05:00.000Z",
+        approvedAt: "2026-03-21T12:10:00.000Z",
+      },
+      currentStoryboard: {
+        id: "storyboard_v1",
+        title: "The Last Sky Choir",
+        episodeTitle: "Episode 1",
+        sourceMasterPlotId: "master_plot_v1",
+        sourceTaskId: "task_456",
+        updatedAt: "2026-03-21T12:30:00.000Z",
+        approvedAt: null,
+        sceneCount: 2,
+        segmentCount: 5,
+        totalDurationSec: 31,
+      },
+    });
+
+    expect(parsed.currentStoryboard).not.toBeNull();
+    expect(parsed.currentStoryboard?.segmentCount).toBe(5);
   });
 });

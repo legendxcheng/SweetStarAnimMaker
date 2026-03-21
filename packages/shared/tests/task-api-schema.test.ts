@@ -8,6 +8,12 @@ describe("task api schema", () => {
     expect(schema).toBeDefined();
   });
 
+  it("exports a storyboard task response schema", () => {
+    const schema = shared.createStoryboardGenerateTaskResponseSchema;
+
+    expect(schema).toBeDefined();
+  });
+
   it("accepts a master-plot task response", () => {
     const parsed = shared.createMasterPlotGenerateTaskResponseSchema.parse({
       id: "task_20260317_ab12cd",
@@ -48,5 +54,26 @@ describe("task api schema", () => {
     });
 
     expect(parsed.finishedAt).toBe("2026-03-17T12:03:00.000Z");
+  });
+
+  it("accepts a storyboard generation task detail response", () => {
+    const parsed = shared.taskDetailResponseSchema.parse({
+      id: "task_20260321_ab12cd",
+      projectId: "proj_20260321_ab12cd",
+      type: "storyboard_generate",
+      status: "succeeded",
+      createdAt: "2026-03-21T12:00:00.000Z",
+      updatedAt: "2026-03-21T12:03:00.000Z",
+      startedAt: "2026-03-21T12:01:00.000Z",
+      finishedAt: "2026-03-21T12:03:00.000Z",
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260321_ab12cd/input.json",
+        outputPath: "tasks/task_20260321_ab12cd/output.json",
+        logPath: "tasks/task_20260321_ab12cd/log.txt",
+      },
+    });
+
+    expect(parsed.type).toBe("storyboard_generate");
   });
 });

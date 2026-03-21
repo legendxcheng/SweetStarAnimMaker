@@ -2,29 +2,25 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  createStoryboardReviewRecord,
-  createTaskRecord,
-} from "@sweet-star/core";
+import { createTaskRecord } from "@sweet-star/core";
 import {
   createLocalDataPaths,
   createSqliteDb,
   createSqliteProjectRepository,
-  createSqliteStoryboardReviewRepository,
   createSqliteTaskRepository,
   createStoryboardStorage,
 } from "@sweet-star/services";
-import type { CurrentMasterPlot } from "@sweet-star/shared";
+import type { CurrentMasterPlot, CurrentStoryboard } from "@sweet-star/shared";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../src/app";
 import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
-describe("master plot api", () => {
+describe("storyboard api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
   const baseMasterPlot: CurrentMasterPlot = {
-    id: "mp_20260317_ab12cd",
+    id: "mp_20260321_ab12cd",
     title: "The Last Sky Choir",
     logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
     synopsis:
@@ -35,9 +31,39 @@ describe("master plot api", () => {
     emotionalArc: "She moves from bitterness to sacrificial hope.",
     endingBeat: "Rin turns the comet's music into a rising tide of light.",
     targetDurationSec: 480,
-    sourceTaskId: "task_20260317_ab12cd",
-    updatedAt: "2026-03-17T12:00:00.000Z",
+    sourceTaskId: "task_20260321_master_plot",
+    updatedAt: "2026-03-21T12:00:00.000Z",
+    approvedAt: "2026-03-21T12:05:00.000Z",
+  };
+  const baseStoryboard: CurrentStoryboard = {
+    id: "storyboard_20260321_ab12cd",
+    title: "The Last Sky Choir",
+    episodeTitle: "Episode 1",
+    sourceMasterPlotId: "mp_20260321_ab12cd",
+    sourceTaskId: "task_20260321_storyboard",
+    updatedAt: "2026-03-21T12:10:00.000Z",
     approvedAt: null,
+    scenes: [
+      {
+        id: "scene_1",
+        order: 1,
+        name: "Rin Hears The Sky",
+        dramaticPurpose: "Trigger the inciting beat.",
+        segments: [
+          {
+            id: "segment_1",
+            order: 1,
+            durationSec: 6,
+            visual: "Rain shakes across the cockpit glass.",
+            characterAction: "Rin looks up.",
+            dialogue: "",
+            voiceOver: "That sound again.",
+            audio: "A comet hum under distant thunder.",
+            purpose: "Start the mystery.",
+          },
+        ],
+      },
+    ],
   };
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
@@ -51,40 +77,37 @@ describe("master plot api", () => {
     );
   });
 
-  it("returns the master-plot review workspace", async () => {
+  it("returns the storyboard review workspace", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
 
-    await seedCurrentMasterPlot({
+    await seedApprovedMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
     });
-    seedReviewWorkspace({
+    await seedStoryboardReviewWorkspace({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
-      masterPlotId: baseMasterPlot.id,
+      storyboard: baseStoryboard,
     });
 
     const response = await app.inject({
       method: "GET",
-      url: `/projects/${project.id}/master-plot/review`,
+      url: `/projects/${project.id}/storyboard/review`,
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
         projectId: project.id,
-        projectStatus: "master_plot_in_review",
-        currentMasterPlot: expect.objectContaining({
-          id: baseMasterPlot.id,
-          title: baseMasterPlot.title,
-        }),
-        latestReview: expect.objectContaining({
-          action: "reject",
-          masterPlotId: baseMasterPlot.id,
+        projectName: "My Story",
+        projectStatus: "storyboard_in_review",
+        currentStoryboard: expect.objectContaining({
+          id: baseStoryboard.id,
+          title: baseStoryboard.title,
         }),
         availableActions: {
           save: true,
@@ -92,91 +115,98 @@ describe("master plot api", () => {
           reject: true,
         },
         latestTask: expect.objectContaining({
-          id: "task_20260317_ab12cd",
-          type: "master_plot_generate",
+          id: "task_20260321_storyboard",
+          type: "storyboard_generate",
         }),
       }),
     );
   });
 
-  it("returns 404 when the project has no current master plot", async () => {
+  it("returns 404 when the project has no current storyboard", async () => {
     const { app } = await createTempApp();
     const project = await createProject(app);
 
     const response = await app.inject({
       method: "GET",
-      url: `/projects/${project.id}/master-plot/review`,
+      url: `/projects/${project.id}/storyboard/review`,
     });
 
     expect(response.statusCode).toBe(404);
   });
 
-  it("saves the current master plot", async () => {
+  it("saves the current storyboard", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
 
-    await seedCurrentMasterPlot({
+    await seedApprovedMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
     });
-    setProjectStatus({
+    await seedCurrentStoryboard({
       tempDir,
       projectId: project.id,
-      status: "master_plot_in_review",
+      projectStorageDir: project.storageDir,
+      storyboard: baseStoryboard,
+      status: "storyboard_in_review",
     });
 
     const response = await app.inject({
       method: "PUT",
-      url: `/projects/${project.id}/master-plot`,
+      url: `/projects/${project.id}/storyboard`,
       payload: {
-        ...baseMasterPlot,
+        ...baseStoryboard,
         title: "The Last Sky Choir Revised",
-        synopsis: "Rin follows the comet song into the drowned city and finds a way to lift it.",
+        scenes: [
+          {
+            ...baseStoryboard.scenes[0],
+            dramaticPurpose: "Sharpen the inciting beat.",
+          },
+        ],
       },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
-        id: baseMasterPlot.id,
+        id: baseStoryboard.id,
         title: "The Last Sky Choir Revised",
-        synopsis:
-          "Rin follows the comet song into the drowned city and finds a way to lift it.",
-        sourceTaskId: "task_20260317_ab12cd",
+        sourceTaskId: "task_20260321_storyboard",
         approvedAt: null,
       }),
     );
   });
 
-  it("approves the current master plot", async () => {
+  it("approves the current storyboard", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
 
-    await seedCurrentMasterPlot({
+    await seedApprovedMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
     });
-    setProjectStatus({
+    await seedCurrentStoryboard({
       tempDir,
       projectId: project.id,
-      status: "master_plot_in_review",
+      projectStorageDir: project.storageDir,
+      storyboard: baseStoryboard,
+      status: "storyboard_in_review",
     });
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/master-plot/approve`,
+      url: `/projects/${project.id}/storyboard/approve`,
       payload: {},
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
-        action: "approve",
-        masterPlotId: baseMasterPlot.id,
+        id: baseStoryboard.id,
+        approvedAt: expect.any(String),
       }),
     );
 
@@ -185,86 +215,51 @@ describe("master plot api", () => {
       url: `/projects/${project.id}`,
     });
 
-    expect(detailResponse.json().status).toBe("master_plot_approved");
-    expect(detailResponse.json().currentMasterPlot.approvedAt).toEqual(expect.any(String));
+    expect(detailResponse.json().status).toBe("storyboard_approved");
+    expect(detailResponse.json().currentStoryboard.approvedAt).toEqual(expect.any(String));
   });
 
-  it("approves the current master plot after migrating a legacy storyboard_reviews table", async () => {
-    const { app, tempDir } = await createTempApp({
-      legacyStoryboardReviewsTable: true,
-    });
-    const project = await createProject(app);
-
-    await seedCurrentMasterPlot({
-      tempDir,
-      projectId: project.id,
-      projectStorageDir: project.storageDir,
-      masterPlot: baseMasterPlot,
-    });
-    setProjectStatus({
-      tempDir,
-      projectId: project.id,
-      status: "master_plot_in_review",
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/projects/${project.id}/master-plot/approve`,
-      payload: {},
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(
-      expect.objectContaining({
-        action: "approve",
-        masterPlotId: baseMasterPlot.id,
-      }),
-    );
-  });
-
-  it("rejects the current master plot and triggers regeneration", async () => {
+  it("rejects the current storyboard and triggers regeneration", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
       taskQueue: { enqueue },
       taskIdGenerator: {
-        generateTaskId: () => "task_20260318_cd34ef",
+        generateTaskId: () => "task_20260321_regen",
       },
     });
     const project = await createProject(app);
 
-    await seedCurrentMasterPlot({
+    await seedApprovedMasterPlot({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
     });
-    setProjectStatus({
+    await seedCurrentStoryboard({
       tempDir,
       projectId: project.id,
-      status: "master_plot_in_review",
+      projectStorageDir: project.storageDir,
+      storyboard: baseStoryboard,
+      status: "storyboard_in_review",
     });
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/master-plot/reject`,
-      payload: {
-        reason: "Need a sharper ending beat.",
-      },
+      url: `/projects/${project.id}/storyboard/reject`,
+      payload: {},
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(
       expect.objectContaining({
-        action: "reject",
-        masterPlotId: baseMasterPlot.id,
-        reason: "Need a sharper ending beat.",
-        triggeredTaskId: "task_20260318_cd34ef",
+        id: "task_20260321_regen",
+        type: "storyboard_generate",
       }),
     );
     expect(enqueue).toHaveBeenCalledWith({
-      taskId: "task_20260318_cd34ef",
-      queueName: "master-plot-generate",
-      taskType: "master_plot_generate",
+      taskId: "task_20260321_regen",
+      queueName: "storyboard-generate",
+      taskType: "storyboard_generate",
     });
 
     const detailResponse = await app.inject({
@@ -272,61 +267,16 @@ describe("master plot api", () => {
       url: `/projects/${project.id}`,
     });
 
-    expect(detailResponse.json().status).toBe("master_plot_generating");
-  });
-
-  it("returns 400 when reject is missing a reason", async () => {
-    const { app, tempDir } = await createTempApp();
-    const project = await createProject(app);
-
-    await seedCurrentMasterPlot({
-      tempDir,
-      projectId: project.id,
-      projectStorageDir: project.storageDir,
-      masterPlot: baseMasterPlot,
-    });
-    setProjectStatus({
-      tempDir,
-      projectId: project.id,
-      status: "master_plot_in_review",
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/projects/${project.id}/master-plot/reject`,
-      payload: {
-        reason: "   ",
-      },
-    });
-
-    expect(response.statusCode).toBe(400);
+    expect(detailResponse.json().status).toBe("storyboard_generating");
   });
 
   async function createTempApp(options?: {
-    legacyStoryboardReviewsTable?: boolean;
     taskQueue?: { enqueue: ReturnType<typeof vi.fn> };
     taskIdGenerator?: { generateTaskId(): string };
   }) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-api-"));
     tempDirs.push(tempDir);
     await ensureTestPromptTemplate(tempDir);
-
-    if (options?.legacyStoryboardReviewsTable) {
-      const paths = createLocalDataPaths(tempDir);
-      const db = createSqliteDb({ paths });
-      db.exec(`
-        CREATE TABLE storyboard_reviews (
-          id TEXT PRIMARY KEY,
-          project_id TEXT NOT NULL,
-          storyboard_version_id TEXT NOT NULL,
-          action TEXT NOT NULL,
-          reason TEXT,
-          triggered_task_id TEXT,
-          created_at TEXT NOT NULL
-        )
-      `);
-      db.close();
-    }
 
     const app = buildApp({
       dataRoot: tempDir,
@@ -353,7 +303,7 @@ describe("master plot api", () => {
   }
 });
 
-async function seedCurrentMasterPlot(input: {
+async function seedApprovedMasterPlot(input: {
   tempDir: string;
   projectId: string;
   projectStorageDir: string;
@@ -362,9 +312,9 @@ async function seedCurrentMasterPlot(input: {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
   const projectRepository = createSqliteProjectRepository({ db });
-  const masterPlotStorage = createStoryboardStorage({ paths });
+  const storyboardStorage = createStoryboardStorage({ paths });
 
-  await masterPlotStorage.writeCurrentMasterPlot({
+  await storyboardStorage.writeCurrentMasterPlot({
     storageDir: input.projectStorageDir,
     masterPlot: input.masterPlot,
   });
@@ -372,66 +322,73 @@ async function seedCurrentMasterPlot(input: {
     projectId: input.projectId,
     masterPlotId: input.masterPlot.id,
   });
+  projectRepository.updateStatus({
+    projectId: input.projectId,
+    status: "master_plot_approved",
+    updatedAt: input.masterPlot.approvedAt ?? input.masterPlot.updatedAt,
+  });
   db.close();
 }
 
-function seedReviewWorkspace(input: {
+async function seedCurrentStoryboard(input: {
   tempDir: string;
   projectId: string;
   projectStorageDir: string;
-  masterPlotId: string;
+  storyboard: CurrentStoryboard;
+  status: "storyboard_in_review" | "storyboard_approved";
 }) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
   const projectRepository = createSqliteProjectRepository({ db });
-  const taskRepository = createSqliteTaskRepository({ db });
-  const reviewRepository = createSqliteStoryboardReviewRepository({ db });
+  const storyboardStorage = createStoryboardStorage({ paths });
 
-  projectRepository.updateStatus({
-    projectId: input.projectId,
-    status: "master_plot_in_review",
-    updatedAt: "2026-03-17T12:10:00.000Z",
+  await storyboardStorage.writeCurrentStoryboard({
+    storageDir: input.projectStorageDir,
+    storyboard: input.storyboard,
   });
-  taskRepository.insert(
-    createTaskRecord({
-      id: "task_20260317_ab12cd",
-      projectId: input.projectId,
-      projectStorageDir: input.projectStorageDir,
-      type: "master_plot_generate",
-      queueName: "master-plot-generate",
-      createdAt: "2026-03-17T12:00:00.000Z",
-      updatedAt: "2026-03-17T12:05:00.000Z",
-      status: "succeeded",
-      startedAt: "2026-03-17T12:01:00.000Z",
-      finishedAt: "2026-03-17T12:05:00.000Z",
-    }),
-  );
-  reviewRepository.insert(
-    createStoryboardReviewRecord({
-      id: "sbr_20260317_ab12cd",
-      projectId: input.projectId,
-      masterPlotId: input.masterPlotId,
-      action: "reject",
-      reason: "Need better pacing.",
-      createdAt: "2026-03-17T12:10:00.000Z",
-    }),
-  );
-  db.close();
-}
-
-function setProjectStatus(input: {
-  tempDir: string;
-  projectId: string;
-  status: "master_plot_in_review" | "master_plot_approved";
-}) {
-  const paths = createLocalDataPaths(input.tempDir);
-  const db = createSqliteDb({ paths });
-  const projectRepository = createSqliteProjectRepository({ db });
-
+  projectRepository.updateCurrentStoryboard({
+    projectId: input.projectId,
+    storyboardId: input.storyboard.id,
+  });
   projectRepository.updateStatus({
     projectId: input.projectId,
     status: input.status,
-    updatedAt: "2026-03-17T12:10:00.000Z",
+    updatedAt: input.storyboard.updatedAt,
   });
   db.close();
+}
+
+async function seedStoryboardReviewWorkspace(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+  storyboard: CurrentStoryboard;
+}) {
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const taskRepository = createSqliteTaskRepository({ db });
+
+  taskRepository.insert(
+    createTaskRecord({
+      id: "task_20260321_storyboard",
+      projectId: input.projectId,
+      projectStorageDir: input.projectStorageDir,
+      type: "storyboard_generate",
+      queueName: "storyboard-generate",
+      createdAt: "2026-03-21T12:00:00.000Z",
+      updatedAt: "2026-03-21T12:05:00.000Z",
+      status: "succeeded",
+      startedAt: "2026-03-21T12:01:00.000Z",
+      finishedAt: "2026-03-21T12:05:00.000Z",
+    }),
+  );
+  db.close();
+
+  await seedCurrentStoryboard({
+    tempDir: input.tempDir,
+    projectId: input.projectId,
+    projectStorageDir: input.projectStorageDir,
+    storyboard: input.storyboard,
+    status: "storyboard_in_review",
+  });
 }

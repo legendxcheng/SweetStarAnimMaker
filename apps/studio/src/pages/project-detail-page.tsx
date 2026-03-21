@@ -7,6 +7,7 @@ import { MasterPlotPhasePanel } from "../components/master-plot-phase-panel";
 import { PageHeader } from "../components/page-header";
 import { PremisePhasePanel } from "../components/premise-phase-panel";
 import { ProjectPhaseNav } from "../components/project-phase-nav";
+import { StoryboardPhasePanel } from "../components/storyboard-phase-panel";
 import { useTaskPolling } from "../hooks/use-task-polling";
 import { apiClient } from "../services/api-client";
 
@@ -15,13 +16,27 @@ function isActiveTask(task: TaskDetail | null) {
 }
 
 const PROJECT_PHASES = [
-  { key: "premise", label: "前提", enabled: true },
-  { key: "master_plot", label: "主情节", enabled: true },
-  { key: "storyboard", label: "分镜", enabled: false },
-  { key: "shot_script", label: "镜头脚本", enabled: false },
-  { key: "image", label: "出图", enabled: false },
-  { key: "final_cut", label: "成片", enabled: false },
+  { key: "premise", label: "前提" },
+  { key: "master_plot", label: "主情节" },
+  { key: "storyboard", label: "分镜" },
+  { key: "shot_script", label: "镜头脚本" },
+  { key: "image", label: "出图" },
+  { key: "final_cut", label: "成片" },
 ] as const;
+
+function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return (
+    project.status === "master_plot_approved" ||
+    project.status === "storyboard_generating" ||
+    project.status === "storyboard_in_review" ||
+    project.status === "storyboard_approved" ||
+    project.currentStoryboard !== null
+  );
+}
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -53,7 +68,7 @@ export function ProjectDetailPage() {
   }, [projectId]);
 
   useEffect(() => {
-    if (project?.status !== "master_plot_generating" || activeTask) return;
+    if (project?.status !== "storyboard_generating" || activeTask) return;
     const interval = setInterval(() => {
       void loadProject();
     }, 3000);
@@ -74,11 +89,11 @@ export function ProjectDetailPage() {
   const task = polling.task ?? activeTask;
   const taskError = polling.error ?? error;
 
-  const handleGenerateMasterPlot = async () => {
+  const handleGenerateStoryboard = async () => {
     if (!projectId || creatingTask || isActiveTask(task)) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createMasterPlotGenerateTask(projectId);
+      const nextTask = await apiClient.createStoryboardGenerateTask(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -87,6 +102,14 @@ export function ProjectDetailPage() {
       setCreatingTask(false);
     }
   };
+
+  const phaseItems = PROJECT_PHASES.map((phase) => ({
+    ...phase,
+    enabled:
+      phase.key === "premise" ||
+      phase.key === "master_plot" ||
+      (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)),
+  }));
 
   return (
     <div>
@@ -112,7 +135,7 @@ export function ProjectDetailPage() {
 
             <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
               <ProjectPhaseNav
-                phases={PROJECT_PHASES}
+                phases={phaseItems}
                 selectedPhase={selectedPhase}
                 onSelect={setSelectedPhase}
               />
@@ -120,15 +143,21 @@ export function ProjectDetailPage() {
               <div>
                 {selectedPhase === "premise" ? (
                   <PremisePhasePanel project={currentProject} />
+                ) : selectedPhase === "master_plot" ? (
+                  <MasterPlotPhasePanel project={currentProject} />
                 ) : (
-                  <MasterPlotPhasePanel
+                  <StoryboardPhasePanel
                     project={currentProject}
                     task={task}
                     taskError={taskError}
                     creatingTask={creatingTask}
-                    disableGenerate={creatingTask || isActiveTask(task)}
+                    disableGenerate={
+                      creatingTask ||
+                      isActiveTask(task) ||
+                      currentProject.status !== "master_plot_approved"
+                    }
                     onGenerate={() => {
-                      void handleGenerateMasterPlot();
+                      void handleGenerateStoryboard();
                     }}
                   />
                 )}

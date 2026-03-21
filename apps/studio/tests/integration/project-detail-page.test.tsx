@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+
 import { ProjectDetailPage } from "../../src/pages/project-detail-page";
 import * as apiModule from "../../src/services/api-client";
 
@@ -20,12 +21,32 @@ const baseProject = {
     updatedAt: "2024-01-01T00:00:00Z",
   },
   currentMasterPlot: null,
+  currentStoryboard: null,
+};
+
+const approvedMasterPlotProject = {
+  ...baseProject,
+  status: "master_plot_approved" as const,
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis: "Rin follows the comet song and discovers how to lift the drowned city.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict: "Rin must choose between escape and saving the city.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "The city rises on a final chorus of light.",
+    targetDurationSec: 480,
+    sourceTaskId: "task-master-plot",
+    updatedAt: "2024-01-01T00:00:03Z",
+    approvedAt: "2024-01-01T00:00:04Z",
+  },
 };
 
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
-  type: "master_plot_generate" as const,
+  type: "storyboard_generate" as const,
   status: "running" as const,
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:01Z",
@@ -55,37 +76,25 @@ const failedTask = {
 };
 
 const reviewedProject = {
-  ...baseProject,
-  status: "master_plot_in_review" as const,
-  currentMasterPlot: {
-    id: "mp-1",
+  ...approvedMasterPlotProject,
+  status: "storyboard_in_review" as const,
+  currentStoryboard: {
+    id: "storyboard-1",
     title: "The Last Sky Choir",
-    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-    synopsis: "Rin follows the comet song and discovers how to lift the drowned city.",
-    mainCharacters: ["Rin", "Ivo"],
-    coreConflict: "Rin must choose between escape and saving the city.",
-    emotionalArc: "She moves from bitterness to sacrificial hope.",
-    endingBeat: "The city rises on a final chorus of light.",
-    targetDurationSec: 480,
+    episodeTitle: "Episode 1",
+    sourceMasterPlotId: "mp-1",
     sourceTaskId: "task-1",
     updatedAt: "2024-01-01T00:00:03Z",
     approvedAt: null,
-  },
-};
-
-const reviewedProjectWithMissingDisplayValues = {
-  ...reviewedProject,
-  currentMasterPlot: {
-    ...reviewedProject.currentMasterPlot,
-    title: null,
-    mainCharacters: [],
-    targetDurationSec: null,
+    sceneCount: 2,
+    segmentCount: 5,
+    totalDurationSec: 42,
   },
 };
 
 const generatingProject = {
-  ...baseProject,
-  status: "master_plot_generating" as const,
+  ...approvedMasterPlotProject,
+  status: "storyboard_generating" as const,
 };
 
 function renderPage() {
@@ -123,11 +132,10 @@ describe("Project Detail Page", () => {
     expect(screen.getByRole("button", { name: "主情节" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
     expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /生成主情节/i })).not.toBeInTheDocument();
   });
 
   it("switches to the master-plot panel when the user clicks 主情节", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
 
     renderPage();
 
@@ -138,91 +146,67 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "主情节" }));
 
     expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /生成主情节/i })).toBeInTheDocument();
-    expect(screen.queryByText("项目 ID")).not.toBeInTheDocument();
+    expect(screen.getByText(approvedMasterPlotProject.currentMasterPlot.synopsis)).toBeInTheDocument();
   });
 
-  it("keeps future phases disabled and ignores clicks on them", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+  it("does not expose storyboard generation actions from the master-plot panel", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+    const createStoryboardGenerateTask = vi.spyOn(
+      apiModule.apiClient,
+      "createStoryboardGenerateTask",
+    );
 
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+
+    expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /生成主情节/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /生成分镜文案/i })).not.toBeInTheDocument();
+    expect(createStoryboardGenerateTask).not.toHaveBeenCalled();
+  });
+
+  it("enables the storyboard panel after the master plot is approved", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
 
-    expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "分镜工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成分镜文案/i })).toBeInTheDocument();
   });
 
-  it("shows the full current master-plot details in the 主情节 workspace", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(reviewedProject);
+  it("loads project detail and lets the user start storyboard generation", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
 
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-
-    expect(screen.getByText("剧情简介")).toBeInTheDocument();
-    expect(screen.getByText(reviewedProject.currentMasterPlot.synopsis)).toBeInTheDocument();
-    expect(screen.getByText("核心冲突")).toBeInTheDocument();
-    expect(screen.getByText(reviewedProject.currentMasterPlot.coreConflict)).toBeInTheDocument();
-    expect(screen.getByText("情感弧光")).toBeInTheDocument();
-    expect(screen.getByText(reviewedProject.currentMasterPlot.emotionalArc)).toBeInTheDocument();
-    expect(screen.getByText("结局落点")).toBeInTheDocument();
-    expect(screen.getByText(reviewedProject.currentMasterPlot.endingBeat)).toBeInTheDocument();
-    expect(screen.getByText("目标时长")).toBeInTheDocument();
-    expect(screen.getByText("480 秒")).toBeInTheDocument();
-  });
-
-  it("shows master-plot fallback values for missing title, characters, and duration", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
-      reviewedProjectWithMissingDisplayValues,
-    );
-
-    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-
-    expect(screen.getByText("未命名")).toBeInTheDocument();
-    expect(screen.getByText("暂无")).toBeInTheDocument();
-    expect(screen.getByText("未设置")).toBeInTheDocument();
-  });
-
-  it("loads project detail and lets the user start master-plot generation", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
-    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
-      runningTask,
-    );
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
-        "proj-1",
-      );
+      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
     });
 
     expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
     expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
-  it("refreshes generating projects even when no local task id is available", async () => {
+  it("refreshes generating storyboard projects even when no local task id is available", async () => {
     let refreshTimer: (() => void) | undefined;
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
       refreshTimer = callback as () => void;
@@ -236,11 +220,11 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-    expect(screen.getByText(/主情节生成中/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    expect(screen.getByText(/分镜文案生成中/)).toBeInTheDocument();
     expect(refreshTimer).toBeDefined();
 
     await act(async () => {
@@ -248,7 +232,7 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toBeInTheDocument();
   });
 
   it("polls task detail until success, refreshes the project, and shows the review entry", async () => {
@@ -262,11 +246,9 @@ describe("Project Detail Page", () => {
     }) as typeof setInterval);
 
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(baseProject)
+      .mockResolvedValueOnce(approvedMasterPlotProject)
       .mockResolvedValueOnce(reviewedProject);
-    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
-      runningTask,
-    );
+    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     const getTaskDetail = vi
       .spyOn(apiModule.apiClient, "getTaskDetail")
       .mockResolvedValueOnce(runningTask)
@@ -275,16 +257,14 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
-        "proj-1",
-      );
+      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
     });
 
     expect(pollTimer).toBeDefined();
@@ -300,7 +280,7 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toBeInTheDocument();
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
 
@@ -311,10 +291,8 @@ describe("Project Detail Page", () => {
       return 1 as unknown as ReturnType<typeof setInterval>;
     }) as typeof setInterval);
 
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
-    vi.spyOn(apiModule.apiClient, "createMasterPlotGenerateTask").mockResolvedValue(
-      runningTask,
-    );
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     const getTaskDetail = vi
       .spyOn(apiModule.apiClient, "getTaskDetail")
       .mockResolvedValue(failedTask);
@@ -322,16 +300,14 @@ describe("Project Detail Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createMasterPlotGenerateTask).toHaveBeenCalledWith(
-        "proj-1",
-      );
+      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
     });
 
     expect(pollTimer).toBeDefined();

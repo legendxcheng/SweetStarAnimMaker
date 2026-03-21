@@ -7,6 +7,8 @@ export {
 } from "./domain/project";
 export type {
   CurrentMasterPlot,
+  CurrentStoryboard,
+  CurrentStoryboardSummary,
   MasterPlotReviewAvailableActions,
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
@@ -22,11 +24,17 @@ export {
   type CurrentMasterPlotRecord,
 } from "./domain/master-plot";
 export {
+  currentStoryboardDirectoryName,
+  currentStoryboardJsonFileName,
+  currentStoryboardJsonRelPath,
+  currentStoryboardMarkdownFileName,
+  currentStoryboardMarkdownRelPath,
   createStoryboardVersionRecord,
   storyboardDirectoryName,
   storyboardRawDirectoryName,
   storyboardVersionsDirectoryName,
   toCurrentStoryboard,
+  toCurrentStoryboardSummary,
   toStoryboardRawResponseRelPath,
   toStoryboardVersionId,
   toStoryboardVersionFileRelPath,
@@ -43,6 +51,7 @@ export {
 export {
   createTaskRecord,
   masterPlotGenerateQueueName,
+  storyboardGenerateQueueName,
   taskArtifactsDirectoryName,
   taskInputFileName,
   taskLogFileName,
@@ -53,6 +62,7 @@ export {
   toTaskStorageDir,
   type CreateTaskRecordInput,
   type MasterPlotGenerateTaskInput,
+  type StoryboardGenerateTaskInput,
   type TaskRecord,
 } from "./domain/task";
 export {
@@ -69,7 +79,10 @@ export {
   ProjectNotFoundError,
   ProjectValidationError,
 } from "./errors/project-errors";
-export { CurrentMasterPlotNotFoundError } from "./errors/storyboard-errors";
+export {
+  CurrentMasterPlotNotFoundError,
+  CurrentStoryboardNotFoundError,
+} from "./errors/storyboard-errors";
 export {
   RejectStoryboardReasonRequiredError,
   StoryboardReviewVersionConflictError,
@@ -78,6 +91,7 @@ export { TaskNotFoundError } from "./errors/task-errors";
 export type {
   ProjectRepository,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,
   UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
@@ -93,6 +107,9 @@ export type {
   GenerateMasterPlotInput,
   GenerateMasterPlotResult,
   MasterPlotProvider,
+  GenerateStoryboardInput,
+  GenerateStoryboardResult,
+  StoryboardProvider,
 } from "./ports/storyboard-provider";
 export type { StoryboardReviewRepository } from "./ports/storyboard-review-repository";
 export type {
@@ -100,8 +117,10 @@ export type {
   MasterPlotStorage,
   ReadPromptTemplateInput,
   ReadCurrentMasterPlotInput,
+  ReadCurrentStoryboardInput,
   StoryboardStorage,
   WriteCurrentMasterPlotInput,
+  WriteCurrentStoryboardInput,
   WritePromptSnapshotInput,
   WriteRawResponseInput,
 } from "./ports/storyboard-storage";

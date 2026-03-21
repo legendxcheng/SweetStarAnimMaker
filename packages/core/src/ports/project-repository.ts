@@ -14,6 +14,11 @@ export interface UpdateCurrentMasterPlotInput {
   masterPlotId: string | null;
 }
 
+export interface UpdateCurrentStoryboardInput {
+  projectId: string;
+  storyboardId: string | null;
+}
+
 export interface UpdateProjectStatusInput {
   projectId: string;
   status: ProjectStatus;
@@ -29,6 +34,9 @@ export interface ProjectRepository {
   ): Promise<void> | void;
   updateCurrentMasterPlot(
     input: UpdateCurrentMasterPlotInput,
+  ): Promise<void> | void;
+  updateCurrentStoryboard(
+    input: UpdateCurrentStoryboardInput,
   ): Promise<void> | void;
   updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
 }

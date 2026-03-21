@@ -18,15 +18,24 @@ describe("gemini storyboard provider", () => {
                 {
                   text: JSON.stringify({
                     title: "The Last Sky Choir",
-                    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-                    synopsis:
-                      "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-                    mainCharacters: ["Rin", "Ivo"],
-                    coreConflict:
-                      "Rin must choose between private escape and saving the city that exiled her.",
-                    emotionalArc: "She moves from bitterness to sacrificial hope.",
-                    endingBeat: "Rin turns the comet's music into a rising tide of light.",
-                    targetDurationSec: 480,
+                    episodeTitle: "Episode 1",
+                    scenes: [
+                      {
+                        name: "Rin Hears The Sky",
+                        dramaticPurpose: "Trigger the inciting beat.",
+                        segments: [
+                          {
+                            durationSec: 6,
+                            visual: "Rain shakes across the cockpit glass.",
+                            characterAction: "Rin looks up.",
+                            dialogue: "",
+                            voiceOver: "That sound again.",
+                            audio: "",
+                            purpose: "Start the mystery.",
+                          },
+                        ],
+                      },
+                    ],
                   }),
                 },
               ],
@@ -43,10 +52,21 @@ describe("gemini storyboard provider", () => {
       model: "gemini-3.1-pro-preview",
     });
 
-    const result = await provider.generateMasterPlot({
-      projectId: "proj_20260317_ab12cd",
-      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
-      promptText: "Turn this premise into a master plot:\n{{premiseText}}",
+    const result = await provider.generateStoryboard({
+      projectId: "proj_20260321_ab12cd",
+      masterPlot: {
+        title: "The Last Sky Choir",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis:
+          "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict:
+          "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
+      },
+      promptText: "Turn this master plot into storyboard scenes.",
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -62,12 +82,13 @@ describe("gemini storyboard provider", () => {
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
 
-    expect(request.systemInstruction.parts[0].text).toContain("master plot");
+    expect(request.systemInstruction.parts[0].text).toContain("storyboard");
     expect(request.generationConfig.responseMimeType).toBe("application/json");
-    expect(request.generationConfig.responseJsonSchema.properties.mainCharacters).toBeDefined();
+    expect(request.generationConfig.responseJsonSchema.properties.scenes).toBeDefined();
     expect(result.provider).toBe("gemini");
     expect(result.model).toBe("gemini-3.1-pro-preview");
-    expect(result.masterPlot.title).toBe("The Last Sky Choir");
+    expect(result.storyboard.title).toBe("The Last Sky Choir");
+    expect(result.storyboard.scenes[0]?.segments[0]?.voiceOver).toBe("That sound again.");
     expect(result.rawResponse).toContain("The Last Sky Choir");
   });
 
@@ -88,15 +109,26 @@ describe("gemini storyboard provider", () => {
     });
 
     await expect(
-      provider.generateMasterPlot({
-        projectId: "proj_20260317_ab12cd",
-        premiseText: "Scene 1",
-        promptText: "Turn this premise into a master plot.",
+      provider.generateStoryboard({
+        projectId: "proj_20260321_ab12cd",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+        promptText: "Turn this master plot into storyboard scenes.",
       }),
-    ).rejects.toThrow("Gemini master plot provider request failed with status 401");
+    ).rejects.toThrow("Gemini storyboard provider request failed with status 401");
   });
 
-  it("rejects responses without usable master-plot content", async () => {
+  it("rejects responses without usable storyboard content", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -114,15 +146,26 @@ describe("gemini storyboard provider", () => {
     });
 
     await expect(
-      provider.generateMasterPlot({
-        projectId: "proj_20260317_ab12cd",
-        premiseText: "Scene 1",
-        promptText: "Turn this premise into a master plot.",
+      provider.generateStoryboard({
+        projectId: "proj_20260321_ab12cd",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+        promptText: "Turn this master plot into storyboard scenes.",
       }),
-    ).rejects.toThrow("Gemini master plot provider returned no usable content");
+    ).rejects.toThrow("Gemini storyboard provider returned no usable content");
   });
 
-  it("includes premise and prompt text in the request body", async () => {
+  it("includes master plot and prompt text in the request body", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -133,14 +176,24 @@ describe("gemini storyboard provider", () => {
                 {
                   text: JSON.stringify({
                     title: null,
-                    logline: "A lonely mechanic bargains with a star trapped in iron.",
-                    synopsis:
-                      "She must free the star before the empire turns it into a weapon.",
-                    mainCharacters: ["Mara", "The Star"],
-                    coreConflict: "Mercy collides with survival under occupation.",
-                    emotionalArc: "Mara learns that intimacy requires risk.",
-                    endingBeat: "She opens the foundry roof and lets dawn choose for her.",
-                    targetDurationSec: null,
+                    episodeTitle: null,
+                    scenes: [
+                      {
+                        name: "Mara Finds The Forge",
+                        dramaticPurpose: "Establish the threat.",
+                        segments: [
+                          {
+                            durationSec: null,
+                            visual: "The foundry glows in the storm.",
+                            characterAction: "Mara steps inside.",
+                            dialogue: "",
+                            voiceOver: "",
+                            audio: "Metal hum",
+                            purpose: "Introduce the world.",
+                          },
+                        ],
+                      },
+                    ],
                   }),
                 },
               ],
@@ -157,16 +210,27 @@ describe("gemini storyboard provider", () => {
       model: "gemini-3.1-pro-preview",
     });
 
-    await provider.generateMasterPlot({
-      projectId: "proj_20260317_ab12cd",
-      premiseText: "A lonely mechanic bargains with a star trapped in iron.",
-      promptText: "Expand this premise into a romantic tragedy.",
+    await provider.generateStoryboard({
+      projectId: "proj_20260321_ab12cd",
+      masterPlot: {
+        title: null,
+        logline: "A lonely mechanic bargains with a star trapped in iron.",
+        synopsis: "She must free the star before the empire turns it into a weapon.",
+        mainCharacters: ["Mara", "The Star"],
+        coreConflict: "Mercy collides with survival under occupation.",
+        emotionalArc: "Mara learns that intimacy requires risk.",
+        endingBeat: "She opens the foundry roof and lets dawn choose for her.",
+        targetDurationSec: null,
+      },
+      promptText: "Expand this master plot into a storyboard.",
     });
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     const promptText = request.contents[0].parts[0].text as string;
 
-    expect(promptText).toContain("Premise: A lonely mechanic bargains with a star trapped in iron.");
-    expect(promptText).toContain("Expand this premise into a romantic tragedy.");
+    expect(promptText).toContain(
+      "Master Plot: A lonely mechanic bargains with a star trapped in iron.",
+    );
+    expect(promptText).toContain("Expand this master plot into a storyboard.");
   });
 });

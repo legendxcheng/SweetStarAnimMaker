@@ -38,93 +38,93 @@ describe("sqlite task repository", () => {
     expect(table?.name).toBe("tasks");
   });
 
-  it("inserts and finds a task by id", async () => {
+  it("inserts and finds a storyboard task by id", async () => {
     const { repository } = await createRepositoryContext();
     const task = createTaskRecord({
-      id: "task_20260317_ab12cd",
-      projectId: "proj_20260317_ab12cd",
-      projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-      type: "master_plot_generate",
-      queueName: "master-plot-generate",
-      createdAt: "2026-03-17T12:00:00.000Z",
+      id: "task_20260321_storyboard",
+      projectId: "proj_20260321_ab12cd",
+      projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
+      type: "storyboard_generate",
+      queueName: "storyboard-generate",
+      createdAt: "2026-03-21T12:00:00.000Z",
     });
 
     repository.insert(task);
 
-    expect(repository.findById("task_20260317_ab12cd")).toEqual(task);
+    expect(repository.findById("task_20260321_storyboard")).toEqual(task);
   });
 
   it("updates status transitions and error metadata", async () => {
     const { repository } = await createRepositoryContext();
     const task = createTaskRecord({
-      id: "task_20260317_ab12cd",
-      projectId: "proj_20260317_ab12cd",
-      projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-      type: "master_plot_generate",
-      queueName: "master-plot-generate",
-      createdAt: "2026-03-17T12:00:00.000Z",
+      id: "task_20260321_storyboard",
+      projectId: "proj_20260321_ab12cd",
+      projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
+      type: "storyboard_generate",
+      queueName: "storyboard-generate",
+      createdAt: "2026-03-21T12:00:00.000Z",
     });
 
     repository.insert(task);
     repository.markRunning({
       taskId: task.id,
-      updatedAt: "2026-03-17T12:01:00.000Z",
-      startedAt: "2026-03-17T12:01:00.000Z",
+      updatedAt: "2026-03-21T12:01:00.000Z",
+      startedAt: "2026-03-21T12:01:00.000Z",
     });
 
     expect(repository.findById(task.id)).toEqual({
       ...task,
       status: "running",
-      updatedAt: "2026-03-17T12:01:00.000Z",
-      startedAt: "2026-03-17T12:01:00.000Z",
+      updatedAt: "2026-03-21T12:01:00.000Z",
+      startedAt: "2026-03-21T12:01:00.000Z",
     });
 
     repository.markFailed({
       taskId: task.id,
       errorMessage: "boom",
-      updatedAt: "2026-03-17T12:02:00.000Z",
-      finishedAt: "2026-03-17T12:02:00.000Z",
+      updatedAt: "2026-03-21T12:02:00.000Z",
+      finishedAt: "2026-03-21T12:02:00.000Z",
     });
 
     expect(repository.findById(task.id)).toEqual({
       ...task,
       status: "failed",
-      updatedAt: "2026-03-17T12:02:00.000Z",
-      startedAt: "2026-03-17T12:01:00.000Z",
-      finishedAt: "2026-03-17T12:02:00.000Z",
+      updatedAt: "2026-03-21T12:02:00.000Z",
+      startedAt: "2026-03-21T12:01:00.000Z",
+      finishedAt: "2026-03-21T12:02:00.000Z",
       errorMessage: "boom",
     });
   });
 
-  it("finds the latest master-plot generate task for a project", async () => {
+  it("finds the latest storyboard generate task for a project", async () => {
     const { repository } = await createRepositoryContext();
 
     repository.insert(
       createTaskRecord({
-        id: "task_20260317_old",
-        projectId: "proj_20260317_ab12cd",
-        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-        type: "master_plot_generate",
-        queueName: "master-plot-generate",
-        createdAt: "2026-03-17T12:00:00.000Z",
+        id: "task_20260321_old",
+        projectId: "proj_20260321_ab12cd",
+        projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
+        type: "storyboard_generate",
+        queueName: "storyboard-generate",
+        createdAt: "2026-03-21T12:00:00.000Z",
       }),
     );
     repository.insert(
       createTaskRecord({
-        id: "task_20260317_new",
-        projectId: "proj_20260317_ab12cd",
-        projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
-        type: "master_plot_generate",
-        queueName: "master-plot-generate",
-        createdAt: "2026-03-17T12:05:00.000Z",
+        id: "task_20260321_new",
+        projectId: "proj_20260321_ab12cd",
+        projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
+        type: "storyboard_generate",
+        queueName: "storyboard-generate",
+        createdAt: "2026-03-21T12:05:00.000Z",
       }),
     );
 
     expect(
-      repository.findLatestByProjectId("proj_20260317_ab12cd", "master_plot_generate"),
+      repository.findLatestByProjectId("proj_20260321_ab12cd", "storyboard_generate"),
     ).toEqual(
       expect.objectContaining({
-        id: "task_20260317_new",
+        id: "task_20260321_new",
       }),
     );
   });

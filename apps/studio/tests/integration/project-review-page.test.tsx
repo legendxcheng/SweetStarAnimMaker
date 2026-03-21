@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+
 import { ReviewWorkspacePage } from "../../src/pages/review-workspace-page";
 import * as apiModule from "../../src/services/api-client";
 
@@ -8,22 +9,38 @@ vi.mock("../../src/services/api-client");
 
 const workspace = {
   projectId: "proj-1",
-  projectStatus: "master_plot_in_review" as const,
-  currentMasterPlot: {
-    id: "mp-1",
+  projectName: "Test Project",
+  projectStatus: "storyboard_in_review" as const,
+  currentStoryboard: {
+    id: "storyboard-1",
     title: "The Last Sky Choir",
-    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-    synopsis: "Rin hears the comet sing and discovers how to lift the drowned city.",
-    mainCharacters: ["Rin", "Ivo"],
-    coreConflict: "Rin must choose between escape and saving the city.",
-    emotionalArc: "She moves from bitterness to sacrificial hope.",
-    endingBeat: "The city rises on a final chorus of light.",
-    targetDurationSec: 480,
+    episodeTitle: "Episode 1",
+    sourceMasterPlotId: "mp-1",
     sourceTaskId: "task-1",
     updatedAt: "2024-01-01T00:00:00Z",
     approvedAt: null,
+    scenes: [
+      {
+        id: "scene-1",
+        order: 1,
+        name: "Opening",
+        dramaticPurpose: "Introduce Rin and the comet.",
+        segments: [
+          {
+            id: "segment-1",
+            order: 1,
+            durationSec: 6,
+            visual: "Rain shakes across the cockpit glass.",
+            characterAction: "Rin looks up.",
+            dialogue: "",
+            voiceOver: "That sound again.",
+            audio: "A comet hum under thunder.",
+            purpose: "Start the mystery.",
+          },
+        ],
+      },
+    ],
   },
-  latestReview: null,
   availableActions: {
     save: true,
     approve: true,
@@ -34,10 +51,15 @@ const workspace = {
 
 const refreshedWorkspace = {
   ...workspace,
-  currentMasterPlot: {
-    ...workspace.currentMasterPlot,
+  currentStoryboard: {
+    ...workspace.currentStoryboard,
     title: "The Last Sky Choir Revised",
-    synopsis: "Updated master plot synopsis",
+    scenes: [
+      {
+        ...workspace.currentStoryboard.scenes[0],
+        dramaticPurpose: "Sharpen the inciting beat.",
+      },
+    ],
     updatedAt: "2024-01-01T00:00:02Z",
   },
 };
@@ -58,8 +80,8 @@ describe("Project Review Page", () => {
     globalThis.alert = vi.fn();
   });
 
-  it("loads the workspace and renders editable master-plot fields", async () => {
-    vi.spyOn(apiModule.apiClient, "getReviewWorkspace").mockResolvedValue(workspace);
+  it("loads the workspace and renders editable storyboard fields", async () => {
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace").mockResolvedValue(workspace);
 
     renderPage();
 
@@ -67,23 +89,19 @@ describe("Project Review Page", () => {
       expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
     });
 
+    expect(screen.getByDisplayValue("Episode 1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Opening")).toBeInTheDocument();
     expect(
-      screen.getByDisplayValue(
-        "A disgraced pilot chases a cosmic song to save her flooded home.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Rin, Ivo")).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue("The city rises on a final chorus of light."),
+      screen.getByDisplayValue("Rain shakes across the cockpit glass."),
     ).toBeInTheDocument();
   });
 
   it("saves the edited draft and refreshes the workspace", async () => {
-    vi.spyOn(apiModule.apiClient, "getReviewWorkspace")
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace")
       .mockResolvedValueOnce(workspace)
       .mockResolvedValueOnce(refreshedWorkspace);
-    vi.spyOn(apiModule.apiClient, "saveMasterPlot").mockResolvedValue(
-      refreshedWorkspace.currentMasterPlot,
+    vi.spyOn(apiModule.apiClient, "saveStoryboard").mockResolvedValue(
+      refreshedWorkspace.currentStoryboard,
     );
 
     renderPage();
@@ -95,22 +113,39 @@ describe("Project Review Page", () => {
     fireEvent.change(screen.getByLabelText("标题"), {
       target: { value: "The Last Sky Choir Revised" },
     });
-    fireEvent.change(screen.getByLabelText("剧情简介"), {
-      target: { value: "Updated master plot synopsis" },
+    fireEvent.change(screen.getByLabelText("场景 1 戏剧目的"), {
+      target: { value: "Sharpen the inciting beat." },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.saveMasterPlot).toHaveBeenCalledWith("proj-1", {
+      expect(apiModule.apiClient.saveStoryboard).toHaveBeenCalledWith("proj-1", {
         title: "The Last Sky Choir Revised",
-        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-        synopsis: "Updated master plot synopsis",
-        mainCharacters: ["Rin", "Ivo"],
-        coreConflict: "Rin must choose between escape and saving the city.",
-        emotionalArc: "She moves from bitterness to sacrificial hope.",
-        endingBeat: "The city rises on a final chorus of light.",
-        targetDurationSec: 480,
+        episodeTitle: "Episode 1",
+        sourceMasterPlotId: "mp-1",
+        sourceTaskId: "task-1",
+        scenes: [
+          {
+            id: "scene-1",
+            order: 1,
+            name: "Opening",
+            dramaticPurpose: "Sharpen the inciting beat.",
+            segments: [
+              {
+                id: "segment-1",
+                order: 1,
+                durationSec: 6,
+                visual: "Rain shakes across the cockpit glass.",
+                characterAction: "Rin looks up.",
+                dialogue: "",
+                voiceOver: "That sound again.",
+                audio: "A comet hum under thunder.",
+                purpose: "Start the mystery.",
+              },
+            ],
+          },
+        ],
       });
     });
 
@@ -120,8 +155,8 @@ describe("Project Review Page", () => {
   });
 
   it("keeps edited draft values visible when save fails", async () => {
-    vi.spyOn(apiModule.apiClient, "getReviewWorkspace").mockResolvedValue(workspace);
-    vi.spyOn(apiModule.apiClient, "saveMasterPlot").mockRejectedValue(
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace").mockResolvedValue(workspace);
+    vi.spyOn(apiModule.apiClient, "saveStoryboard").mockRejectedValue(
       new Error("Version conflict"),
     );
 

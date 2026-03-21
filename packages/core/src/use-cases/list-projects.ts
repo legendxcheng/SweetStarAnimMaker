@@ -1,7 +1,8 @@
 import type { ProjectSummary } from "@sweet-star/shared";
 
 import type { ProjectRepository } from "../ports/project-repository";
-import type { MasterPlotStorage } from "../ports/storyboard-storage";
+import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
+import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { toProjectSummaryDto } from "./project-summary-dto";
 
 export interface ListProjectsUseCase {
@@ -11,6 +12,7 @@ export interface ListProjectsUseCase {
 export interface ListProjectsUseCaseDependencies {
   repository: ProjectRepository;
   masterPlotStorage: MasterPlotStorage;
+  storyboardStorage: StoryboardStorage;
 }
 
 export function createListProjectsUseCase(
@@ -27,7 +29,16 @@ export function createListProjectsUseCase(
                 storageDir: project.storageDir,
               })
             : null;
-          return toProjectSummaryDto(project, currentMasterPlot);
+          const currentStoryboard = project.currentStoryboardId
+            ? await dependencies.storyboardStorage.readCurrentStoryboard({
+                storageDir: project.storageDir,
+              })
+            : null;
+          return toProjectSummaryDto(
+            project,
+            currentMasterPlot,
+            currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
+          );
         }),
       );
 

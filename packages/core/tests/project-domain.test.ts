@@ -15,6 +15,7 @@ describe("project domain", () => {
     expect(project.storageDir).toBe("projects/proj_20260317_ab12cd-my-story");
     expect(project.premiseRelPath).toBe("premise/v1.md");
     expect(project.status).toBe("premise_ready");
+    expect(project.currentStoryboardId).toBeNull();
   });
 
   it("maps project dtos with premise metadata and current master plot slots", () => {
@@ -27,8 +28,8 @@ describe("project domain", () => {
       premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
     });
 
-    const detail = toProjectDetailDto(project, null);
-    const summary = toProjectSummaryDto(project, null);
+    const detail = toProjectDetailDto(project, null, null);
+    const summary = toProjectSummaryDto(project, null, null);
 
     expect(detail.premise).toEqual({
       path: "premise/v1.md",
@@ -36,6 +37,8 @@ describe("project domain", () => {
       updatedAt: "2026-03-17T00:00:00.000Z",
     });
     expect(detail.currentMasterPlot).toBeNull();
+    expect(detail.currentStoryboard).toBeNull();
     expect(summary.currentMasterPlot).toBeNull();
+    expect(summary.currentStoryboard).toBeNull();
   });
 });

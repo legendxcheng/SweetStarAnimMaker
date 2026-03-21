@@ -1,6 +1,9 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
-import type { MasterPlotProvider } from "@sweet-star/core";
+import {
+  storyboardGenerateQueueName,
+  type StoryboardProvider,
+} from "@sweet-star/core";
 
 import { buildSpec2WorkerServices } from "./bootstrap/build-spec2-worker-services";
 // @ts-expect-error runtime env loader lives outside this app tsconfig root
@@ -29,7 +32,7 @@ export interface StartWorkerOptions {
   };
   workspaceRoot?: string;
   redisUrl?: string;
-  masterPlotProvider?: MasterPlotProvider;
+  storyboardProvider?: StoryboardProvider;
   workerFactory?: (input: {
     queueName: string;
     processor(job: WorkerJob): Promise<void>;
@@ -44,7 +47,7 @@ export async function startWorker(
     options.services ??
     buildSpec2WorkerServices({
       workspaceRoot: options.workspaceRoot ?? process.cwd(),
-      masterPlotProvider: options.masterPlotProvider,
+      storyboardProvider: options.storyboardProvider,
     });
   const processor = async (job: WorkerJob) => {
     await services.processStoryboardGenerateTask.execute({
@@ -58,7 +61,7 @@ export async function startWorker(
       });
   const worker =
     (await options.workerFactory?.({
-      queueName: "master-plot-generate",
+      queueName: storyboardGenerateQueueName,
       processor,
     })) ??
     createBullMqWorker({
@@ -79,7 +82,7 @@ function createBullMqWorker(input: {
   connection: IORedis;
   processor(job: WorkerJob): Promise<void>;
 }): WorkerInstance {
-  const worker = new Worker("master-plot-generate", input.processor, {
+  const worker = new Worker(storyboardGenerateQueueName, input.processor, {
     connection: input.connection,
   });
 
