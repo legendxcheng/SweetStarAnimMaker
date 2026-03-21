@@ -2,6 +2,9 @@ import { z } from "zod";
 
 import { initialProjectStatus, projectStatuses } from "../constants/project-status";
 import {
+  currentCharacterSheetBatchSummaryResponseSchema,
+} from "./character-sheet-api";
+import {
   currentMasterPlotResponseSchema,
   currentStoryboardSummaryResponseSchema,
 } from "./storyboard-api";
@@ -27,6 +30,7 @@ export const projectSummaryResponseSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
+  currentCharacterSheetBatch: currentCharacterSheetBatchSummaryResponseSchema.nullable(),
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
 });
 
@@ -42,5 +46,6 @@ export const projectDetailResponseSchema = z.object({
   updatedAt: z.string(),
   premise: premiseMetadataSchema,
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
+  currentCharacterSheetBatch: currentCharacterSheetBatchSummaryResponseSchema.nullable(),
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
 });

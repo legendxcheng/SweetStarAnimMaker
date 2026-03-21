@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import * as shared from "../src/index";
 
 describe("task api schema", () => {
+  it("exposes the character-sheet task types", () => {
+    expect(shared.taskTypes).toEqual([
+      "master_plot_generate",
+      "character_sheets_generate",
+      "character_sheet_generate",
+      "storyboard_generate",
+    ]);
+  });
+
   it("exports a master-plot task response schema", () => {
     const schema = shared.createMasterPlotGenerateTaskResponseSchema;
 
@@ -10,6 +19,12 @@ describe("task api schema", () => {
 
   it("exports a storyboard task response schema", () => {
     const schema = shared.createStoryboardGenerateTaskResponseSchema;
+
+    expect(schema).toBeDefined();
+  });
+
+  it("exports a character-sheet task response schema", () => {
+    const schema = shared.createCharacterSheetsGenerateTaskResponseSchema;
 
     expect(schema).toBeDefined();
   });
@@ -75,5 +90,26 @@ describe("task api schema", () => {
     });
 
     expect(parsed.type).toBe("storyboard_generate");
+  });
+
+  it("accepts a character-sheet generation task detail response", () => {
+    const parsed = shared.taskDetailResponseSchema.parse({
+      id: "task_20260321_char1",
+      projectId: "proj_20260321_ab12cd",
+      type: "character_sheet_generate",
+      status: "succeeded",
+      createdAt: "2026-03-21T12:10:00.000Z",
+      updatedAt: "2026-03-21T12:12:00.000Z",
+      startedAt: "2026-03-21T12:10:05.000Z",
+      finishedAt: "2026-03-21T12:12:00.000Z",
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260321_char1/input.json",
+        outputPath: "tasks/task_20260321_char1/output.json",
+        logPath: "tasks/task_20260321_char1/log.txt",
+      },
+    });
+
+    expect(parsed.type).toBe("character_sheet_generate");
   });
 });

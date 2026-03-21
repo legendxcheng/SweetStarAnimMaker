@@ -27,6 +27,7 @@ describe("project api schema", () => {
         updatedAt: "2026-03-17T12:00:00.000Z",
       },
       currentMasterPlot: null,
+      currentCharacterSheetBatch: null,
       currentStoryboard: null,
     });
 
@@ -39,6 +40,9 @@ describe("project api schema", () => {
       "master_plot_generating",
       "master_plot_in_review",
       "master_plot_approved",
+      "character_sheets_generating",
+      "character_sheets_in_review",
+      "character_sheets_approved",
       "storyboard_generating",
       "storyboard_in_review",
       "storyboard_approved",
@@ -55,6 +59,7 @@ describe("project api schema", () => {
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
       currentMasterPlot: null,
+      currentCharacterSheetBatch: null,
       currentStoryboard: null,
     });
 
@@ -85,6 +90,7 @@ describe("project api schema", () => {
         updatedAt: "2026-03-17T12:05:00.000Z",
         approvedAt: null,
       },
+      currentCharacterSheetBatch: null,
       currentStoryboard: null,
     });
 
@@ -103,6 +109,7 @@ describe("project api schema", () => {
         createdAt: "2026-03-17T12:00:00.000Z",
         updatedAt: "2026-03-17T12:00:00.000Z",
         currentMasterPlot: null,
+        currentCharacterSheetBatch: null,
         currentStoryboard: null,
       },
       {
@@ -127,6 +134,7 @@ describe("project api schema", () => {
           updatedAt: "2026-03-17T13:05:00.000Z",
           approvedAt: "2026-03-17T13:15:00.000Z",
         },
+        currentCharacterSheetBatch: null,
         currentStoryboard: null,
       },
     ]);
@@ -166,6 +174,13 @@ describe("project api schema", () => {
         updatedAt: "2026-03-21T12:05:00.000Z",
         approvedAt: "2026-03-21T12:10:00.000Z",
       },
+      currentCharacterSheetBatch: {
+        id: "char_batch_v1",
+        sourceMasterPlotId: "master_plot_v1",
+        characterCount: 2,
+        approvedCharacterCount: 1,
+        updatedAt: "2026-03-21T12:20:00.000Z",
+      },
       currentStoryboard: {
         id: "storyboard_v1",
         title: "The Last Sky Choir",
@@ -182,5 +197,6 @@ describe("project api schema", () => {
 
     expect(parsed.currentStoryboard).not.toBeNull();
     expect(parsed.currentStoryboard?.segmentCount).toBe(5);
+    expect(parsed.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
   });
 });

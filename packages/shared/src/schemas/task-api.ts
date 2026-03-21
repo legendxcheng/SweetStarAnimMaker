@@ -23,4 +23,6 @@ export const taskDetailResponseSchema = z.object({
 });
 
 export const createMasterPlotGenerateTaskResponseSchema = taskDetailResponseSchema;
+export const createCharacterSheetsGenerateTaskResponseSchema = taskDetailResponseSchema;
+export const createCharacterSheetGenerateTaskResponseSchema = taskDetailResponseSchema;
 export const createStoryboardGenerateTaskResponseSchema = taskDetailResponseSchema;
