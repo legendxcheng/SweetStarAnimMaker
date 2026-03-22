@@ -37,6 +37,11 @@ export {
   type CreateTurnaroundImageProviderOptions,
 } from "./providers/turnaround-image-provider";
 export {
+  createReferenceImageUploader,
+  type CreateReferenceImageUploaderOptions,
+  type ReferenceImageUploader,
+} from "./image-upload/reference-image-uploader";
+export {
   createGeminiStoryboardProvider,
   type CreateGeminiStoryboardProviderOptions,
 } from "./providers/gemini-storyboard-provider";

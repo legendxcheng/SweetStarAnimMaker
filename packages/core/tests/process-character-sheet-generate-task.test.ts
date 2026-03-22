@@ -68,6 +68,7 @@ describe("process character sheet generate task use case", () => {
         characterName: "Rin",
         promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
         imagePromptTemplateKey: "character_sheet.turnaround.generate",
+        referenceImagePaths: ["E:/tmp/ref-1.png"],
       }),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
@@ -231,6 +232,7 @@ describe("process character sheet generate task use case", () => {
       characterId: "char_rin_1",
       promptText:
         "Turnaround sheet for Rin: silver pilot jacket, storm glare, scar at the brow",
+      referenceImagePaths: ["E:/tmp/ref-1.png"],
     });
     expect(characterSheetStorage.writeCurrentImage).toHaveBeenCalledWith({
       character: expect.objectContaining({ id: "char_rin_1" }),

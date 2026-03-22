@@ -18,6 +18,7 @@ export interface GenerateCharacterSheetImageInput {
   projectId: string;
   characterId: string;
   promptText: string;
+  referenceImagePaths?: string[];
 }
 
 export interface GenerateCharacterSheetImageResult {

@@ -30,6 +30,7 @@ import {
   createGeminiCharacterSheetProvider,
   createGeminiStoryboardProvider,
   createLocalDataPaths,
+  createReferenceImageUploader,
   createSqliteCharacterSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
@@ -125,12 +126,17 @@ export function buildSpec2WorkerServices(
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.CHARACTER_SHEET_PROMPT_MODEL,
     });
+  const referenceImageUploader = createReferenceImageUploader({
+    providerOrder: process.env.IMAGE_UPLOAD_PROVIDER_ORDER?.split(","),
+    picgoApiKey: process.env.PICGO_API_KEY,
+  });
   const characterSheetImageProvider =
     options.characterSheetImageProvider ??
     createTurnaroundImageProvider({
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.CHARACTER_SHEET_IMAGE_MODEL,
+      referenceImageUploader,
     });
   const taskIdGenerator =
     options.taskIdGenerator ??

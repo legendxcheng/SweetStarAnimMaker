@@ -71,6 +71,7 @@ export interface CharacterSheetGenerateTaskInput {
   characterName: string;
   promptTextCurrent: string;
   imagePromptTemplateKey: "character_sheet.turnaround.generate";
+  referenceImagePaths?: string[];
 }
 
 export interface CreateTaskRecordInput {

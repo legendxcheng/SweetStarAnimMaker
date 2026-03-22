@@ -83,6 +83,7 @@ export function createProcessCharacterSheetGenerateTaskUseCase(
             projectId: project.id,
             characterId: taskInput.characterId,
             promptText,
+            referenceImagePaths: taskInput.referenceImagePaths,
           },
         );
         const finishedAt = dependencies.clock.now();
@@ -217,6 +218,7 @@ function assertCharacterSheetTaskInput(input: {
   characterName: string;
   promptTextCurrent: string;
   imagePromptTemplateKey: "character_sheet.turnaround.generate";
+  referenceImagePaths?: string[];
 } {
   if (input.taskType !== "character_sheet_generate") {
     throw new Error(`Unsupported task input for character sheet processing: ${input.taskType}`);

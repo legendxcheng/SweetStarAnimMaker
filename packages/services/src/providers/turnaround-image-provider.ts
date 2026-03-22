@@ -4,11 +4,14 @@ import type {
   GenerateCharacterSheetImageResult,
 } from "@sweet-star/core";
 
+import type { ReferenceImageUploader } from "../image-upload/reference-image-uploader";
+
 export interface CreateTurnaroundImageProviderOptions {
   baseUrl?: string;
   apiToken?: string;
   model?: string;
   timeoutMs?: number;
+  referenceImageUploader?: ReferenceImageUploader;
 }
 
 const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
@@ -25,10 +28,26 @@ export function createTurnaroundImageProvider(
       input: GenerateCharacterSheetImageInput,
     ): Promise<GenerateCharacterSheetImageResult> {
       const apiToken = options.apiToken?.trim();
+      const referenceImagePaths = input.referenceImagePaths ?? [];
 
       if (!apiToken) {
         throw new Error("VECTORENGINE_API_TOKEN is required for character sheet image generation");
       }
+
+      if (referenceImagePaths.length > 0 && !options.referenceImageUploader) {
+        throw new Error(
+          "Reference image uploader is required when referenceImagePaths are provided",
+        );
+      }
+
+      const uploadedReferenceUrls =
+        referenceImagePaths.length > 0
+          ? await Promise.all(
+              referenceImagePaths.map((localFilePath) =>
+                options.referenceImageUploader!.uploadReferenceImage({ localFilePath }),
+              ),
+            )
+          : [];
 
       const controller = options.timeoutMs ? new AbortController() : null;
       const timeout =
@@ -37,17 +56,28 @@ export function createTurnaroundImageProvider(
           : null;
 
       try {
+        const requestBody: {
+          model: string;
+          prompt: string;
+          response_format: "b64_json";
+          image?: string[];
+        } = {
+          model,
+          prompt: input.promptText,
+          response_format: "b64_json",
+        };
+
+        if (uploadedReferenceUrls.length > 0) {
+          requestBody.image = uploadedReferenceUrls;
+        }
+
         const response = await fetch(`${baseUrl}/v1/images/generations`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model,
-            prompt: input.promptText,
-            response_format: "b64_json",
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller?.signal,
         });
 
