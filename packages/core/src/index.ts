@@ -11,8 +11,14 @@ export type {
   CharacterSheetStatus,
   CurrentCharacterSheetBatchSummary,
   CurrentMasterPlot,
+  CurrentShotScript,
+  CurrentShotScriptSummary,
   CurrentStoryboard,
   CurrentStoryboardSummary,
+  ShotScriptReviewSummary,
+  ShotScriptReviewWorkspace,
+  ShotScriptReviewAvailableActions,
+  ShotScriptItem,
   MasterPlotReviewAvailableActions,
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
@@ -53,6 +59,15 @@ export {
   type CreateCharacterSheetBatchRecordInput,
   type CreateCharacterSheetRecordInput,
 } from "./domain/character-sheet";
+export {
+  currentShotScriptJsonFileName,
+  currentShotScriptJsonRelPath,
+  currentShotScriptMarkdownFileName,
+  currentShotScriptMarkdownRelPath,
+  shotScriptDirectoryName,
+  shotScriptVersionsDirectoryName,
+  toCurrentShotScriptSummary,
+} from "./domain/shot-script";
 export {
   currentMasterPlotJsonFileName,
   currentMasterPlotJsonRelPath,
@@ -129,6 +144,7 @@ export {
 } from "./errors/character-sheet-errors";
 export {
   CurrentMasterPlotNotFoundError,
+  CurrentShotScriptNotFoundError,
   CurrentStoryboardNotFoundError,
 } from "./errors/storyboard-errors";
 export {
@@ -166,10 +182,27 @@ export type {
   ProjectRepository,
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,
   UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
+export type {
+  GenerateShotScriptInput,
+  GenerateShotScriptResult,
+  ShotScriptProvider,
+} from "./ports/shot-script-provider";
+export type {
+  InitializeShotScriptPromptTemplateInput,
+  ReadCurrentShotScriptInput,
+  ReadShotScriptPromptTemplateInput,
+  ReadShotScriptVersionInput,
+  ShotScriptStorage,
+  WriteCurrentShotScriptInput,
+  WriteShotScriptPromptSnapshotInput,
+  WriteShotScriptRawResponseInput,
+  WriteShotScriptVersionInput,
+} from "./ports/shot-script-storage";
 export type {
   DeletePremiseInput,
   PremiseStorage,
@@ -234,6 +267,12 @@ export {
   type CreateCharacterSheetsGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-character-sheets-generate-task";
 export {
+  createCreateShotScriptGenerateTaskUseCase,
+  type CreateShotScriptGenerateTaskInput,
+  type CreateShotScriptGenerateTaskUseCase,
+  type CreateShotScriptGenerateTaskUseCaseDependencies,
+} from "./use-cases/create-shot-script-generate-task";
+export {
   createCreateStoryboardGenerateTaskUseCase,
   type CreateStoryboardGenerateTaskInput,
   type CreateStoryboardGenerateTaskUseCase,
@@ -269,6 +308,12 @@ export {
   type GetCharacterSheetReferenceImageContentUseCase,
   type GetCharacterSheetReferenceImageContentUseCaseDependencies,
 } from "./use-cases/get-character-sheet-reference-image-content";
+export {
+  createGetCurrentShotScriptUseCase,
+  type GetCurrentShotScriptInput,
+  type GetCurrentShotScriptUseCase,
+  type GetCurrentShotScriptUseCaseDependencies,
+} from "./use-cases/get-current-shot-script";
 export {
   createGetCurrentStoryboardUseCase,
   type GetCurrentStoryboardInput,

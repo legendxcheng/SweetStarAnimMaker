@@ -1,8 +1,10 @@
 import type { ProjectSummary } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
+import { toCurrentShotScriptSummary } from "../domain/shot-script";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { toProjectSummaryDto } from "./project-summary-dto";
@@ -15,6 +17,7 @@ export interface ListProjectsUseCaseDependencies {
   repository: ProjectRepository;
   masterPlotStorage: MasterPlotStorage;
   storyboardStorage: StoryboardStorage;
+  shotScriptStorage: ShotScriptStorage;
   characterSheetRepository: CharacterSheetRepository;
 }
 
@@ -37,6 +40,11 @@ export function createListProjectsUseCase(
                 storageDir: project.storageDir,
               })
             : null;
+          const currentShotScript = project.currentShotScriptId
+            ? await dependencies.shotScriptStorage.readCurrentShotScript({
+                storageDir: project.storageDir,
+              })
+            : null;
           let currentCharacterSheetBatch = null;
 
           if (project.currentCharacterSheetBatchId) {
@@ -56,6 +64,7 @@ export function createListProjectsUseCase(
             currentMasterPlot,
             currentCharacterSheetBatch,
             currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
+            currentShotScript ? toCurrentShotScriptSummary(currentShotScript) : null,
           );
         }),
       );

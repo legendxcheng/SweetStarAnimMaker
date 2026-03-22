@@ -18,6 +18,7 @@ describe("list projects use case", () => {
           currentMasterPlotId: "mp_20260320_ab12cd",
           currentCharacterSheetBatchId: "char_batch_v1",
           currentStoryboardId: null,
+          currentShotScriptId: "shot_script_20260322_ab12cd",
           status: "master_plot_in_review",
           createdAt: "2026-03-20T10:00:00.000Z",
           updatedAt: "2026-03-20T10:30:00.000Z",
@@ -33,6 +34,7 @@ describe("list projects use case", () => {
           currentMasterPlotId: null,
           currentCharacterSheetBatchId: null,
           currentStoryboardId: null,
+          currentShotScriptId: null,
           status: "premise_ready",
           createdAt: "2026-03-20T11:00:00.000Z",
           updatedAt: "2026-03-20T11:05:00.000Z",
@@ -73,6 +75,45 @@ describe("list projects use case", () => {
       writeCurrentStoryboard: vi.fn(),
       readCurrentStoryboard: vi.fn(),
     };
+    const shotScriptStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeShotScriptVersion: vi.fn(),
+      readShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_20260322_ab12cd",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_20260320_ab12cd",
+        sourceTaskId: "task_20260322_shot_script",
+        updatedAt: "2026-03-22T12:00:00.000Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "S01-SG01",
+            shotPurpose: "Establish the flooded market",
+            subjectCharacters: ["Rin"],
+            environment: "Flooded dawn market",
+            framing: "medium wide shot",
+            cameraAngle: "eye level",
+            composition: "Rin framed by hanging lanterns",
+            actionMoment: "Rin pauses at the waterline",
+            emotionTone: "uneasy anticipation",
+            continuityNotes: "Keep soaked satchel on left shoulder",
+            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+            negativePrompt: null,
+            motionHint: null,
+            durationSec: 4,
+          },
+        ],
+      }),
+    };
     const characterSheetRepository = {
       insertBatch: vi.fn(),
       findBatchById: vi.fn().mockResolvedValue({
@@ -98,6 +139,7 @@ describe("list projects use case", () => {
       repository,
       masterPlotStorage,
       storyboardStorage,
+      shotScriptStorage,
       characterSheetRepository,
     });
 
@@ -109,7 +151,9 @@ describe("list projects use case", () => {
     });
     expect(result[0].currentMasterPlot?.title).toBe("The Last Sky Choir");
     expect(result[0].currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
+    expect(result[0].currentShotScript?.shotCount).toBe(1);
     expect(result[1].currentMasterPlot).toBeNull();
     expect(result[1].currentCharacterSheetBatch).toBeNull();
+    expect(result[1].currentShotScript).toBeNull();
   });
 });

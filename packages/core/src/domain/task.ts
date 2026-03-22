@@ -4,6 +4,7 @@ export const masterPlotGenerateQueueName = "master-plot-generate";
 export const characterSheetsGenerateQueueName = "character-sheets-generate";
 export const characterSheetGenerateQueueName = "character-sheet-generate";
 export const storyboardGenerateQueueName = "storyboard-generate";
+export const shotScriptGenerateQueueName = "shot-script-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -72,6 +73,55 @@ export interface CharacterSheetGenerateTaskInput {
   promptTextCurrent: string;
   imagePromptTemplateKey: "character_sheet.turnaround.generate";
   referenceImagePaths?: string[];
+}
+
+export interface ShotScriptGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "shot_script_generate";
+  sourceStoryboardId: string;
+  sourceMasterPlotId?: string;
+  sourceCharacterSheetBatchId?: string;
+  storyboard: {
+    id: string;
+    title: string | null;
+    episodeTitle: string | null;
+    scenes: Array<{
+      id: string;
+      order: number;
+      name: string;
+      dramaticPurpose: string;
+      segments: Array<{
+        id: string;
+        order: number;
+        durationSec: number | null;
+        visual: string;
+        characterAction: string;
+        dialogue: string;
+        voiceOver: string;
+        audio: string;
+        purpose: string;
+      }>;
+    }>;
+  };
+  masterPlot?: {
+    id: string;
+    title: string | null;
+    logline: string;
+    synopsis: string;
+    mainCharacters: string[];
+    coreConflict: string;
+    emotionalArc: string;
+    endingBeat: string;
+    targetDurationSec: number | null;
+  };
+  characterSheets?: Array<{
+    characterId: string;
+    characterName: string;
+    promptTextCurrent: string;
+    imageAssetPath?: string | null;
+  }>;
+  promptTemplateKey: "shot_script.generate";
 }
 
 export interface CreateTaskRecordInput {

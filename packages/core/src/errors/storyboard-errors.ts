@@ -11,3 +11,10 @@ export class CurrentStoryboardNotFoundError extends Error {
     this.name = "CurrentStoryboardNotFoundError";
   }
 }
+
+export class CurrentShotScriptNotFoundError extends Error {
+  constructor(projectId: string) {
+    super(`Current shot script not found for project: ${projectId}`);
+    this.name = "CurrentShotScriptNotFoundError";
+  }
+}
