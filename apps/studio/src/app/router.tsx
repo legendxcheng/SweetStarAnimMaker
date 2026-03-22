@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "./layout";
 import { ProjectsPage } from "../pages/projects-page";
 import { NewProjectPage } from "../pages/new-project-page";
+import { MasterPlotReviewPage } from "../pages/master-plot-review-page";
 import { ProjectDetailPage } from "../pages/project-detail-page";
 import { ReviewWorkspacePage } from "../pages/review-workspace-page";
 
@@ -27,7 +28,11 @@ export const router = createBrowserRouter([
         element: <ProjectDetailPage />,
       },
       {
-        path: "projects/:projectId/review",
+        path: "projects/:projectId/master-plot/review",
+        element: <MasterPlotReviewPage />,
+      },
+      {
+        path: "projects/:projectId/storyboard/review",
         element: <ReviewWorkspacePage />,
       },
       {

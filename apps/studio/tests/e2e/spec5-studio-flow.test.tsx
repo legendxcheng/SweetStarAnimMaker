@@ -163,7 +163,10 @@ function renderApp() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/new" element={<NewProjectPage />} />
           <Route path="projects/:projectId" element={<ProjectDetailPage />} />
-          <Route path="projects/:projectId/review" element={<ReviewWorkspacePage />} />
+          <Route
+            path="projects/:projectId/storyboard/review"
+            element={<ReviewWorkspacePage />}
+          />
         </Route>
       </Routes>
     </MemoryRouter>,

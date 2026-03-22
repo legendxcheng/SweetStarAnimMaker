@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
+import { MasterPlotReviewPage } from "../../src/pages/master-plot-review-page";
 import { ReviewWorkspacePage } from "../../src/pages/review-workspace-page";
 import * as apiModule from "../../src/services/api-client";
 
@@ -61,11 +62,73 @@ const workspace = {
   latestTask: null,
 };
 
+const masterPlotProjectDetail = {
+  id: "proj-1",
+  name: "Test Project",
+  slug: "test-project",
+  status: "master_plot_in_review" as const,
+  storageDir: "/path/to/project",
+  createdAt: "2024-01-01T00:00:00Z",
+  updatedAt: "2024-01-01T00:00:00Z",
+  premise: {
+    path: "premise/v1.md",
+    bytes: 42,
+    updatedAt: "2024-01-01T00:00:00Z",
+  },
+  currentMasterPlot: {
+    id: "mp-1",
+    title: "The Last Sky Choir",
+    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+    synopsis:
+      "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+    mainCharacters: ["Rin", "Ivo"],
+    coreConflict:
+      "Rin must choose between private escape and saving the city that exiled her.",
+    emotionalArc: "She moves from bitterness to sacrificial hope.",
+    endingBeat: "Rin turns the comet's music into a rising tide of light.",
+    targetDurationSec: 480,
+    sourceTaskId: "task-master-plot",
+    updatedAt: "2024-01-01T00:00:00Z",
+    approvedAt: null,
+  },
+  currentCharacterSheetBatch: null,
+  currentStoryboard: null,
+};
+
+const masterPlotWorkspace = {
+  projectId: "proj-1",
+  projectStatus: "master_plot_in_review" as const,
+  currentMasterPlot: masterPlotProjectDetail.currentMasterPlot,
+  latestReview: null,
+  availableActions: {
+    save: true,
+    approve: true,
+    reject: true,
+  },
+  latestTask: null,
+};
+
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={["/projects/proj-1/review"]}>
+    <MemoryRouter initialEntries={["/projects/proj-1/storyboard/review"]}>
       <Routes>
-        <Route path="/projects/:projectId/review" element={<ReviewWorkspacePage />} />
+        <Route
+          path="/projects/:projectId/storyboard/review"
+          element={<ReviewWorkspacePage />}
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+function renderMasterPlotPage() {
+  return render(
+    <MemoryRouter initialEntries={["/projects/proj-1/master-plot/review"]}>
+      <Routes>
+        <Route
+          path="/projects/:projectId/master-plot/review"
+          element={<MasterPlotReviewPage />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -85,6 +148,7 @@ describe("Review Actions", () => {
     vi.clearAllMocks();
     globalThis.alert = vi.fn();
     globalThis.confirm = vi.fn(() => true);
+    globalThis.prompt = vi.fn(() => "Need a stronger ending beat.");
     vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace").mockResolvedValue(workspace);
   });
 
@@ -159,5 +223,60 @@ describe("Review Actions", () => {
 
     expect(apiModule.apiClient.rejectStoryboard).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("approves the master plot and redirects back to the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "getMasterPlotReviewWorkspace").mockResolvedValue(
+      masterPlotWorkspace,
+    );
+    vi.spyOn(apiModule.apiClient, "approveMasterPlot").mockResolvedValue({
+      ...masterPlotWorkspace.currentMasterPlot,
+      approvedAt: "2024-01-01T00:00:01Z",
+      updatedAt: "2024-01-01T00:00:01Z",
+    });
+
+    renderMasterPlotPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "通过" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.approveMasterPlot).toHaveBeenCalledWith("proj-1", {});
+    });
+
+    expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
+  });
+
+  it("rejects the master plot with a required reason and redirects back to the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "getMasterPlotReviewWorkspace").mockResolvedValue(
+      masterPlotWorkspace,
+    );
+    vi.spyOn(apiModule.apiClient, "rejectMasterPlot").mockResolvedValue({
+      id: "task-2",
+      projectId: "proj-1",
+      type: "master_plot_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:02Z",
+      updatedAt: "2024-01-01T00:00:02Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-2/input.json",
+        outputPath: "tasks/task-2/output.json",
+        logPath: "tasks/task-2/log.txt",
+      },
+    });
+
+    renderMasterPlotPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {
+        reason: "Need a stronger ending beat.",
+      });
+    });
+
+    expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 });

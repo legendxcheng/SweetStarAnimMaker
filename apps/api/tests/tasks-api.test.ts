@@ -80,6 +80,48 @@ describe("tasks api", () => {
     });
   });
 
+  it("creates a master-plot task for an existing project", async () => {
+    const enqueue = vi.fn();
+    const { app } = await createTempApp({
+      taskQueue: { enqueue },
+    });
+
+    const createProjectResponse = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: { name: "My Story", premiseText },
+    });
+    const project = createProjectResponse.json();
+
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/tasks/master-plot-generate`,
+    });
+
+    expect(taskResponse.statusCode).toBe(201);
+    expect(taskResponse.json()).toEqual({
+      id: "task_20260321_ab12cd",
+      projectId: project.id,
+      type: "master_plot_generate",
+      status: "pending",
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260321_ab12cd/input.json",
+        outputPath: "tasks/task_20260321_ab12cd/output.json",
+        logPath: "tasks/task_20260321_ab12cd/log.txt",
+      },
+    });
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_ab12cd",
+      queueName: "master-plot-generate",
+      taskType: "master_plot_generate",
+    });
+  });
+
   it("creates a character-sheets batch task for an existing project", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({

@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 
 import {
+  rejectMasterPlotRequestSchema,
+  saveMasterPlotRequestSchema,
   saveStoryboardRequestSchema,
 } from "@sweet-star/shared";
 
@@ -10,6 +12,42 @@ export function registerStoryboardRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
+  app.get("/projects/:projectId/master-plot/review", async (request) => {
+    const params = request.params as { projectId: string };
+
+    return services.getMasterPlotReview.execute({
+      projectId: params.projectId,
+    });
+  });
+
+  app.put("/projects/:projectId/master-plot", async (request) => {
+    const params = request.params as { projectId: string };
+    const payload = saveMasterPlotRequestSchema.parse(request.body);
+
+    return services.saveHumanMasterPlot.execute({
+      projectId: params.projectId,
+      ...payload,
+    });
+  });
+
+  app.post("/projects/:projectId/master-plot/approve", async (request) => {
+    const params = request.params as { projectId: string };
+
+    return services.approveMasterPlot.execute({
+      projectId: params.projectId,
+    });
+  });
+
+  app.post("/projects/:projectId/master-plot/reject", async (request) => {
+    const params = request.params as { projectId: string };
+    const payload = rejectMasterPlotRequestSchema.parse(request.body);
+
+    return services.rejectMasterPlot.execute({
+      projectId: params.projectId,
+      ...payload,
+    });
+  });
+
   app.get("/projects/:projectId/storyboard/current", async (request) => {
     const params = request.params as { projectId: string };
 

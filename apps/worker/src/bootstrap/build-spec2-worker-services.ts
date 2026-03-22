@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import {
+  createProcessMasterPlotGenerateTaskUseCase,
   createProcessCharacterSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
   createProcessStoryboardGenerateTaskUseCase,
@@ -9,7 +10,9 @@ import {
   type CharacterSheetRepository,
   type CharacterSheetStorage,
   type Clock,
+  type MasterPlotProvider,
   type MasterPlotStorage,
+  type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessCharacterSheetGenerateTaskUseCase,
   type ProcessCharacterSheetsGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCase,
@@ -48,6 +51,7 @@ export interface BuildSpec2WorkerServicesOptions {
   storyboardStorage?: StoryboardStorage;
   characterSheetRepository?: CharacterSheetRepository;
   characterSheetStorage?: CharacterSheetStorage;
+  masterPlotProvider?: MasterPlotProvider;
   storyboardProvider?: StoryboardProvider;
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
@@ -58,6 +62,7 @@ export interface BuildSpec2WorkerServicesOptions {
 }
 
 export interface Spec2WorkerServices {
+  processMasterPlotGenerateTask: ProcessMasterPlotGenerateTaskUseCase;
   processStoryboardGenerateTask: ProcessStoryboardGenerateTaskUseCase;
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
@@ -98,6 +103,19 @@ export function buildSpec2WorkerServices(
       : {
           async generateStoryboard() {
             throw new Error("VECTORENGINE_API_TOKEN is required for storyboard generation");
+          },
+        });
+  const masterPlotProvider =
+    options.masterPlotProvider ??
+    (process.env.VECTORENGINE_API_TOKEN?.trim()
+      ? createGeminiStoryboardProvider({
+          baseUrl: process.env.VECTORENGINE_BASE_URL,
+          apiToken: process.env.VECTORENGINE_API_TOKEN,
+          model: process.env.STORYBOARD_LLM_MODEL,
+        })
+      : {
+          async generateMasterPlot() {
+            throw new Error("VECTORENGINE_API_TOKEN is required for master plot generation");
           },
         });
   const characterSheetPromptProvider =
@@ -175,6 +193,16 @@ export function buildSpec2WorkerServices(
   }
 
   return {
+    processMasterPlotGenerateTask: createProcessMasterPlotGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      masterPlotProvider,
+      masterPlotStorage,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
     processStoryboardGenerateTask: createProcessStoryboardGenerateTaskUseCase({
       taskRepository,
       projectRepository,

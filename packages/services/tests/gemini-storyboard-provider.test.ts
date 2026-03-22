@@ -7,6 +7,57 @@ describe("gemini storyboard provider", () => {
     vi.unstubAllGlobals();
   });
 
+  it("calls the Gemini generateContent endpoint for master-plot JSON output", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    title: "The Last Sky Choir",
+                    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+                    synopsis:
+                      "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+                    mainCharacters: ["Rin", "Ivo"],
+                    coreConflict: "Rin must choose between escape and saving the city.",
+                    emotionalArc: "She moves from bitterness to hope.",
+                    endingBeat: "The city rises on a final chorus of light.",
+                    targetDurationSec: 120,
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateMasterPlot({
+      projectId: "proj_20260321_ab12cd",
+      premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      promptText: "Turn this premise into one cohesive master plot.",
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+
+    expect(request.systemInstruction.parts[0].text).toContain("master plot");
+    expect(request.generationConfig.responseMimeType).toBe("application/json");
+    expect(request.generationConfig.responseJsonSchema.properties.logline).toBeDefined();
+    expect(result.masterPlot.title).toBe("The Last Sky Choir");
+    expect(result.masterPlot.mainCharacters).toEqual(["Rin", "Ivo"]);
+    expect(result.rawResponse).toContain("The Last Sky Choir");
+  });
+
   it("calls the Gemini generateContent endpoint with schema-constrained JSON output", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

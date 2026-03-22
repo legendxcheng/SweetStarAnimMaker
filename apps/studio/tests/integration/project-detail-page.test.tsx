@@ -44,6 +44,11 @@ const approvedMasterPlotProject = {
   },
 };
 
+const masterPlotInReviewProject = {
+  ...approvedMasterPlotProject,
+  status: "master_plot_in_review" as const,
+};
+
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
@@ -59,6 +64,11 @@ const runningTask = {
     outputPath: "tasks/task-1/output.json",
     logPath: "tasks/task-1/log.txt",
   },
+};
+
+const runningMasterPlotTask = {
+  ...runningTask,
+  type: "master_plot_generate" as const,
 };
 
 const succeededTask = {
@@ -214,12 +224,8 @@ describe("Project Detail Page", () => {
     expect(screen.getByText(approvedMasterPlotProject.currentMasterPlot.synopsis)).toBeInTheDocument();
   });
 
-  it("does not expose storyboard generation actions from the master-plot panel", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
-    const createStoryboardGenerateTask = vi.spyOn(
-      apiModule.apiClient,
-      "createStoryboardGenerateTask",
-    );
+  it("shows the master-plot review entry while the project is in master-plot review", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(masterPlotInReviewProject);
 
     renderPage();
 
@@ -230,9 +236,39 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "主情节" }));
 
     expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /生成主情节/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toHaveAttribute(
+      "href",
+      "/projects/proj-1/master-plot/review",
+    );
+  });
+
+  it("starts master-plot generation from the master-plot panel", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+    const createMasterPlotGenerateTask = vi
+      .fn()
+      .mockResolvedValue(runningMasterPlotTask);
+    Object.assign(apiModule.apiClient as object, {
+      createMasterPlotGenerateTask,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+
+    expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+
+    await waitFor(() => {
+      expect(createMasterPlotGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+
     expect(screen.queryByRole("button", { name: /生成分镜文案/i })).not.toBeInTheDocument();
-    expect(createStoryboardGenerateTask).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
+    expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
   it("shows the character phase after master plot approval and keeps storyboard disabled until approvals complete", async () => {
@@ -372,7 +408,10 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toHaveAttribute(
+      "href",
+      "/projects/proj-1/storyboard/review",
+    );
   });
 
   it("polls task detail until success, refreshes the project, and shows the review entry", async () => {
@@ -420,7 +459,10 @@ describe("Project Detail Page", () => {
       await flushMicrotasks();
     });
 
-    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toHaveAttribute(
+      "href",
+      "/projects/proj-1/storyboard/review",
+    );
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
 

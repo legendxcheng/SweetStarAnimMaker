@@ -3,8 +3,10 @@ import IORedis from "ioredis";
 import {
   characterSheetGenerateQueueName,
   characterSheetsGenerateQueueName,
+  masterPlotGenerateQueueName,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
+  type MasterPlotProvider,
   storyboardGenerateQueueName,
   type StoryboardProvider,
 } from "@sweet-star/core";
@@ -29,6 +31,9 @@ export interface StartWorkerResult {
 
 export interface StartWorkerOptions {
   services?: {
+    processMasterPlotGenerateTask: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
     processStoryboardGenerateTask: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
@@ -42,6 +47,7 @@ export interface StartWorkerOptions {
   };
   workspaceRoot?: string;
   redisUrl?: string;
+  masterPlotProvider?: MasterPlotProvider;
   storyboardProvider?: StoryboardProvider;
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
@@ -60,6 +66,7 @@ export async function startWorker(
     buildSpec2WorkerServices({
       workspaceRoot: options.workspaceRoot ?? process.cwd(),
       redisUrl: options.redisUrl,
+      masterPlotProvider: options.masterPlotProvider,
       storyboardProvider: options.storyboardProvider,
       characterSheetPromptProvider: options.characterSheetPromptProvider,
       characterSheetImageProvider: options.characterSheetImageProvider,
@@ -68,6 +75,14 @@ export async function startWorker(
     queueName: string;
     processor(job: WorkerJob): Promise<void>;
   }> = [
+    {
+      queueName: masterPlotGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await services.processMasterPlotGenerateTask.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    },
     {
       queueName: storyboardGenerateQueueName,
       processor: async (job: WorkerJob) => {

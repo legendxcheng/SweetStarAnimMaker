@@ -141,7 +141,7 @@ export function StoryboardPhasePanel({
             <h4 className="text-base font-semibold text-(--color-text-primary)">当前分镜文案</h4>
             {project.status === "storyboard_in_review" && (
               <Link
-                to={`/projects/${project.id}/review`}
+                to={`/projects/${project.id}/storyboard/review`}
                 className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity no-underline"
               >
                 进入分镜审核 →

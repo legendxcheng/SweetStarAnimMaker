@@ -1,20 +1,25 @@
 import crypto from "node:crypto";
 
 import {
+  createCreateMasterPlotGenerateTaskUseCase,
   createApproveCharacterSheetUseCase,
+  createApproveMasterPlotUseCase,
   createApproveStoryboardUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
   createGetCharacterSheetUseCase,
   createGetCurrentStoryboardUseCase,
+  createGetMasterPlotReviewUseCase,
   createGetProjectDetailUseCase,
   createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
   createListCharacterSheetsUseCase,
   createListProjectsUseCase,
   createRegenerateCharacterSheetUseCase,
+  createRejectMasterPlotUseCase,
   createRejectStoryboardUseCase,
+  createSaveHumanMasterPlotUseCase,
   createSaveHumanStoryboardVersionUseCase,
   createUpdateCharacterSheetPromptUseCase,
   createUpdateProjectScriptUseCase,
@@ -124,6 +129,16 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     clock,
   });
 
+  const createMasterPlotGenerateTask = createCreateMasterPlotGenerateTaskUseCase({
+    projectRepository: repository,
+    premiseStorage,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: queuedTaskGateway,
+    taskIdGenerator,
+    clock,
+  });
+
   const createStoryboardGenerateTask = createCreateStoryboardGenerateTaskUseCase({
     projectRepository: repository,
     masterPlotStorage,
@@ -179,6 +194,11 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       projectRepository: repository,
     }),
+    getMasterPlotReview: createGetMasterPlotReviewUseCase({
+      projectRepository: repository,
+      masterPlotStorage,
+      taskRepository,
+    }),
     getStoryboardReview: createGetStoryboardReviewUseCase({
       projectRepository: repository,
       storyboardStorage,
@@ -189,15 +209,30 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       premiseStorage,
       clock,
     }),
+    saveHumanMasterPlot: createSaveHumanMasterPlotUseCase({
+      projectRepository: repository,
+      masterPlotStorage,
+      clock,
+    }),
     saveHumanStoryboardVersion: createSaveHumanStoryboardVersionUseCase({
       projectRepository: repository,
       storyboardStorage,
+      clock,
+    }),
+    approveMasterPlot: createApproveMasterPlotUseCase({
+      projectRepository: repository,
+      masterPlotStorage,
       clock,
     }),
     approveStoryboard: createApproveStoryboardUseCase({
       projectRepository: repository,
       storyboardStorage,
       clock,
+    }),
+    rejectMasterPlot: createRejectMasterPlotUseCase({
+      projectRepository: repository,
+      masterPlotStorage,
+      createMasterPlotGenerateTask,
     }),
     rejectStoryboard: createRejectStoryboardUseCase({
       projectRepository: repository,
@@ -223,6 +258,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       characterSheetRepository,
       clock,
     }),
+    createMasterPlotGenerateTask,
     createCharacterSheetsGenerateTask,
     createStoryboardGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({

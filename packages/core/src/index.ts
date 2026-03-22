@@ -211,6 +211,12 @@ export {
   type CreateProjectUseCaseDependencies,
 } from "./use-cases/create-project";
 export {
+  createCreateMasterPlotGenerateTaskUseCase,
+  type CreateMasterPlotGenerateTaskInput,
+  type CreateMasterPlotGenerateTaskUseCase,
+  type CreateMasterPlotGenerateTaskUseCaseDependencies,
+} from "./use-cases/create-master-plot-generate-task";
+export {
   createCreateCharacterSheetsGenerateTaskUseCase,
   type CreateCharacterSheetsGenerateTaskInput,
   type CreateCharacterSheetsGenerateTaskUseCase,
@@ -241,6 +247,12 @@ export {
   type GetCurrentStoryboardUseCaseDependencies,
 } from "./use-cases/get-current-storyboard";
 export {
+  createGetMasterPlotReviewUseCase,
+  type GetMasterPlotReviewInput,
+  type GetMasterPlotReviewUseCase,
+  type GetMasterPlotReviewUseCaseDependencies,
+} from "./use-cases/get-master-plot-review";
+export {
   createGetStoryboardReviewUseCase,
   type GetStoryboardReviewInput,
   type GetStoryboardReviewUseCase,
@@ -263,6 +275,12 @@ export {
   type GetTaskDetailUseCase,
   type GetTaskDetailUseCaseDependencies,
 } from "./use-cases/get-task-detail";
+export {
+  createProcessMasterPlotGenerateTaskUseCase,
+  type ProcessMasterPlotGenerateTaskInput,
+  type ProcessMasterPlotGenerateTaskUseCase,
+  type ProcessMasterPlotGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-master-plot-generate-task";
 export {
   createProcessStoryboardGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskInput,
@@ -300,17 +318,35 @@ export {
   type ApproveCharacterSheetUseCaseDependencies,
 } from "./use-cases/approve-character-sheet";
 export {
+  createSaveHumanMasterPlotUseCase,
+  type SaveHumanMasterPlotInput,
+  type SaveHumanMasterPlotUseCase,
+  type SaveHumanMasterPlotUseCaseDependencies,
+} from "./use-cases/save-human-master-plot";
+export {
   createSaveHumanStoryboardVersionUseCase,
   type SaveHumanStoryboardVersionInput,
   type SaveHumanStoryboardVersionUseCase,
   type SaveHumanStoryboardVersionUseCaseDependencies,
 } from "./use-cases/save-human-storyboard-version";
 export {
+  createApproveMasterPlotUseCase,
+  type ApproveMasterPlotInput,
+  type ApproveMasterPlotUseCase,
+  type ApproveMasterPlotUseCaseDependencies,
+} from "./use-cases/approve-master-plot";
+export {
   createApproveStoryboardUseCase,
   type ApproveStoryboardInput,
   type ApproveStoryboardUseCase,
   type ApproveStoryboardUseCaseDependencies,
 } from "./use-cases/approve-storyboard";
+export {
+  createRejectMasterPlotUseCase,
+  type RejectMasterPlotInput,
+  type RejectMasterPlotUseCase,
+  type RejectMasterPlotUseCaseDependencies,
+} from "./use-cases/reject-master-plot";
 export {
   createRejectStoryboardUseCase,
   type RejectStoryboardInput,

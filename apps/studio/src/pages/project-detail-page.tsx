@@ -87,7 +87,8 @@ export function ProjectDetailPage() {
     if (
       !project ||
       activeTask ||
-      (project.status !== "character_sheets_generating" &&
+      (project.status !== "master_plot_generating" &&
+        project.status !== "character_sheets_generating" &&
         project.status !== "storyboard_generating")
     ) {
       return;
@@ -118,6 +119,20 @@ export function ProjectDetailPage() {
     try {
       setCreatingTask(true);
       const nextTask = await apiClient.createStoryboardGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
+  const handleGenerateMasterPlot = async () => {
+    if (!projectId || creatingTask || isActiveTask(task)) return;
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createMasterPlotGenerateTask(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -183,7 +198,20 @@ export function ProjectDetailPage() {
                 {selectedPhase === "premise" ? (
                   <PremisePhasePanel project={currentProject} />
                 ) : selectedPhase === "master_plot" ? (
-                  <MasterPlotPhasePanel project={currentProject} />
+                  <MasterPlotPhasePanel
+                    project={currentProject}
+                    task={task}
+                    taskError={taskError}
+                    creatingTask={creatingTask}
+                    disableGenerate={
+                      creatingTask ||
+                      isActiveTask(task) ||
+                      currentProject.status !== "premise_ready"
+                    }
+                    onGenerate={() => {
+                      void handleGenerateMasterPlot();
+                    }}
+                  />
                 ) : selectedPhase === "character_sheets" ? (
                   <CharacterSheetsPhasePanel
                     project={currentProject}
