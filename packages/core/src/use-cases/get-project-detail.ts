@@ -44,21 +44,20 @@ export function createGetProjectDetailUseCase(
             storageDir: project.storageDir,
           })
         : null;
-      const currentCharacterSheetBatch = project.currentCharacterSheetBatchId
-        ? await dependencies.characterSheetRepository
-            .findBatchById(project.currentCharacterSheetBatchId)
-            .then(async (batch) => {
-              if (!batch) {
-                return null;
-              }
+      let currentCharacterSheetBatch = null;
 
-              const characters = await dependencies.characterSheetRepository.listCharactersByBatchId(
-                batch.id,
-              );
+      if (project.currentCharacterSheetBatchId) {
+        const batch = await dependencies.characterSheetRepository.findBatchById(
+          project.currentCharacterSheetBatchId,
+        );
 
-              return toCurrentCharacterSheetBatchSummary(batch, characters);
-            })
-        : null;
+        if (batch) {
+          const characters = await dependencies.characterSheetRepository.listCharactersByBatchId(
+            batch.id,
+          );
+          currentCharacterSheetBatch = toCurrentCharacterSheetBatchSummary(batch, characters);
+        }
+      }
 
       return toProjectDetailDto(
         project,

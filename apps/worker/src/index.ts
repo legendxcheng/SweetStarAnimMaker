@@ -1,6 +1,10 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import {
+  characterSheetGenerateQueueName,
+  characterSheetsGenerateQueueName,
+  type CharacterSheetImageProvider,
+  type CharacterSheetPromptProvider,
   storyboardGenerateQueueName,
   type StoryboardProvider,
 } from "@sweet-star/core";
@@ -28,11 +32,19 @@ export interface StartWorkerOptions {
     processStoryboardGenerateTask: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
+    processCharacterSheetsGenerateTask: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processCharacterSheetGenerateTask: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
     close?(): Promise<void> | void;
   };
   workspaceRoot?: string;
   redisUrl?: string;
   storyboardProvider?: StoryboardProvider;
+  characterSheetPromptProvider?: CharacterSheetPromptProvider;
+  characterSheetImageProvider?: CharacterSheetImageProvider;
   workerFactory?: (input: {
     queueName: string;
     processor(job: WorkerJob): Promise<void>;
@@ -47,31 +59,64 @@ export async function startWorker(
     options.services ??
     buildSpec2WorkerServices({
       workspaceRoot: options.workspaceRoot ?? process.cwd(),
+      redisUrl: options.redisUrl,
       storyboardProvider: options.storyboardProvider,
+      characterSheetPromptProvider: options.characterSheetPromptProvider,
+      characterSheetImageProvider: options.characterSheetImageProvider,
     });
-  const processor = async (job: WorkerJob) => {
-    await services.processStoryboardGenerateTask.execute({
-      taskId: job.data.taskId,
-    });
-  };
+  const processors: Array<{
+    queueName: string;
+    processor(job: WorkerJob): Promise<void>;
+  }> = [
+    {
+      queueName: storyboardGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await services.processStoryboardGenerateTask.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    },
+    {
+      queueName: characterSheetsGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await services.processCharacterSheetsGenerateTask.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    },
+    {
+      queueName: characterSheetGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await services.processCharacterSheetGenerateTask.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    },
+  ];
   const redisConnection = options.workerFactory
     ? null
     : new IORedis(options.redisUrl ?? process.env.REDIS_URL ?? "redis://127.0.0.1:6379", {
         maxRetriesPerRequest: null,
       });
-  const worker =
-    (await options.workerFactory?.({
-      queueName: storyboardGenerateQueueName,
-      processor,
-    })) ??
-    createBullMqWorker({
-      connection: redisConnection!,
-      processor,
-    });
+  const workers = await Promise.all(
+    processors.map(async ({ queueName, processor }) => {
+      return (
+        (await options.workerFactory?.({
+          queueName,
+          processor,
+        })) ??
+        createBullMqWorker({
+          connection: redisConnection!,
+          queueName,
+          processor,
+        })
+      );
+    }),
+  );
 
   return {
     async close() {
-      await worker.close();
+      await Promise.all(workers.map((worker) => worker.close()));
       await redisConnection?.quit();
       await services.close?.();
     },
@@ -80,9 +125,10 @@ export async function startWorker(
 
 function createBullMqWorker(input: {
   connection: IORedis;
+  queueName: string;
   processor(job: WorkerJob): Promise<void>;
 }): WorkerInstance {
-  const worker = new Worker(storyboardGenerateQueueName, input.processor, {
+  const worker = new Worker(input.queueName, input.processor, {
     connection: input.connection,
   });
 

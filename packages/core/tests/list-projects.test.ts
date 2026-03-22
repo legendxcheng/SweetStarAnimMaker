@@ -41,6 +41,7 @@ describe("list projects use case", () => {
       ]),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };

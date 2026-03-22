@@ -25,6 +25,7 @@ const createdProject = {
     updatedAt: "2024-01-01T00:00:00Z",
   },
   currentMasterPlot: null,
+  currentCharacterSheetBatch: null,
   currentStoryboard: null,
 };
 
@@ -47,6 +48,18 @@ const masterPlotApprovedProject = {
   },
 };
 
+const characterSheetsApprovedProject = {
+  ...masterPlotApprovedProject,
+  status: "character_sheets_approved" as const,
+  currentCharacterSheetBatch: {
+    id: "char-batch-1",
+    sourceMasterPlotId: "mp-1",
+    characterCount: 2,
+    approvedCharacterCount: 2,
+    updatedAt: "2024-01-01T00:00:03Z",
+  },
+};
+
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
@@ -65,7 +78,7 @@ const runningTask = {
 };
 
 const storyboardInReviewProject = {
-  ...masterPlotApprovedProject,
+  ...characterSheetsApprovedProject,
   status: "storyboard_in_review" as const,
   currentStoryboard: {
     id: "storyboard-1",
@@ -180,9 +193,9 @@ describe("Spec5 Studio Flow", () => {
     vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
     vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(masterPlotApprovedProject)
+      .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
-      .mockResolvedValueOnce(masterPlotApprovedProject);
+      .mockResolvedValueOnce(characterSheetsApprovedProject);
     vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
       ...runningTask,
@@ -296,7 +309,7 @@ describe("Spec5 Studio Flow", () => {
     vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
     vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(masterPlotApprovedProject)
+      .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
       .mockResolvedValueOnce(storyboardApprovedProject);
     vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);

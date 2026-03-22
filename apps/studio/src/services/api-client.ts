@@ -1,15 +1,24 @@
 import {
+  characterSheetDetailResponseSchema,
+  characterSheetListResponseSchema,
+  createCharacterSheetsGenerateTaskResponseSchema,
   createStoryboardGenerateTaskResponseSchema,
   createProjectRequestSchema,
   currentStoryboardResponseSchema,
+  updateCharacterSheetPromptRequestSchema,
   storyboardReviewWorkspaceResponseSchema,
   projectDetailResponseSchema,
   projectListResponseSchema,
+  approveCharacterSheetRequestSchema,
+  regenerateCharacterSheetRequestSchema,
   saveStoryboardRequestSchema,
   taskDetailResponseSchema,
+  type CharacterSheetListResponse,
+  type CharacterSheetRecord,
   type CurrentStoryboard,
   type ProjectDetail,
   type ProjectSummary,
+  type UpdateCharacterSheetPromptRequest,
   type SaveStoryboardRequest,
   type StoryboardReviewWorkspace,
   type TaskDetail,
@@ -77,12 +86,73 @@ export const apiClient = {
       method: "GET",
     }),
 
+  createCharacterSheetsGenerateTask: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/tasks/character-sheets-generate`,
+      createCharacterSheetsGenerateTaskResponseSchema,
+      {
+        method: "POST",
+      },
+    ),
+
   createStoryboardGenerateTask: (projectId: string) =>
     request<TaskDetail>(
       `/projects/${projectId}/tasks/storyboard-generate`,
       createStoryboardGenerateTaskResponseSchema,
       {
         method: "POST",
+      },
+    ),
+
+  listCharacterSheets: (projectId: string) =>
+    request<CharacterSheetListResponse>(
+      `/projects/${projectId}/character-sheets`,
+      characterSheetListResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
+  getCharacterSheet: (projectId: string, characterId: string) =>
+    request<CharacterSheetRecord>(
+      `/projects/${projectId}/character-sheets/${characterId}`,
+      characterSheetDetailResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
+  updateCharacterSheetPrompt: (
+    projectId: string,
+    characterId: string,
+    data: UpdateCharacterSheetPromptRequest,
+  ) =>
+    request<CharacterSheetRecord>(
+      `/projects/${projectId}/character-sheets/${characterId}/prompt`,
+      characterSheetDetailResponseSchema,
+      {
+        method: "PUT",
+        body: JSON.stringify(updateCharacterSheetPromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateCharacterSheet: (projectId: string, characterId: string, data: Record<string, never> = {}) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/character-sheets/${characterId}/regenerate`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateCharacterSheetRequestSchema.parse(data)),
+      },
+    ),
+
+  approveCharacterSheet: (projectId: string, characterId: string, data: Record<string, never> = {}) =>
+    request<CharacterSheetRecord>(
+      `/projects/${projectId}/character-sheets/${characterId}/approve`,
+      characterSheetDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveCharacterSheetRequestSchema.parse(data)),
       },
     ),
 

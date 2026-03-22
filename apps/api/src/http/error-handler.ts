@@ -1,4 +1,6 @@
 import {
+  CharacterSheetNotFoundError,
+  CurrentCharacterSheetBatchNotFoundError,
   CurrentMasterPlotNotFoundError,
   CurrentStoryboardNotFoundError,
   ProjectNotFoundError,
@@ -29,6 +31,8 @@ export function createApiErrorHandler() {
     }
 
     if (
+      error instanceof CharacterSheetNotFoundError ||
+      error instanceof CurrentCharacterSheetBatchNotFoundError ||
       error instanceof CurrentMasterPlotNotFoundError ||
       error instanceof CurrentStoryboardNotFoundError ||
       error instanceof ProjectNotFoundError ||

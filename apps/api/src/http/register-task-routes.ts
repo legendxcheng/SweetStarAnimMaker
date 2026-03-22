@@ -6,6 +6,15 @@ export function registerTaskRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
+  app.post("/projects/:projectId/tasks/character-sheets-generate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.createCharacterSheetsGenerateTask.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.post("/projects/:projectId/tasks/storyboard-generate", async (request, reply) => {
     const params = request.params as { projectId: string };
     const task = await services.createStoryboardGenerateTask.execute({

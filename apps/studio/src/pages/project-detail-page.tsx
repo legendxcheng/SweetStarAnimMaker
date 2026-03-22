@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { ProjectDetail, TaskDetail } from "@sweet-star/shared";
 import { AsyncState } from "../components/async-state";
+import { CharacterSheetsPhasePanel } from "../components/character-sheets-phase-panel";
 import { ErrorState } from "../components/error-state";
 import { MasterPlotPhasePanel } from "../components/master-plot-phase-panel";
 import { PageHeader } from "../components/page-header";
@@ -18,11 +19,26 @@ function isActiveTask(task: TaskDetail | null) {
 const PROJECT_PHASES = [
   { key: "premise", label: "前提" },
   { key: "master_plot", label: "主情节" },
+  { key: "character_sheets", label: "角色设定" },
   { key: "storyboard", label: "分镜" },
   { key: "shot_script", label: "镜头脚本" },
   { key: "image", label: "出图" },
   { key: "final_cut", label: "成片" },
 ] as const;
+
+function isCharacterSheetsPhaseEnabled(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return (
+    project.status === "master_plot_approved" ||
+    project.status === "character_sheets_generating" ||
+    project.status === "character_sheets_in_review" ||
+    project.status === "character_sheets_approved" ||
+    project.currentCharacterSheetBatch !== null
+  );
+}
 
 function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
   if (!project) {
@@ -30,7 +46,7 @@ function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
   }
 
   return (
-    project.status === "master_plot_approved" ||
+    project.status === "character_sheets_approved" ||
     project.status === "storyboard_generating" ||
     project.status === "storyboard_in_review" ||
     project.status === "storyboard_approved" ||
@@ -68,7 +84,15 @@ export function ProjectDetailPage() {
   }, [projectId]);
 
   useEffect(() => {
-    if (project?.status !== "storyboard_generating" || activeTask) return;
+    if (
+      !project ||
+      activeTask ||
+      (project.status !== "character_sheets_generating" &&
+        project.status !== "storyboard_generating")
+    ) {
+      return;
+    }
+
     const interval = setInterval(() => {
       void loadProject();
     }, 3000);
@@ -103,11 +127,26 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateCharacterSheets = async () => {
+    if (!projectId || creatingTask || isActiveTask(task)) return;
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createCharacterSheetsGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const phaseItems = PROJECT_PHASES.map((phase) => ({
     ...phase,
     enabled:
       phase.key === "premise" ||
       phase.key === "master_plot" ||
+      (phase.key === "character_sheets" && isCharacterSheetsPhaseEnabled(project)) ||
       (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)),
   }));
 
@@ -145,6 +184,22 @@ export function ProjectDetailPage() {
                   <PremisePhasePanel project={currentProject} />
                 ) : selectedPhase === "master_plot" ? (
                   <MasterPlotPhasePanel project={currentProject} />
+                ) : selectedPhase === "character_sheets" ? (
+                  <CharacterSheetsPhasePanel
+                    project={currentProject}
+                    task={task}
+                    taskError={taskError}
+                    creatingTask={creatingTask}
+                    disableGenerate={
+                      creatingTask ||
+                      isActiveTask(task) ||
+                      currentProject.status !== "master_plot_approved"
+                    }
+                    onGenerate={() => {
+                      void handleGenerateCharacterSheets();
+                    }}
+                    onProjectRefresh={loadProject}
+                  />
                 ) : (
                   <StoryboardPhasePanel
                     project={currentProject}
@@ -154,7 +209,7 @@ export function ProjectDetailPage() {
                     disableGenerate={
                       creatingTask ||
                       isActiveTask(task) ||
-                      currentProject.status !== "master_plot_approved"
+                      currentProject.status !== "character_sheets_approved"
                     }
                     onGenerate={() => {
                       void handleGenerateStoryboard();

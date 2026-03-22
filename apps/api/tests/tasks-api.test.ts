@@ -46,6 +46,10 @@ describe("tasks api", () => {
       projectId: project.id,
       projectStorageDir: project.storageDir,
     });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+    });
 
     const taskResponse = await app.inject({
       method: "POST",
@@ -76,6 +80,92 @@ describe("tasks api", () => {
     });
   });
 
+  it("creates a character-sheets batch task for an existing project", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+    });
+
+    const createProjectResponse = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: { name: "My Story", premiseText },
+    });
+    const project = createProjectResponse.json();
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/tasks/character-sheets-generate`,
+    });
+
+    expect(taskResponse.statusCode).toBe(201);
+    expect(taskResponse.json()).toEqual({
+      id: "task_20260321_ab12cd",
+      projectId: project.id,
+      type: "character_sheets_generate",
+      status: "pending",
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260321_ab12cd/input.json",
+        outputPath: "tasks/task_20260321_ab12cd/output.json",
+        logPath: "tasks/task_20260321_ab12cd/log.txt",
+      },
+    });
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_ab12cd",
+      queueName: "character-sheets-generate",
+      taskType: "character_sheets_generate",
+    });
+  });
+
+  it("creates a character sheets task for an approved master plot project", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+    });
+
+    const createProjectResponse = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: { name: "My Story", premiseText },
+    });
+    const project = createProjectResponse.json();
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/tasks/character-sheets-generate`,
+    });
+
+    expect(taskResponse.statusCode).toBe(201);
+    expect(taskResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "task_20260321_ab12cd",
+        projectId: project.id,
+        type: "character_sheets_generate",
+        status: "pending",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_ab12cd",
+      queueName: "character-sheets-generate",
+      taskType: "character_sheets_generate",
+    });
+  });
+
   it("gets an existing task by id", async () => {
     const { app, tempDir } = await createTempApp({
       taskQueue: { enqueue: vi.fn() },
@@ -90,6 +180,10 @@ describe("tasks api", () => {
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
+    });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
     });
 
     await app.inject({
@@ -194,6 +288,26 @@ async function seedApprovedMasterPlot(input: {
     projectId: input.projectId,
     status: "master_plot_approved",
     updatedAt: masterPlot.approvedAt ?? masterPlot.updatedAt,
+  });
+  db.close();
+}
+
+async function seedApprovedCharacterSheets(input: {
+  tempDir: string;
+  projectId: string;
+}) {
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const projectRepository = createSqliteProjectRepository({ db });
+
+  projectRepository.updateCurrentCharacterSheetBatch({
+    projectId: input.projectId,
+    batchId: "char_batch_v1",
+  });
+  projectRepository.updateStatus({
+    projectId: input.projectId,
+    status: "character_sheets_approved",
+    updatedAt: "2026-03-21T12:10:00.000Z",
   });
   db.close();
 }

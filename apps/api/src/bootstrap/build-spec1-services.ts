@@ -1,25 +1,32 @@
 import crypto from "node:crypto";
 
 import {
+  createApproveCharacterSheetUseCase,
   createApproveStoryboardUseCase,
+  createCreateCharacterSheetsGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
+  createGetCharacterSheetUseCase,
   createGetCurrentStoryboardUseCase,
   createGetProjectDetailUseCase,
   createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
+  createListCharacterSheetsUseCase,
   createListProjectsUseCase,
+  createRegenerateCharacterSheetUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanStoryboardVersionUseCase,
+  createUpdateCharacterSheetPromptUseCase,
   createUpdateProjectScriptUseCase,
-  storyboardGenerateQueueName,
   type TaskIdGenerator,
   type TaskQueue,
 } from "@sweet-star/core";
 import {
   createBullMqTaskQueue,
+  createCharacterSheetStorage,
   createFileScriptStorage,
   createLocalDataPaths,
+  createSqliteCharacterSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
   createSqliteTaskRepository,
@@ -48,12 +55,15 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const taskRepository = createSqliteTaskRepository({ db });
   const taskFileStorage = createTaskFileStorage({ paths });
   const storyboardStorage = createStoryboardStorage({ paths });
+  const characterSheetRepository = createSqliteCharacterSheetRepository({ db });
+  const characterSheetStorage = createCharacterSheetStorage({ paths });
   const masterPlotStorage = storyboardStorage;
   const clock = {
     now: () => new Date().toISOString(),
   };
   let redisConnection: IORedis | null = null;
-  let bullMqQueue: Queue | null = null;
+  const bullMqQueues = new Map<string, Queue>();
+  const bullMqTaskQueues = new Map<string, TaskQueue>();
   let taskQueue: TaskQueue | null = options.taskQueue ?? null;
   const taskIdGenerator =
     options.taskIdGenerator ??
@@ -66,37 +76,60 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       },
     } satisfies TaskIdGenerator);
 
-  function getTaskQueue() {
+  function getTaskQueue(queueName: string) {
     if (taskQueue) {
       return taskQueue;
     }
 
-    redisConnection = new IORedis(
-      options.redisUrl ?? process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
-      {
-        maxRetriesPerRequest: null,
-      },
-    );
-    bullMqQueue = new Queue(storyboardGenerateQueueName, {
+    if (!redisConnection) {
+      redisConnection = new IORedis(
+        options.redisUrl ?? process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
+        {
+          maxRetriesPerRequest: null,
+        },
+      );
+    }
+
+    const existingTaskQueue = bullMqTaskQueues.get(queueName);
+
+    if (existingTaskQueue) {
+      return existingTaskQueue;
+    }
+
+    const queue = new Queue(queueName, {
       connection: redisConnection,
     });
-    taskQueue = createBullMqTaskQueue({
-      queue: bullMqQueue,
+    const mappedTaskQueue = createBullMqTaskQueue({
+      queue,
     });
+    bullMqQueues.set(queueName, queue);
+    bullMqTaskQueues.set(queueName, mappedTaskQueue);
 
-    return taskQueue;
+    return mappedTaskQueue;
   }
+
+  const queuedTaskGateway: TaskQueue = {
+    enqueue(input) {
+      return getTaskQueue(input.queueName).enqueue(input);
+    },
+  };
+
+  const createCharacterSheetsGenerateTask = createCreateCharacterSheetsGenerateTaskUseCase({
+    projectRepository: repository,
+    masterPlotStorage,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: queuedTaskGateway,
+    taskIdGenerator,
+    clock,
+  });
 
   const createStoryboardGenerateTask = createCreateStoryboardGenerateTaskUseCase({
     projectRepository: repository,
     masterPlotStorage,
     taskRepository,
     taskFileStorage,
-    taskQueue: {
-      enqueue(input) {
-        return getTaskQueue().enqueue(input);
-      },
-    },
+    taskQueue: queuedTaskGateway,
     taskIdGenerator,
     clock,
   });
@@ -104,7 +137,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   return {
     db,
     async close() {
-      await bullMqQueue?.close();
+      await Promise.all(Array.from(bullMqQueues.values()).map((queue) => queue.close()));
       await redisConnection?.quit();
       db.close();
     },
@@ -126,11 +159,21 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       repository,
       masterPlotStorage,
       storyboardStorage,
+      characterSheetRepository,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
       masterPlotStorage,
       storyboardStorage,
+      characterSheetRepository,
+    }),
+    listCharacterSheets: createListCharacterSheetsUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+    }),
+    getCharacterSheet: createGetCharacterSheetUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
     }),
     getCurrentStoryboard: createGetCurrentStoryboardUseCase({
       storyboardStorage,
@@ -161,6 +204,26 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       createStoryboardGenerateTask,
     }),
+    updateCharacterSheetPrompt: createUpdateCharacterSheetPromptUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      clock,
+    }),
+    regenerateCharacterSheet: createRegenerateCharacterSheetUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
+    approveCharacterSheet: createApproveCharacterSheetUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      clock,
+    }),
+    createCharacterSheetsGenerateTask,
     createStoryboardGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,

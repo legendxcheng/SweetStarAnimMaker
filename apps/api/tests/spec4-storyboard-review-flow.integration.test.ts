@@ -6,16 +6,17 @@ import { startWorker } from "@sweet-star/worker";
 import {
   createLocalDataPaths,
   createSqliteDb,
-  createSqliteProjectRepository,
-  createStoryboardStorage,
 } from "@sweet-star/services";
-import type { CurrentMasterPlot } from "@sweet-star/shared";
 import type { FastifyInstance } from "fastify";
 import { RedisMemoryServer } from "redis-memory-server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app";
 import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
+import {
+  seedApprovedCharacterSheets,
+  seedApprovedMasterPlot,
+} from "./storyboard-test-helpers";
 
 const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
 const tempDirs: string[] = [];
@@ -42,6 +43,11 @@ describe("spec4 storyboard review flow", () => {
     ]);
     const project = await createProject(app);
     await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedCharacterSheets({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
@@ -110,6 +116,11 @@ describe("spec4 storyboard review flow", () => {
     const { app, tempDir } = await createIntegrationContext(["task_20260321_first"]);
     const project = await createProject(app);
     await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedCharacterSheets({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
@@ -277,48 +288,6 @@ async function waitFor(assertion: () => Promise<void>, timeoutMs = 10000) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
-}
-
-async function seedApprovedMasterPlot(input: {
-  tempDir: string;
-  projectId: string;
-  projectStorageDir: string;
-}) {
-  const masterPlot: CurrentMasterPlot = {
-    id: "mp_20260321_ab12cd",
-    title: "The Last Sky Choir",
-    logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
-    synopsis:
-      "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-    mainCharacters: ["Rin", "Ivo"],
-    coreConflict:
-      "Rin must choose between private escape and saving the city that exiled her.",
-    emotionalArc: "She moves from bitterness to sacrificial hope.",
-    endingBeat: "Rin turns the comet's music into a rising tide of light.",
-    targetDurationSec: 480,
-    sourceTaskId: "task_20260321_master_plot",
-    updatedAt: "2026-03-21T12:00:00.000Z",
-    approvedAt: "2026-03-21T12:05:00.000Z",
-  };
-  const paths = createLocalDataPaths(input.tempDir);
-  const db = createSqliteDb({ paths });
-  const projectRepository = createSqliteProjectRepository({ db });
-  const storyboardStorage = createStoryboardStorage({ paths });
-
-  await storyboardStorage.writeCurrentMasterPlot({
-    storageDir: input.projectStorageDir,
-    masterPlot,
-  });
-  projectRepository.updateCurrentMasterPlot({
-    projectId: input.projectId,
-    masterPlotId: masterPlot.id,
-  });
-  projectRepository.updateStatus({
-    projectId: input.projectId,
-    status: "master_plot_approved",
-    updatedAt: masterPlot.approvedAt ?? masterPlot.updatedAt,
-  });
-  db.close();
 }
 
 function createReviewAwareStoryboardProvider() {

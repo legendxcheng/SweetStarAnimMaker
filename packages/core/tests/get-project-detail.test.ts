@@ -27,6 +27,7 @@ describe("get project detail use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
@@ -137,6 +138,7 @@ describe("get project detail use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };

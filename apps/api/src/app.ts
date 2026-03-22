@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 
 import { buildSpec1Services } from "./bootstrap/build-spec1-services";
+import { registerCharacterSheetRoutes } from "./http/register-character-sheet-routes";
 import { createApiErrorHandler } from "./http/error-handler";
 import { registerProjectRoutes } from "./http/register-project-routes";
 import { registerStoryboardRoutes } from "./http/register-storyboard-routes";
@@ -43,6 +44,7 @@ export function buildApp(options: BuildAppOptions = {}) {
 
   app.setErrorHandler(createApiErrorHandler());
   registerProjectRoutes(app, services);
+  registerCharacterSheetRoutes(app, services);
   registerStoryboardRoutes(app, services);
   registerTaskRoutes(app, services);
   app.addHook("onClose", async () => {

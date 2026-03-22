@@ -39,6 +39,12 @@ export function createRejectStoryboardUseCase(
         throw new CurrentStoryboardNotFoundError(project.id);
       }
 
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: "character_sheets_approved",
+        updatedAt: currentStoryboard.updatedAt,
+      });
+
       const task = await dependencies.createStoryboardGenerateTask.execute({
         projectId: project.id,
       });

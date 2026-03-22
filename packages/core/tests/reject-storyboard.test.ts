@@ -26,6 +26,7 @@ describe("reject storyboard use case", () => {
         }),
         updatePremiseMetadata: vi.fn(),
         updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
@@ -74,6 +75,7 @@ describe("reject storyboard use case", () => {
       }),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
@@ -126,7 +128,12 @@ describe("reject storyboard use case", () => {
     expect(createStoryboardGenerateTask.execute).toHaveBeenCalledWith({
       projectId: "proj_20260321_ab12cd",
     });
-    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+    expect(projectRepository.updateStatus).toHaveBeenNthCalledWith(1, {
+      projectId: "proj_20260321_ab12cd",
+      status: "character_sheets_approved",
+      updatedAt: "2026-03-21T12:00:00.000Z",
+    });
+    expect(projectRepository.updateStatus).toHaveBeenNthCalledWith(2, {
       projectId: "proj_20260321_ab12cd",
       status: "storyboard_generating",
       updatedAt: "2026-03-21T12:00:00.000Z",

@@ -25,6 +25,7 @@ describe("update project script use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
@@ -81,6 +82,7 @@ describe("update project script use case", () => {
         throw new Error("update failed");
       }),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };
@@ -126,6 +128,7 @@ describe("update project script use case", () => {
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateStatus: vi.fn(),
     };

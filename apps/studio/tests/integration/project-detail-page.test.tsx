@@ -21,6 +21,7 @@ const baseProject = {
     updatedAt: "2024-01-01T00:00:00Z",
   },
   currentMasterPlot: null,
+  currentCharacterSheetBatch: null,
   currentStoryboard: null,
 };
 
@@ -89,6 +90,30 @@ const reviewedProject = {
     sceneCount: 2,
     segmentCount: 5,
     totalDurationSec: 42,
+  },
+};
+
+const characterSheetsInReviewProject = {
+  ...approvedMasterPlotProject,
+  status: "character_sheets_in_review" as const,
+  currentCharacterSheetBatch: {
+    id: "char-batch-1",
+    sourceMasterPlotId: "mp-1",
+    characterCount: 2,
+    approvedCharacterCount: 1,
+    updatedAt: "2024-01-01T00:00:05Z",
+  },
+};
+
+const characterSheetsApprovedProject = {
+  ...approvedMasterPlotProject,
+  status: "character_sheets_approved" as const,
+  currentCharacterSheetBatch: {
+    id: "char-batch-1",
+    sourceMasterPlotId: "mp-1",
+    characterCount: 2,
+    approvedCharacterCount: 2,
+    updatedAt: "2024-01-01T00:00:05Z",
   },
 };
 
@@ -210,8 +235,27 @@ describe("Project Detail Page", () => {
     expect(createStoryboardGenerateTask).not.toHaveBeenCalled();
   });
 
-  it("enables the storyboard panel after the master plot is approved", async () => {
+  it("shows the character phase after master plot approval and keeps storyboard disabled until approvals complete", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "角色设定" })).toBeEnabled();
+    });
+
+    expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "角色设定" }));
+
+    expect(screen.getByRole("heading", { name: "角色设定工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成角色三视图/i })).toBeInTheDocument();
+  });
+
+  it("enables the storyboard panel after character sheets are approved", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      characterSheetsApprovedProject,
+    );
 
     renderPage();
 
@@ -226,7 +270,9 @@ describe("Project Detail Page", () => {
   });
 
   it("loads project detail and lets the user start storyboard generation", async () => {
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      characterSheetsApprovedProject,
+    );
     vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
 
     renderPage();
@@ -340,7 +386,7 @@ describe("Project Detail Page", () => {
     }) as typeof setInterval);
 
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(approvedMasterPlotProject)
+      .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(reviewedProject);
     vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     const getTaskDetail = vi
@@ -385,7 +431,9 @@ describe("Project Detail Page", () => {
       return 1 as unknown as ReturnType<typeof setInterval>;
     }) as typeof setInterval);
 
-    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      characterSheetsApprovedProject,
+    );
     vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
     const getTaskDetail = vi
       .spyOn(apiModule.apiClient, "getTaskDetail")
@@ -413,5 +461,66 @@ describe("Project Detail Page", () => {
 
     expect(getTaskDetail).toHaveBeenCalledWith("task-1");
     expect(screen.getByText(/provider rate limit/i)).toBeInTheDocument();
+  });
+
+  it("loads the character phase when character sheets are in review and keeps storyboard locked", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      characterSheetsInReviewProject,
+    );
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
+      currentBatch: characterSheetsInReviewProject.currentCharacterSheetBatch,
+      characters: [
+        {
+          id: "char-rin",
+          projectId: "proj-1",
+          batchId: "char-batch-1",
+          sourceMasterPlotId: "mp-1",
+          characterName: "Rin",
+          promptTextGenerated: "silver pilot jacket",
+          promptTextCurrent: "silver pilot jacket",
+          imageAssetPath: "character-sheets/char-rin/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "turnaround-image",
+          model: "imagen-4.0-generate-preview",
+          status: "in_review" as const,
+          updatedAt: "2024-01-01T00:00:05Z",
+          approvedAt: null,
+          sourceTaskId: "task-char-rin",
+        },
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue({
+      id: "char-rin",
+      projectId: "proj-1",
+      batchId: "char-batch-1",
+      sourceMasterPlotId: "mp-1",
+      characterName: "Rin",
+      promptTextGenerated: "silver pilot jacket",
+      promptTextCurrent: "silver pilot jacket",
+      imageAssetPath: "character-sheets/char-rin/current.png",
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "turnaround-image",
+      model: "imagen-4.0-generate-preview",
+      status: "in_review",
+      updatedAt: "2024-01-01T00:00:05Z",
+      approvedAt: null,
+      sourceTaskId: "task-char-rin",
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "角色设定" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "角色设定" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Rin")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
   });
 });

@@ -29,6 +29,14 @@ export {
   type CreateBullMqTaskQueueOptions,
 } from "./queue/bullmq-task-queue";
 export {
+  createGeminiCharacterSheetProvider,
+  type CreateGeminiCharacterSheetProviderOptions,
+} from "./providers/gemini-character-sheet-provider";
+export {
+  createTurnaroundImageProvider,
+  type CreateTurnaroundImageProviderOptions,
+} from "./providers/turnaround-image-provider";
+export {
   createGeminiStoryboardProvider,
   type CreateGeminiStoryboardProviderOptions,
 } from "./providers/gemini-storyboard-provider";

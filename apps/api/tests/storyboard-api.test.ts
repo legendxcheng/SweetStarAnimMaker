@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../src/app";
 import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
+import { seedApprovedCharacterSheets } from "./storyboard-test-helpers";
 
 describe("storyboard api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -144,6 +145,11 @@ describe("storyboard api", () => {
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
     });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
     await seedCurrentStoryboard({
       tempDir,
       projectId: project.id,
@@ -187,6 +193,11 @@ describe("storyboard api", () => {
       projectId: project.id,
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
+    });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
     });
     await seedCurrentStoryboard({
       tempDir,
@@ -234,6 +245,11 @@ describe("storyboard api", () => {
       projectId: project.id,
       projectStorageDir: project.storageDir,
       masterPlot: baseMasterPlot,
+    });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
     });
     await seedCurrentStoryboard({
       tempDir,

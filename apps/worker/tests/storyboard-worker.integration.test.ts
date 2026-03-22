@@ -8,6 +8,12 @@ describe("storyboard worker integration", () => {
     const processStoryboardGenerateTask = {
       execute: vi.fn(),
     };
+    const processCharacterSheetsGenerateTask = {
+      execute: vi.fn(),
+    };
+    const processCharacterSheetGenerateTask = {
+      execute: vi.fn(),
+    };
     const close = vi.fn();
     const workerFactory = vi.fn(({ processor }) => ({
       processor,
@@ -17,27 +23,52 @@ describe("storyboard worker integration", () => {
     const worker = await startWorker({
       services: {
         processStoryboardGenerateTask,
+        processCharacterSheetsGenerateTask,
+        processCharacterSheetGenerateTask,
       },
       workerFactory,
     });
 
-    const createdWorker = workerFactory.mock.results[0]?.value as {
+    const storyboardWorker = workerFactory.mock.results[0]?.value as {
+      processor(job: { data: { taskId: string } }): Promise<void>;
+    };
+    const batchWorker = workerFactory.mock.results[1]?.value as {
+      processor(job: { data: { taskId: string } }): Promise<void>;
+    };
+    const characterWorker = workerFactory.mock.results[2]?.value as {
       processor(job: { data: { taskId: string } }): Promise<void>;
     };
 
-    await createdWorker.processor({
+    await storyboardWorker.processor({
       data: {
         taskId: "task_20260317_ab12cd",
+      },
+    });
+    await batchWorker.processor({
+      data: {
+        taskId: "task_20260317_character_sheets",
+      },
+    });
+    await characterWorker.processor({
+      data: {
+        taskId: "task_20260317_char_rin",
       },
     });
 
     expect(processStoryboardGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_20260317_ab12cd",
     });
+    expect(processCharacterSheetsGenerateTask.execute).toHaveBeenCalledWith({
+      taskId: "task_20260317_character_sheets",
+    });
+    expect(processCharacterSheetGenerateTask.execute).toHaveBeenCalledWith({
+      taskId: "task_20260317_char_rin",
+    });
 
     await worker.close();
 
-    expect(close).toHaveBeenCalled();
+    expect(workerFactory).toHaveBeenCalledTimes(3);
+    expect(close).toHaveBeenCalledTimes(3);
   });
 
   it("forwards master-plot task input into the configured storyboard provider", async () => {
@@ -113,6 +144,7 @@ describe("storyboard worker integration", () => {
           premiseRelPath: "premise/v1.md",
           premiseBytes: 88,
           currentMasterPlotId: "mp_20260317_ab12cd",
+          currentCharacterSheetBatchId: null,
           currentStoryboardId: null,
           status: "storyboard_generating",
           createdAt: "2026-03-17T10:00:00.000Z",
@@ -121,6 +153,7 @@ describe("storyboard worker integration", () => {
         }),
         updatePremiseMetadata: vi.fn(),
         updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
@@ -169,7 +202,36 @@ describe("storyboard worker integration", () => {
         writeCurrentStoryboard: vi.fn(),
         readCurrentStoryboard: vi.fn(),
       },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn(),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
+      characterSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeGeneratedPrompt: vi.fn(),
+        writeImageVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        readCurrentCharacterSheet: vi.fn(),
+      },
       storyboardProvider,
+      characterSheetPromptProvider: {
+        generateCharacterPrompt: vi.fn(),
+      },
+      characterSheetImageProvider: {
+        generateCharacterSheetImage: vi.fn(),
+      },
+      taskQueue: {
+        enqueue: vi.fn(),
+      },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260317_generated",
+      },
       clock: {
         now: vi
           .fn()

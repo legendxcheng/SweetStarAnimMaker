@@ -12,6 +12,16 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "prompt-templates",
     "storyboard.generate.txt",
   );
+  const characterPromptTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "character_sheet.prompt.generate.txt",
+  );
+  const characterTurnaroundTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "character_sheet.turnaround.generate.txt",
+  );
 
   await fs.mkdir(path.dirname(masterPlotPromptTemplatePath), { recursive: true });
   await fs.writeFile(
@@ -27,6 +37,20 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
       "{{masterPlot.logline}}",
       "{{masterPlot.synopsis}}",
     ].join("\n"),
+    "utf8",
+  );
+  await fs.writeFile(
+    characterPromptTemplatePath,
+    [
+      "Design a single reusable character appearance prompt for {{characterName}}.",
+      "{{masterPlot.logline}}",
+      "{{masterPlot.synopsis}}",
+    ].join("\n"),
+    "utf8",
+  );
+  await fs.writeFile(
+    characterTurnaroundTemplatePath,
+    "Create a combined turnaround sheet for {{characterName}}.\n{{promptTextCurrent}}",
     "utf8",
   );
 }

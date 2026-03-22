@@ -1,0 +1,437 @@
+import { useEffect, useMemo, useState } from "react";
+import type { CharacterSheetRecord, ProjectDetail, TaskDetail } from "@sweet-star/shared";
+
+import { ErrorState } from "./error-state";
+import { apiClient } from "../services/api-client";
+
+const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
+  pending: "排队中",
+  running: "执行中",
+  succeeded: "已完成",
+  failed: "失败",
+};
+
+const CHARACTER_STATUS_LABELS: Record<CharacterSheetRecord["status"], string> = {
+  generating: "生成中",
+  in_review: "待审核",
+  approved: "已通过",
+  failed: "失败",
+};
+
+interface CharacterSheetsPhasePanelProps {
+  project: ProjectDetail;
+  task: TaskDetail | null;
+  taskError: Error | null;
+  creatingTask: boolean;
+  disableGenerate: boolean;
+  onGenerate: () => void;
+  onProjectRefresh?: () => void | Promise<void>;
+}
+
+export function CharacterSheetsPhasePanel({
+  project,
+  task,
+  taskError,
+  creatingTask,
+  disableGenerate,
+  onGenerate,
+  onProjectRefresh,
+}: CharacterSheetsPhasePanelProps) {
+  const [characters, setCharacters] = useState<CharacterSheetRecord[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState<Error | null>(null);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<CharacterSheetRecord | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<Error | null>(null);
+  const [promptDraft, setPromptDraft] = useState("");
+  const [actionError, setActionError] = useState<Error | null>(null);
+  const [actionBusy, setActionBusy] = useState<"save" | "regenerate" | "approve" | null>(null);
+  const cardClass =
+    "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
+  const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
+  const metaValueClass = "text-sm text-(--color-text-primary)";
+  const batchSummary = project.currentCharacterSheetBatch;
+  const selectedListCharacter = useMemo(
+    () => characters.find((character) => character.id === selectedCharacterId) ?? null,
+    [characters, selectedCharacterId],
+  );
+
+  useEffect(() => {
+    if (!batchSummary) {
+      setCharacters([]);
+      setSelectedCharacterId(null);
+      setSelectedCharacter(null);
+      setPromptDraft("");
+      setListError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCharacters() {
+      setListLoading(true);
+      try {
+        const response = await apiClient.listCharacterSheets(project.id);
+
+        if (cancelled) {
+          return;
+        }
+
+        setCharacters(response.characters);
+        setSelectedCharacterId((currentId) => {
+          if (currentId && response.characters.some((character) => character.id === currentId)) {
+            return currentId;
+          }
+
+          return response.characters[0]?.id ?? null;
+        });
+        setListError(null);
+      } catch (error) {
+        if (!cancelled) {
+          setListError(error as Error);
+        }
+      } finally {
+        if (!cancelled) {
+          setListLoading(false);
+        }
+      }
+    }
+
+    void loadCharacters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [batchSummary?.id, project.id]);
+
+  useEffect(() => {
+    const characterId = selectedCharacterId;
+
+    if (!characterId) {
+      setSelectedCharacter(null);
+      setPromptDraft("");
+      setDetailError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCharacter(characterIdValue: string) {
+      setDetailLoading(true);
+      try {
+        const response = await apiClient.getCharacterSheet(project.id, characterIdValue);
+
+        if (cancelled) {
+          return;
+        }
+
+        setSelectedCharacter(response);
+        setPromptDraft(response.promptTextCurrent);
+        setDetailError(null);
+      } catch (error) {
+        if (!cancelled) {
+          setDetailError(error as Error);
+        }
+      } finally {
+        if (!cancelled) {
+          setDetailLoading(false);
+        }
+      }
+    }
+
+    void loadCharacter(characterId);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, selectedCharacterId]);
+
+  async function refreshProject() {
+    await onProjectRefresh?.();
+  }
+
+  function updateCharacterInList(nextCharacter: CharacterSheetRecord) {
+    setCharacters((currentCharacters) =>
+      currentCharacters.map((character) =>
+        character.id === nextCharacter.id ? nextCharacter : character,
+      ),
+    );
+  }
+
+  async function handleSavePrompt() {
+    if (!selectedCharacter) {
+      return;
+    }
+
+    try {
+      setActionBusy("save");
+      const updatedCharacter = await apiClient.updateCharacterSheetPrompt(
+        project.id,
+        selectedCharacter.id,
+        {
+          promptTextCurrent: promptDraft,
+        },
+      );
+
+      setSelectedCharacter(updatedCharacter);
+      setPromptDraft(updatedCharacter.promptTextCurrent);
+      updateCharacterInList(updatedCharacter);
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRegenerate() {
+    if (!selectedCharacter) {
+      return;
+    }
+
+    try {
+      setActionBusy("regenerate");
+      const nextTask = await apiClient.regenerateCharacterSheet(project.id, selectedCharacter.id);
+
+      setSelectedCharacter({
+        ...selectedCharacter,
+        status: "generating",
+        sourceTaskId: nextTask.id,
+        updatedAt: nextTask.updatedAt,
+      });
+      updateCharacterInList({
+        ...selectedCharacter,
+        status: "generating",
+        sourceTaskId: nextTask.id,
+        updatedAt: nextTask.updatedAt,
+      });
+      setActionError(null);
+      await refreshProject();
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleApprove() {
+    if (!selectedCharacter) {
+      return;
+    }
+
+    try {
+      setActionBusy("approve");
+      const approvedCharacter = await apiClient.approveCharacterSheet(project.id, selectedCharacter.id);
+
+      setSelectedCharacter(approvedCharacter);
+      updateCharacterInList(approvedCharacter);
+      setActionError(null);
+      await refreshProject();
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  return (
+    <section aria-label="角色设定工作区">
+      <div className={cardClass}>
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <h3 className="text-lg font-semibold text-(--color-text-primary)">角色设定工作区</h3>
+            <p className="text-sm text-(--color-text-muted) mt-1">
+              生成每个主角的角色三视图，编辑提示词，并逐个审核通过后再进入分镜。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={disableGenerate}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {creatingTask ? "启动中..." : "生成角色三视图"}
+          </button>
+        </div>
+
+        {batchSummary ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className={metaLabelClass}>角色数量</p>
+              <p className={metaValueClass}>{batchSummary.characterCount}</p>
+            </div>
+            <div>
+              <p className={metaLabelClass}>已通过</p>
+              <p className={metaValueClass}>
+                {batchSummary.approvedCharacterCount}/{batchSummary.characterCount}
+              </p>
+            </div>
+            <div>
+              <p className={metaLabelClass}>更新时间</p>
+              <p className={metaValueClass}>{new Date(batchSummary.updatedAt).toLocaleString("zh-CN")}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-(--color-text-muted)">
+            主情节通过后，可以从这里启动角色三视图生成。
+          </p>
+        )}
+      </div>
+
+      {task && (
+        <div className={cardClass}>
+          <h4 className="text-base font-semibold text-(--color-text-primary) mb-3">任务状态</h4>
+          <div className="grid gap-2">
+            <div>
+              <p className={metaLabelClass}>任务 ID</p>
+              <p className={`${metaValueClass} font-mono text-xs`}>{task.id}</p>
+            </div>
+            <div>
+              <p className={metaLabelClass}>状态</p>
+              <p className={metaValueClass}>{TASK_STATUS_LABELS[task.status]}</p>
+            </div>
+            {task.errorMessage && <p className="text-sm text-(--color-danger)">{task.errorMessage}</p>}
+          </div>
+        </div>
+      )}
+
+      {taskError && task && (
+        <div className="mb-4">
+          <ErrorState error={taskError} />
+        </div>
+      )}
+
+      {project.status === "character_sheets_generating" && !task && (
+        <div className="bg-(--color-warning)/10 border border-(--color-warning)/30 rounded-xl p-4 mb-4">
+          <p className="text-sm text-(--color-warning)">角色三视图生成中，正在自动刷新项目状态。</p>
+        </div>
+      )}
+
+      {listError && (
+        <div className="mb-4">
+          <ErrorState error={listError} />
+        </div>
+      )}
+
+      {batchSummary && (
+        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className={cardClass}>
+            <h4 className="text-base font-semibold text-(--color-text-primary) mb-3">角色列表</h4>
+
+            {listLoading ? (
+              <p className="text-sm text-(--color-text-muted)">正在加载角色设定...</p>
+            ) : (
+              <div className="grid gap-2">
+                {characters.map((character) => {
+                  const isSelected = character.id === selectedCharacterId;
+
+                  return (
+                    <button
+                      key={character.id}
+                      type="button"
+                      onClick={() => setSelectedCharacterId(character.id)}
+                      className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                        isSelected
+                          ? "border-(--color-accent)/40 bg-(--color-accent)/10"
+                          : "border-(--color-border) bg-(--color-bg-base) hover:bg-(--color-bg-elevated)"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-(--color-text-primary)">
+                          {character.characterName}
+                        </span>
+                        <span className="text-xs text-(--color-text-muted)">
+                          {CHARACTER_STATUS_LABELS[character.status]}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className={cardClass}>
+            <h4 className="text-base font-semibold text-(--color-text-primary) mb-3">
+              {selectedListCharacter ? `${selectedListCharacter.characterName} 角色详情` : "角色详情"}
+            </h4>
+
+            {detailError && <ErrorState error={detailError} />}
+
+            {detailLoading && (
+              <p className="text-sm text-(--color-text-muted)">正在加载角色详情...</p>
+            )}
+
+            {!detailLoading && !detailError && !selectedCharacter && (
+              <p className="text-sm text-(--color-text-muted)">选择一个角色以查看和编辑当前设定。</p>
+            )}
+
+            {selectedCharacter && !detailLoading && !detailError && (
+              <div className="grid gap-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className={metaLabelClass}>当前状态</p>
+                    <p className={metaValueClass}>
+                      {CHARACTER_STATUS_LABELS[selectedCharacter.status]}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={metaLabelClass}>图像资源</p>
+                    <p className={`${metaValueClass} break-all`}>
+                      {selectedCharacter.imageAssetPath ?? "尚未生成"}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className={metaLabelClass}>当前提示词</p>
+                  <textarea
+                    value={promptDraft}
+                    onChange={(event) => setPromptDraft(event.target.value)}
+                    className="w-full min-h-40 rounded-xl border border-(--color-border) bg-(--color-bg-base) px-3 py-3 text-sm text-(--color-text-primary)"
+                  />
+                </div>
+
+                {actionError && <ErrorState error={actionError} />}
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSavePrompt();
+                    }}
+                    disabled={actionBusy !== null}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-border-muted) text-(--color-text-primary) disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    保存提示词
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleRegenerate();
+                    }}
+                    disabled={actionBusy !== null}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-warning)/30 text-(--color-warning) disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    重新生成
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleApprove();
+                    }}
+                    disabled={actionBusy !== null}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-(--color-success) text-(--color-bg-base) disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    通过当前角色
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
