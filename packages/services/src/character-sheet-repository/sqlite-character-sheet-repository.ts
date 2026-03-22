@@ -271,6 +271,7 @@ function fromCharacterRow(row: CharacterSheetRow): CharacterSheetRecordEntity {
     imageHeight: row.image_height,
     provider: row.provider,
     model: row.model,
+    referenceImages: [],
     status: row.status,
     updatedAt: row.updated_at,
     approvedAt: row.approved_at,

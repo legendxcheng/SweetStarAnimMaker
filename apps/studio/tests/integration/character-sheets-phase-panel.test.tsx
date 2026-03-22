@@ -51,6 +51,7 @@ const rinCharacter = {
   characterName: "Rin",
   promptTextGenerated: "silver pilot jacket",
   promptTextCurrent: "silver pilot jacket",
+  referenceImages: [],
   imageAssetPath: "character-sheets/char-rin/current.png",
   imageWidth: 1536,
   imageHeight: 1024,
@@ -104,12 +105,88 @@ describe("CharacterSheetsPhasePanel", () => {
       expect(screen.getByText("Ivo")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Rin/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rin 待审核$/i }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.getCharacterSheet).toHaveBeenCalledWith("proj-1", "char-rin");
     });
     expect(screen.getByDisplayValue("silver pilot jacket")).toBeInTheDocument();
+  });
+
+  it("renders existing reference-image thumbnails, uploads files, and deletes one reference image", async () => {
+    const characterWithReferenceImage = {
+      ...rinCharacter,
+      referenceImages: [
+        {
+          id: "ref_001",
+          fileName: "ref-001.png",
+          originalFileName: "rin-face.png",
+          mimeType: "image/png",
+          sizeBytes: 1234,
+          createdAt: "2026-03-22T12:00:00.000Z",
+        },
+      ],
+    };
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
+      currentBatch: baseProject.currentCharacterSheetBatch,
+      characters: [characterWithReferenceImage],
+    });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(characterWithReferenceImage);
+    vi.spyOn(apiModule.apiClient, "uploadCharacterReferenceImages").mockResolvedValue({
+      ...characterWithReferenceImage,
+      referenceImages: [
+        ...characterWithReferenceImage.referenceImages,
+        {
+          id: "ref_002",
+          fileName: "ref-002.jpg",
+          originalFileName: "rin-pose.jpg",
+          mimeType: "image/jpeg",
+          sizeBytes: 2345,
+          createdAt: "2026-03-22T12:01:00.000Z",
+        },
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "deleteCharacterReferenceImage").mockResolvedValue({
+      ...characterWithReferenceImage,
+      referenceImages: [],
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText("Rin")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Rin 待审核$/i }));
+
+    expect(await screen.findByText("参考图")).toBeInTheDocument();
+    expect(screen.getByAltText("rin-face.png")).toBeInTheDocument();
+
+    const fileInput = screen.getByLabelText("添加参考图");
+    const uploadFile = new File(["pose"], "rin-pose.jpg", { type: "image/jpeg" });
+    fireEvent.change(fileInput, {
+      target: {
+        files: [uploadFile],
+      },
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.uploadCharacterReferenceImages).toHaveBeenCalledWith(
+        "proj-1",
+        "char-rin",
+        [uploadFile],
+      );
+    });
+    expect(await screen.findByAltText("rin-pose.jpg")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /删除参考图 rin-face.png/i }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.deleteCharacterReferenceImage).toHaveBeenCalledWith(
+        "proj-1",
+        "char-rin",
+        "ref_001",
+      );
+    });
   });
 
   it("saves prompt edits, triggers regenerate, and approves the selected character", async () => {
@@ -160,7 +237,7 @@ describe("CharacterSheetsPhasePanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Rin")).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole("button", { name: /Rin/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rin 待审核$/i }));
 
     const promptInput = await screen.findByDisplayValue("silver pilot jacket");
     fireEvent.change(promptInput, {
@@ -186,6 +263,7 @@ describe("CharacterSheetsPhasePanel", () => {
         "char-rin",
       );
     });
+    expect(screen.queryByAltText("rin-face.png")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /通过当前角色/i }));
 

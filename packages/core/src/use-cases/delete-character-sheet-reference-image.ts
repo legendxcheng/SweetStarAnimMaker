@@ -6,24 +6,25 @@ import type { CharacterSheetRepository } from "../ports/character-sheet-reposito
 import type { CharacterSheetStorage } from "../ports/character-sheet-storage";
 import type { ProjectRepository } from "../ports/project-repository";
 
-export interface GetCharacterSheetInput {
+export interface DeleteCharacterSheetReferenceImageInput {
   projectId: string;
   characterId: string;
+  referenceImageId: string;
 }
 
-export interface GetCharacterSheetUseCase {
-  execute(input: GetCharacterSheetInput): Promise<CharacterSheetRecord>;
+export interface DeleteCharacterSheetReferenceImageUseCase {
+  execute(input: DeleteCharacterSheetReferenceImageInput): Promise<CharacterSheetRecord>;
 }
 
-export interface GetCharacterSheetUseCaseDependencies {
+export interface DeleteCharacterSheetReferenceImageUseCaseDependencies {
   projectRepository: ProjectRepository;
   characterSheetRepository: CharacterSheetRepository;
   characterSheetStorage: CharacterSheetStorage;
 }
 
-export function createGetCharacterSheetUseCase(
-  dependencies: GetCharacterSheetUseCaseDependencies,
-): GetCharacterSheetUseCase {
+export function createDeleteCharacterSheetReferenceImageUseCase(
+  dependencies: DeleteCharacterSheetReferenceImageUseCaseDependencies,
+): DeleteCharacterSheetReferenceImageUseCase {
   return {
     async execute(input) {
       const project = await dependencies.projectRepository.findById(input.projectId);
@@ -40,9 +41,14 @@ export function createGetCharacterSheetUseCase(
         throw new CharacterSheetNotFoundError(input.characterId);
       }
 
+      const referenceImages = await dependencies.characterSheetStorage.deleteReferenceImage({
+        character,
+        referenceImageId: input.referenceImageId,
+      });
+
       return {
         ...character,
-        referenceImages: await dependencies.characterSheetStorage.listReferenceImages({ character }),
+        referenceImages,
       };
     },
   };

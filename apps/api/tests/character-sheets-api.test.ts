@@ -7,6 +7,7 @@ import {
   createCharacterSheetRecord,
 } from "@sweet-star/core";
 import {
+  createCharacterSheetStorage,
   createLocalDataPaths,
   createSqliteCharacterSheetRepository,
   createSqliteDb,
@@ -143,6 +144,165 @@ describe("character sheets api", () => {
         promptTextCurrent: "Silver pilot jacket, storm glare, left-brow scar.",
       }),
     );
+  });
+
+  it("uploads character reference images and returns updated detail", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_in_review",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+
+    const payload = createMultipartPayload([
+      {
+        fieldName: "files",
+        fileName: "rin-face.png",
+        contentType: "image/png",
+        bytes: Buffer.from([1, 2, 3]),
+      },
+    ]);
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/character-sheets/char_rin_1/reference-images`,
+      headers: {
+        "content-type": payload.contentType,
+      },
+      payload: payload.body,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "char_rin_1",
+        referenceImages: [
+          expect.objectContaining({
+            originalFileName: "rin-face.png",
+            mimeType: "image/png",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("deletes a character reference image and returns updated detail", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_in_review",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+    const referenceImages = await seedCharacterReferenceImages({
+      tempDir,
+      projectStorageDir: project.storageDir,
+      batchId: "char_batch_v1",
+      characterId: "char_rin_1",
+    });
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/projects/${project.id}/character-sheets/char_rin_1/reference-images/${referenceImages[0]!.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "char_rin_1",
+        referenceImages: [],
+      }),
+    );
+  });
+
+  it("streams character reference image content", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_in_review",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+    const referenceImages = await seedCharacterReferenceImages({
+      tempDir,
+      projectStorageDir: project.storageDir,
+      batchId: "char_batch_v1",
+      characterId: "char_rin_1",
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}/character-sheets/char_rin_1/reference-images/${referenceImages[0]!.id}/content`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("image/png");
+    expect(response.body.length).toBeGreaterThan(0);
+  });
+
+  it("rejects non-image uploads", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_in_review",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+
+    const payload = createMultipartPayload([
+      {
+        fieldName: "files",
+        fileName: "notes.txt",
+        contentType: "text/plain",
+        bytes: Buffer.from("not an image", "utf8"),
+      },
+    ]);
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/character-sheets/char_rin_1/reference-images`,
+      headers: {
+        "content-type": payload.contentType,
+      },
+      payload: payload.body,
+    });
+
+    expect(response.statusCode).toBe(400);
   });
 
   it("regenerates a character sheet and enqueues an image task", async () => {
@@ -348,6 +508,71 @@ async function seedCharacterSheets(input: {
     updatedAt: "2026-03-21T12:06:00.000Z",
   });
   db.close();
+}
+
+async function seedCharacterReferenceImages(input: {
+  tempDir: string;
+  projectStorageDir: string;
+  batchId: string;
+  characterId: string;
+}) {
+  const storage = createCharacterSheetStorage({
+    paths: createLocalDataPaths(input.tempDir),
+  });
+  const character = createCharacterSheetRecord({
+    id: input.characterId,
+    projectId: "proj_1",
+    projectStorageDir: input.projectStorageDir,
+    batchId: input.batchId,
+    sourceMasterPlotId: "mp_20260321_ab12cd",
+    characterName: "Rin",
+    promptTextGenerated: "Rin generated prompt",
+    promptTextCurrent: "Rin current prompt",
+    updatedAt: "2026-03-21T12:00:00.000Z",
+  });
+
+  return storage.saveReferenceImages({
+    character,
+    files: [
+      {
+        originalFileName: "rin-face.png",
+        mimeType: "image/png",
+        sizeBytes: 3,
+        contentBytes: new Uint8Array([1, 2, 3]),
+        createdAt: "2026-03-22T12:00:00.000Z",
+      },
+    ],
+  });
+}
+
+function createMultipartPayload(
+  files: Array<{
+    fieldName: string;
+    fileName: string;
+    contentType: string;
+    bytes: Buffer;
+  }>,
+) {
+  const boundary = "----sweet-star-boundary";
+  const chunks: Buffer[] = [];
+
+  for (const file of files) {
+    chunks.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${file.fieldName}"; filename="${file.fileName}"\r\nContent-Type: ${file.contentType}\r\n\r\n`,
+        "utf8",
+      ),
+    );
+    chunks.push(file.bytes);
+    chunks.push(Buffer.from("\r\n", "utf8"));
+  }
+
+  chunks.push(Buffer.from(`--${boundary}--\r\n`, "utf8"));
+
+  return {
+    body: Buffer.concat(chunks),
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
 }
 
 export async function seedApprovedMasterPlot(input: {

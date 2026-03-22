@@ -3,6 +3,7 @@ import type { CharacterSheetRecord, ProjectDetail, TaskDetail } from "@sweet-sta
 
 import { ErrorState } from "./error-state";
 import { apiClient } from "../services/api-client";
+import { config } from "../services/config";
 
 const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -46,12 +47,15 @@ export function CharacterSheetsPhasePanel({
   const [detailError, setDetailError] = useState<Error | null>(null);
   const [promptDraft, setPromptDraft] = useState("");
   const [actionError, setActionError] = useState<Error | null>(null);
-  const [actionBusy, setActionBusy] = useState<"save" | "regenerate" | "approve" | null>(null);
+  const [actionBusy, setActionBusy] = useState<
+    "save" | "upload" | "delete" | "regenerate" | "approve" | null
+  >(null);
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
   const batchSummary = project.currentCharacterSheetBatch;
+  const selectedReferenceImages = selectedCharacter?.referenceImages ?? [];
   const selectedListCharacter = useMemo(
     () => characters.find((character) => character.id === selectedCharacterId) ?? null,
     [characters, selectedCharacterId],
@@ -78,7 +82,7 @@ export function CharacterSheetsPhasePanel({
           return;
         }
 
-        setCharacters(response.characters);
+        setCharacters(response.characters.map(normalizeCharacter));
         setSelectedCharacterId((currentId) => {
           if (currentId && response.characters.some((character) => character.id === currentId)) {
             return currentId;
@@ -126,8 +130,9 @@ export function CharacterSheetsPhasePanel({
           return;
         }
 
-        setSelectedCharacter(response);
-        setPromptDraft(response.promptTextCurrent);
+        const normalizedCharacter = normalizeCharacter(response);
+        setSelectedCharacter(normalizedCharacter);
+        setPromptDraft(normalizedCharacter.promptTextCurrent);
         setDetailError(null);
       } catch (error) {
         if (!cancelled) {
@@ -154,9 +159,17 @@ export function CharacterSheetsPhasePanel({
   function updateCharacterInList(nextCharacter: CharacterSheetRecord) {
     setCharacters((currentCharacters) =>
       currentCharacters.map((character) =>
-        character.id === nextCharacter.id ? nextCharacter : character,
+        character.id === nextCharacter.id ? normalizeCharacter(nextCharacter) : character,
       ),
     );
+  }
+
+  function applyUpdatedCharacter(nextCharacter: CharacterSheetRecord) {
+    const normalizedCharacter = normalizeCharacter(nextCharacter);
+
+    setSelectedCharacter(normalizedCharacter);
+    setPromptDraft(normalizedCharacter.promptTextCurrent);
+    updateCharacterInList(normalizedCharacter);
   }
 
   async function handleSavePrompt() {
@@ -174,9 +187,7 @@ export function CharacterSheetsPhasePanel({
         },
       );
 
-      setSelectedCharacter(updatedCharacter);
-      setPromptDraft(updatedCharacter.promptTextCurrent);
-      updateCharacterInList(updatedCharacter);
+      applyUpdatedCharacter(updatedCharacter);
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -228,6 +239,50 @@ export function CharacterSheetsPhasePanel({
       updateCharacterInList(approvedCharacter);
       setActionError(null);
       await refreshProject();
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleReferenceImageUpload(files: FileList | null) {
+    if (!selectedCharacter || !files || files.length === 0) {
+      return;
+    }
+
+    try {
+      setActionBusy("upload");
+      const updatedCharacter = await apiClient.uploadCharacterReferenceImages(
+        project.id,
+        selectedCharacter.id,
+        Array.from(files),
+      );
+
+      applyUpdatedCharacter(updatedCharacter);
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleDeleteReferenceImage(referenceImageId: string) {
+    if (!selectedCharacter) {
+      return;
+    }
+
+    try {
+      setActionBusy("delete");
+      const updatedCharacter = await apiClient.deleteCharacterReferenceImage(
+        project.id,
+        selectedCharacter.id,
+        referenceImageId,
+      );
+
+      applyUpdatedCharacter(updatedCharacter);
+      setActionError(null);
     } catch (error) {
       setActionError(error as Error);
     } finally {
@@ -393,6 +448,67 @@ export function CharacterSheetsPhasePanel({
                   />
                 </div>
 
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className={metaLabelClass}>参考图</p>
+                    <div>
+                      <label className="inline-flex cursor-pointer items-center rounded-lg border border-(--color-border-muted) px-3 py-2 text-sm font-semibold text-(--color-text-primary)">
+                        添加参考图
+                        <input
+                          aria-label="添加参考图"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(event) => {
+                            void handleReferenceImageUpload(event.target.files);
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {selectedReferenceImages.length > 0 ? (
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {selectedReferenceImages.map((referenceImage) => (
+                        <div
+                          key={referenceImage.id}
+                          className="rounded-xl border border-(--color-border) bg-(--color-bg-base) p-3"
+                        >
+                          <img
+                            src={config.characterReferenceImageContentUrl(
+                              project.id,
+                              selectedCharacter.id,
+                              referenceImage.id,
+                            )}
+                            alt={referenceImage.originalFileName}
+                            className="mb-3 h-32 w-full rounded-lg object-cover"
+                          />
+                          <p className="mb-2 truncate text-sm text-(--color-text-primary)">
+                            {referenceImage.originalFileName}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleDeleteReferenceImage(referenceImage.id);
+                            }}
+                            disabled={actionBusy !== null}
+                            aria-label={`删除参考图 ${referenceImage.originalFileName}`}
+                            className="rounded-lg border border-(--color-danger)/30 px-3 py-2 text-sm font-semibold text-(--color-danger) disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            删除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-(--color-text-muted)">
+                      暂无参考图。添加后会在重新生成时自动带入。
+                    </p>
+                  )}
+                </div>
+
                 {actionError && <ErrorState error={actionError} />}
 
                 <div className="flex flex-wrap gap-3">
@@ -434,4 +550,11 @@ export function CharacterSheetsPhasePanel({
       )}
     </section>
   );
+}
+
+function normalizeCharacter(character: CharacterSheetRecord) {
+  return {
+    ...character,
+    referenceImages: character.referenceImages ?? [],
+  };
 }

@@ -12,6 +12,15 @@ export interface CurrentCharacterSheetBatchSummary {
   updatedAt: string;
 }
 
+export interface CharacterReferenceImage {
+  id: string;
+  fileName: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface CharacterSheetRecord {
   id: string;
   projectId: string;
@@ -20,6 +29,7 @@ export interface CharacterSheetRecord {
   characterName: string;
   promptTextGenerated: string;
   promptTextCurrent: string;
+  referenceImages: CharacterReferenceImage[];
   imageAssetPath: string | null;
   imageWidth: number | null;
   imageHeight: number | null;

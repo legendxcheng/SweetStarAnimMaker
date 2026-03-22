@@ -112,6 +112,10 @@ describe("process character sheets generate task use case", () => {
       writeImageVersion: vi.fn(),
       writeCurrentImage: vi.fn(),
       readCurrentCharacterSheet: vi.fn(),
+      resolveReferenceImagePaths: vi
+        .fn()
+        .mockResolvedValueOnce(["E:/tmp/ref-rin-1.png"])
+        .mockResolvedValueOnce([]),
     };
     const promptProvider = {
       generateCharacterPrompt: vi
@@ -163,11 +167,47 @@ describe("process character sheets generate task use case", () => {
     expect(characterSheetRepository.insertBatch).toHaveBeenCalledTimes(1);
     expect(characterSheetRepository.insertCharacter).toHaveBeenCalledTimes(2);
     expect(characterSheetStorage.writeGeneratedPrompt).toHaveBeenCalledTimes(2);
+    expect(characterSheetStorage.resolveReferenceImagePaths).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        character: expect.objectContaining({
+          id: "char_rin_1",
+          batchId: expect.any(String),
+        }),
+      }),
+    );
+    expect(characterSheetStorage.resolveReferenceImagePaths).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        character: expect.objectContaining({
+          id: "char_ivo_2",
+          batchId: expect.any(String),
+        }),
+      }),
+    );
     expect(projectRepository.updateCurrentCharacterSheetBatch).toHaveBeenCalledWith({
       projectId: "proj_20260321_ab12cd",
       batchId: expect.any(String),
     });
     expect(taskQueue.enqueue).toHaveBeenCalledTimes(2);
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          taskType: "character_sheet_generate",
+          characterId: "char_rin_1",
+          referenceImagePaths: ["E:/tmp/ref-rin-1.png"],
+        }),
+      }),
+    );
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.not.objectContaining({
+          referenceImagePaths: expect.anything(),
+        }),
+      }),
+    );
     expect(taskFileStorage.writeTaskOutput).toHaveBeenCalledWith({
       task: expect.objectContaining({ id: "task_20260321_character_sheets" }),
       output: {
@@ -233,6 +273,7 @@ describe("process character sheets generate task use case", () => {
         writeImageVersion: vi.fn(),
         writeCurrentImage: vi.fn(),
         readCurrentCharacterSheet: vi.fn(),
+        resolveReferenceImagePaths: vi.fn(),
       },
       characterSheetPromptProvider: { generateCharacterPrompt: vi.fn() },
       taskQueue: { enqueue: vi.fn() },
@@ -318,6 +359,7 @@ describe("process character sheets generate task use case", () => {
         writeImageVersion: vi.fn(),
         writeCurrentImage: vi.fn(),
         readCurrentCharacterSheet: vi.fn(),
+        resolveReferenceImagePaths: vi.fn(),
       },
       characterSheetPromptProvider: { generateCharacterPrompt: vi.fn() },
       taskQueue: { enqueue: vi.fn() },

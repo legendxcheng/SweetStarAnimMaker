@@ -66,11 +66,44 @@ describe("get character sheet use case", () => {
         }),
         updateCharacter: vi.fn(),
       },
+      characterSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeGeneratedPrompt: vi.fn(),
+        writeImageVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        readCurrentCharacterSheet: vi.fn(),
+        listReferenceImages: vi.fn().mockResolvedValue([
+          {
+            id: "ref_1",
+            fileName: "ref-001.png",
+            originalFileName: "rin-face.png",
+            mimeType: "image/png",
+            sizeBytes: 1234,
+            createdAt: "2026-03-22T12:00:00.000Z",
+          },
+        ]),
+        saveReferenceImages: vi.fn(),
+        deleteReferenceImage: vi.fn(),
+        resolveReferenceImagePaths: vi.fn(),
+        getReferenceImageContent: vi.fn(),
+      },
     });
 
     const result = await useCase.execute({ projectId: "proj_1", characterId: "char_rin_1" });
 
     expect(result.characterName).toBe("Rin");
+    expect(result.referenceImages).toEqual([
+      {
+        id: "ref_1",
+        fileName: "ref-001.png",
+        originalFileName: "rin-face.png",
+        mimeType: "image/png",
+        sizeBytes: 1234,
+        createdAt: "2026-03-22T12:00:00.000Z",
+      },
+    ]);
   });
 
   it("throws when the character sheet does not exist", async () => {
@@ -106,6 +139,20 @@ describe("get character sheet use case", () => {
         insertCharacter: vi.fn(),
         findCharacterById: vi.fn().mockResolvedValue(null),
         updateCharacter: vi.fn(),
+      },
+      characterSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeGeneratedPrompt: vi.fn(),
+        writeImageVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        readCurrentCharacterSheet: vi.fn(),
+        listReferenceImages: vi.fn(),
+        saveReferenceImages: vi.fn(),
+        deleteReferenceImage: vi.fn(),
+        resolveReferenceImagePaths: vi.fn(),
+        getReferenceImageContent: vi.fn(),
       },
     });
 

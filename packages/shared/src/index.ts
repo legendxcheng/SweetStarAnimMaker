@@ -25,6 +25,7 @@ export {
 } from "./schemas/project-api";
 export {
   approveCharacterSheetRequestSchema,
+  characterReferenceImageResponseSchema,
   characterSheetDetailResponseSchema,
   characterSheetListResponseSchema,
   currentCharacterSheetBatchSummaryResponseSchema,
@@ -54,6 +55,7 @@ export type { ProjectDetail, ProjectPremiseMetadata } from "./types/project-deta
 export type { ProjectSummary } from "./types/project-summary";
 export type {
   ApproveCharacterSheetRequest,
+  CharacterReferenceImage,
   CharacterSheetListResponse,
   CharacterSheetRecord,
   CharacterSheetStatus,

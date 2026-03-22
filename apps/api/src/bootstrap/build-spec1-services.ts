@@ -8,7 +8,10 @@ import {
   createCreateCharacterSheetsGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
+  createAddCharacterSheetReferenceImagesUseCase,
+  createDeleteCharacterSheetReferenceImageUseCase,
   createGetCharacterSheetUseCase,
+  createGetCharacterSheetReferenceImageContentUseCase,
   createGetCurrentStoryboardUseCase,
   createGetMasterPlotReviewUseCase,
   createGetProjectDetailUseCase,
@@ -185,10 +188,28 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     listCharacterSheets: createListCharacterSheetsUseCase({
       projectRepository: repository,
       characterSheetRepository,
+      characterSheetStorage,
+    }),
+    addCharacterSheetReferenceImages: createAddCharacterSheetReferenceImagesUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      characterSheetStorage,
+      clock,
+    }),
+    deleteCharacterSheetReferenceImage: createDeleteCharacterSheetReferenceImageUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      characterSheetStorage,
     }),
     getCharacterSheet: createGetCharacterSheetUseCase({
       projectRepository: repository,
       characterSheetRepository,
+      characterSheetStorage,
+    }),
+    getCharacterSheetReferenceImageContent: createGetCharacterSheetReferenceImageContentUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      characterSheetStorage,
     }),
     getCurrentStoryboard: createGetCurrentStoryboardUseCase({
       storyboardStorage,
@@ -247,6 +268,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     regenerateCharacterSheet: createRegenerateCharacterSheetUseCase({
       projectRepository: repository,
       characterSheetRepository,
+      characterSheetStorage,
       taskRepository,
       taskFileStorage,
       taskQueue: queuedTaskGateway,

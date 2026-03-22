@@ -29,6 +29,8 @@ export {
   characterSheetPromptCurrentFileName,
   characterSheetPromptGeneratedFileName,
   characterSheetPromptVariablesFileName,
+  characterSheetReferenceManifestFileName,
+  characterSheetReferencesDirectoryName,
   characterSheetVersionsDirectoryName,
   characterSheetsDirectoryName,
   createCharacterSheetBatchRecord,
@@ -41,6 +43,8 @@ export {
   toCharacterSheetPromptCurrentRelPath,
   toCharacterSheetPromptGeneratedRelPath,
   toCharacterSheetPromptVariablesRelPath,
+  toCharacterSheetReferenceManifestRelPath,
+  toCharacterSheetReferencesStorageDir,
   toCharacterSheetStorageDir,
   toCharacterSheetVersionsStorageDir,
   toCurrentCharacterSheetBatchSummary,
@@ -119,6 +123,7 @@ export {
   ProjectValidationError,
 } from "./errors/project-errors";
 export {
+  CharacterReferenceImageNotFoundError,
   CharacterSheetNotFoundError,
   CurrentCharacterSheetBatchNotFoundError,
 } from "./errors/character-sheet-errors";
@@ -144,8 +149,14 @@ export type {
 } from "./ports/character-sheet-repository";
 export type {
   CharacterSheetStorage,
+  CharacterSheetReferenceImageContent,
+  DeleteCharacterSheetReferenceImageInput,
+  GetCharacterSheetReferenceImageContentInput,
   InitializeCharacterSheetPromptTemplateInput,
+  ListCharacterSheetReferenceImagesInput,
   ReadCharacterSheetPromptTemplateInput,
+  ResolveCharacterSheetReferenceImagePathsInput,
+  SaveCharacterSheetReferenceImagesInput,
   WriteCharacterSheetBatchManifestInput,
   WriteCurrentCharacterSheetImageInput,
   WriteGeneratedCharacterPromptInput,
@@ -229,17 +240,35 @@ export {
   type CreateStoryboardGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-storyboard-generate-task";
 export {
+  createAddCharacterSheetReferenceImagesUseCase,
+  type AddCharacterSheetReferenceImagesInput,
+  type AddCharacterSheetReferenceImagesUseCase,
+  type AddCharacterSheetReferenceImagesUseCaseDependencies,
+} from "./use-cases/add-character-sheet-reference-images";
+export {
   createListCharacterSheetsUseCase,
   type ListCharacterSheetsInput,
   type ListCharacterSheetsUseCase,
   type ListCharacterSheetsUseCaseDependencies,
 } from "./use-cases/list-character-sheets";
 export {
+  createDeleteCharacterSheetReferenceImageUseCase,
+  type DeleteCharacterSheetReferenceImageInput,
+  type DeleteCharacterSheetReferenceImageUseCase,
+  type DeleteCharacterSheetReferenceImageUseCaseDependencies,
+} from "./use-cases/delete-character-sheet-reference-image";
+export {
   createGetCharacterSheetUseCase,
   type GetCharacterSheetInput,
   type GetCharacterSheetUseCase,
   type GetCharacterSheetUseCaseDependencies,
 } from "./use-cases/get-character-sheet";
+export {
+  createGetCharacterSheetReferenceImageContentUseCase,
+  type GetCharacterSheetReferenceImageContentInput as GetCharacterSheetReferenceImageContentUseCaseInput,
+  type GetCharacterSheetReferenceImageContentUseCase,
+  type GetCharacterSheetReferenceImageContentUseCaseDependencies,
+} from "./use-cases/get-character-sheet-reference-image-content";
 export {
   createGetCurrentStoryboardUseCase,
   type GetCurrentStoryboardInput,

@@ -6,6 +6,7 @@ import {
 import { CurrentCharacterSheetBatchNotFoundError } from "../errors/character-sheet-errors";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
+import type { CharacterSheetStorage } from "../ports/character-sheet-storage";
 import type { ProjectRepository } from "../ports/project-repository";
 
 export interface ListCharacterSheetsInput {
@@ -19,6 +20,7 @@ export interface ListCharacterSheetsUseCase {
 export interface ListCharacterSheetsUseCaseDependencies {
   projectRepository: ProjectRepository;
   characterSheetRepository: CharacterSheetRepository;
+  characterSheetStorage: CharacterSheetStorage;
 }
 
 export function createListCharacterSheetsUseCase(
@@ -47,10 +49,18 @@ export function createListCharacterSheetsUseCase(
       const characters = await dependencies.characterSheetRepository.listCharactersByBatchId(
         batch.id,
       );
+      const charactersWithReferenceImages = await Promise.all(
+        characters.map(async (character) => ({
+          ...character,
+          referenceImages: await dependencies.characterSheetStorage.listReferenceImages({
+            character,
+          }),
+        })),
+      );
 
       return {
-        currentBatch: toCurrentCharacterSheetBatchSummary(batch, characters),
-        characters,
+        currentBatch: toCurrentCharacterSheetBatchSummary(batch, charactersWithReferenceImages),
+        characters: charactersWithReferenceImages,
       };
     },
   };

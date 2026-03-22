@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 
 import { buildSpec1Services } from "./bootstrap/build-spec1-services";
 import { registerCharacterSheetRoutes } from "./http/register-character-sheet-routes";
@@ -41,6 +42,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     },
     credentials: true,
   });
+  app.register(multipart);
 
   app.setErrorHandler(createApiErrorHandler());
   registerProjectRoutes(app, services);

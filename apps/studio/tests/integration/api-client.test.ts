@@ -86,4 +86,38 @@ describe("API Client", () => {
     const headers = mockFetch.mock.calls[0]?.[1]?.headers as Headers;
     expect(headers.has("Content-Type")).toBe(false);
   });
+
+  it("uses FormData without forcing a JSON content-type header for reference-image uploads", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "char-rin",
+        projectId: "proj-1",
+        batchId: "char-batch-1",
+        sourceMasterPlotId: "mp-1",
+        characterName: "Rin",
+        promptTextGenerated: "silver pilot jacket",
+        promptTextCurrent: "silver pilot jacket",
+        referenceImages: [],
+        imageAssetPath: null,
+        imageWidth: null,
+        imageHeight: null,
+        provider: null,
+        model: null,
+        status: "in_review",
+        updatedAt: "2026-03-22T12:00:00.000Z",
+        approvedAt: null,
+        sourceTaskId: null,
+      }),
+    });
+    global.fetch = mockFetch;
+
+    await apiClient.uploadCharacterReferenceImages("proj-1", "char-rin", [
+      new File(["test"], "rin-face.png", { type: "image/png" }),
+    ]);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.has("Content-Type")).toBe(false);
+  });
 });

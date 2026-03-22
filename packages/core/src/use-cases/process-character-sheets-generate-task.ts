@@ -131,6 +131,10 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
               masterPlot,
             },
           });
+          const referenceImagePaths =
+            await dependencies.characterSheetStorage.resolveReferenceImagePaths({
+              character,
+            });
 
           const characterTask = createTaskRecord({
             id: dependencies.taskIdGenerator.generateTaskId(),
@@ -150,6 +154,7 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
             characterName,
             promptTextCurrent: character.promptTextCurrent,
             imagePromptTemplateKey: "character_sheet.turnaround.generate",
+            ...(referenceImagePaths.length > 0 ? { referenceImagePaths } : {}),
           };
 
           await dependencies.taskRepository.insert(characterTask);

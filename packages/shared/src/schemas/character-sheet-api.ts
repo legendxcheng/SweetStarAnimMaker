@@ -11,6 +11,15 @@ export const currentCharacterSheetBatchSummaryResponseSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const characterReferenceImageResponseSchema = z.object({
+  id: z.string(),
+  fileName: requiredTextSchema,
+  originalFileName: requiredTextSchema,
+  mimeType: requiredTextSchema,
+  sizeBytes: z.number().int().nonnegative(),
+  createdAt: z.string(),
+});
+
 export const characterSheetDetailResponseSchema = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -19,6 +28,7 @@ export const characterSheetDetailResponseSchema = z.object({
   characterName: requiredTextSchema,
   promptTextGenerated: requiredTextSchema,
   promptTextCurrent: requiredTextSchema,
+  referenceImages: z.array(characterReferenceImageResponseSchema),
   imageAssetPath: z.string().nullable(),
   imageWidth: z.number().int().positive().nullable(),
   imageHeight: z.number().int().positive().nullable(),

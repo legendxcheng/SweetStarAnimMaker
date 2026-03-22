@@ -1,10 +1,14 @@
+import fs from "node:fs/promises";
+
 import type { FastifyInstance } from "fastify";
 
+import { ProjectValidationError } from "@sweet-star/core";
 import {
   approveCharacterSheetRequestSchema,
   regenerateCharacterSheetRequestSchema,
   updateCharacterSheetPromptRequestSchema,
 } from "@sweet-star/shared";
+import type {} from "@fastify/multipart";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
 
@@ -28,6 +32,72 @@ export function registerCharacterSheetRoutes(
       characterId: params.characterId,
     });
   });
+
+  app.post("/projects/:projectId/character-sheets/:characterId/reference-images", async (request) => {
+    const params = request.params as { projectId: string; characterId: string };
+    const files = [];
+
+    for await (const part of request.files()) {
+      if (!part.mimetype.startsWith("image/")) {
+        throw new ProjectValidationError(`Unsupported reference image mime type: ${part.mimetype}`);
+      }
+
+      const contentBytes = await part.toBuffer();
+      files.push({
+        originalFileName: part.filename,
+        mimeType: part.mimetype,
+        sizeBytes: contentBytes.byteLength,
+        contentBytes,
+      });
+    }
+
+    if (files.length === 0) {
+      throw new ProjectValidationError("At least one image file is required");
+    }
+
+    return services.addCharacterSheetReferenceImages.execute({
+      projectId: params.projectId,
+      characterId: params.characterId,
+      files,
+    });
+  });
+
+  app.delete(
+    "/projects/:projectId/character-sheets/:characterId/reference-images/:referenceImageId",
+    async (request) => {
+      const params = request.params as {
+        projectId: string;
+        characterId: string;
+        referenceImageId: string;
+      };
+
+      return services.deleteCharacterSheetReferenceImage.execute({
+        projectId: params.projectId,
+        characterId: params.characterId,
+        referenceImageId: params.referenceImageId,
+      });
+    },
+  );
+
+  app.get(
+    "/projects/:projectId/character-sheets/:characterId/reference-images/:referenceImageId/content",
+    async (request, reply) => {
+      const params = request.params as {
+        projectId: string;
+        characterId: string;
+        referenceImageId: string;
+      };
+      const content = await services.getCharacterSheetReferenceImageContent.execute({
+        projectId: params.projectId,
+        characterId: params.characterId,
+        referenceImageId: params.referenceImageId,
+      });
+
+      return reply
+        .header("content-type", content.mimeType)
+        .send(await fs.readFile(content.filePath));
+    },
+  );
 
   app.put("/projects/:projectId/character-sheets/:characterId/prompt", async (request) => {
     const params = request.params as { projectId: string; characterId: string };

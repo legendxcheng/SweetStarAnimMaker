@@ -8,6 +8,7 @@ import {
 import { CharacterSheetNotFoundError } from "../errors/character-sheet-errors";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
+import type { CharacterSheetStorage } from "../ports/character-sheet-storage";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { TaskFileStorage } from "../ports/task-file-storage";
@@ -28,6 +29,7 @@ export interface RegenerateCharacterSheetUseCase {
 export interface RegenerateCharacterSheetUseCaseDependencies {
   projectRepository: ProjectRepository;
   characterSheetRepository: CharacterSheetRepository;
+  characterSheetStorage: CharacterSheetStorage;
   taskRepository: TaskRepository;
   taskFileStorage: TaskFileStorage;
   taskQueue: TaskQueue;
@@ -54,6 +56,10 @@ export function createRegenerateCharacterSheetUseCase(
         throw new CharacterSheetNotFoundError(input.characterId);
       }
 
+      const referenceImagePaths = await dependencies.characterSheetStorage.resolveReferenceImagePaths(
+        { character },
+      );
+
       const timestamp = dependencies.clock.now();
       const task = createTaskRecord({
         id: dependencies.taskIdGenerator.generateTaskId(),
@@ -73,6 +79,7 @@ export function createRegenerateCharacterSheetUseCase(
         characterName: character.characterName,
         promptTextCurrent: character.promptTextCurrent,
         imagePromptTemplateKey: "character_sheet.turnaround.generate",
+        referenceImagePaths,
       };
 
       await dependencies.taskRepository.insert(task);

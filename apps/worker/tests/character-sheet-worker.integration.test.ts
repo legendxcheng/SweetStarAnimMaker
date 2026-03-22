@@ -140,6 +140,7 @@ describe("character-sheet worker integration", () => {
         writeImageVersion: vi.fn(),
         writeCurrentImage: vi.fn(),
         readCurrentCharacterSheet: vi.fn(),
+        resolveReferenceImagePaths: vi.fn().mockResolvedValue([]),
       },
       characterSheetPromptProvider: promptProvider,
       characterSheetImageProvider: {
@@ -322,6 +323,7 @@ describe("character-sheet worker integration", () => {
       writeImageVersion: vi.fn(),
       writeCurrentImage: vi.fn(),
       readCurrentCharacterSheet: vi.fn(),
+      resolveReferenceImagePaths: vi.fn(),
     };
     const taskFileStorage = {
       createTaskArtifacts: vi.fn(),

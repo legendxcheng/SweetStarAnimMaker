@@ -20,6 +20,16 @@ describe("character sheet api schema", () => {
           characterName: "Rin",
           promptTextGenerated: "silver pilot jacket, wind-burned face",
           promptTextCurrent: "silver pilot jacket, wind-burned face",
+          referenceImages: [
+            {
+              id: "ref_1",
+              fileName: "ref-001.png",
+              originalFileName: "rin-face.png",
+              mimeType: "image/png",
+              sizeBytes: 1234,
+              createdAt: "2026-03-22T12:00:00.000Z",
+            },
+          ],
           imageAssetPath: "character-sheets/batches/char_batch_v1/characters/char_rin/current.png",
           imageWidth: 1536,
           imageHeight: 1024,
@@ -35,6 +45,16 @@ describe("character sheet api schema", () => {
 
     expect(parsed.currentBatch.characterCount).toBe(2);
     expect(parsed.characters[0]?.characterName).toBe("Rin");
+    expect(parsed.characters[0]?.referenceImages).toEqual([
+      {
+        id: "ref_1",
+        fileName: "ref-001.png",
+        originalFileName: "rin-face.png",
+        mimeType: "image/png",
+        sizeBytes: 1234,
+        createdAt: "2026-03-22T12:00:00.000Z",
+      },
+    ]);
   });
 
   it("accepts a character-sheet detail response", () => {
@@ -46,6 +66,16 @@ describe("character sheet api schema", () => {
       characterName: "Rin",
       promptTextGenerated: "silver pilot jacket, wind-burned face",
       promptTextCurrent: "silver pilot jacket, wind-burned face",
+      referenceImages: [
+        {
+          id: "ref_1",
+          fileName: "ref-001.png",
+          originalFileName: "rin-face.png",
+          mimeType: "image/png",
+          sizeBytes: 1234,
+          createdAt: "2026-03-22T12:00:00.000Z",
+        },
+      ],
       imageAssetPath: "character-sheets/batches/char_batch_v1/characters/char_rin/current.png",
       imageWidth: 1536,
       imageHeight: 1024,
@@ -58,6 +88,7 @@ describe("character sheet api schema", () => {
     });
 
     expect(parsed.status).toBe("approved");
+    expect(parsed.referenceImages[0]?.fileName).toBe("ref-001.png");
   });
 
   it("accepts a prompt update request", () => {

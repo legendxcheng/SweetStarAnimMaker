@@ -1,4 +1,4 @@
-import type { CharacterSheetRecord } from "@sweet-star/shared";
+import type { CharacterReferenceImage, CharacterSheetRecord } from "@sweet-star/shared";
 
 import type {
   CharacterSheetBatchRecord,
@@ -46,6 +46,41 @@ export interface ReadCurrentCharacterSheetInput {
   characterId: string;
 }
 
+export interface ListCharacterSheetReferenceImagesInput {
+  character: CharacterSheetRecordEntity;
+}
+
+export interface SaveCharacterSheetReferenceImagesInput {
+  character: CharacterSheetRecordEntity;
+  files: Array<{
+    originalFileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    contentBytes: Uint8Array;
+    createdAt: string;
+  }>;
+}
+
+export interface DeleteCharacterSheetReferenceImageInput {
+  character: CharacterSheetRecordEntity;
+  referenceImageId: string;
+}
+
+export interface ResolveCharacterSheetReferenceImagePathsInput {
+  character: CharacterSheetRecordEntity;
+}
+
+export interface GetCharacterSheetReferenceImageContentInput {
+  character: CharacterSheetRecordEntity;
+  referenceImageId: string;
+}
+
+export interface CharacterSheetReferenceImageContent {
+  filePath: string;
+  fileName: string;
+  mimeType: string;
+}
+
 export interface CharacterSheetStorage {
   initializePromptTemplate(
     input: InitializeCharacterSheetPromptTemplateInput,
@@ -66,4 +101,19 @@ export interface CharacterSheetStorage {
   readCurrentCharacterSheet(
     input: ReadCurrentCharacterSheetInput,
   ): Promise<CharacterSheetRecord | null> | CharacterSheetRecord | null;
+  listReferenceImages(
+    input: ListCharacterSheetReferenceImagesInput,
+  ): Promise<CharacterReferenceImage[]> | CharacterReferenceImage[];
+  saveReferenceImages(
+    input: SaveCharacterSheetReferenceImagesInput,
+  ): Promise<CharacterReferenceImage[]> | CharacterReferenceImage[];
+  deleteReferenceImage(
+    input: DeleteCharacterSheetReferenceImageInput,
+  ): Promise<CharacterReferenceImage[]> | CharacterReferenceImage[];
+  resolveReferenceImagePaths(
+    input: ResolveCharacterSheetReferenceImagePathsInput,
+  ): Promise<string[]> | string[];
+  getReferenceImageContent(
+    input: GetCharacterSheetReferenceImageContentInput,
+  ): Promise<CharacterSheetReferenceImageContent | null> | CharacterSheetReferenceImageContent | null;
 }

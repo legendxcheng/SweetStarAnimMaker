@@ -55,7 +55,11 @@ async function request<T>(
   const url = `${config.apiBaseUrl}${path}`;
   const headers = new Headers(options.headers);
 
-  if (options.body !== undefined && !headers.has("Content-Type")) {
+  if (
+    options.body !== undefined &&
+    !(options.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -149,6 +153,36 @@ export const apiClient = {
       {
         method: "PUT",
         body: JSON.stringify(updateCharacterSheetPromptRequestSchema.parse(data)),
+      },
+    ),
+
+  uploadCharacterReferenceImages: (projectId: string, characterId: string, files: File[]) => {
+    const formData = new FormData();
+
+    for (const file of files) {
+      formData.append("files", file);
+    }
+
+    return request<CharacterSheetRecord>(
+      `/projects/${projectId}/character-sheets/${characterId}/reference-images`,
+      characterSheetDetailResponseSchema,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+  },
+
+  deleteCharacterReferenceImage: (
+    projectId: string,
+    characterId: string,
+    referenceImageId: string,
+  ) =>
+    request<CharacterSheetRecord>(
+      `/projects/${projectId}/character-sheets/${characterId}/reference-images/${referenceImageId}`,
+      characterSheetDetailResponseSchema,
+      {
+        method: "DELETE",
       },
     ),
 

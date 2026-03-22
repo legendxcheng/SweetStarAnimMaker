@@ -1,10 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import type {
-  CharacterSheetStorage,
-  CharacterSheetRecord,
+import {
+  CharacterReferenceImageNotFoundError,
+  toCharacterSheetReferenceManifestRelPath,
+  toCharacterSheetReferencesStorageDir,
+  type CharacterSheetStorage,
+  type CharacterSheetRecord,
 } from "@sweet-star/core";
+import type { CharacterReferenceImage } from "@sweet-star/shared";
 
 import { ensureParentDirectory } from "./fs-utils";
 import type { LocalDataPaths } from "./local-data-paths";
@@ -143,7 +147,137 @@ export function createCharacterSheetStorage(
         throw error;
       }
     },
+    async listReferenceImages(input) {
+      return readReferenceManifest(input.character);
+    },
+    async saveReferenceImages(input) {
+      const existingReferenceImages = await readReferenceManifest(input.character);
+      let nextSequence = getNextReferenceSequence(existingReferenceImages);
+      const storedReferenceImages: CharacterReferenceImage[] = [];
+
+      for (const file of input.files) {
+        const sequenceText = String(nextSequence).padStart(3, "0");
+        const extension = toReferenceImageExtension(file.originalFileName, file.mimeType);
+        const fileName = `ref-${sequenceText}${extension}`;
+        const referenceImage: CharacterReferenceImage = {
+          id: `ref_${sequenceText}`,
+          fileName,
+          originalFileName: file.originalFileName,
+          mimeType: file.mimeType,
+          sizeBytes: file.sizeBytes,
+          createdAt: file.createdAt,
+        };
+        const referenceImagePath = toReferenceImagePath(input.character, fileName);
+
+        await ensureParentDirectory(referenceImagePath);
+        await fs.writeFile(referenceImagePath, file.contentBytes);
+        storedReferenceImages.push(referenceImage);
+        nextSequence += 1;
+      }
+
+      const allReferenceImages = [...existingReferenceImages, ...storedReferenceImages];
+      await writeReferenceManifest(input.character, allReferenceImages);
+      return allReferenceImages;
+    },
+    async deleteReferenceImage(input) {
+      const existingReferenceImages = await readReferenceManifest(input.character);
+      const referenceImageToDelete = existingReferenceImages.find(
+        (entry) => entry.id === input.referenceImageId,
+      );
+
+      if (!referenceImageToDelete) {
+        throw new CharacterReferenceImageNotFoundError(input.referenceImageId);
+      }
+
+      await fs.rm(toReferenceImagePath(input.character, referenceImageToDelete.fileName), {
+        force: false,
+      });
+
+      const remainingReferenceImages = existingReferenceImages.filter(
+        (entry) => entry.id !== input.referenceImageId,
+      );
+      await writeReferenceManifest(input.character, remainingReferenceImages);
+      return remainingReferenceImages;
+    },
+    async resolveReferenceImagePaths(input) {
+      const referenceImages = await readReferenceManifest(input.character);
+
+      return referenceImages.map((referenceImage) =>
+        toReferenceImagePath(input.character, referenceImage.fileName),
+      );
+    },
+    async getReferenceImageContent(input) {
+      const referenceImages = await readReferenceManifest(input.character);
+      const referenceImage = referenceImages.find((entry) => entry.id === input.referenceImageId);
+
+      if (!referenceImage) {
+        return null;
+      }
+
+      return {
+        filePath: toReferenceImagePath(input.character, referenceImage.fileName),
+        fileName: referenceImage.fileName,
+        mimeType: referenceImage.mimeType,
+      };
+    },
   };
+
+  async function readReferenceManifest(character: {
+    projectStorageDir: string;
+    batchId: string;
+    id: string;
+  }) {
+    const manifestPath = toReferenceManifestPath(character);
+
+    try {
+      return JSON.parse(await fs.readFile(manifestPath, "utf8")) as CharacterReferenceImage[];
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        return [];
+      }
+
+      throw error;
+    }
+  }
+
+  async function writeReferenceManifest(
+    character: {
+      projectStorageDir: string;
+      batchId: string;
+      id: string;
+    },
+    referenceImages: CharacterReferenceImage[],
+  ) {
+    const manifestPath = toReferenceManifestPath(character);
+
+    await ensureParentDirectory(manifestPath);
+    await fs.writeFile(manifestPath, JSON.stringify(referenceImages, null, 2), "utf8");
+  }
+
+  function toReferenceManifestPath(character: {
+    projectStorageDir: string;
+    batchId: string;
+    id: string;
+  }) {
+    return options.paths.projectCharacterSheetAssetPath(
+      character.projectStorageDir,
+      toCharacterSheetReferenceManifestRelPath(character.batchId, character.id),
+    );
+  }
+
+  function toReferenceImagePath(
+    character: {
+      projectStorageDir: string;
+      batchId: string;
+      id: string;
+    },
+    fileName: string,
+  ) {
+    return options.paths.projectCharacterSheetAssetPath(
+      character.projectStorageDir,
+      `${toCharacterSheetReferencesStorageDir(character.batchId, character.id)}/${fileName}`,
+    );
+  }
 
   function toProjectPromptTemplatePath(storageDir: string, promptTemplateKey: PromptTemplateKey) {
     if (promptTemplateKey === "character_sheet.turnaround.generate") {
@@ -170,4 +304,33 @@ export function createCharacterSheetStorage(
 
 function isMissingFileError(error: unknown) {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function getNextReferenceSequence(referenceImages: CharacterReferenceImage[]) {
+  const maxSequence = referenceImages.reduce((currentMax, referenceImage) => {
+    const match = /^ref-(\d+)\./.exec(referenceImage.fileName);
+    const sequence = match ? Number(match[1]) : 0;
+
+    return Math.max(currentMax, sequence);
+  }, 0);
+
+  return maxSequence + 1;
+}
+
+function toReferenceImageExtension(originalFileName: string, mimeType: string) {
+  const fileExtension = path.extname(originalFileName).toLowerCase();
+
+  if (fileExtension) {
+    return fileExtension;
+  }
+
+  if (mimeType === "image/jpeg") {
+    return ".jpg";
+  }
+
+  if (mimeType === "image/webp") {
+    return ".webp";
+  }
+
+  return ".png";
 }

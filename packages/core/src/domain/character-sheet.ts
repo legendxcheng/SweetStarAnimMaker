@@ -1,4 +1,5 @@
 import type {
+  CharacterReferenceImage,
   CharacterSheetRecord,
   CharacterSheetStatus,
   CurrentCharacterSheetBatchSummary,
@@ -16,6 +17,8 @@ export const characterSheetPromptGeneratedFileName = "prompt.generated.txt";
 export const characterSheetPromptCurrentFileName = "prompt.current.txt";
 export const characterSheetPromptVariablesFileName = "prompt.variables.json";
 export const characterSheetImagePromptFileName = "image-prompt.txt";
+export const characterSheetReferencesDirectoryName = "references";
+export const characterSheetReferenceManifestFileName = "manifest.json";
 
 export interface CharacterSheetBatchRecord {
   id: string;
@@ -60,6 +63,7 @@ export interface CreateCharacterSheetRecordInput {
   characterName: string;
   promptTextGenerated: string;
   promptTextCurrent: string;
+  referenceImages?: CharacterReferenceImage[];
   imageAssetPath?: string | null;
   imageWidth?: number | null;
   imageHeight?: number | null;
@@ -129,6 +133,14 @@ export function toCharacterSheetVersionsStorageDir(batchId: string, characterId:
   return `${toCharacterSheetStorageDir(batchId, characterId)}/${characterSheetVersionsDirectoryName}`;
 }
 
+export function toCharacterSheetReferencesStorageDir(batchId: string, characterId: string) {
+  return `${toCharacterSheetStorageDir(batchId, characterId)}/${characterSheetReferencesDirectoryName}`;
+}
+
+export function toCharacterSheetReferenceManifestRelPath(batchId: string, characterId: string) {
+  return `${toCharacterSheetReferencesStorageDir(batchId, characterId)}/${characterSheetReferenceManifestFileName}`;
+}
+
 export function createCharacterSheetBatchRecord(
   input: CreateCharacterSheetBatchRecordInput,
 ): CharacterSheetBatchRecord {
@@ -157,6 +169,7 @@ export function createCharacterSheetRecord(
     characterName: input.characterName,
     promptTextGenerated: input.promptTextGenerated,
     promptTextCurrent: input.promptTextCurrent,
+    referenceImages: input.referenceImages ?? [],
     imageAssetPath:
       input.imageAssetPath ?? toCharacterSheetCurrentImageRelPath(input.batchId, input.id),
     imageWidth: input.imageWidth ?? null,

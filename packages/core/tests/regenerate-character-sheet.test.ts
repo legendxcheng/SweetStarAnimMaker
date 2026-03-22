@@ -80,6 +80,20 @@ describe("regenerate character sheet use case", () => {
         listAll: vi.fn(),
       },
       characterSheetRepository,
+      characterSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeGeneratedPrompt: vi.fn(),
+        writeImageVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        readCurrentCharacterSheet: vi.fn(),
+        listReferenceImages: vi.fn(),
+        saveReferenceImages: vi.fn(),
+        deleteReferenceImage: vi.fn(),
+        resolveReferenceImagePaths: vi.fn().mockResolvedValue(["E:/tmp/ref-1.png"]),
+        getReferenceImageContent: vi.fn(),
+      },
       taskRepository,
       taskFileStorage,
       taskQueue,
@@ -95,6 +109,7 @@ describe("regenerate character sheet use case", () => {
         taskType: "character_sheet_generate",
         characterId: "char_rin_1",
         promptTextCurrent: "short black hair, aviator jacket, guarded expression",
+        referenceImagePaths: ["E:/tmp/ref-1.png"],
       }),
     });
     expect(characterSheetRepository.updateCharacter).toHaveBeenCalledWith(

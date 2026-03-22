@@ -102,11 +102,39 @@ describe("list character sheets use case", () => {
         findCharacterById: vi.fn(),
         updateCharacter: vi.fn(),
       },
+      characterSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeGeneratedPrompt: vi.fn(),
+        writeImageVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        readCurrentCharacterSheet: vi.fn(),
+        listReferenceImages: vi
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              id: "ref_1",
+              fileName: "ref-001.png",
+              originalFileName: "rin-face.png",
+              mimeType: "image/png",
+              sizeBytes: 1234,
+              createdAt: "2026-03-22T12:00:00.000Z",
+            },
+          ])
+          .mockResolvedValueOnce([]),
+        saveReferenceImages: vi.fn(),
+        deleteReferenceImage: vi.fn(),
+        resolveReferenceImagePaths: vi.fn(),
+        getReferenceImageContent: vi.fn(),
+      },
     });
 
     const result = await useCase.execute({ projectId: "proj_1" });
 
     expect(result.currentBatch.approvedCharacterCount).toBe(1);
     expect(result.characters).toHaveLength(2);
+    expect(result.characters[0]?.referenceImages[0]?.fileName).toBe("ref-001.png");
+    expect(result.characters[1]?.referenceImages).toEqual([]);
   });
 });
