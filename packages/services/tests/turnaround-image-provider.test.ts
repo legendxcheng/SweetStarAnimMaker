@@ -63,6 +63,70 @@ describe("turnaround image provider", () => {
     expect(result.model).toBe("imagen-4.0-generate-preview");
   });
 
+  it("uses doubao-seedream-5-0-260128 when no explicit model is provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            b64_json: "AQID",
+            width: 1536,
+            height: 1024,
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createTurnaroundImageProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+    });
+
+    const result = await provider.generateCharacterSheetImage({
+      projectId: "proj_20260321_ab12cd",
+      characterId: "char_rin_1",
+      promptText: "Create a combined turnaround sheet for Rin with pilot gear and comet motifs.",
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.model).toBe("doubao-seedream-5-0-260128");
+    expect(result.model).toBe("doubao-seedream-5-0-260128");
+  });
+
+  it("accepts VectorEngine responses that use size and a data URL b64_json payload", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              b64_json: "data:image/jpeg;base64,AQID",
+              size: "3200x3200",
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createTurnaroundImageProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "doubao-seedream-5-0-260128",
+    });
+
+    const result = await provider.generateCharacterSheetImage({
+      projectId: "proj_20260321_ab12cd",
+      characterId: "char_rin_1",
+      promptText: "Create a combined turnaround sheet for Rin.",
+    });
+
+    expect(Array.from(result.imageBytes)).toEqual([1, 2, 3]);
+    expect(result.width).toBe(3200);
+    expect(result.height).toBe(3200);
+  });
+
   it("rejects responses without image data", async () => {
     vi.stubGlobal(
       "fetch",
@@ -168,5 +232,37 @@ describe("turnaround image provider", () => {
     ).rejects.toThrow("Reference image upload failed: psda1: HTTP 500: Backend error");
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("includes the response body and request id when VectorEngine returns an error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: async () => '{"error":"service overloaded"}',
+        headers: {
+          get(name: string) {
+            return name.toLowerCase() === "x-request-id" ? "req_503_debug" : null;
+          },
+        },
+      }),
+    );
+
+    const provider = createTurnaroundImageProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "imagen-4.0-generate-preview",
+    });
+
+    await expect(
+      provider.generateCharacterSheetImage({
+        projectId: "proj_20260321_ab12cd",
+        characterId: "char_rin_1",
+        promptText: "Create a combined turnaround sheet for Rin.",
+      }),
+    ).rejects.toThrow(
+      'Turnaround image provider request failed with status 503; requestId=req_503_debug; body={"error":"service overloaded"}',
+    );
   });
 });

@@ -112,7 +112,7 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
               promptText,
             });
           const character = createCharacterSheetRecord({
-            id: toCharacterSheetId(characterName, index),
+            id: toCharacterSheetId(batch.id, characterName, index),
             projectId: project.id,
             projectStorageDir: project.storageDir,
             batchId: batch.id,
@@ -230,8 +230,12 @@ function toCharacterSheetBatchId(taskId: string) {
   return `char_batch_${taskId}`;
 }
 
-function toCharacterSheetId(characterName: string, index: number) {
-  return `char_${slugifyCharacterName(characterName)}_${index + 1}`;
+function toCharacterSheetId(batchId: string, characterName: string, index: number) {
+  return `char_${toBatchToken(batchId)}_${slugifyCharacterName(characterName)}_${index + 1}`;
+}
+
+function toBatchToken(batchId: string) {
+  return batchId.replace(/^char_batch_/, "");
 }
 
 function slugifyCharacterName(characterName: string) {

@@ -238,7 +238,7 @@ describe("character-sheet worker integration", () => {
       findBatchById: vi.fn(),
       listCharactersByBatchId: vi.fn().mockResolvedValue([
         {
-          id: "char_rin_1",
+          id: "char_task_20260322_character_sheets_rin_1",
           projectId: "proj_20260322_ab12cd",
           projectStorageDir: "projects/proj_20260322_ab12cd-my-story",
           batchId: "char_batch_task_20260322_character_sheets",
@@ -247,7 +247,7 @@ describe("character-sheet worker integration", () => {
           promptTextGenerated: "silver pilot jacket",
           promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
           imageAssetPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/current.png",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/current.png",
           imageWidth: null,
           imageHeight: null,
           provider: null,
@@ -257,26 +257,26 @@ describe("character-sheet worker integration", () => {
           approvedAt: null,
           sourceTaskId: "task_20260322_char_rin",
           storageDir:
-            "projects/proj_20260322_ab12cd-my-story/character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1",
+            "projects/proj_20260322_ab12cd-my-story/character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1",
           currentImageRelPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/current.png",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/current.png",
           currentMetadataRelPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/current.json",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/current.json",
           promptGeneratedRelPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/prompt.generated.txt",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/prompt.generated.txt",
           promptCurrentRelPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/prompt.current.txt",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/prompt.current.txt",
           promptVariablesRelPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/prompt.variables.json",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/prompt.variables.json",
           imagePromptRelPath:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/image-prompt.txt",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/image-prompt.txt",
           versionsStorageDir:
-            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/versions",
+            "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/versions",
         },
       ]),
       insertCharacter: vi.fn(),
       findCharacterById: vi.fn().mockResolvedValue({
-        id: "char_rin_1",
+        id: "char_task_20260322_character_sheets_rin_1",
         projectId: "proj_20260322_ab12cd",
         projectStorageDir: "projects/proj_20260322_ab12cd-my-story",
         batchId: "char_batch_task_20260322_character_sheets",
@@ -285,7 +285,7 @@ describe("character-sheet worker integration", () => {
         promptTextGenerated: "silver pilot jacket",
         promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
         imageAssetPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/current.png",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/current.png",
         imageWidth: null,
         imageHeight: null,
         provider: null,
@@ -295,21 +295,21 @@ describe("character-sheet worker integration", () => {
         approvedAt: null,
         sourceTaskId: "task_20260322_char_rin",
         storageDir:
-          "projects/proj_20260322_ab12cd-my-story/character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1",
+          "projects/proj_20260322_ab12cd-my-story/character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1",
         currentImageRelPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/current.png",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/current.png",
         currentMetadataRelPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/current.json",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/current.json",
         promptGeneratedRelPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/prompt.generated.txt",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/prompt.generated.txt",
         promptCurrentRelPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/prompt.current.txt",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/prompt.current.txt",
         promptVariablesRelPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/prompt.variables.json",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/prompt.variables.json",
         imagePromptRelPath:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/image-prompt.txt",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/image-prompt.txt",
         versionsStorageDir:
-          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_rin_1/versions",
+          "character-sheets/batches/char_batch_task_20260322_character_sheets/characters/char_task_20260322_character_sheets_rin_1/versions",
       }),
       updateCharacter: vi.fn(),
     };
@@ -332,7 +332,7 @@ describe("character-sheet worker integration", () => {
         projectId: "proj_20260322_ab12cd",
         taskType: "character_sheet_generate",
         batchId: "char_batch_task_20260322_character_sheets",
-        characterId: "char_rin_1",
+        characterId: "char_task_20260322_character_sheets_rin_1",
         sourceMasterPlotId: "mp_20260322_ab12cd",
         characterName: "Rin",
         promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",

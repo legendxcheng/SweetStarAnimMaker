@@ -15,7 +15,7 @@ export interface CreateTurnaroundImageProviderOptions {
 }
 
 const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
-const DEFAULT_MODEL = "turnaround-v1";
+const DEFAULT_MODEL = "doubao-seedream-5-0-260128";
 
 export function createTurnaroundImageProvider(
   options: CreateTurnaroundImageProviderOptions,
@@ -82,7 +82,17 @@ export function createTurnaroundImageProvider(
         });
 
         if (!response.ok) {
-          throw new Error(`Turnaround image provider request failed with status ${response.status}`);
+          const responseBody = await safeReadResponseText(response);
+          const requestId = response.headers.get("x-request-id");
+          const details = [
+            requestId ? `requestId=${requestId}` : null,
+            responseBody ? `body=${truncateForError(responseBody)}` : null,
+          ]
+            .filter((value): value is string => value !== null)
+            .join("; ");
+          throw new Error(
+            `Turnaround image provider request failed with status ${response.status}${details ? `; ${details}` : ""}`,
+          );
         }
 
         const rawPayload = await response.json();
@@ -111,27 +121,85 @@ export function createTurnaroundImageProvider(
   };
 }
 
+async function safeReadResponseText(response: Response) {
+  try {
+    return (await response.text()).trim();
+  } catch {
+    return "";
+  }
+}
+
+function truncateForError(value: string, maxLength = 500) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength)}...`;
+}
+
 function parseImagePayload(payload: unknown) {
   const first = (payload as { data?: Array<Record<string, unknown>> })?.data?.[0];
-  const b64 = first?.b64_json;
-  const width = first?.width;
-  const height = first?.height;
+  const b64 = normalizeBase64Payload(first?.b64_json);
+  const dimensions = parseImageDimensions(first);
 
   if (
     typeof b64 !== "string" ||
-    typeof width !== "number" ||
-    !Number.isFinite(width) ||
-    width <= 0 ||
-    typeof height !== "number" ||
-    !Number.isFinite(height) ||
-    height <= 0
+    !dimensions
   ) {
     throw new Error("Turnaround image provider returned no usable image");
   }
 
   return {
     imageBytes: new Uint8Array(Buffer.from(b64, "base64")),
-    width,
-    height,
+    width: dimensions.width,
+    height: dimensions.height,
   };
+}
+
+function normalizeBase64Payload(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const dataUrlMatch = trimmed.match(/^data:[^;]+;base64,(.+)$/);
+  return dataUrlMatch ? dataUrlMatch[1]! : trimmed;
+}
+
+function parseImageDimensions(first: Record<string, unknown> | undefined) {
+  const width = asPositiveNumber(first?.width);
+  const height = asPositiveNumber(first?.height);
+
+  if (width && height) {
+    return { width, height };
+  }
+
+  const size = first?.size;
+
+  if (typeof size === "string") {
+    const match = size.trim().match(/^(\d+)x(\d+)$/i);
+
+    if (match) {
+      const parsedWidth = Number(match[1]);
+      const parsedHeight = Number(match[2]);
+
+      if (parsedWidth > 0 && parsedHeight > 0) {
+        return {
+          width: parsedWidth,
+          height: parsedHeight,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function asPositiveNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }

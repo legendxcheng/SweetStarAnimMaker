@@ -63,7 +63,7 @@ describe("process character sheet generate task use case", () => {
         projectId: "proj_20260321_ab12cd",
         taskType: "character_sheet_generate",
         batchId: "char_batch_task_20260321_character_sheets",
-        characterId: "char_rin_1",
+        characterId: "char_task_20260321_character_sheets_rin_1",
         sourceMasterPlotId: "mp_20260321_ab12cd",
         characterName: "Rin",
         promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
@@ -78,7 +78,7 @@ describe("process character sheet generate task use case", () => {
       findBatchById: vi.fn(),
       listCharactersByBatchId: vi.fn().mockResolvedValue([
         {
-          id: "char_rin_1",
+          id: "char_task_20260321_character_sheets_rin_1",
           projectId: "proj_20260321_ab12cd",
           projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
           batchId: "char_batch_task_20260321_character_sheets",
@@ -87,7 +87,7 @@ describe("process character sheet generate task use case", () => {
           promptTextGenerated: "silver pilot jacket",
           promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
           imageAssetPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/current.png",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/current.png",
           imageWidth: null,
           imageHeight: null,
           provider: null,
@@ -97,24 +97,24 @@ describe("process character sheet generate task use case", () => {
           approvedAt: null,
           sourceTaskId: "task_20260321_char_rin",
           storageDir:
-            "projects/proj_20260321_ab12cd-my-story/character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1",
+            "projects/proj_20260321_ab12cd-my-story/character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1",
           currentImageRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/current.png",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/current.png",
           currentMetadataRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/current.json",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/current.json",
           promptGeneratedRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/prompt.generated.txt",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/prompt.generated.txt",
           promptCurrentRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/prompt.current.txt",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/prompt.current.txt",
           promptVariablesRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/prompt.variables.json",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/prompt.variables.json",
           imagePromptRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/image-prompt.txt",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/image-prompt.txt",
           versionsStorageDir:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/versions",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/versions",
         },
         {
-          id: "char_ivo_2",
+          id: "char_task_20260321_character_sheets_ivo_2",
           projectId: "proj_20260321_ab12cd",
           projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
           batchId: "char_batch_task_20260321_character_sheets",
@@ -123,7 +123,7 @@ describe("process character sheet generate task use case", () => {
           promptTextGenerated: "grease-stained coat",
           promptTextCurrent: "grease-stained coat",
           imageAssetPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/current.png",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/current.png",
           imageWidth: 1536,
           imageHeight: 1024,
           provider: "mock-image-provider",
@@ -133,26 +133,26 @@ describe("process character sheet generate task use case", () => {
           approvedAt: null,
           sourceTaskId: "task_20260321_char_ivo",
           storageDir:
-            "projects/proj_20260321_ab12cd-my-story/character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2",
+            "projects/proj_20260321_ab12cd-my-story/character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2",
           currentImageRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/current.png",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/current.png",
           currentMetadataRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/current.json",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/current.json",
           promptGeneratedRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/prompt.generated.txt",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/prompt.generated.txt",
           promptCurrentRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/prompt.current.txt",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/prompt.current.txt",
           promptVariablesRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/prompt.variables.json",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/prompt.variables.json",
           imagePromptRelPath:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/image-prompt.txt",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/image-prompt.txt",
           versionsStorageDir:
-            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_ivo_2/versions",
+            "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_ivo_2/versions",
         },
       ]),
       insertCharacter: vi.fn(),
       findCharacterById: vi.fn().mockResolvedValue({
-        id: "char_rin_1",
+        id: "char_task_20260321_character_sheets_rin_1",
         projectId: "proj_20260321_ab12cd",
         projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
         batchId: "char_batch_task_20260321_character_sheets",
@@ -161,7 +161,7 @@ describe("process character sheet generate task use case", () => {
         promptTextGenerated: "silver pilot jacket",
         promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
         imageAssetPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/current.png",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/current.png",
         imageWidth: null,
         imageHeight: null,
         provider: null,
@@ -171,21 +171,21 @@ describe("process character sheet generate task use case", () => {
         approvedAt: null,
         sourceTaskId: "task_20260321_char_rin",
         storageDir:
-          "projects/proj_20260321_ab12cd-my-story/character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1",
+          "projects/proj_20260321_ab12cd-my-story/character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1",
         currentImageRelPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/current.png",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/current.png",
         currentMetadataRelPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/current.json",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/current.json",
         promptGeneratedRelPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/prompt.generated.txt",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/prompt.generated.txt",
         promptCurrentRelPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/prompt.current.txt",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/prompt.current.txt",
         promptVariablesRelPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/prompt.variables.json",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/prompt.variables.json",
         imagePromptRelPath:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/image-prompt.txt",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/image-prompt.txt",
         versionsStorageDir:
-          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_rin_1/versions",
+          "character-sheets/batches/char_batch_task_20260321_character_sheets/characters/char_task_20260321_character_sheets_rin_1/versions",
       }),
       updateCharacter: vi.fn(),
     };
@@ -229,13 +229,13 @@ describe("process character sheet generate task use case", () => {
 
     expect(imageProvider.generateCharacterSheetImage).toHaveBeenCalledWith({
       projectId: "proj_20260321_ab12cd",
-      characterId: "char_rin_1",
+      characterId: "char_task_20260321_character_sheets_rin_1",
       promptText:
         "Turnaround sheet for Rin: silver pilot jacket, storm glare, scar at the brow",
       referenceImagePaths: ["E:/tmp/ref-1.png"],
     });
     expect(characterSheetStorage.writeCurrentImage).toHaveBeenCalledWith({
-      character: expect.objectContaining({ id: "char_rin_1" }),
+      character: expect.objectContaining({ id: "char_task_20260321_character_sheets_rin_1" }),
       imageBytes: new Uint8Array([1, 2, 3]),
       metadata: expect.objectContaining({
         width: 1536,
@@ -246,7 +246,7 @@ describe("process character sheet generate task use case", () => {
     });
     expect(characterSheetRepository.updateCharacter).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "char_rin_1",
+        id: "char_task_20260321_character_sheets_rin_1",
         status: "in_review",
         imageWidth: 1536,
         imageHeight: 1024,
@@ -362,7 +362,7 @@ describe("process character sheet generate task use case", () => {
           projectId: "proj_20260321_ab12cd",
           taskType: "character_sheet_generate",
           batchId: "char_batch_task_20260321_character_sheets",
-          characterId: "char_rin_1",
+          characterId: "char_task_20260321_character_sheets_rin_1",
           sourceMasterPlotId: "mp_20260321_ab12cd",
           characterName: "Rin",
           promptTextCurrent: "silver pilot jacket",

@@ -166,12 +166,24 @@ describe("process character sheets generate task use case", () => {
     });
     expect(characterSheetRepository.insertBatch).toHaveBeenCalledTimes(1);
     expect(characterSheetRepository.insertCharacter).toHaveBeenCalledTimes(2);
+    expect(characterSheetRepository.insertCharacter).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id: "char_task_20260321_character_sheets_rin_1",
+      }),
+    );
+    expect(characterSheetRepository.insertCharacter).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id: "char_task_20260321_character_sheets_ivo_2",
+      }),
+    );
     expect(characterSheetStorage.writeGeneratedPrompt).toHaveBeenCalledTimes(2);
     expect(characterSheetStorage.resolveReferenceImagePaths).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        character: expect.objectContaining({
-          id: "char_rin_1",
+          character: expect.objectContaining({
+          id: "char_task_20260321_character_sheets_rin_1",
           batchId: expect.any(String),
         }),
       }),
@@ -179,8 +191,8 @@ describe("process character sheets generate task use case", () => {
     expect(characterSheetStorage.resolveReferenceImagePaths).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        character: expect.objectContaining({
-          id: "char_ivo_2",
+          character: expect.objectContaining({
+          id: "char_task_20260321_character_sheets_ivo_2",
           batchId: expect.any(String),
         }),
       }),
@@ -195,7 +207,7 @@ describe("process character sheets generate task use case", () => {
       expect.objectContaining({
         input: expect.objectContaining({
           taskType: "character_sheet_generate",
-          characterId: "char_rin_1",
+          characterId: "char_task_20260321_character_sheets_rin_1",
           referenceImagePaths: ["E:/tmp/ref-rin-1.png"],
         }),
       }),

@@ -191,13 +191,13 @@ describe("spec5 character-sheet flow", () => {
         }),
         characters: expect.arrayContaining([
           expect.objectContaining({
-            id: "char_rin_1",
+            id: "char_task_20260321_character_sheets_rin_1",
             promptTextGenerated: "Rin prompt from Gemini",
             status: "in_review",
             provider: "turnaround-image",
           }),
           expect.objectContaining({
-            id: "char_ivo_2",
+            id: "char_task_20260321_character_sheets_ivo_2",
             promptTextGenerated: "Ivo prompt from Gemini",
             status: "in_review",
             provider: "turnaround-image",
@@ -216,7 +216,7 @@ describe("spec5 character-sheet flow", () => {
           "batches",
           "char_batch_task_20260321_character_sheets",
           "characters",
-          "char_rin_1",
+          "char_task_20260321_character_sheets_rin_1",
           "current.json",
         ),
         "utf8",
