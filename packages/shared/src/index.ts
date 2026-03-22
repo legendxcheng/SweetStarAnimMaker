@@ -45,9 +45,20 @@ export {
   masterPlotReviewWorkspaceResponseSchema,
 } from "./schemas/storyboard-api";
 export {
+  approveShotScriptRequestSchema,
+  currentShotScriptResponseSchema,
+  currentShotScriptSummaryResponseSchema,
+  rejectShotScriptRequestSchema,
+  saveShotScriptRequestSchema,
+  shotScriptItemResponseSchema,
+  shotScriptReviewSummarySchema,
+  shotScriptReviewWorkspaceResponseSchema,
+} from "./schemas/shot-script-api";
+export {
   createMasterPlotGenerateTaskResponseSchema,
   createCharacterSheetGenerateTaskResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
+  createShotScriptGenerateTaskResponseSchema,
   createStoryboardGenerateTaskResponseSchema,
   taskDetailResponseSchema,
 } from "./schemas/task-api";
@@ -66,6 +77,11 @@ export type {
 export type {
   CurrentMasterPlot,
 } from "./types/master-plot";
+export type {
+  CurrentShotScript,
+  CurrentShotScriptSummary,
+  ShotScriptItem,
+} from "./types/shot-script";
 export type {
   CurrentStoryboardSummary,
   CurrentStoryboard,
@@ -88,4 +104,12 @@ export type {
   StoryboardReviewAvailableActions,
   StoryboardReviewWorkspace,
 } from "./types/storyboard-review";
+export type {
+  ApproveShotScriptRequest,
+  RejectShotScriptRequest,
+  SaveShotScriptRequest,
+  ShotScriptReviewAvailableActions,
+  ShotScriptReviewSummary,
+  ShotScriptReviewWorkspace,
+} from "./types/shot-script-review";
 export type { TaskDetail, TaskFileMetadata } from "./types/task-detail";
