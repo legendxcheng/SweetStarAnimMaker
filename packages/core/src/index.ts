@@ -6,6 +6,7 @@ export {
   toProjectStorageDir,
 } from "./domain/project";
 export type {
+  CharacterReferenceImage,
   CharacterSheetListResponse,
   CharacterSheetRecord,
   CharacterSheetStatus,
@@ -111,6 +112,7 @@ export {
   characterSheetsGenerateQueueName,
   createTaskRecord,
   masterPlotGenerateQueueName,
+  shotScriptGenerateQueueName,
   storyboardGenerateQueueName,
   taskArtifactsDirectoryName,
   taskInputFileName,
@@ -170,7 +172,6 @@ export type {
 export type {
   CharacterSheetStorage,
   CharacterSheetReferenceImageContent,
-  DeleteCharacterSheetReferenceImageInput,
   GetCharacterSheetReferenceImageContentInput,
   InitializeCharacterSheetPromptTemplateInput,
   ListCharacterSheetReferenceImagesInput,

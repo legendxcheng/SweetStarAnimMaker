@@ -30,6 +30,7 @@ describe("get project detail use case", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({

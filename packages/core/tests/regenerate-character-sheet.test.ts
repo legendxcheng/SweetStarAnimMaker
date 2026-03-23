@@ -76,6 +76,7 @@ describe("regenerate character sheet use case", () => {
         updateCurrentMasterPlot: vi.fn(),
         updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },

@@ -52,6 +52,7 @@ describe("process storyboard generate task use case", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -277,6 +278,7 @@ describe("process storyboard generate task use case", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -380,6 +382,7 @@ describe("process storyboard generate task use case", () => {
         updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -450,6 +453,7 @@ describe("process storyboard generate task use case", () => {
         updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },

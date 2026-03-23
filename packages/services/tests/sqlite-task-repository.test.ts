@@ -38,20 +38,20 @@ describe("sqlite task repository", () => {
     expect(table?.name).toBe("tasks");
   });
 
-  it("inserts and finds a storyboard task by id", async () => {
+  it("inserts and finds a shot script task by id", async () => {
     const { repository } = await createRepositoryContext();
     const task = createTaskRecord({
-      id: "task_20260321_storyboard",
+      id: "task_20260321_shot_script",
       projectId: "proj_20260321_ab12cd",
       projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
-      type: "storyboard_generate",
-      queueName: "storyboard-generate",
+      type: "shot_script_generate",
+      queueName: "shot-script-generate",
       createdAt: "2026-03-21T12:00:00.000Z",
     });
 
     repository.insert(task);
 
-    expect(repository.findById("task_20260321_storyboard")).toEqual(task);
+    expect(repository.findById("task_20260321_shot_script")).toEqual(task);
   });
 
   it("updates status transitions and error metadata", async () => {
@@ -96,7 +96,7 @@ describe("sqlite task repository", () => {
     });
   });
 
-  it("finds the latest storyboard generate task for a project", async () => {
+  it("finds the latest shot script generate task for a project", async () => {
     const { repository } = await createRepositoryContext();
 
     repository.insert(
@@ -104,8 +104,8 @@ describe("sqlite task repository", () => {
         id: "task_20260321_old",
         projectId: "proj_20260321_ab12cd",
         projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
-        type: "storyboard_generate",
-        queueName: "storyboard-generate",
+        type: "shot_script_generate",
+        queueName: "shot-script-generate",
         createdAt: "2026-03-21T12:00:00.000Z",
       }),
     );
@@ -114,14 +114,14 @@ describe("sqlite task repository", () => {
         id: "task_20260321_new",
         projectId: "proj_20260321_ab12cd",
         projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
-        type: "storyboard_generate",
-        queueName: "storyboard-generate",
+        type: "shot_script_generate",
+        queueName: "shot-script-generate",
         createdAt: "2026-03-21T12:05:00.000Z",
       }),
     );
 
     expect(
-      repository.findLatestByProjectId("proj_20260321_ab12cd", "storyboard_generate"),
+      repository.findLatestByProjectId("proj_20260321_ab12cd", "shot_script_generate"),
     ).toEqual(
       expect.objectContaining({
         id: "task_20260321_new",

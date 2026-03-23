@@ -45,6 +45,7 @@ describe("list projects use case", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
     };
     const masterPlotStorage = {

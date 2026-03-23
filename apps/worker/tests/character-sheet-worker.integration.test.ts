@@ -72,6 +72,7 @@ describe("character-sheet worker integration", () => {
         updateCurrentMasterPlot: vi.fn(),
         updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -140,6 +141,10 @@ describe("character-sheet worker integration", () => {
         writeImageVersion: vi.fn(),
         writeCurrentImage: vi.fn(),
         readCurrentCharacterSheet: vi.fn(),
+        listReferenceImages: vi.fn(),
+        saveReferenceImages: vi.fn(),
+        deleteReferenceImage: vi.fn(),
+        getReferenceImageContent: vi.fn(),
         resolveReferenceImagePaths: vi.fn().mockResolvedValue([]),
       },
       characterSheetPromptProvider: promptProvider,
@@ -323,6 +328,10 @@ describe("character-sheet worker integration", () => {
       writeImageVersion: vi.fn(),
       writeCurrentImage: vi.fn(),
       readCurrentCharacterSheet: vi.fn(),
+      listReferenceImages: vi.fn(),
+      saveReferenceImages: vi.fn(),
+      deleteReferenceImage: vi.fn(),
+      getReferenceImageContent: vi.fn(),
       resolveReferenceImagePaths: vi.fn(),
     };
     const taskFileStorage = {
@@ -363,6 +372,7 @@ describe("character-sheet worker integration", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };

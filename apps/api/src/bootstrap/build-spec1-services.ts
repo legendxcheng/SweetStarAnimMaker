@@ -4,25 +4,31 @@ import {
   createCreateMasterPlotGenerateTaskUseCase,
   createApproveCharacterSheetUseCase,
   createApproveMasterPlotUseCase,
+  createApproveShotScriptUseCase,
   createApproveStoryboardUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
+  createCreateShotScriptGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
   createAddCharacterSheetReferenceImagesUseCase,
   createDeleteCharacterSheetReferenceImageUseCase,
   createGetCharacterSheetUseCase,
   createGetCharacterSheetReferenceImageContentUseCase,
+  createGetCurrentShotScriptUseCase,
   createGetCurrentStoryboardUseCase,
   createGetMasterPlotReviewUseCase,
   createGetProjectDetailUseCase,
+  createGetShotScriptReviewUseCase,
   createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
   createListCharacterSheetsUseCase,
   createListProjectsUseCase,
   createRegenerateCharacterSheetUseCase,
   createRejectMasterPlotUseCase,
+  createRejectShotScriptUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanMasterPlotUseCase,
+  createSaveHumanShotScriptUseCase,
   createSaveHumanStoryboardVersionUseCase,
   createUpdateCharacterSheetPromptUseCase,
   createUpdateProjectScriptUseCase,
@@ -37,7 +43,9 @@ import {
   createSqliteCharacterSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
+  createSqliteShotScriptReviewRepository,
   createSqliteTaskRepository,
+  createShotScriptStorage,
   createStoryboardStorage,
   createTaskFileStorage,
   initializeSqliteSchema,
@@ -63,7 +71,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const taskRepository = createSqliteTaskRepository({ db });
   const taskFileStorage = createTaskFileStorage({ paths });
   const storyboardStorage = createStoryboardStorage({ paths });
+  const shotScriptStorage = createShotScriptStorage({ paths });
   const characterSheetRepository = createSqliteCharacterSheetRepository({ db });
+  const shotScriptReviewRepository = createSqliteShotScriptReviewRepository({ db });
   const characterSheetStorage = createCharacterSheetStorage({ paths });
   const masterPlotStorage = storyboardStorage;
   const clock = {
@@ -151,6 +161,18 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     taskIdGenerator,
     clock,
   });
+  const createShotScriptGenerateTask = createCreateShotScriptGenerateTaskUseCase({
+    projectRepository: repository,
+    storyboardStorage,
+    masterPlotStorage,
+    characterSheetRepository,
+    characterSheetStorage,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: queuedTaskGateway,
+    taskIdGenerator,
+    clock,
+  });
 
   return {
     db,
@@ -177,12 +199,14 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       repository,
       masterPlotStorage,
       storyboardStorage,
+      shotScriptStorage,
       characterSheetRepository,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
       masterPlotStorage,
       storyboardStorage,
+      shotScriptStorage,
       characterSheetRepository,
     }),
     listCharacterSheets: createListCharacterSheetsUseCase({
@@ -215,6 +239,10 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       projectRepository: repository,
     }),
+    getCurrentShotScript: createGetCurrentShotScriptUseCase({
+      shotScriptStorage,
+      projectRepository: repository,
+    }),
     getMasterPlotReview: createGetMasterPlotReviewUseCase({
       projectRepository: repository,
       masterPlotStorage,
@@ -223,6 +251,12 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     getStoryboardReview: createGetStoryboardReviewUseCase({
       projectRepository: repository,
       storyboardStorage,
+      taskRepository,
+    }),
+    getShotScriptReview: createGetShotScriptReviewUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      shotScriptReviewRepository,
       taskRepository,
     }),
     updateProjectScript: createUpdateProjectScriptUseCase({
@@ -240,6 +274,11 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       clock,
     }),
+    saveHumanShotScript: createSaveHumanShotScriptUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      clock,
+    }),
     approveMasterPlot: createApproveMasterPlotUseCase({
       projectRepository: repository,
       masterPlotStorage,
@@ -248,6 +287,12 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     approveStoryboard: createApproveStoryboardUseCase({
       projectRepository: repository,
       storyboardStorage,
+      clock,
+    }),
+    approveShotScript: createApproveShotScriptUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      shotScriptReviewRepository,
       clock,
     }),
     rejectMasterPlot: createRejectMasterPlotUseCase({
@@ -259,6 +304,12 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       projectRepository: repository,
       storyboardStorage,
       createStoryboardGenerateTask,
+    }),
+    rejectShotScript: createRejectShotScriptUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      shotScriptReviewRepository,
+      createShotScriptGenerateTask,
     }),
     updateCharacterSheetPrompt: createUpdateCharacterSheetPromptUseCase({
       projectRepository: repository,
@@ -283,6 +334,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     createMasterPlotGenerateTask,
     createCharacterSheetsGenerateTask,
     createStoryboardGenerateTask,
+    createShotScriptGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,
     }),
