@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import { MasterPlotReviewPage } from "../../src/pages/master-plot-review-page";
 import { ReviewWorkspacePage } from "../../src/pages/review-workspace-page";
+import { ShotScriptReviewPage } from "../../src/pages/shot-script-review-page";
 import * as apiModule from "../../src/services/api-client";
 
 vi.mock("../../src/services/api-client");
@@ -59,6 +60,64 @@ const refreshedWorkspace = {
       {
         ...workspace.currentStoryboard.scenes[0],
         dramaticPurpose: "Sharpen the inciting beat.",
+      },
+    ],
+    updatedAt: "2024-01-01T00:00:02Z",
+  },
+};
+
+const shotScriptWorkspace = {
+  projectId: "proj-1",
+  projectName: "Test Project",
+  projectStatus: "shot_script_in_review" as const,
+  currentShotScript: {
+    id: "shot-script-1",
+    title: "Episode 1 Shot Script",
+    sourceStoryboardId: "storyboard-1",
+    sourceTaskId: "task-shot-script-1",
+    updatedAt: "2024-01-01T00:00:00Z",
+    approvedAt: null,
+    shots: [
+      {
+        id: "shot-1",
+        sceneId: "scene-1",
+        segmentId: "segment-1",
+        order: 1,
+        shotCode: "S01-SG01",
+        shotPurpose: "Establish the flooded market.",
+        subjectCharacters: ["Rin"],
+        environment: "Flooded dawn market",
+        framing: "medium wide shot",
+        cameraAngle: "eye level",
+        composition: "Rin framed by lanterns",
+        actionMoment: "Rin pauses at the waterline",
+        emotionTone: "uneasy anticipation",
+        continuityNotes: "Keep soaked satchel on left shoulder",
+        imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+        negativePrompt: null,
+        motionHint: null,
+        durationSec: 4,
+      },
+    ],
+  },
+  latestReview: null,
+  latestTask: null,
+  availableActions: {
+    save: true,
+    approve: true,
+    reject: true,
+  },
+};
+
+const refreshedShotScriptWorkspace = {
+  ...shotScriptWorkspace,
+  currentShotScript: {
+    ...shotScriptWorkspace.currentShotScript,
+    title: "Episode 1 Shot Script Revised",
+    shots: [
+      {
+        ...shotScriptWorkspace.currentShotScript.shots[0],
+        motionHint: "slow push-in",
       },
     ],
     updatedAt: "2024-01-01T00:00:02Z",
@@ -137,6 +196,19 @@ function renderMasterPlotPage() {
   );
 }
 
+function renderShotScriptPage() {
+  return render(
+    <MemoryRouter initialEntries={["/projects/proj-1/shot-script/review"]}>
+      <Routes>
+        <Route
+          path="/projects/:projectId/shot-script/review"
+          element={<ShotScriptReviewPage />}
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 describe("Project Review Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -176,6 +248,22 @@ describe("Project Review Page", () => {
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Rin, Ivo")).toBeInTheDocument();
     expect(screen.getByDisplayValue("480")).toBeInTheDocument();
+  });
+
+  it("loads the shot-script workspace and renders editable shot fields", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
+      shotScriptWorkspace,
+    );
+
+    renderShotScriptPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "镜头脚本审核" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByDisplayValue("Episode 1 Shot Script")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("S01-SG01")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Flooded dawn market")).toBeInTheDocument();
   });
 
   it("saves the edited draft and refreshes the workspace", async () => {
@@ -259,5 +347,63 @@ describe("Project Review Page", () => {
     });
 
     expect(screen.getByDisplayValue("Draft title that should stay visible")).toBeInTheDocument();
+  });
+
+  it("saves the edited shot-script draft and refreshes the workspace", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace")
+      .mockResolvedValueOnce(shotScriptWorkspace)
+      .mockResolvedValueOnce(refreshedShotScriptWorkspace);
+    vi.spyOn(apiModule.apiClient, "saveShotScript").mockResolvedValue(
+      refreshedShotScriptWorkspace.currentShotScript,
+    );
+
+    renderShotScriptPage();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Episode 1 Shot Script")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "Episode 1 Shot Script Revised" },
+    });
+    fireEvent.change(screen.getByLabelText("镜头 1 运动提示"), {
+      target: { value: "slow push-in" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.saveShotScript).toHaveBeenCalledWith("proj-1", {
+        title: "Episode 1 Shot Script Revised",
+        sourceStoryboardId: "storyboard-1",
+        sourceTaskId: "task-shot-script-1",
+        shots: [
+          {
+            id: "shot-1",
+            sceneId: "scene-1",
+            segmentId: "segment-1",
+            order: 1,
+            shotCode: "S01-SG01",
+            shotPurpose: "Establish the flooded market.",
+            subjectCharacters: ["Rin"],
+            environment: "Flooded dawn market",
+            framing: "medium wide shot",
+            cameraAngle: "eye level",
+            composition: "Rin framed by lanterns",
+            actionMoment: "Rin pauses at the waterline",
+            emotionTone: "uneasy anticipation",
+            continuityNotes: "Keep soaked satchel on left shoulder",
+            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+            negativePrompt: null,
+            motionHint: "slow push-in",
+            durationSec: 4,
+          },
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Episode 1 Shot Script Revised")).toBeInTheDocument();
+    });
   });
 });

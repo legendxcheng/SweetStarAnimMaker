@@ -3,16 +3,22 @@ import {
   characterSheetListResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
   createMasterPlotGenerateTaskResponseSchema,
+  createShotScriptGenerateTaskResponseSchema,
   createStoryboardGenerateTaskResponseSchema,
   createProjectRequestSchema,
   currentMasterPlotResponseSchema,
+  currentShotScriptResponseSchema,
   currentStoryboardResponseSchema,
   updateCharacterSheetPromptRequestSchema,
   masterPlotReviewWorkspaceResponseSchema,
+  shotScriptReviewWorkspaceResponseSchema,
   storyboardReviewWorkspaceResponseSchema,
   projectDetailResponseSchema,
   projectListResponseSchema,
+  saveShotScriptRequestSchema,
   saveMasterPlotRequestSchema,
+  approveShotScriptRequestSchema,
+  rejectShotScriptRequestSchema,
   approveCharacterSheetRequestSchema,
   regenerateCharacterSheetRequestSchema,
   saveStoryboardRequestSchema,
@@ -20,11 +26,14 @@ import {
   type CharacterSheetListResponse,
   type CharacterSheetRecord,
   type CurrentMasterPlot,
+  type CurrentShotScript,
   type CurrentStoryboard,
   type MasterPlotReviewWorkspace,
   type ProjectDetail,
   type ProjectSummary,
+  type SaveShotScriptRequest,
   type SaveMasterPlotRequest,
+  type ShotScriptReviewWorkspace,
   type UpdateCharacterSheetPromptRequest,
   type SaveStoryboardRequest,
   type StoryboardReviewWorkspace,
@@ -119,6 +128,15 @@ export const apiClient = {
     request<TaskDetail>(
       `/projects/${projectId}/tasks/storyboard-generate`,
       createStoryboardGenerateTaskResponseSchema,
+      {
+        method: "POST",
+      },
+    ),
+
+  createShotScriptGenerateTask: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/tasks/shot-script-generate`,
+      createShotScriptGenerateTaskResponseSchema,
       {
         method: "POST",
       },
@@ -220,6 +238,15 @@ export const apiClient = {
       },
     ),
 
+  getShotScriptReviewWorkspace: (projectId: string) =>
+    request<ShotScriptReviewWorkspace>(
+      `/projects/${projectId}/shot-script/review`,
+      shotScriptReviewWorkspaceResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
   getMasterPlotReviewWorkspace: (projectId: string) =>
     request<MasterPlotReviewWorkspace>(
       `/projects/${projectId}/master-plot/review`,
@@ -238,6 +265,15 @@ export const apiClient = {
       },
     ),
 
+  getCurrentShotScript: (projectId: string) =>
+    request<CurrentShotScript>(
+      `/projects/${projectId}/shot-script/current`,
+      currentShotScriptResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
   saveStoryboard: (projectId: string, data: SaveStoryboardRequest) =>
     request<CurrentStoryboard>(
       `/projects/${projectId}/storyboard`,
@@ -245,6 +281,16 @@ export const apiClient = {
       {
         method: "PUT",
         body: JSON.stringify(saveStoryboardRequestSchema.parse(data)),
+      },
+    ),
+
+  saveShotScript: (projectId: string, data: SaveShotScriptRequest) =>
+    request<CurrentShotScript>(
+      `/projects/${projectId}/shot-script`,
+      currentShotScriptResponseSchema,
+      {
+        method: "PUT",
+        body: JSON.stringify(saveShotScriptRequestSchema.parse(data)),
       },
     ),
 
@@ -268,6 +314,16 @@ export const apiClient = {
       },
     ),
 
+  approveShotScript: (projectId: string, data: Record<string, never> = {}) =>
+    request<CurrentShotScript>(
+      `/projects/${projectId}/shot-script/approve`,
+      currentShotScriptResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveShotScriptRequestSchema.parse(data)),
+      },
+    ),
+
   approveMasterPlot: (projectId: string, data: Record<string, never> = {}) =>
     request<CurrentMasterPlot>(
       `/projects/${projectId}/master-plot/approve`,
@@ -285,6 +341,19 @@ export const apiClient = {
       {
         method: "POST",
         body: JSON.stringify(data),
+      },
+    ),
+
+  rejectShotScript: (
+    projectId: string,
+    data: { reason: string; nextAction: "regenerate" | "edit_manually" },
+  ) =>
+    request<TaskDetail | null>(
+      `/projects/${projectId}/shot-script/reject`,
+      { parse: (input) => taskDetailResponseSchema.nullable().parse(input) },
+      {
+        method: "POST",
+        body: JSON.stringify(rejectShotScriptRequestSchema.parse(data)),
       },
     ),
 

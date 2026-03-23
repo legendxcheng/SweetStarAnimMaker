@@ -87,6 +87,260 @@ describe("API Client", () => {
     expect(headers.has("Content-Type")).toBe(false);
   });
 
+  it("calls the shot-script endpoints with the expected methods and payloads", async () => {
+    const responses = [
+      {
+        id: "task_2",
+        projectId: "proj_1",
+        type: "shot_script_generate",
+        status: "pending",
+        createdAt: "2026-03-23T00:00:00.000Z",
+        updatedAt: "2026-03-23T00:00:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_2/input.json",
+          outputPath: "tasks/task_2/output.json",
+          logPath: "tasks/task_2/log.txt",
+        },
+      },
+      {
+        id: "shot_script_1",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_2",
+        updatedAt: "2026-03-23T00:00:02.000Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "S01-SG01",
+            shotPurpose: "Establish the flooded market.",
+            subjectCharacters: ["Rin"],
+            environment: "Flooded dawn market",
+            framing: "medium wide shot",
+            cameraAngle: "eye level",
+            composition: "Rin framed by lanterns",
+            actionMoment: "Rin pauses at the waterline",
+            emotionTone: "uneasy anticipation",
+            continuityNotes: "Keep soaked satchel on left shoulder",
+            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+            negativePrompt: null,
+            motionHint: null,
+            durationSec: 4,
+          },
+        ],
+      },
+      {
+        projectId: "proj_1",
+        projectName: "Test Project",
+        projectStatus: "shot_script_in_review",
+        currentShotScript: {
+          id: "shot_script_1",
+          title: "Episode 1 Shot Script",
+          sourceStoryboardId: "storyboard_1",
+          sourceTaskId: "task_2",
+          updatedAt: "2026-03-23T00:00:02.000Z",
+          approvedAt: null,
+          shots: [
+            {
+              id: "shot_1",
+              sceneId: "scene_1",
+              segmentId: "segment_1",
+              order: 1,
+              shotCode: "S01-SG01",
+              shotPurpose: "Establish the flooded market.",
+              subjectCharacters: ["Rin"],
+              environment: "Flooded dawn market",
+              framing: "medium wide shot",
+              cameraAngle: "eye level",
+              composition: "Rin framed by lanterns",
+              actionMoment: "Rin pauses at the waterline",
+              emotionTone: "uneasy anticipation",
+              continuityNotes: "Keep soaked satchel on left shoulder",
+              imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+              negativePrompt: null,
+              motionHint: null,
+              durationSec: 4,
+            },
+          ],
+        },
+        latestReview: null,
+        latestTask: null,
+        availableActions: {
+          save: true,
+          approve: true,
+          reject: true,
+        },
+      },
+      {
+        id: "shot_script_1",
+        title: "Episode 1 Shot Script Revised",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_2",
+        updatedAt: "2026-03-23T00:00:03.000Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "S01-SG01",
+            shotPurpose: "Establish the flooded market.",
+            subjectCharacters: ["Rin"],
+            environment: "Flooded dawn market",
+            framing: "medium wide shot",
+            cameraAngle: "eye level",
+            composition: "Rin framed by lanterns",
+            actionMoment: "Rin pauses at the waterline",
+            emotionTone: "uneasy anticipation",
+            continuityNotes: "Keep soaked satchel on left shoulder",
+            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+            negativePrompt: null,
+            motionHint: "slow push-in",
+            durationSec: 4,
+          },
+        ],
+      },
+      {
+        id: "shot_script_1",
+        title: "Episode 1 Shot Script Revised",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_2",
+        updatedAt: "2026-03-23T00:00:04.000Z",
+        approvedAt: "2026-03-23T00:00:04.000Z",
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "S01-SG01",
+            shotPurpose: "Establish the flooded market.",
+            subjectCharacters: ["Rin"],
+            environment: "Flooded dawn market",
+            framing: "medium wide shot",
+            cameraAngle: "eye level",
+            composition: "Rin framed by lanterns",
+            actionMoment: "Rin pauses at the waterline",
+            emotionTone: "uneasy anticipation",
+            continuityNotes: "Keep soaked satchel on left shoulder",
+            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+            negativePrompt: null,
+            motionHint: "slow push-in",
+            durationSec: 4,
+          },
+        ],
+      },
+      {
+        id: "task_3",
+        projectId: "proj_1",
+        type: "shot_script_generate",
+        status: "pending",
+        createdAt: "2026-03-23T00:00:05.000Z",
+        updatedAt: "2026-03-23T00:00:05.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_3/input.json",
+          outputPath: "tasks/task_3/output.json",
+          logPath: "tasks/task_3/log.txt",
+        },
+      },
+    ];
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[0] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[1] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[2] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[3] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[4] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[5] });
+    global.fetch = mockFetch;
+
+    await apiClient.createShotScriptGenerateTask("proj_1");
+    await apiClient.getCurrentShotScript("proj_1");
+    await apiClient.getShotScriptReviewWorkspace("proj_1");
+    await apiClient.saveShotScript("proj_1", {
+      title: "Episode 1 Shot Script Revised",
+      sourceStoryboardId: "storyboard_1",
+      sourceTaskId: "task_2",
+      shots: [
+        {
+          id: "shot_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 1,
+          shotCode: "S01-SG01",
+          shotPurpose: "Establish the flooded market.",
+          subjectCharacters: ["Rin"],
+          environment: "Flooded dawn market",
+          framing: "medium wide shot",
+          cameraAngle: "eye level",
+          composition: "Rin framed by lanterns",
+          actionMoment: "Rin pauses at the waterline",
+          emotionTone: "uneasy anticipation",
+          continuityNotes: "Keep soaked satchel on left shoulder",
+          imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+          negativePrompt: null,
+          motionHint: "slow push-in",
+          durationSec: 4,
+        },
+      ],
+    });
+    await apiClient.approveShotScript("proj_1");
+    await apiClient.rejectShotScript("proj_1", {
+      reason: "Need more coverage on the reveal.",
+      nextAction: "regenerate",
+    });
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      `${config.apiBaseUrl}/projects/proj_1/tasks/shot-script-generate`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/current`,
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/review`,
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      4,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script`,
+      expect.objectContaining({ method: "PUT" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      5,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/approve`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      6,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/reject`,
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    const saveHeaders = mockFetch.mock.calls[3]?.[1]?.headers as Headers;
+    expect(saveHeaders.get("Content-Type")).toBe("application/json");
+    expect(mockFetch.mock.calls[5]?.[1]?.body).toBe(
+      JSON.stringify({
+        reason: "Need more coverage on the reveal.",
+        nextAction: "regenerate",
+      }),
+    );
+  });
+
   it("uses FormData without forcing a JSON content-type header for reference-image uploads", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

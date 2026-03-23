@@ -19,10 +19,12 @@ const baseProject = {
     path: "premise/v1.md",
     bytes: 42,
     updatedAt: "2024-01-01T00:00:00Z",
+    text: "A washed-up pilot discovers a singing comet above a drowned city.",
   },
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
   currentStoryboard: null,
+  currentShotScript: null,
 };
 
 const approvedMasterPlotProject = {
@@ -136,6 +138,72 @@ const storyboardApprovedProject = {
   },
 };
 
+const shotScriptInReviewProject = {
+  ...storyboardApprovedProject,
+  status: "shot_script_in_review" as const,
+  currentShotScript: {
+    id: "shot-script-1",
+    title: "Episode 1 Shot Script",
+    sourceStoryboardId: "storyboard-1",
+    sourceTaskId: "task-shot-script-1",
+    updatedAt: "2024-01-01T00:00:07Z",
+    approvedAt: null,
+    shotCount: 3,
+    totalDurationSec: 18,
+  },
+};
+
+const shotScriptApprovedProject = {
+  ...shotScriptInReviewProject,
+  status: "shot_script_approved" as const,
+  currentShotScript: {
+    ...shotScriptInReviewProject.currentShotScript,
+    approvedAt: "2024-01-01T00:00:08Z",
+  },
+};
+
+const generatingShotScriptProject = {
+  ...storyboardApprovedProject,
+  status: "shot_script_generating" as const,
+};
+
+const fullShotScript = {
+  id: "shot-script-1",
+  title: "Episode 1 Shot Script",
+  sourceStoryboardId: "storyboard-1",
+  sourceTaskId: "task-shot-script-1",
+  updatedAt: "2024-01-01T00:00:07Z",
+  approvedAt: "2024-01-01T00:00:08Z",
+  shots: [
+    {
+      id: "shot-1",
+      sceneId: "scene-1",
+      segmentId: "segment-1",
+      order: 1,
+      shotCode: "S01-SG01",
+      shotPurpose: "Establish the flooded market and Rin's hesitation.",
+      subjectCharacters: ["Rin"],
+      environment: "Flooded dawn market",
+      framing: "medium wide shot",
+      cameraAngle: "eye level",
+      composition: "Rin framed by hanging lanterns",
+      actionMoment: "Rin pauses at the waterline",
+      emotionTone: "uneasy anticipation",
+      continuityNotes: "Keep soaked satchel on left shoulder",
+      imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+      negativePrompt: null,
+      motionHint: "slow push-in",
+      durationSec: 4,
+    },
+  ],
+};
+
+const runningShotScriptTask = {
+  ...runningTask,
+  id: "task-shot-script-1",
+  type: "shot_script_generate" as const,
+};
+
 const fullStoryboard = {
   id: "storyboard-1",
   title: "The Last Sky Choir",
@@ -207,6 +275,7 @@ describe("Project Detail Page", () => {
     expect(screen.getByRole("button", { name: "主情节" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
     expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
+    expect(screen.getByText(baseProject.premise.text)).toBeInTheDocument();
   });
 
   it("switches to the master-plot panel when the user clicks 主情节", async () => {
@@ -305,6 +374,21 @@ describe("Project Detail Page", () => {
     expect(screen.getByRole("button", { name: /生成分镜文案/i })).toBeInTheDocument();
   });
 
+  it("enables the shot-script panel after storyboard approval", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(storyboardApprovedProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
+
+    expect(screen.getByRole("heading", { name: "镜头脚本工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成镜头脚本/i })).toBeInTheDocument();
+  });
+
   it("loads project detail and lets the user start storyboard generation", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
       characterSheetsApprovedProject,
@@ -380,6 +464,87 @@ describe("Project Detail Page", () => {
 
     expect(screen.getByText("当前分镜文案")).toBeInTheDocument();
     expect(screen.getByText("The Last Sky Choir")).toBeInTheDocument();
+  });
+
+  it("loads current shot-script details in the shot-script phase panel", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(shotScriptApprovedProject);
+    const getCurrentShotScript = vi
+      .spyOn(apiModule.apiClient, "getCurrentShotScript")
+      .mockResolvedValue(fullShotScript);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
+
+    await waitFor(() => {
+      expect(getCurrentShotScript).toHaveBeenCalledWith("proj-1");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("S01-SG01")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Flooded dawn market")).toBeInTheDocument();
+    expect(screen.getByText("slow push-in")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /进入镜头脚本审核/i })).not.toBeInTheDocument();
+  });
+
+  it("starts shot-script generation from the shot-script panel", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(storyboardApprovedProject);
+    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue(
+      runningShotScriptTask,
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
+    fireEvent.click(screen.getByRole("button", { name: /生成镜头脚本/i }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
+    expect(screen.getByText("执行中")).toBeInTheDocument();
+  });
+
+  it("shows the shot-script review entry after generation completes", async () => {
+    let refreshTimer: (() => void) | undefined;
+    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
+      refreshTimer = callback as () => void;
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+
+    vi.spyOn(apiModule.apiClient, "getProjectDetail")
+      .mockResolvedValueOnce(generatingShotScriptProject)
+      .mockResolvedValueOnce(shotScriptInReviewProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
+    expect(screen.getByText(/镜头脚本生成中/)).toBeInTheDocument();
+
+    await act(async () => {
+      refreshTimer?.();
+      await flushMicrotasks();
+    });
+
+    expect(screen.getByRole("link", { name: /进入镜头脚本审核/i })).toHaveAttribute(
+      "href",
+      "/projects/proj-1/shot-script/review",
+    );
   });
 
   it("refreshes generating storyboard projects even when no local task id is available", async () => {

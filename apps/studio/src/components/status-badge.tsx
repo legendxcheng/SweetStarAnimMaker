@@ -63,6 +63,22 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotClass: "bg-(--color-success)",
     pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
   },
+  shot_script_generating: {
+    label: "镜头脚本生成中",
+    dotClass: "bg-(--color-warning)",
+    pillClass: "bg-(--color-warning)/10 border-(--color-warning)/30 text-(--color-warning)",
+    pulse: true,
+  },
+  shot_script_in_review: {
+    label: "镜头脚本审核中",
+    dotClass: "bg-(--color-accent)",
+    pillClass: "bg-(--color-accent)/10 border-(--color-accent)/30 text-(--color-accent)",
+  },
+  shot_script_approved: {
+    label: "镜头脚本已通过",
+    dotClass: "bg-(--color-success)",
+    pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
+  },
 };
 
 const FALLBACK_CONFIG: StatusConfig = {

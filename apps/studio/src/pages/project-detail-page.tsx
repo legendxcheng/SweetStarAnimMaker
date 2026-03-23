@@ -8,6 +8,7 @@ import { MasterPlotPhasePanel } from "../components/master-plot-phase-panel";
 import { PageHeader } from "../components/page-header";
 import { PremisePhasePanel } from "../components/premise-phase-panel";
 import { ProjectPhaseNav } from "../components/project-phase-nav";
+import { ShotScriptPhasePanel } from "../components/shot-script-phase-panel";
 import { StoryboardPhasePanel } from "../components/storyboard-phase-panel";
 import { useTaskPolling } from "../hooks/use-task-polling";
 import { apiClient } from "../services/api-client";
@@ -54,6 +55,20 @@ function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
   );
 }
 
+function isShotScriptPhaseEnabled(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return (
+    project.status === "storyboard_approved" ||
+    project.status === "shot_script_generating" ||
+    project.status === "shot_script_in_review" ||
+    project.status === "shot_script_approved" ||
+    project.currentShotScript !== null
+  );
+}
+
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -89,7 +104,8 @@ export function ProjectDetailPage() {
       activeTask ||
       (project.status !== "master_plot_generating" &&
         project.status !== "character_sheets_generating" &&
-        project.status !== "storyboard_generating")
+        project.status !== "storyboard_generating" &&
+        project.status !== "shot_script_generating")
     ) {
       return;
     }
@@ -156,13 +172,28 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateShotScript = async () => {
+    if (!projectId || creatingTask || isActiveTask(task)) return;
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createShotScriptGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const phaseItems = PROJECT_PHASES.map((phase) => ({
     ...phase,
     enabled:
       phase.key === "premise" ||
       phase.key === "master_plot" ||
       (phase.key === "character_sheets" && isCharacterSheetsPhaseEnabled(project)) ||
-      (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)),
+      (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)) ||
+      (phase.key === "shot_script" && isShotScriptPhaseEnabled(project)),
   }));
 
   return (
@@ -228,7 +259,7 @@ export function ProjectDetailPage() {
                     }}
                     onProjectRefresh={loadProject}
                   />
-                ) : (
+                ) : selectedPhase === "storyboard" ? (
                   <StoryboardPhasePanel
                     project={currentProject}
                     task={task}
@@ -241,6 +272,21 @@ export function ProjectDetailPage() {
                     }
                     onGenerate={() => {
                       void handleGenerateStoryboard();
+                    }}
+                  />
+                ) : (
+                  <ShotScriptPhasePanel
+                    project={currentProject}
+                    task={task}
+                    taskError={taskError}
+                    creatingTask={creatingTask}
+                    disableGenerate={
+                      creatingTask ||
+                      isActiveTask(task) ||
+                      currentProject.status !== "storyboard_approved"
+                    }
+                    onGenerate={() => {
+                      void handleGenerateShotScript();
                     }}
                   />
                 )}

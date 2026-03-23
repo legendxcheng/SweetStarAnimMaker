@@ -5,6 +5,7 @@ import { NewProjectPage } from "../pages/new-project-page";
 import { MasterPlotReviewPage } from "../pages/master-plot-review-page";
 import { ProjectDetailPage } from "../pages/project-detail-page";
 import { ReviewWorkspacePage } from "../pages/review-workspace-page";
+import { ShotScriptReviewPage } from "../pages/shot-script-review-page";
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,10 @@ export const router = createBrowserRouter([
       {
         path: "projects/:projectId/storyboard/review",
         element: <ReviewWorkspacePage />,
+      },
+      {
+        path: "projects/:projectId/shot-script/review",
+        element: <ShotScriptReviewPage />,
       },
       {
         path: "*",
