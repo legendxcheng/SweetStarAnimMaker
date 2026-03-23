@@ -1,7 +1,7 @@
 import type { ProjectStatus } from "../constants/project-status";
 import type { StoryboardReviewAction } from "../constants/storyboard-review-action";
 import type { StoryboardReviewNextAction } from "../constants/storyboard-review-next-action";
-import type { CurrentShotScript } from "./shot-script";
+import type { CurrentShotScript, ShotScriptItem } from "./shot-script";
 import type { TaskDetail } from "./task-detail";
 
 export interface ShotScriptReviewSummary {
@@ -16,9 +16,10 @@ export interface ShotScriptReviewSummary {
 }
 
 export interface ShotScriptReviewAvailableActions {
-  save: boolean;
-  approve: boolean;
-  reject: boolean;
+  saveSegment: boolean;
+  regenerateSegment: boolean;
+  approveSegment: boolean;
+  approveAll: boolean;
 }
 
 export interface ShotScriptReviewWorkspace {
@@ -31,16 +32,15 @@ export interface ShotScriptReviewWorkspace {
   availableActions: ShotScriptReviewAvailableActions;
 }
 
-export interface SaveShotScriptRequest {
-  title: string | null;
-  sourceStoryboardId: string;
-  sourceTaskId: string | null;
-  shots: CurrentShotScript["shots"];
+export interface SaveShotScriptSegmentRequest {
+  name: string | null;
+  summary: string;
+  durationSec: number | null;
+  shots: ShotScriptItem[];
 }
 
-export interface ApproveShotScriptRequest {}
+export interface RegenerateShotScriptSegmentRequest {}
 
-export interface RejectShotScriptRequest {
-  reason: string;
-  nextAction: StoryboardReviewNextAction;
-}
+export interface ApproveShotScriptSegmentRequest {}
+
+export interface ApproveAllShotScriptSegmentsRequest {}

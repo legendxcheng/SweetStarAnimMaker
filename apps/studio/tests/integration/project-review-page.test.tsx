@@ -77,35 +77,49 @@ const shotScriptWorkspace = {
     sourceTaskId: "task-shot-script-1",
     updatedAt: "2024-01-01T00:00:00Z",
     approvedAt: null,
-    shots: [
+    segmentCount: 1,
+    shotCount: 1,
+    totalDurationSec: 4,
+    segments: [
       {
-        id: "shot-1",
-        sceneId: "scene-1",
         segmentId: "segment-1",
+        sceneId: "scene-1",
         order: 1,
-        shotCode: "S01-SG01",
-        shotPurpose: "Establish the flooded market.",
-        subjectCharacters: ["Rin"],
-        environment: "Flooded dawn market",
-        framing: "medium wide shot",
-        cameraAngle: "eye level",
-        composition: "Rin framed by lanterns",
-        actionMoment: "Rin pauses at the waterline",
-        emotionTone: "uneasy anticipation",
-        continuityNotes: "Keep soaked satchel on left shoulder",
-        imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-        negativePrompt: null,
-        motionHint: null,
+        name: "雨夜码头",
+        summary: "林夏在暴雨码头听见异响。",
         durationSec: 4,
+        status: "in_review" as const,
+        lastGeneratedAt: "2024-01-01T00:00:00Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot-1",
+            sceneId: "scene-1",
+            segmentId: "segment-1",
+            order: 1,
+            shotCode: "S01-SG01-SH01",
+            purpose: "建立码头空间。",
+            visual: "暴雨中的码头反着冷蓝色灯牌。",
+            subject: "林夏",
+            action: "林夏撑伞穿过码头入口。",
+            dialogue: null,
+            os: "今晚绝不能出错。",
+            audio: "暴雨、风声、船笛。",
+            transitionHint: null,
+            continuityNotes: "黑伞保持右手持伞。",
+            durationSec: 4,
+          },
+        ],
       },
     ],
   },
   latestReview: null,
   latestTask: null,
   availableActions: {
-    save: true,
-    approve: true,
-    reject: true,
+    saveSegment: true,
+    regenerateSegment: true,
+    approveSegment: true,
+    approveAll: true,
   },
 };
 
@@ -113,14 +127,19 @@ const refreshedShotScriptWorkspace = {
   ...shotScriptWorkspace,
   currentShotScript: {
     ...shotScriptWorkspace.currentShotScript,
-    title: "Episode 1 Shot Script Revised",
-    shots: [
+    updatedAt: "2024-01-01T00:00:02Z",
+    segments: [
       {
-        ...shotScriptWorkspace.currentShotScript.shots[0],
-        motionHint: "slow push-in",
+        ...shotScriptWorkspace.currentShotScript.segments[0],
+        name: "雨夜码头加强版",
+        shots: [
+          {
+            ...shotScriptWorkspace.currentShotScript.segments[0].shots[0],
+            transitionHint: "缓慢推近",
+          },
+        ],
       },
     ],
-    updatedAt: "2024-01-01T00:00:02Z",
   },
 };
 
@@ -250,7 +269,7 @@ describe("Project Review Page", () => {
     expect(screen.getByDisplayValue("480")).toBeInTheDocument();
   });
 
-  it("loads the shot-script workspace and renders editable shot fields", async () => {
+  it("loads the shot-script workspace and renders editable segment shot fields", async () => {
     vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
       shotScriptWorkspace,
     );
@@ -261,9 +280,10 @@ describe("Project Review Page", () => {
       expect(screen.getByRole("heading", { name: "镜头脚本审核" })).toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue("Episode 1 Shot Script")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("S01-SG01")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Flooded dawn market")).toBeInTheDocument();
+    expect(screen.getByText("Episode 1 Shot Script")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("暴雨中的码头反着冷蓝色灯牌。")).toBeInTheDocument();
   });
 
   it("saves the edited draft and refreshes the workspace", async () => {
@@ -349,61 +369,62 @@ describe("Project Review Page", () => {
     expect(screen.getByDisplayValue("Draft title that should stay visible")).toBeInTheDocument();
   });
 
-  it("saves the edited shot-script draft and refreshes the workspace", async () => {
+  it("saves the edited segment draft and refreshes the workspace", async () => {
     vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace")
       .mockResolvedValueOnce(shotScriptWorkspace)
       .mockResolvedValueOnce(refreshedShotScriptWorkspace);
-    vi.spyOn(apiModule.apiClient, "saveShotScript").mockResolvedValue(
+    vi.spyOn(apiModule.apiClient, "saveShotScriptSegment").mockResolvedValue(
       refreshedShotScriptWorkspace.currentShotScript,
     );
 
     renderShotScriptPage();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Episode 1 Shot Script")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("标题"), {
-      target: { value: "Episode 1 Shot Script Revised" },
+    fireEvent.change(screen.getByLabelText("段落 1 标题"), {
+      target: { value: "雨夜码头加强版" },
     });
-    fireEvent.change(screen.getByLabelText("镜头 1 运动提示"), {
-      target: { value: "slow push-in" },
+    fireEvent.change(screen.getByLabelText("镜头 1 转场提示"), {
+      target: { value: "缓慢推近" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /保存修改/i }));
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.saveShotScript).toHaveBeenCalledWith("proj-1", {
-        title: "Episode 1 Shot Script Revised",
-        sourceStoryboardId: "storyboard-1",
-        sourceTaskId: "task-shot-script-1",
-        shots: [
-          {
-            id: "shot-1",
-            sceneId: "scene-1",
-            segmentId: "segment-1",
-            order: 1,
-            shotCode: "S01-SG01",
-            shotPurpose: "Establish the flooded market.",
-            subjectCharacters: ["Rin"],
-            environment: "Flooded dawn market",
-            framing: "medium wide shot",
-            cameraAngle: "eye level",
-            composition: "Rin framed by lanterns",
-            actionMoment: "Rin pauses at the waterline",
-            emotionTone: "uneasy anticipation",
-            continuityNotes: "Keep soaked satchel on left shoulder",
-            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-            negativePrompt: null,
-            motionHint: "slow push-in",
-            durationSec: 4,
-          },
-        ],
-      });
-    });
+    fireEvent.click(screen.getByRole("button", { name: /保存本段/i }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("Episode 1 Shot Script Revised")).toBeInTheDocument();
+      expect(apiModule.apiClient.saveShotScriptSegment).toHaveBeenCalledWith(
+        "proj-1",
+        "segment-1",
+        {
+          name: "雨夜码头加强版",
+          summary: "林夏在暴雨码头听见异响。",
+          durationSec: 4,
+          shots: [
+            {
+              id: "shot-1",
+              sceneId: "scene-1",
+              segmentId: "segment-1",
+              order: 1,
+              shotCode: "S01-SG01-SH01",
+              purpose: "建立码头空间。",
+              visual: "暴雨中的码头反着冷蓝色灯牌。",
+              subject: "林夏",
+              action: "林夏撑伞穿过码头入口。",
+              dialogue: null,
+              os: "今晚绝不能出错。",
+              audio: "暴雨、风声、船笛。",
+              transitionHint: "缓慢推近",
+              continuityNotes: "黑伞保持右手持伞。",
+              durationSec: 4,
+            },
+          ],
+        },
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("雨夜码头加强版")).toBeInTheDocument();
     });
   });
 });

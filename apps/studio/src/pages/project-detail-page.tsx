@@ -23,7 +23,6 @@ const PROJECT_PHASES = [
   { key: "character_sheets", label: "角色设定" },
   { key: "storyboard", label: "分镜" },
   { key: "shot_script", label: "镜头脚本" },
-  { key: "image", label: "出图" },
   { key: "final_cut", label: "成片" },
 ] as const;
 

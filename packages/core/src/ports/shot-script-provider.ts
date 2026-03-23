@@ -1,17 +1,19 @@
-import type { CurrentShotScript } from "@sweet-star/shared";
+import type { ShotScriptSegment } from "@sweet-star/shared";
 
-export interface GenerateShotScriptInput {
+export interface GenerateShotScriptSegmentInput {
   promptText: string;
   variables: Record<string, unknown>;
 }
 
-export interface GenerateShotScriptResult {
+export interface GenerateShotScriptSegmentResult {
   rawResponse: string;
-  shotScript: CurrentShotScript;
+  segment: ShotScriptSegment;
 }
 
 export interface ShotScriptProvider {
-  generateShotScript(
-    input: GenerateShotScriptInput,
-  ): Promise<GenerateShotScriptResult> | GenerateShotScriptResult;
+  generateShotScriptSegment(
+    input: GenerateShotScriptSegmentInput,
+  ):
+    | Promise<GenerateShotScriptSegmentResult>
+    | GenerateShotScriptSegmentResult;
 }

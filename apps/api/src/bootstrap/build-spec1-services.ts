@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
 
 import {
-  createCreateMasterPlotGenerateTaskUseCase,
+  createApproveAllShotScriptSegmentsUseCase,
   createApproveCharacterSheetUseCase,
   createApproveMasterPlotUseCase,
-  createApproveShotScriptUseCase,
+  createApproveShotScriptSegmentUseCase,
   createApproveStoryboardUseCase,
+  createCreateMasterPlotGenerateTaskUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
   createCreateShotScriptGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
@@ -24,12 +25,12 @@ import {
   createGetTaskDetailUseCase,
   createListCharacterSheetsUseCase,
   createListProjectsUseCase,
+  createRegenerateShotScriptSegmentUseCase,
   createRegenerateCharacterSheetUseCase,
   createRejectMasterPlotUseCase,
-  createRejectShotScriptUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanMasterPlotUseCase,
-  createSaveHumanShotScriptUseCase,
+  createSaveHumanShotScriptSegmentUseCase,
   createSaveHumanStoryboardVersionUseCase,
   createUpdateCharacterSheetPromptUseCase,
   createUpdateProjectScriptUseCase,
@@ -174,7 +175,6 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     taskIdGenerator,
     clock,
   });
-
   return {
     db,
     async close() {
@@ -281,7 +281,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       clock,
     }),
-    saveHumanShotScript: createSaveHumanShotScriptUseCase({
+    saveHumanShotScriptSegment: createSaveHumanShotScriptSegmentUseCase({
       projectRepository: repository,
       shotScriptStorage,
       clock,
@@ -296,7 +296,13 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       clock,
     }),
-    approveShotScript: createApproveShotScriptUseCase({
+    approveShotScriptSegment: createApproveShotScriptSegmentUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      shotScriptReviewRepository,
+      clock,
+    }),
+    approveAllShotScriptSegments: createApproveAllShotScriptSegmentsUseCase({
       projectRepository: repository,
       shotScriptStorage,
       shotScriptReviewRepository,
@@ -312,11 +318,16 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       createStoryboardGenerateTask,
     }),
-    rejectShotScript: createRejectShotScriptUseCase({
+    regenerateShotScriptSegment: createRegenerateShotScriptSegmentUseCase({
       projectRepository: repository,
+      storyboardStorage,
       shotScriptStorage,
       shotScriptReviewRepository,
-      createShotScriptGenerateTask,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
     }),
     updateCharacterSheetPrompt: createUpdateCharacterSheetPromptUseCase({
       projectRepository: repository,

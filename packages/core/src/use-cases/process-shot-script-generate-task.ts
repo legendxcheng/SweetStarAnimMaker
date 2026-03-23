@@ -1,4 +1,4 @@
-import { toCurrentShotScriptSummary } from "../domain/shot-script";
+import { createShotScriptShell, toCurrentShotScriptSummary } from "../domain/shot-script";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import type { Clock } from "../ports/clock";
@@ -6,7 +6,14 @@ import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptProvider } from "../ports/shot-script-provider";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
+import type { TaskIdGenerator } from "../ports/task-id-generator";
+import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import {
+  createTaskRecord,
+  shotScriptSegmentGenerateQueueName,
+  type ShotScriptSegmentGenerateTaskInput,
+} from "../domain/task";
 
 export interface ProcessShotScriptGenerateTaskInput {
   taskId: string;
@@ -22,6 +29,8 @@ export interface ProcessShotScriptGenerateTaskUseCaseDependencies {
   taskFileStorage: TaskFileStorage;
   shotScriptProvider: ShotScriptProvider;
   shotScriptStorage: ShotScriptStorage;
+  taskQueue?: TaskQueue;
+  taskIdGenerator?: TaskIdGenerator;
   clock: Clock;
 }
 
@@ -54,6 +63,95 @@ export function createProcessShotScriptGenerateTaskUseCase(
           throw new ProjectNotFoundError(task.projectId);
         }
 
+        if (taskInput.promptTemplateKey === "shot_script.segment.generate") {
+          if (!dependencies.taskQueue || !dependencies.taskIdGenerator) {
+            throw new Error("Segment-first shot script processing requires taskQueue and taskIdGenerator");
+          }
+
+          const shotScript = createShotScriptShell({
+            id: `shot_script_${task.id}`,
+            sourceStoryboardId: taskInput.sourceStoryboardId,
+            sourceTaskId: task.id,
+            storyboard: taskInput.storyboard,
+            updatedAt: startedAt,
+          });
+
+          await dependencies.shotScriptStorage.writeCurrentShotScript({
+            storageDir: project.storageDir,
+            shotScript,
+          });
+          await dependencies.projectRepository.updateCurrentShotScript({
+            projectId: project.id,
+            shotScriptId: shotScript.id,
+          });
+
+          for (const scene of taskInput.storyboard.scenes) {
+            for (const segment of scene.segments) {
+              const segmentTask = createTaskRecord({
+                id: dependencies.taskIdGenerator.generateTaskId(),
+                projectId: project.id,
+                projectStorageDir: project.storageDir,
+                type: "shot_script_segment_generate",
+                queueName: shotScriptSegmentGenerateQueueName,
+                createdAt: startedAt,
+              });
+              const segmentTaskInput: ShotScriptSegmentGenerateTaskInput = {
+                taskId: segmentTask.id,
+                projectId: project.id,
+                taskType: "shot_script_segment_generate",
+                sourceStoryboardId: taskInput.sourceStoryboardId,
+                sourceShotScriptId: shotScript.id,
+                sceneId: scene.id,
+                segmentId: segment.id,
+                scene: {
+                  id: scene.id,
+                  order: scene.order,
+                  name: scene.name,
+                  dramaticPurpose: scene.dramaticPurpose,
+                },
+                segment,
+                storyboardTitle: taskInput.storyboard.title,
+                episodeTitle: taskInput.storyboard.episodeTitle,
+                sourceMasterPlotId: taskInput.sourceMasterPlotId,
+                masterPlot: taskInput.masterPlot,
+                sourceCharacterSheetBatchId: taskInput.sourceCharacterSheetBatchId,
+                characterSheets: taskInput.characterSheets,
+                promptTemplateKey: "shot_script.segment.generate",
+              };
+
+              await dependencies.taskRepository.insert(segmentTask);
+              await dependencies.taskFileStorage.createTaskArtifacts({
+                task: segmentTask,
+                input: segmentTaskInput,
+              });
+              await dependencies.taskQueue.enqueue({
+                taskId: segmentTask.id,
+                queueName: segmentTask.queueName,
+                taskType: segmentTask.type,
+              });
+            }
+          }
+
+          const finishedAt = dependencies.clock.now();
+          await dependencies.taskFileStorage.writeTaskOutput({
+            task,
+            output: {
+              shotScriptId: shotScript.id,
+              segmentCount: shotScript.segmentCount,
+            },
+          });
+          await dependencies.taskFileStorage.appendTaskLog({
+            task,
+            message: "shot script batch orchestration succeeded",
+          });
+          await dependencies.taskRepository.markSucceeded({
+            taskId: task.id,
+            updatedAt: finishedAt,
+            finishedAt,
+          });
+          return;
+        }
+
         const promptTemplate = await dependencies.shotScriptStorage.readPromptTemplate({
           storageDir: project.storageDir,
           promptTemplateKey: taskInput.promptTemplateKey,
@@ -71,7 +169,12 @@ export function createProcessShotScriptGenerateTaskUseCase(
           promptVariables,
         });
 
-        const providerResult = await dependencies.shotScriptProvider.generateShotScript({
+        const providerResult = await (dependencies.shotScriptProvider as ShotScriptProvider & {
+          generateShotScript: (input: {
+            promptText: string;
+            variables: Record<string, unknown>;
+          }) => Promise<{ rawResponse: string; shotScript: Record<string, unknown> }>;
+        }).generateShotScript({
           promptText,
           variables: promptVariables,
         });
@@ -89,15 +192,15 @@ export function createProcessShotScriptGenerateTaskUseCase(
           updatedAt: finishedAt,
           approvedAt: null,
         };
-        const summary = toCurrentShotScriptSummary(shotScript);
+        const summary = toCurrentShotScriptSummary(shotScript as never);
 
         await dependencies.shotScriptStorage.writeCurrentShotScript({
           storageDir: project.storageDir,
-          shotScript,
+          shotScript: shotScript as never,
         });
         await dependencies.projectRepository.updateCurrentShotScript({
           projectId: project.id,
-          shotScriptId: shotScript.id,
+          shotScriptId: shotScript.id as string,
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
@@ -195,7 +298,7 @@ function assertShotScriptTaskInput(input: {
     promptTextCurrent: string;
     imageAssetPath?: string | null;
   }>;
-  promptTemplateKey: "shot_script.generate";
+  promptTemplateKey: "shot_script.generate" | "shot_script.segment.generate";
 } {
   if (input.taskType !== "shot_script_generate") {
     throw new Error(`Unsupported task input for shot script processing: ${input.taskType}`);

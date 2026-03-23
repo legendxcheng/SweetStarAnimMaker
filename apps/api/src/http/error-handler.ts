@@ -3,12 +3,14 @@ import {
   CharacterSheetImageNotFoundError,
   CharacterSheetNotFoundError,
   CurrentCharacterSheetBatchNotFoundError,
+  CurrentImageBatchNotFoundError,
   CurrentMasterPlotNotFoundError,
   CurrentShotScriptNotFoundError,
   CurrentStoryboardNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
   RejectStoryboardReasonRequiredError,
+  ShotImageNotFoundError,
   StoryboardReviewVersionConflictError,
   TaskNotFoundError,
 } from "@sweet-star/core";
@@ -38,10 +40,12 @@ export function createApiErrorHandler() {
       error instanceof CharacterSheetImageNotFoundError ||
       error instanceof CharacterReferenceImageNotFoundError ||
       error instanceof CurrentCharacterSheetBatchNotFoundError ||
+      error instanceof CurrentImageBatchNotFoundError ||
       error instanceof CurrentMasterPlotNotFoundError ||
       error instanceof CurrentShotScriptNotFoundError ||
       error instanceof CurrentStoryboardNotFoundError ||
       error instanceof ProjectNotFoundError ||
+      error instanceof ShotImageNotFoundError ||
       error instanceof TaskNotFoundError
     ) {
       return reply.status(404).send({

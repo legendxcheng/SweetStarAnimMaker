@@ -28,6 +28,7 @@ describe("update project script use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -86,6 +87,7 @@ describe("update project script use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -133,6 +135,7 @@ describe("update project script use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {

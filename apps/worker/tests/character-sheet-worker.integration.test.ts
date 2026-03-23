@@ -73,6 +73,7 @@ describe("character-sheet worker integration", () => {
         updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -373,6 +374,7 @@ describe("character-sheet worker integration", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };

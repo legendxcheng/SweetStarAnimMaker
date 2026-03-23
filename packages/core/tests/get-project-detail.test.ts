@@ -20,6 +20,7 @@ describe("get project detail use case", () => {
         currentCharacterSheetBatchId: "char_batch_v1",
         currentStoryboardId: "storyboard_20260321_ab12cd",
         currentShotScriptId: "shot_script_20260322_ab12cd",
+        currentImageBatchId: "image_batch_1",
         status: "master_plot_in_review",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
@@ -31,6 +32,7 @@ describe("get project detail use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -159,6 +161,28 @@ describe("get project detail use case", () => {
         findCharacterById: vi.fn(),
         updateCharacter: vi.fn(),
       },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "image_batch_1",
+          projectId: "proj_20260317_ab12cd",
+          projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
+          sourceShotScriptId: "shot_script_20260322_ab12cd",
+          imageCount: 2,
+          storageDir: "projects/proj_20260317_ab12cd-my-story/images/batches/image_batch_1",
+          manifestRelPath: "images/batches/image_batch_1/manifest.json",
+          createdAt: "2026-03-23T12:00:00.000Z",
+          updatedAt: "2026-03-23T12:10:00.000Z",
+        }),
+        listImagesByBatchId: vi.fn().mockResolvedValue([
+          { id: "image_1", status: "approved" },
+          { id: "image_2", status: "in_review" },
+        ]),
+        insertImage: vi.fn(),
+        findImageById: vi.fn(),
+        updateImage: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+      },
     });
 
     const result = await useCase.execute({
@@ -187,6 +211,8 @@ describe("get project detail use case", () => {
         totalDurationSec: 4,
       }),
     );
+    expect(result.currentImageBatch?.id).toBe("image_batch_1");
+    expect(result.currentImageBatch?.approvedImageCount).toBe(1);
   });
 
   it("throws when the project does not exist", async () => {
@@ -199,6 +225,7 @@ describe("get project detail use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -240,6 +267,15 @@ describe("get project detail use case", () => {
         insertCharacter: vi.fn(),
         findCharacterById: vi.fn(),
         updateCharacter: vi.fn(),
+      },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listImagesByBatchId: vi.fn(),
+        insertImage: vi.fn(),
+        findImageById: vi.fn(),
+        updateImage: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
       },
     });
 

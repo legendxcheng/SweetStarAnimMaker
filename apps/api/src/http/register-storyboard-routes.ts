@@ -1,10 +1,8 @@
 import type { FastifyInstance } from "fastify";
 
 import {
-  rejectShotScriptRequestSchema,
   rejectMasterPlotRequestSchema,
   saveMasterPlotRequestSchema,
-  saveShotScriptRequestSchema,
   saveStoryboardRequestSchema,
 } from "@sweet-star/shared";
 
@@ -89,50 +87,6 @@ export function registerStoryboardRoutes(
 
     return services.rejectStoryboard.execute({
       projectId: params.projectId,
-    });
-  });
-
-  app.get("/projects/:projectId/shot-script/current", async (request) => {
-    const params = request.params as { projectId: string };
-
-    return services.getCurrentShotScript.execute({
-      projectId: params.projectId,
-    });
-  });
-
-  app.get("/projects/:projectId/shot-script/review", async (request) => {
-    const params = request.params as { projectId: string };
-
-    return services.getShotScriptReview.execute({
-      projectId: params.projectId,
-    });
-  });
-
-  app.put("/projects/:projectId/shot-script", async (request) => {
-    const params = request.params as { projectId: string };
-    const payload = saveShotScriptRequestSchema.parse(request.body);
-
-    return services.saveHumanShotScript.execute({
-      projectId: params.projectId,
-      ...payload,
-    });
-  });
-
-  app.post("/projects/:projectId/shot-script/approve", async (request) => {
-    const params = request.params as { projectId: string };
-
-    return services.approveShotScript.execute({
-      projectId: params.projectId,
-    });
-  });
-
-  app.post("/projects/:projectId/shot-script/reject", async (request) => {
-    const params = request.params as { projectId: string };
-    const payload = rejectShotScriptRequestSchema.parse(request.body);
-
-    return services.rejectShotScript.execute({
-      projectId: params.projectId,
-      ...payload,
     });
   });
 }

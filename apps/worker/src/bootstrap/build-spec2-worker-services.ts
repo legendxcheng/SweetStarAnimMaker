@@ -5,7 +5,9 @@ import {
   createProcessCharacterSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
   createProcessShotScriptGenerateTaskUseCase,
+  createProcessShotScriptSegmentGenerateTaskUseCase,
   createProcessStoryboardGenerateTaskUseCase,
+  type ProcessShotScriptSegmentGenerateTaskUseCase,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
   type CharacterSheetRepository,
@@ -74,6 +76,7 @@ export interface Spec2WorkerServices {
   processMasterPlotGenerateTask: ProcessMasterPlotGenerateTaskUseCase;
   processStoryboardGenerateTask: ProcessStoryboardGenerateTaskUseCase;
   processShotScriptGenerateTask: ProcessShotScriptGenerateTaskUseCase;
+  processShotScriptSegmentGenerateTask: ProcessShotScriptSegmentGenerateTaskUseCase;
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
   close(): Promise<void>;
@@ -140,7 +143,7 @@ export function buildSpec2WorkerServices(
           model: process.env.SHOT_SCRIPT_LLM_MODEL,
         })
       : {
-          async generateShotScript() {
+          async generateShotScriptSegment() {
             throw new Error("VECTORENGINE_API_TOKEN is required for shot script generation");
           },
         });
@@ -246,6 +249,18 @@ export function buildSpec2WorkerServices(
       },
     }),
     processShotScriptGenerateTask: createProcessShotScriptGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotScriptProvider,
+      shotScriptStorage,
+      taskQueue,
+      taskIdGenerator,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processShotScriptSegmentGenerateTask: createProcessShotScriptSegmentGenerateTaskUseCase({
       taskRepository,
       projectRepository,
       taskFileStorage,

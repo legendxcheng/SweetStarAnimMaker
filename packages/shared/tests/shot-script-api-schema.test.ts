@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 import * as shared from "../src/index";
 
 describe("shot script api schema", () => {
+  it("does not expose legacy whole-script review payload schemas", () => {
+    expect("saveShotScriptRequestSchema" in shared).toBe(false);
+    expect("approveShotScriptRequestSchema" in shared).toBe(false);
+    expect("rejectShotScriptRequestSchema" in shared).toBe(false);
+  });
+
   it("accepts a current shot-script summary payload", () => {
     const parsed = shared.currentShotScriptSummaryResponseSchema.parse({
       id: "shot_script_20260322_ab12cd",
@@ -11,10 +17,12 @@ describe("shot script api schema", () => {
       sourceTaskId: "task_20260322_shot_script",
       updatedAt: "2026-03-22T12:00:00.000Z",
       approvedAt: null,
+      segmentCount: 2,
       shotCount: 3,
       totalDurationSec: 12,
     });
 
+    expect(parsed.segmentCount).toBe(2);
     expect(parsed.shotCount).toBe(3);
   });
 
@@ -26,73 +34,92 @@ describe("shot script api schema", () => {
       sourceTaskId: "task_20260322_shot_script",
       updatedAt: "2026-03-22T12:00:00.000Z",
       approvedAt: null,
+      segmentCount: 2,
+      shotCount: 3,
+      totalDurationSec: 12,
+      segments: [
+        {
+          segmentId: "segment_1",
+          sceneId: "scene_1",
+          order: 1,
+          name: "集市压境",
+          summary: "林夏在积水集市口停住，发现对手已经先一步封住退路。",
+          durationSec: 6,
+          status: "in_review",
+          lastGeneratedAt: "2026-03-22T12:00:00.000Z",
+          approvedAt: null,
+          shots: [
+            {
+              id: "shot_1",
+              sceneId: "scene_1",
+              segmentId: "segment_1",
+              order: 1,
+              shotCode: "S01-SG01-SH01",
+              durationSec: 2,
+              purpose: "先交代主角被堵在集市入口。",
+              visual: "清晨积水漫过青石路，摊棚和红灯笼歪斜压向画面前景。",
+              subject: "林夏背着湿透的布包站在水线边。",
+              action: "她停住脚步，抬眼看向前方被占住的通道。",
+              dialogue: "无",
+              os: "来得比我还快。",
+              audio: "水声、摊布拍打声、远处人群骚动。",
+              transitionHint: "切到前方堵路者的压迫感近景。",
+              continuityNotes: "布包始终挂在左肩，裤脚被水打湿。",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(parsed.segments).toHaveLength(1);
+    expect(parsed.segments[0]?.shots[0]?.segmentId).toBe("segment_1");
+  });
+
+  it("accepts a save-shot-script-segment request payload", () => {
+    const parsed = shared.saveShotScriptSegmentRequestSchema.parse({
+      name: "集市压境",
+      summary: "林夏确认对手已经堵住出口。",
+      durationSec: 6,
       shots: [
         {
           id: "shot_1",
           sceneId: "scene_1",
           segmentId: "segment_1",
           order: 1,
-          shotCode: "S01-SG01",
-          shotPurpose: "Establish the flooded market",
-          subjectCharacters: ["Rin"],
-          environment: "Flooded dawn market",
-          framing: "medium wide shot",
-          cameraAngle: "eye level",
-          composition: "Rin framed by hanging lanterns",
-          actionMoment: "Rin pauses at the waterline",
-          emotionTone: "uneasy anticipation",
-          continuityNotes: "Keep soaked satchel on left shoulder",
-          imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-          negativePrompt: null,
-          motionHint: null,
-          durationSec: 4,
+          shotCode: "S01-SG01-SH01",
+          durationSec: 2,
+          purpose: "先交代主角被堵在集市入口。",
+          visual: "清晨积水漫过青石路，摊棚和红灯笼歪斜压向画面前景。",
+          subject: "林夏背着湿透的布包站在水线边。",
+          action: "她停住脚步，抬眼看向前方被占住的通道。",
+          dialogue: "无",
+          os: "来得比我还快。",
+          audio: "水声、摊布拍打声、远处人群骚动。",
+          transitionHint: "切到前方堵路者的压迫感近景。",
+          continuityNotes: "布包始终挂在左肩，裤脚被水打湿。",
         },
       ],
     });
 
-    expect(parsed.shots).toHaveLength(1);
-    expect(parsed.shots[0]?.segmentId).toBe("segment_1");
+    expect(parsed.shots[0]?.os).toBe("来得比我还快。");
   });
 
-  it("accepts a save-shot-script request payload", () => {
-    const parsed = shared.saveShotScriptRequestSchema.parse({
-      title: "Episode 1 Shot Script",
-      sourceStoryboardId: "storyboard_20260322_ab12cd",
-      sourceTaskId: "task_20260322_shot_script",
-      shots: [
-        {
-          id: "shot_1",
-          sceneId: "scene_1",
-          segmentId: "segment_1",
-          order: 1,
-          shotCode: "S01-SG01",
-          shotPurpose: "Establish the flooded market",
-          subjectCharacters: ["Rin"],
-          environment: "Flooded dawn market",
-          framing: "medium wide shot",
-          cameraAngle: "eye level",
-          composition: "Rin framed by hanging lanterns",
-          actionMoment: "Rin pauses at the waterline",
-          emotionTone: "uneasy anticipation",
-          continuityNotes: "Keep soaked satchel on left shoulder",
-          imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-          negativePrompt: "extra limbs",
-          motionHint: null,
-          durationSec: 4,
-        },
-      ],
-    });
+  it("accepts a regenerate-shot-script-segment request payload", () => {
+    const parsed = shared.regenerateShotScriptSegmentRequestSchema.parse({});
 
-    expect(parsed.shots[0]?.negativePrompt).toBe("extra limbs");
+    expect(parsed).toEqual({});
   });
 
-  it("accepts a reject-shot-script request payload", () => {
-    const parsed = shared.rejectShotScriptRequestSchema.parse({
-      reason: "Need tighter continuity notes.",
-      nextAction: "regenerate",
-    });
+  it("accepts an approve-shot-script-segment request payload", () => {
+    const parsed = shared.approveShotScriptSegmentRequestSchema.parse({});
 
-    expect(parsed.nextAction).toBe("regenerate");
+    expect(parsed).toEqual({});
+  });
+
+  it("accepts an approve-all-shot-script-segments request payload", () => {
+    const parsed = shared.approveAllShotScriptSegmentsRequestSchema.parse({});
+
+    expect(parsed).toEqual({});
   });
 
   it("accepts a shot-script review workspace response", () => {
@@ -107,48 +134,53 @@ describe("shot script api schema", () => {
         sourceTaskId: "task_20260322_shot_script",
         updatedAt: "2026-03-22T12:00:00.000Z",
         approvedAt: null,
-        shots: [
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 4,
+        segments: [
           {
-            id: "shot_1",
-            sceneId: "scene_1",
             segmentId: "segment_1",
+            sceneId: "scene_1",
             order: 1,
-            shotCode: "S01-SG01",
-            shotPurpose: "Establish the flooded market",
-            subjectCharacters: ["Rin"],
-            environment: "Flooded dawn market",
-            framing: "medium wide shot",
-            cameraAngle: "eye level",
-            composition: "Rin framed by hanging lanterns",
-            actionMoment: "Rin pauses at the waterline",
-            emotionTone: "uneasy anticipation",
-            continuityNotes: "Keep soaked satchel on left shoulder",
-            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-            negativePrompt: null,
-            motionHint: null,
+            name: "集市压境",
+            summary: "林夏确认对手已经堵住出口。",
             durationSec: 4,
+            status: "in_review",
+            lastGeneratedAt: "2026-03-22T12:00:00.000Z",
+            approvedAt: null,
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 4,
+                purpose: "先交代主角被堵在集市入口。",
+                visual: "清晨积水漫过青石路，摊棚和红灯笼歪斜压向画面前景。",
+                subject: "林夏背着湿透的布包站在水线边。",
+                action: "她停住脚步，抬眼看向前方被占住的通道。",
+                dialogue: "无",
+                os: "来得比我还快。",
+                audio: "水声、摊布拍打声、远处人群骚动。",
+                transitionHint: "切到前方堵路者的压迫感近景。",
+                continuityNotes: "布包始终挂在左肩，裤脚被水打湿。",
+              },
+            ],
           },
         ],
       },
-      latestReview: {
-        id: "ssr_20260322_ab12cd",
-        projectId: "proj_20260322_ab12cd",
-        shotScriptId: "shot_script_20260322_ab12cd",
-        action: "reject",
-        reason: "Need tighter continuity notes.",
-        nextAction: "edit_manually",
-        triggeredTaskId: null,
-        createdAt: "2026-03-22T12:10:00.000Z",
-      },
+      latestReview: null,
       availableActions: {
-        save: true,
-        approve: true,
-        reject: true,
+        saveSegment: true,
+        regenerateSegment: true,
+        approveSegment: true,
+        approveAll: true,
       },
       latestTask: {
         id: "task_20260322_shot_script",
         projectId: "proj_20260322_ab12cd",
-        type: "shot_script_generate",
+        type: "shot_script_segment_generate",
         status: "succeeded",
         createdAt: "2026-03-22T11:55:00.000Z",
         updatedAt: "2026-03-22T12:00:00.000Z",
@@ -164,6 +196,7 @@ describe("shot script api schema", () => {
     });
 
     expect(parsed.projectStatus).toBe("shot_script_in_review");
-    expect(parsed.latestReview?.nextAction).toBe("edit_manually");
+    expect(parsed.latestReview).toBeNull();
+    expect(parsed.currentShotScript.segments[0]?.status).toBe("in_review");
   });
 });

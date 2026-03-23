@@ -5,6 +5,12 @@ import { storyboardReviewNextActions } from "../constants/storyboard-review-next
 import { taskDetailResponseSchema } from "./task-api";
 
 const requiredTextSchema = z.string().trim().min(1);
+const shotScriptSegmentStatuses = [
+  "pending",
+  "generating",
+  "in_review",
+  "approved",
+] as const;
 
 export const shotScriptItemResponseSchema = z.object({
   id: z.string(),
@@ -12,19 +18,29 @@ export const shotScriptItemResponseSchema = z.object({
   segmentId: z.string(),
   order: z.number().int().positive(),
   shotCode: requiredTextSchema,
-  shotPurpose: requiredTextSchema,
-  subjectCharacters: z.array(requiredTextSchema),
-  environment: requiredTextSchema,
-  framing: requiredTextSchema,
-  cameraAngle: requiredTextSchema,
-  composition: requiredTextSchema,
-  actionMoment: requiredTextSchema,
-  emotionTone: requiredTextSchema,
-  continuityNotes: requiredTextSchema,
-  imagePrompt: requiredTextSchema,
-  negativePrompt: z.string().nullable(),
-  motionHint: z.string().nullable(),
   durationSec: z.number().int().positive().nullable(),
+  purpose: requiredTextSchema,
+  visual: requiredTextSchema,
+  subject: requiredTextSchema,
+  action: requiredTextSchema,
+  dialogue: z.string().trim().min(1).nullable(),
+  os: z.string().trim().min(1).nullable(),
+  audio: z.string().trim().min(1).nullable(),
+  transitionHint: z.string().trim().min(1).nullable(),
+  continuityNotes: z.string().trim().min(1).nullable(),
+});
+
+export const shotScriptSegmentResponseSchema = z.object({
+  segmentId: z.string(),
+  sceneId: z.string(),
+  order: z.number().int().positive(),
+  name: z.string().trim().min(1).nullable(),
+  summary: requiredTextSchema,
+  durationSec: z.number().int().positive().nullable(),
+  status: z.enum(shotScriptSegmentStatuses),
+  lastGeneratedAt: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  shots: z.array(shotScriptItemResponseSchema).min(1),
 });
 
 export const currentShotScriptSummaryResponseSchema = z.object({
@@ -34,33 +50,27 @@ export const currentShotScriptSummaryResponseSchema = z.object({
   sourceTaskId: z.string().nullable(),
   updatedAt: z.string(),
   approvedAt: z.string().nullable(),
+  segmentCount: z.number().int().positive(),
   shotCount: z.number().int().positive(),
   totalDurationSec: z.number().int().positive().nullable(),
 });
 
-export const currentShotScriptResponseSchema = z.object({
-  id: z.string(),
-  title: z.string().trim().min(1).nullable(),
-  sourceStoryboardId: z.string(),
-  sourceTaskId: z.string().nullable(),
-  updatedAt: z.string(),
-  approvedAt: z.string().nullable(),
+export const currentShotScriptResponseSchema = currentShotScriptSummaryResponseSchema.extend({
+  segments: z.array(shotScriptSegmentResponseSchema).min(1),
+});
+
+export const saveShotScriptSegmentRequestSchema = z.object({
+  name: z.string().trim().min(1).nullable(),
+  summary: requiredTextSchema,
+  durationSec: z.number().int().positive().nullable(),
   shots: z.array(shotScriptItemResponseSchema).min(1),
 });
 
-export const saveShotScriptRequestSchema = z.object({
-  title: z.string().trim().min(1).nullable(),
-  sourceStoryboardId: z.string(),
-  sourceTaskId: z.string().nullable(),
-  shots: z.array(shotScriptItemResponseSchema).min(1),
-});
+export const regenerateShotScriptSegmentRequestSchema = z.object({});
 
-export const approveShotScriptRequestSchema = z.object({});
+export const approveShotScriptSegmentRequestSchema = z.object({});
 
-export const rejectShotScriptRequestSchema = z.object({
-  reason: requiredTextSchema,
-  nextAction: z.enum(storyboardReviewNextActions),
-});
+export const approveAllShotScriptSegmentsRequestSchema = z.object({});
 
 export const shotScriptReviewSummarySchema = z.object({
   id: z.string(),
@@ -81,8 +91,9 @@ export const shotScriptReviewWorkspaceResponseSchema = z.object({
   latestReview: shotScriptReviewSummarySchema.nullable(),
   latestTask: taskDetailResponseSchema.nullable(),
   availableActions: z.object({
-    save: z.boolean(),
-    approve: z.boolean(),
-    reject: z.boolean(),
+    saveSegment: z.boolean(),
+    regenerateSegment: z.boolean(),
+    approveSegment: z.boolean(),
+    approveAll: z.boolean(),
   }),
 });

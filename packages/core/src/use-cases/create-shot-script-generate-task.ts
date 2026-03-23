@@ -136,7 +136,7 @@ export function createCreateShotScriptGenerateTaskUseCase(
         sourceCharacterSheetBatchId: project.currentCharacterSheetBatchId ?? undefined,
         characterSheets:
           characterSheetSnapshots.length > 0 ? characterSheetSnapshots : undefined,
-        promptTemplateKey: "shot_script.generate",
+        promptTemplateKey: "shot_script.segment.generate",
       };
 
       await dependencies.taskRepository.insert(task);

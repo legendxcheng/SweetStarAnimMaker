@@ -2,11 +2,11 @@ import type { ProjectSummary } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
 import { toCurrentShotScriptSummary } from "../domain/shot-script";
+import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
-import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { toProjectSummaryDto } from "./project-summary-dto";
 
 export interface ListProjectsUseCase {

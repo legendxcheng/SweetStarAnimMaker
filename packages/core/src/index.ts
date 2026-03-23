@@ -20,6 +20,8 @@ export type {
   ShotScriptReviewWorkspace,
   ShotScriptReviewAvailableActions,
   ShotScriptItem,
+  ShotScriptSegment,
+  ShotScriptSegmentStatus,
   MasterPlotReviewAvailableActions,
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
@@ -113,6 +115,7 @@ export {
   createTaskRecord,
   masterPlotGenerateQueueName,
   shotScriptGenerateQueueName,
+  shotScriptSegmentGenerateQueueName,
   storyboardGenerateQueueName,
   taskArtifactsDirectoryName,
   taskInputFileName,
@@ -126,6 +129,8 @@ export {
   type CharacterSheetGenerateTaskInput,
   type CharacterSheetsGenerateTaskInput,
   type MasterPlotGenerateTaskInput,
+  type ShotScriptGenerateTaskInput,
+  type ShotScriptSegmentGenerateTaskInput,
   type StoryboardGenerateTaskInput,
   type TaskRecord,
 } from "./domain/task";
@@ -195,8 +200,8 @@ export type {
   UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
 export type {
-  GenerateShotScriptInput,
-  GenerateShotScriptResult,
+  GenerateShotScriptSegmentInput,
+  GenerateShotScriptSegmentResult,
   ShotScriptProvider,
 } from "./ports/shot-script-provider";
 export type {
@@ -384,6 +389,12 @@ export {
   type ProcessShotScriptGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-shot-script-generate-task";
 export {
+  createProcessShotScriptSegmentGenerateTaskUseCase,
+  type ProcessShotScriptSegmentGenerateTaskInput,
+  type ProcessShotScriptSegmentGenerateTaskUseCase,
+  type ProcessShotScriptSegmentGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-shot-script-segment-generate-task";
+export {
   createProcessStoryboardGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskInput,
   type ProcessStoryboardGenerateTaskUseCase,
@@ -420,11 +431,11 @@ export {
   type ApproveCharacterSheetUseCaseDependencies,
 } from "./use-cases/approve-character-sheet";
 export {
-  createSaveHumanShotScriptUseCase,
-  type SaveHumanShotScriptInput,
-  type SaveHumanShotScriptUseCase,
-  type SaveHumanShotScriptUseCaseDependencies,
-} from "./use-cases/save-human-shot-script";
+  createSaveHumanShotScriptSegmentUseCase,
+  type SaveHumanShotScriptSegmentInput,
+  type SaveHumanShotScriptSegmentUseCase,
+  type SaveHumanShotScriptSegmentUseCaseDependencies,
+} from "./use-cases/save-human-shot-script-segment";
 export {
   createSaveHumanMasterPlotUseCase,
   type SaveHumanMasterPlotInput,
@@ -438,11 +449,17 @@ export {
   type SaveHumanStoryboardVersionUseCaseDependencies,
 } from "./use-cases/save-human-storyboard-version";
 export {
-  createApproveShotScriptUseCase,
-  type ApproveShotScriptInput,
-  type ApproveShotScriptUseCase,
-  type ApproveShotScriptUseCaseDependencies,
-} from "./use-cases/approve-shot-script";
+  createApproveShotScriptSegmentUseCase,
+  type ApproveShotScriptSegmentInput,
+  type ApproveShotScriptSegmentUseCase,
+  type ApproveShotScriptSegmentUseCaseDependencies,
+} from "./use-cases/approve-shot-script-segment";
+export {
+  createApproveAllShotScriptSegmentsUseCase,
+  type ApproveAllShotScriptSegmentsInput,
+  type ApproveAllShotScriptSegmentsUseCase,
+  type ApproveAllShotScriptSegmentsUseCaseDependencies,
+} from "./use-cases/approve-all-shot-script-segments";
 export {
   createApproveMasterPlotUseCase,
   type ApproveMasterPlotInput,
@@ -456,11 +473,11 @@ export {
   type ApproveStoryboardUseCaseDependencies,
 } from "./use-cases/approve-storyboard";
 export {
-  createRejectShotScriptUseCase,
-  type RejectShotScriptInput,
-  type RejectShotScriptUseCase,
-  type RejectShotScriptUseCaseDependencies,
-} from "./use-cases/reject-shot-script";
+  createRegenerateShotScriptSegmentUseCase,
+  type RegenerateShotScriptSegmentInput,
+  type RegenerateShotScriptSegmentUseCase,
+  type RegenerateShotScriptSegmentUseCaseDependencies,
+} from "./use-cases/regenerate-shot-script-segment";
 export {
   createRejectMasterPlotUseCase,
   type RejectMasterPlotInput,

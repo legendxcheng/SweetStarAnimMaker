@@ -6,6 +6,7 @@ import { buildSpec1Services } from "./bootstrap/build-spec1-services";
 import { registerCharacterSheetRoutes } from "./http/register-character-sheet-routes";
 import { createApiErrorHandler } from "./http/error-handler";
 import { registerProjectRoutes } from "./http/register-project-routes";
+import { registerShotScriptRoutes } from "./http/register-shot-script-routes";
 import { registerStoryboardRoutes } from "./http/register-storyboard-routes";
 import { registerTaskRoutes } from "./http/register-task-routes";
 import type { TaskIdGenerator, TaskQueue } from "@sweet-star/core";
@@ -47,6 +48,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setErrorHandler(createApiErrorHandler());
   registerProjectRoutes(app, services);
   registerCharacterSheetRoutes(app, services);
+  registerShotScriptRoutes(app, services);
   registerStoryboardRoutes(app, services);
   registerTaskRoutes(app, services);
   app.addHook("onClose", async () => {

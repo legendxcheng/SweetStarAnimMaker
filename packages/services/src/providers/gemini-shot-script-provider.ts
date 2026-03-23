@@ -1,6 +1,6 @@
 import type {
-  GenerateShotScriptInput,
-  GenerateShotScriptResult,
+  GenerateShotScriptSegmentInput,
+  GenerateShotScriptSegmentResult,
   ShotScriptProvider,
 } from "@sweet-star/core";
 
@@ -26,7 +26,9 @@ export function createGeminiShotScriptProvider(
   }
 
   return {
-    async generateShotScript(input: GenerateShotScriptInput): Promise<GenerateShotScriptResult> {
+    async generateShotScriptSegment(
+      input: GenerateShotScriptSegmentInput,
+    ): Promise<GenerateShotScriptSegmentResult> {
       const rawText = await requestGeminiJson({
         baseUrl,
         apiToken,
@@ -34,15 +36,15 @@ export function createGeminiShotScriptProvider(
         timeoutMs: options.timeoutMs,
         errorLabel: "shot script",
         systemText:
-          "You generate concise JSON shot script documents for short animated stories.",
+          "You generate structured JSON shot scripts for exactly one storyboard segment. All reviewable narrative fields must be in Simplified Chinese.",
         promptText: input.promptText,
-        responseJsonSchema: shotScriptResponseJsonSchema,
+        responseJsonSchema: shotScriptSegmentResponseJsonSchema,
       });
-      const shotScript = normalizeShotScriptPayload(JSON.parse(rawText));
+      const segment = normalizeShotScriptSegmentPayload(JSON.parse(rawText), input.variables);
 
       return {
         rawResponse: rawText,
-        shotScript,
+        segment,
       };
     },
   };
@@ -108,53 +110,49 @@ async function requestGeminiJson(input: {
   }
 }
 
-const shotScriptResponseJsonSchema = {
+const shotScriptSegmentResponseJsonSchema = {
   type: "object",
-  required: ["title", "shots"],
+  required: ["name", "summary", "shots"],
   properties: {
-    title: { type: ["string", "null"] },
+    name: { type: ["string", "null"] },
+    summary: { type: "string" },
     shots: {
       type: "array",
       items: {
         type: "object",
         required: [
+          "id",
           "sceneId",
           "segmentId",
+          "order",
           "shotCode",
-          "shotPurpose",
-          "subjectCharacters",
-          "environment",
-          "framing",
-          "cameraAngle",
-          "composition",
-          "actionMoment",
-          "emotionTone",
-          "continuityNotes",
-          "imagePrompt",
-          "negativePrompt",
-          "motionHint",
           "durationSec",
+          "purpose",
+          "visual",
+          "subject",
+          "action",
+          "dialogue",
+          "os",
+          "audio",
+          "transitionHint",
+          "continuityNotes",
         ],
         properties: {
+          id: { type: "string" },
           sceneId: { type: "string" },
           segmentId: { type: "string" },
+          order: { type: "integer" },
           shotCode: { type: "string" },
-          shotPurpose: { type: "string" },
-          subjectCharacters: {
-            type: "array",
-            items: { type: "string" },
-          },
-          environment: { type: "string" },
-          framing: { type: "string" },
-          cameraAngle: { type: "string" },
-          composition: { type: "string" },
-          actionMoment: { type: "string" },
-          emotionTone: { type: "string" },
-          continuityNotes: { type: "string" },
-          imagePrompt: { type: "string" },
-          negativePrompt: { type: ["string", "null"] },
-          motionHint: { type: ["string", "null"] },
           durationSec: { type: ["integer", "null"] },
+          purpose: { type: "string" },
+          visual: { type: "string" },
+          subject: { type: "string" },
+          action: { type: "string" },
+          dialogue: { type: ["string", "null"] },
+          os: { type: ["string", "null"] },
+          audio: { type: ["string", "null"] },
+          transitionHint: { type: ["string", "null"] },
+          continuityNotes: { type: ["string", "null"] },
         },
       },
     },
@@ -179,93 +177,191 @@ function extractCandidateText(rawResponse: unknown) {
   return text;
 }
 
-function normalizeShotScriptPayload(payload: unknown): GenerateShotScriptResult["shotScript"] {
+function normalizeShotScriptSegmentPayload(
+  payload: unknown,
+  variables: Record<string, unknown>,
+): GenerateShotScriptSegmentResult["segment"] {
   if (!payload || typeof payload !== "object") {
     throw new Error("Gemini shot script provider returned invalid shot script JSON");
   }
 
+  const scene = readSceneContext(variables);
+  const segment = readSegmentContext(variables);
   const shots = (payload as { shots?: unknown }).shots;
 
   if (!Array.isArray(shots) || shots.length === 0) {
     throw new Error("Gemini shot script provider returned invalid shots");
   }
 
+  const name = readNullableString((payload as { name?: unknown }).name, "name");
+  const summary = readNonEmptyString((payload as { summary?: unknown }).summary, "summary");
+  assertContainsChinese(summary, "summary");
+  if (name) {
+    assertContainsChinese(name, "name");
+  }
+
+  const normalizedShots = shots.map((shot, index) =>
+    normalizeShot(shot, index, {
+      sceneId: scene.id,
+      segmentId: segment.id,
+    }),
+  );
+
+  assertChineseFirstShots(normalizedShots);
+  assertDurationMatchesSegment(normalizedShots, segment.durationSec);
+
   return {
-    id: "shot_script_generated",
-    title: readNullableString((payload as { title?: unknown }).title, "title"),
-    sourceStoryboardId: "pending_source_storyboard_id",
-    sourceTaskId: null,
-    updatedAt: "pending_updated_at",
+    segmentId: segment.id,
+    sceneId: scene.id,
+    order: segment.order,
+    name,
+    summary,
+    durationSec: segment.durationSec,
+    status: "in_review",
+    lastGeneratedAt: null,
     approvedAt: null,
-    shots: shots.map((shot, index) => normalizeShot(shot, index)),
+    shots: normalizedShots,
   };
 }
 
-function normalizeShot(shot: unknown, index: number) {
+function normalizeShot(
+  shot: unknown,
+  index: number,
+  source: {
+    sceneId: string;
+    segmentId: string;
+  },
+) {
   if (!shot || typeof shot !== "object") {
     throw new Error("Gemini shot script provider returned invalid shot");
   }
 
-  const subjectCharacters = (shot as { subjectCharacters?: unknown }).subjectCharacters;
+  const sceneId = readNonEmptyString((shot as { sceneId?: unknown }).sceneId, "sceneId");
+  const segmentId = readNonEmptyString((shot as { segmentId?: unknown }).segmentId, "segmentId");
 
-  if (!Array.isArray(subjectCharacters)) {
-    throw new Error("Gemini shot script provider returned invalid subjectCharacters");
+  if (sceneId !== source.sceneId) {
+    throw new Error("Gemini shot script provider returned mismatched sceneId");
   }
 
-  const durationSec = (shot as { durationSec?: unknown }).durationSec;
+  if (segmentId !== source.segmentId) {
+    throw new Error("Gemini shot script provider returned mismatched segmentId");
+  }
+
+  const durationSec = readNullablePositiveInteger(
+    (shot as { durationSec?: unknown }).durationSec,
+    "durationSec",
+  );
 
   return {
-    id: `shot_${index + 1}`,
-    sceneId: readNonEmptyString((shot as { sceneId?: unknown }).sceneId, "sceneId"),
-    segmentId: readNonEmptyString((shot as { segmentId?: unknown }).segmentId, "segmentId"),
+    id: readNonEmptyString((shot as { id?: unknown }).id, "id"),
+    sceneId,
+    segmentId,
     order: index + 1,
     shotCode: readNonEmptyString((shot as { shotCode?: unknown }).shotCode, "shotCode"),
-    shotPurpose: readNonEmptyString(
-      (shot as { shotPurpose?: unknown }).shotPurpose,
-      "shotPurpose",
+    durationSec,
+    purpose: readNonEmptyString((shot as { purpose?: unknown }).purpose, "purpose"),
+    visual: readNonEmptyString((shot as { visual?: unknown }).visual, "visual"),
+    subject: readNonEmptyString((shot as { subject?: unknown }).subject, "subject"),
+    action: readNonEmptyString((shot as { action?: unknown }).action, "action"),
+    dialogue: readNullableString((shot as { dialogue?: unknown }).dialogue, "dialogue"),
+    os: readNullableString((shot as { os?: unknown }).os, "os"),
+    audio: readNullableString((shot as { audio?: unknown }).audio, "audio"),
+    transitionHint: readNullableString(
+      (shot as { transitionHint?: unknown }).transitionHint,
+      "transitionHint",
     ),
-    subjectCharacters: subjectCharacters.map((character, characterIndex) =>
-      readNonEmptyString(character, `subjectCharacters[${characterIndex}]`),
-    ),
-    environment: readNonEmptyString(
-      (shot as { environment?: unknown }).environment,
-      "environment",
-    ),
-    framing: readNonEmptyString((shot as { framing?: unknown }).framing, "framing"),
-    cameraAngle: readNonEmptyString(
-      (shot as { cameraAngle?: unknown }).cameraAngle,
-      "cameraAngle",
-    ),
-    composition: readNonEmptyString(
-      (shot as { composition?: unknown }).composition,
-      "composition",
-    ),
-    actionMoment: readNonEmptyString(
-      (shot as { actionMoment?: unknown }).actionMoment,
-      "actionMoment",
-    ),
-    emotionTone: readNonEmptyString(
-      (shot as { emotionTone?: unknown }).emotionTone,
-      "emotionTone",
-    ),
-    continuityNotes: readNonEmptyString(
+    continuityNotes: readNullableString(
       (shot as { continuityNotes?: unknown }).continuityNotes,
       "continuityNotes",
     ),
-    imagePrompt: readNonEmptyString(
-      (shot as { imagePrompt?: unknown }).imagePrompt,
-      "imagePrompt",
-    ),
-    negativePrompt: readNullableString(
-      (shot as { negativePrompt?: unknown }).negativePrompt,
-      "negativePrompt",
-    ),
-    motionHint: readNullableString(
-      (shot as { motionHint?: unknown }).motionHint,
-      "motionHint",
-    ),
-    durationSec: typeof durationSec === "number" ? durationSec : null,
   };
+}
+
+function readSceneContext(variables: Record<string, unknown>) {
+  const scene = variables.scene;
+
+  if (!scene || typeof scene !== "object") {
+    throw new Error("Gemini shot script provider requires scene context");
+  }
+
+  return {
+    id: readNonEmptyString((scene as { id?: unknown }).id, "scene.id"),
+  };
+}
+
+function readSegmentContext(variables: Record<string, unknown>) {
+  const segment = variables.segment;
+
+  if (!segment || typeof segment !== "object") {
+    throw new Error("Gemini shot script provider requires segment context");
+  }
+
+  const durationValue = (segment as { durationSec?: unknown }).durationSec;
+
+  return {
+    id: readNonEmptyString((segment as { id?: unknown }).id, "segment.id"),
+    order: readPositiveInteger((segment as { order?: unknown }).order, "segment.order"),
+    durationSec:
+      typeof durationValue === "number" && Number.isInteger(durationValue) ? durationValue : null,
+  };
+}
+
+function assertChineseFirstShots(
+  shots: Array<{
+    purpose: string;
+    visual: string;
+    subject: string;
+    action: string;
+    dialogue: string | null;
+    os: string | null;
+    audio: string | null;
+    transitionHint: string | null;
+    continuityNotes: string | null;
+  }>,
+) {
+  const reviewText = shots
+    .flatMap((shot) => [
+      shot.purpose,
+      shot.visual,
+      shot.subject,
+      shot.action,
+      shot.dialogue,
+      shot.os,
+      shot.audio,
+      shot.transitionHint,
+      shot.continuityNotes,
+    ])
+    .filter((value): value is string => typeof value === "string" && value.trim())
+    .join("\n");
+
+  assertContainsChinese(reviewText, "shots");
+}
+
+function assertDurationMatchesSegment(
+  shots: Array<{
+    durationSec: number | null;
+  }>,
+  expectedDurationSec: number | null,
+) {
+  if (expectedDurationSec === null) {
+    return;
+  }
+
+  const actualDurationSec = shots.reduce(
+    (total, shot) => total + (shot.durationSec ?? 0),
+    0,
+  );
+  const toleranceSec = Math.max(1, Math.round(expectedDurationSec * 0.2));
+
+  if (Math.abs(actualDurationSec - expectedDurationSec) > toleranceSec) {
+    throw new Error("Gemini shot script provider returned mismatched total duration");
+  }
+}
+
+function assertContainsChinese(value: string, fieldName: string) {
+  if (!/[\u3400-\u9fff]/u.test(value)) {
+    throw new Error(`Gemini shot script provider returned non-Chinese ${fieldName}`);
+  }
 }
 
 function readNonEmptyString(value: unknown, fieldName: string) {
@@ -282,6 +378,26 @@ function readNullableString(value: unknown, fieldName: string) {
   }
 
   if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Gemini shot script provider returned invalid ${fieldName}`);
+  }
+
+  return value;
+}
+
+function readNullablePositiveInteger(value: unknown, fieldName: string) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`Gemini shot script provider returned invalid ${fieldName}`);
+  }
+
+  return value;
+}
+
+function readPositiveInteger(value: unknown, fieldName: string) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
     throw new Error(`Gemini shot script provider returned invalid ${fieldName}`);
   }
 

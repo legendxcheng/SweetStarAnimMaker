@@ -148,6 +148,7 @@ const shotScriptInReviewProject = {
     sourceTaskId: "task-shot-script-1",
     updatedAt: "2024-01-01T00:00:07Z",
     approvedAt: null,
+    segmentCount: 1,
     shotCount: 3,
     totalDurationSec: 18,
   },
@@ -174,26 +175,39 @@ const fullShotScript = {
   sourceTaskId: "task-shot-script-1",
   updatedAt: "2024-01-01T00:00:07Z",
   approvedAt: "2024-01-01T00:00:08Z",
-  shots: [
+  segmentCount: 1,
+  shotCount: 1,
+  totalDurationSec: 4,
+  segments: [
     {
-      id: "shot-1",
-      sceneId: "scene-1",
       segmentId: "segment-1",
+      sceneId: "scene-1",
       order: 1,
-      shotCode: "S01-SG01",
-      shotPurpose: "Establish the flooded market and Rin's hesitation.",
-      subjectCharacters: ["Rin"],
-      environment: "Flooded dawn market",
-      framing: "medium wide shot",
-      cameraAngle: "eye level",
-      composition: "Rin framed by hanging lanterns",
-      actionMoment: "Rin pauses at the waterline",
-      emotionTone: "uneasy anticipation",
-      continuityNotes: "Keep soaked satchel on left shoulder",
-      imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-      negativePrompt: null,
-      motionHint: "slow push-in",
+      name: "雨夜码头",
+      summary: "林夏第一次在暴雨码头听见异响。",
       durationSec: 4,
+      status: "approved" as const,
+      lastGeneratedAt: "2024-01-01T00:00:07Z",
+      approvedAt: "2024-01-01T00:00:08Z",
+      shots: [
+        {
+          id: "shot-1",
+          sceneId: "scene-1",
+          segmentId: "segment-1",
+          order: 1,
+          shotCode: "S01-SG01-SH01",
+          purpose: "建立码头空间与不安感。",
+          visual: "暴雨中的码头反着冷蓝色灯牌。",
+          subject: "林夏",
+          action: "林夏撑伞停在入口回头。",
+          dialogue: null,
+          os: "那声音又来了。",
+          audio: "暴雨、风声、远处船笛。",
+          transitionHint: "缓慢推近",
+          continuityNotes: "黑伞保持右手持伞。",
+          durationSec: 4,
+        },
+      ],
     },
   ],
 };
@@ -275,7 +289,7 @@ describe("Project Detail Page", () => {
     expect(screen.getByRole("button", { name: "主情节" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
     expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
-    expect(screen.getByText(baseProject.premise.text)).toBeInTheDocument();
+    expect(screen.getByText("premise/v1.md")).toBeInTheDocument();
   });
 
   it("switches to the master-plot panel when the user clicks 主情节", async () => {
@@ -485,11 +499,13 @@ describe("Project Detail Page", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("S01-SG01")).toBeInTheDocument();
+      expect(screen.getByText("雨夜码头")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Flooded dawn market")).toBeInTheDocument();
-    expect(screen.getByText("slow push-in")).toBeInTheDocument();
+    expect(screen.getByText("林夏第一次在暴雨码头听见异响。")).toBeInTheDocument();
+    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByText("暴雨中的码头反着冷蓝色灯牌。")).toBeInTheDocument();
+    expect(screen.getByText("缓慢推近")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /进入镜头脚本审核/i })).not.toBeInTheDocument();
   });
 

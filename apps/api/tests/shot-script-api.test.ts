@@ -25,26 +25,39 @@ describe("shot script api", () => {
     sourceTaskId: "task_20260322_shot_script",
     updatedAt: "2026-03-22T12:25:00.000Z",
     approvedAt: null,
-    shots: [
+    segmentCount: 1,
+    shotCount: 1,
+    totalDurationSec: 4,
+    segments: [
       {
-        id: "shot_1",
-        sceneId: "scene_1",
         segmentId: "segment_1",
+        sceneId: "scene_1",
         order: 1,
-        shotCode: "S01-SG01",
-        shotPurpose: "Establish the flooded market",
-        subjectCharacters: ["Rin"],
-        environment: "Flooded dawn market",
-        framing: "medium wide shot",
-        cameraAngle: "eye level",
-        composition: "Rin framed by hanging lanterns",
-        actionMoment: "Rin pauses at the waterline",
-        emotionTone: "uneasy anticipation",
-        continuityNotes: "Keep soaked satchel on left shoulder",
-        imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-        negativePrompt: null,
-        motionHint: null,
-        durationSec: 4,
+        name: "雨夜听见天籁",
+        summary: "Rin 在驾驶舱里第一次清楚听见彗星的歌声。",
+        durationSec: 6,
+        status: "in_review",
+        lastGeneratedAt: "2026-03-22T12:25:00.000Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "S01-SG01-SH01",
+            durationSec: 4,
+            purpose: "建立暴雨驾驶舱与异常歌声的悬念",
+            visual: "暴雨敲打驾驶舱玻璃，仪表盘冷光映在 Rin 脸上",
+            subject: "Rin",
+            action: "Rin 停住手里的操作，抬头听向天外",
+            dialogue: null,
+            os: "又来了……",
+            audio: "远处雷鸣里夹着细长的彗星嗡鸣",
+            transitionHint: null,
+            continuityNotes: "湿透的挎包始终挂在左肩",
+          },
+        ],
       },
     ],
   };
@@ -124,9 +137,14 @@ describe("shot script api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: baseShotScript.id,
-        shots: expect.arrayContaining([
+        segments: expect.arrayContaining([
           expect.objectContaining({
             segmentId: "segment_1",
+            shots: expect.arrayContaining([
+              expect.objectContaining({
+                shotCode: "S01-SG01-SH01",
+              }),
+            ]),
           }),
         ]),
       }),
@@ -174,15 +192,16 @@ describe("shot script api", () => {
           type: "shot_script_generate",
         }),
         availableActions: {
-          save: true,
-          approve: true,
-          reject: true,
+          saveSegment: true,
+          regenerateSegment: true,
+          approveSegment: true,
+          approveAll: true,
         },
       }),
     );
   });
 
-  it("saves the current shot script", async () => {
+  it("saves one shot script segment", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
 
@@ -196,10 +215,47 @@ describe("shot script api", () => {
 
     const response = await app.inject({
       method: "PUT",
-      url: `/projects/${project.id}/shot-script`,
+      url: `/projects/${project.id}/shot-script/segments/segment_1`,
       payload: {
-        ...baseShotScript,
-        title: "Episode 1 Shot Script Revised",
+        name: "人工修订开场",
+        summary: "Rin 在暴雨与彗星歌声中确认异象来自云层之外。",
+        durationSec: 6,
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "S01-SG01-SH01",
+            durationSec: 3,
+            purpose: "先压住环境，再把听觉异常推给观众",
+            visual: "特写雨水沿挡风玻璃斜划，仪表灯忽明忽暗",
+            subject: "Rin",
+            action: "Rin 屏息侧耳，手指悬在操纵杆上",
+            dialogue: null,
+            os: "不是雷声。",
+            audio: "彗星低鸣比雷声更近",
+            transitionHint: "切至主观视角",
+            continuityNotes: "左肩湿挎包保持入镜",
+          },
+          {
+            id: "shot_2",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 2,
+            shotCode: "S01-SG01-SH02",
+            durationSec: 3,
+            purpose: "把异常来源明确到天空",
+            visual: "Rin 视线越过玻璃，云层深处隐约亮起冷白尾光",
+            subject: "Rin 与天际尾光",
+            action: "Rin 缓慢抬头，瞳孔被白光点亮",
+            dialogue: null,
+            os: null,
+            audio: "人声般的长音从云后穿出",
+            transitionHint: null,
+            continuityNotes: "镜头衔接前一镜的雨痕方向",
+          },
+        ],
       },
     });
 
@@ -207,13 +263,22 @@ describe("shot script api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: baseShotScript.id,
-        title: "Episode 1 Shot Script Revised",
+        shotCount: 2,
         approvedAt: null,
+        segments: expect.arrayContaining([
+          expect.objectContaining({
+            segmentId: "segment_1",
+            name: "人工修订开场",
+            shots: expect.arrayContaining([
+              expect.objectContaining({ shotCode: "S01-SG01-SH02" }),
+            ]),
+          }),
+        ]),
       }),
     );
   });
 
-  it("approves the current shot script", async () => {
+  it("approves one shot script segment", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
 
@@ -227,7 +292,7 @@ describe("shot script api", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/shot-script/approve`,
+      url: `/projects/${project.id}/shot-script/segments/segment_1/approve`,
       payload: {},
     });
 
@@ -236,6 +301,12 @@ describe("shot script api", () => {
       expect.objectContaining({
         id: baseShotScript.id,
         approvedAt: expect.any(String),
+        segments: expect.arrayContaining([
+          expect.objectContaining({
+            segmentId: "segment_1",
+            status: "approved",
+          }),
+        ]),
       }),
     );
 
@@ -247,7 +318,7 @@ describe("shot script api", () => {
     expect(detailResponse.json().status).toBe("shot_script_approved");
   });
 
-  it("rejects the current shot script and triggers regeneration", async () => {
+  it("regenerates one shot script segment", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
       taskQueue: { enqueue },
@@ -282,24 +353,21 @@ describe("shot script api", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/shot-script/reject`,
-      payload: {
-        reason: "Need a new visual approach.",
-        nextAction: "regenerate",
-      },
+      url: `/projects/${project.id}/shot-script/segments/segment_1/regenerate`,
+      payload: {},
     });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(201);
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: "task_20260322_regen",
-        type: "shot_script_generate",
+        type: "shot_script_segment_generate",
       }),
     );
     expect(enqueue).toHaveBeenCalledWith({
       taskId: "task_20260322_regen",
-      queueName: "shot-script-generate",
-      taskType: "shot_script_generate",
+      queueName: "shot-script-segment-generate",
+      taskType: "shot_script_segment_generate",
     });
   });
 

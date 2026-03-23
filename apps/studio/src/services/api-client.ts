@@ -15,12 +15,13 @@ import {
   storyboardReviewWorkspaceResponseSchema,
   projectDetailResponseSchema,
   projectListResponseSchema,
-  saveShotScriptRequestSchema,
+  saveShotScriptSegmentRequestSchema,
   saveMasterPlotRequestSchema,
-  approveShotScriptRequestSchema,
-  rejectShotScriptRequestSchema,
+  approveAllShotScriptSegmentsRequestSchema,
+  approveShotScriptSegmentRequestSchema,
   approveCharacterSheetRequestSchema,
   regenerateCharacterSheetRequestSchema,
+  regenerateShotScriptSegmentRequestSchema,
   saveStoryboardRequestSchema,
   taskDetailResponseSchema,
   type CharacterSheetListResponse,
@@ -31,7 +32,7 @@ import {
   type MasterPlotReviewWorkspace,
   type ProjectDetail,
   type ProjectSummary,
-  type SaveShotScriptRequest,
+  type SaveShotScriptSegmentRequest,
   type SaveMasterPlotRequest,
   type ShotScriptReviewWorkspace,
   type UpdateCharacterSheetPromptRequest,
@@ -135,7 +136,7 @@ export const apiClient = {
 
   createShotScriptGenerateTask: (projectId: string) =>
     request<TaskDetail>(
-      `/projects/${projectId}/tasks/shot-script-generate`,
+      `/projects/${projectId}/shot-script/generate`,
       createShotScriptGenerateTaskResponseSchema,
       {
         method: "POST",
@@ -284,13 +285,17 @@ export const apiClient = {
       },
     ),
 
-  saveShotScript: (projectId: string, data: SaveShotScriptRequest) =>
+  saveShotScriptSegment: (
+    projectId: string,
+    segmentId: string,
+    data: SaveShotScriptSegmentRequest,
+  ) =>
     request<CurrentShotScript>(
-      `/projects/${projectId}/shot-script`,
+      `/projects/${projectId}/shot-script/segments/${segmentId}`,
       currentShotScriptResponseSchema,
       {
         method: "PUT",
-        body: JSON.stringify(saveShotScriptRequestSchema.parse(data)),
+        body: JSON.stringify(saveShotScriptSegmentRequestSchema.parse(data)),
       },
     ),
 
@@ -314,13 +319,27 @@ export const apiClient = {
       },
     ),
 
-  approveShotScript: (projectId: string, data: Record<string, never> = {}) =>
+  approveShotScriptSegment: (
+    projectId: string,
+    segmentId: string,
+    data: Record<string, never> = {},
+  ) =>
     request<CurrentShotScript>(
-      `/projects/${projectId}/shot-script/approve`,
+      `/projects/${projectId}/shot-script/segments/${segmentId}/approve`,
       currentShotScriptResponseSchema,
       {
         method: "POST",
-        body: JSON.stringify(approveShotScriptRequestSchema.parse(data)),
+        body: JSON.stringify(approveShotScriptSegmentRequestSchema.parse(data)),
+      },
+    ),
+
+  approveAllShotScriptSegments: (projectId: string, data: Record<string, never> = {}) =>
+    request<CurrentShotScript>(
+      `/projects/${projectId}/shot-script/approve-all`,
+      currentShotScriptResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveAllShotScriptSegmentsRequestSchema.parse(data)),
       },
     ),
 
@@ -344,16 +363,17 @@ export const apiClient = {
       },
     ),
 
-  rejectShotScript: (
+  regenerateShotScriptSegment: (
     projectId: string,
-    data: { reason: string; nextAction: "regenerate" | "edit_manually" },
+    segmentId: string,
+    data: Record<string, never> = {},
   ) =>
-    request<TaskDetail | null>(
-      `/projects/${projectId}/shot-script/reject`,
-      { parse: (input) => taskDetailResponseSchema.nullable().parse(input) },
+    request<TaskDetail>(
+      `/projects/${projectId}/shot-script/segments/${segmentId}/regenerate`,
+      taskDetailResponseSchema,
       {
         method: "POST",
-        body: JSON.stringify(rejectShotScriptRequestSchema.parse(data)),
+        body: JSON.stringify(regenerateShotScriptSegmentRequestSchema.parse(data)),
       },
     ),
 

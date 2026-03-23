@@ -211,6 +211,7 @@ describe("project api schema", () => {
         sourceTaskId: "task_789",
         updatedAt: "2026-03-21T12:40:00.000Z",
         approvedAt: null,
+        segmentCount: 5,
         shotCount: 5,
         totalDurationSec: 31,
       },
@@ -219,6 +220,7 @@ describe("project api schema", () => {
     expect(parsed.currentStoryboard).not.toBeNull();
     expect(parsed.currentStoryboard?.segmentCount).toBe(5);
     expect(parsed.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
+    expect(parsed.currentShotScript?.segmentCount).toBe(5);
     expect(parsed.currentShotScript?.shotCount).toBe(5);
   });
 });

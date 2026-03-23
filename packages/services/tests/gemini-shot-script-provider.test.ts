@@ -7,7 +7,7 @@ describe("gemini shot script provider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("calls the Gemini generateContent endpoint with schema-constrained JSON output", async () => {
+  it("calls the Gemini generateContent endpoint with segment JSON schema output", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -17,25 +17,42 @@ describe("gemini shot script provider", () => {
               parts: [
                 {
                   text: JSON.stringify({
-                    title: "Episode 1 Shot Script",
+                    name: "雨市压境",
+                    summary: "林夏在积水集市入口发现退路已被封住。",
                     shots: [
                       {
+                        id: "shot_1",
                         sceneId: "scene_1",
                         segmentId: "segment_1",
-                        shotCode: "S01-SG01",
-                        shotPurpose: "Establish the flooded market",
-                        subjectCharacters: ["Rin"],
-                        environment: "Flooded dawn market",
-                        framing: "medium wide shot",
-                        cameraAngle: "eye level",
-                        composition: "Rin framed by hanging lanterns",
-                        actionMoment: "Rin pauses at the waterline",
-                        emotionTone: "uneasy anticipation",
-                        continuityNotes: "Keep soaked satchel on left shoulder",
-                        imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-                        negativePrompt: null,
-                        motionHint: null,
+                        order: 1,
+                        shotCode: "SC01-SG01-SH01",
+                        durationSec: 2,
+                        purpose: "先交代主角被堵在入口。",
+                        visual: "清晨积水漫过青石路。",
+                        subject: "林夏站在水线边。",
+                        action: "她停住脚步。",
+                        dialogue: null,
+                        os: "来得真快。",
+                        audio: "雨声和摊贩叫卖声。",
+                        transitionHint: "切近景",
+                        continuityNotes: "布包在左肩。",
+                      },
+                      {
+                        id: "shot_2",
+                        sceneId: "scene_1",
+                        segmentId: "segment_1",
+                        order: 2,
+                        shotCode: "SC01-SG01-SH02",
                         durationSec: 4,
+                        purpose: "推进她的警觉反应。",
+                        visual: "她盯住前方杂乱摊棚后的黑影。",
+                        subject: "林夏",
+                        action: "抬眼锁定目标。",
+                        dialogue: "果然有人先到了。",
+                        os: null,
+                        audio: "环境声压低，心跳声轻起。",
+                        transitionHint: null,
+                        continuityNotes: "保持上一镜头朝向。",
                       },
                     ],
                   }),
@@ -54,11 +71,16 @@ describe("gemini shot script provider", () => {
       model: "gemini-3.1-pro-preview",
     });
 
-    const result = await provider.generateShotScript({
-      promptText: "Turn storyboard segments into shot script JSON.",
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请把这个 segment 拆成多个中文镜头。",
       variables: {
-        storyboard: {
-          title: "The Last Sky Choir",
+        scene: {
+          id: "scene_1",
+        },
+        segment: {
+          id: "segment_1",
+          order: 1,
+          durationSec: 6,
         },
       },
     });
@@ -76,12 +98,13 @@ describe("gemini shot script provider", () => {
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
 
-    expect(request.systemInstruction.parts[0].text).toContain("shot script");
+    expect(request.systemInstruction.parts[0].text).toContain("Simplified Chinese");
     expect(request.generationConfig.responseMimeType).toBe("application/json");
     expect(request.generationConfig.responseJsonSchema.properties.shots).toBeDefined();
-    expect(result.shotScript.title).toBe("Episode 1 Shot Script");
-    expect(result.shotScript.shots[0]?.segmentId).toBe("segment_1");
-    expect(result.rawResponse).toContain("S01-SG01");
+    expect(result.segment.segmentId).toBe("segment_1");
+    expect(result.segment.summary).toBe("林夏在积水集市入口发现退路已被封住。");
+    expect(result.segment.shots[0]?.shotCode).toBe("SC01-SG01-SH01");
+    expect(result.rawResponse).toContain("雨市压境");
   });
 
   it("rejects non-2xx provider responses", async () => {
@@ -101,9 +124,12 @@ describe("gemini shot script provider", () => {
     });
 
     await expect(
-      provider.generateShotScript({
-        promptText: "Turn storyboard segments into shot script JSON.",
-        variables: {},
+      provider.generateShotScriptSegment({
+        promptText: "请生成镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+        },
       }),
     ).rejects.toThrow("Gemini shot script provider request failed with status 401");
   });
@@ -126,9 +152,12 @@ describe("gemini shot script provider", () => {
     });
 
     await expect(
-      provider.generateShotScript({
-        promptText: "Turn storyboard segments into shot script JSON.",
-        variables: {},
+      provider.generateShotScriptSegment({
+        promptText: "请生成镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+        },
       }),
     ).rejects.toThrow("Gemini shot script provider returned no usable content");
   });
@@ -143,25 +172,25 @@ describe("gemini shot script provider", () => {
               parts: [
                 {
                   text: JSON.stringify({
-                    title: null,
+                    name: "雨市压境",
+                    summary: "林夏在积水集市入口发现退路已被封住。",
                     shots: [
                       {
+                        id: "shot_1",
                         sceneId: "scene_1",
                         segmentId: "segment_1",
-                        shotCode: "S01-SG01",
-                        shotPurpose: "Establish the flooded market",
-                        subjectCharacters: ["Rin"],
-                        environment: "Flooded dawn market",
-                        framing: "medium wide shot",
-                        cameraAngle: "eye level",
-                        composition: "Rin framed by hanging lanterns",
-                        actionMoment: "Rin pauses at the waterline",
-                        emotionTone: "uneasy anticipation",
-                        continuityNotes: "Keep soaked satchel on left shoulder",
-                        imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-                        negativePrompt: null,
-                        motionHint: null,
-                        durationSec: 4,
+                        order: 1,
+                        shotCode: "SC01-SG01-SH01",
+                        durationSec: 6,
+                        purpose: "建立段落空间。",
+                        visual: "积水集市入口压迫感很强。",
+                        subject: "林夏",
+                        action: "停下脚步。",
+                        dialogue: null,
+                        os: null,
+                        audio: "雨声。",
+                        transitionHint: null,
+                        continuityNotes: null,
                       },
                     ],
                   }),
@@ -180,18 +209,137 @@ describe("gemini shot script provider", () => {
       model: "gemini-3.1-pro-preview",
     });
 
-    await provider.generateShotScript({
-      promptText: "Focus on atmospheric anime cinematic prompts.",
+    await provider.generateShotScriptSegment({
+      promptText: "Focus only on this one segment.",
       variables: {
-        storyboard: {
-          title: "The Last Sky Choir",
-        },
+        scene: { id: "scene_1" },
+        segment: { id: "segment_1", order: 1, durationSec: 6 },
       },
     });
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     const promptText = request.contents[0].parts[0].text as string;
 
-    expect(promptText).toContain("Focus on atmospheric anime cinematic prompts.");
+    expect(promptText).toContain("Focus only on this one segment.");
+  });
+
+  it("rejects clearly English segment output", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "Flooded Market",
+                      summary: "Rin sees the blocked exit and stops.",
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "Establish the blocked entrance.",
+                          visual: "Rainy market entrance.",
+                          subject: "Rin",
+                          action: "She stops walking.",
+                          dialogue: null,
+                          os: null,
+                          audio: "Rain.",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateShotScriptSegment({
+        promptText: "请生成中文镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+        },
+      }),
+    ).rejects.toThrow("Gemini shot script provider returned non-Chinese summary");
+  });
+
+  it("rejects mismatched total duration", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "雨市压境",
+                      summary: "林夏在积水集市入口发现退路已被封住。",
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 1,
+                          purpose: "先交代主角位置。",
+                          visual: "积水集市入口。",
+                          subject: "林夏",
+                          action: "停住脚步。",
+                          dialogue: null,
+                          os: null,
+                          audio: "雨声。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateShotScriptSegment({
+        promptText: "请生成中文镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+        },
+      }),
+    ).rejects.toThrow("Gemini shot script provider returned mismatched total duration");
   });
 });

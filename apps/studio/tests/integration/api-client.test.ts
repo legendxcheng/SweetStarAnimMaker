@@ -88,6 +88,53 @@ describe("API Client", () => {
   });
 
   it("calls the shot-script endpoints with the expected methods and payloads", async () => {
+    const baseSegment = {
+      segmentId: "segment_1",
+      sceneId: "scene_1",
+      order: 1,
+      name: "雨夜码头",
+      summary: "林夏在暴雨码头第一次听见异响。",
+      durationSec: 6,
+      status: "in_review" as const,
+      lastGeneratedAt: "2026-03-23T00:00:02.000Z",
+      approvedAt: null,
+      shots: [
+        {
+          id: "shot_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 1,
+          shotCode: "S01-SG01-SH01",
+          purpose: "建立码头空间和危险气氛。",
+          visual: "雨水顺着集装箱边缘流下，远处探照灯扫过积水。",
+          subject: "林夏",
+          action: "林夏撑伞快步走进码头入口。",
+          dialogue: null,
+          os: "今晚绝不能出错。",
+          audio: "暴雨、风声、远处船笛。",
+          transitionHint: "硬切入",
+          continuityNotes: "黑伞保持右手持伞。",
+          durationSec: 3,
+        },
+        {
+          id: "shot_2",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 2,
+          shotCode: "S01-SG01-SH02",
+          purpose: "把注意力收束到异响来源。",
+          visual: "镜头越过林夏肩膀，看向被风掀动的警戒带。",
+          subject: "林夏与警戒带",
+          action: "林夏停步回头，目光锁定响动方向。",
+          dialogue: null,
+          os: null,
+          audio: "警戒带抽打铁栏的声音。",
+          transitionHint: "接上一个镜头",
+          continuityNotes: "林夏仍在码头入口区域。",
+          durationSec: 3,
+        },
+      ],
+    };
     const responses = [
       {
         id: "task_2",
@@ -112,28 +159,10 @@ describe("API Client", () => {
         sourceTaskId: "task_2",
         updatedAt: "2026-03-23T00:00:02.000Z",
         approvedAt: null,
-        shots: [
-          {
-            id: "shot_1",
-            sceneId: "scene_1",
-            segmentId: "segment_1",
-            order: 1,
-            shotCode: "S01-SG01",
-            shotPurpose: "Establish the flooded market.",
-            subjectCharacters: ["Rin"],
-            environment: "Flooded dawn market",
-            framing: "medium wide shot",
-            cameraAngle: "eye level",
-            composition: "Rin framed by lanterns",
-            actionMoment: "Rin pauses at the waterline",
-            emotionTone: "uneasy anticipation",
-            continuityNotes: "Keep soaked satchel on left shoulder",
-            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-            negativePrompt: null,
-            motionHint: null,
-            durationSec: 4,
-          },
-        ],
+        segmentCount: 1,
+        shotCount: 2,
+        totalDurationSec: 6,
+        segments: [baseSegment],
       },
       {
         projectId: "proj_1",
@@ -146,35 +175,18 @@ describe("API Client", () => {
           sourceTaskId: "task_2",
           updatedAt: "2026-03-23T00:00:02.000Z",
           approvedAt: null,
-          shots: [
-            {
-              id: "shot_1",
-              sceneId: "scene_1",
-              segmentId: "segment_1",
-              order: 1,
-              shotCode: "S01-SG01",
-              shotPurpose: "Establish the flooded market.",
-              subjectCharacters: ["Rin"],
-              environment: "Flooded dawn market",
-              framing: "medium wide shot",
-              cameraAngle: "eye level",
-              composition: "Rin framed by lanterns",
-              actionMoment: "Rin pauses at the waterline",
-              emotionTone: "uneasy anticipation",
-              continuityNotes: "Keep soaked satchel on left shoulder",
-              imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-              negativePrompt: null,
-              motionHint: null,
-              durationSec: 4,
-            },
-          ],
+          segmentCount: 1,
+          shotCount: 2,
+          totalDurationSec: 6,
+          segments: [baseSegment],
         },
         latestReview: null,
         latestTask: null,
         availableActions: {
-          save: true,
-          approve: true,
-          reject: true,
+          saveSegment: true,
+          regenerateSegment: true,
+          approveSegment: true,
+          approveAll: true,
         },
       },
       {
@@ -184,26 +196,16 @@ describe("API Client", () => {
         sourceTaskId: "task_2",
         updatedAt: "2026-03-23T00:00:03.000Z",
         approvedAt: null,
-        shots: [
+        segmentCount: 1,
+        shotCount: 2,
+        totalDurationSec: 6,
+        segments: [
           {
-            id: "shot_1",
-            sceneId: "scene_1",
-            segmentId: "segment_1",
-            order: 1,
-            shotCode: "S01-SG01",
-            shotPurpose: "Establish the flooded market.",
-            subjectCharacters: ["Rin"],
-            environment: "Flooded dawn market",
-            framing: "medium wide shot",
-            cameraAngle: "eye level",
-            composition: "Rin framed by lanterns",
-            actionMoment: "Rin pauses at the waterline",
-            emotionTone: "uneasy anticipation",
-            continuityNotes: "Keep soaked satchel on left shoulder",
-            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-            negativePrompt: null,
-            motionHint: "slow push-in",
-            durationSec: 4,
+            ...baseSegment,
+            name: "雨夜码头加强版",
+            shots: baseSegment.shots.map((shot, index) =>
+              index === 1 ? { ...shot, transitionHint: "推近到警戒带" } : shot,
+            ),
           },
         ],
       },
@@ -213,37 +215,43 @@ describe("API Client", () => {
         sourceStoryboardId: "storyboard_1",
         sourceTaskId: "task_2",
         updatedAt: "2026-03-23T00:00:04.000Z",
-        approvedAt: "2026-03-23T00:00:04.000Z",
-        shots: [
+        approvedAt: null,
+        segmentCount: 1,
+        shotCount: 2,
+        totalDurationSec: 6,
+        segments: [
           {
-            id: "shot_1",
-            sceneId: "scene_1",
-            segmentId: "segment_1",
-            order: 1,
-            shotCode: "S01-SG01",
-            shotPurpose: "Establish the flooded market.",
-            subjectCharacters: ["Rin"],
-            environment: "Flooded dawn market",
-            framing: "medium wide shot",
-            cameraAngle: "eye level",
-            composition: "Rin framed by lanterns",
-            actionMoment: "Rin pauses at the waterline",
-            emotionTone: "uneasy anticipation",
-            continuityNotes: "Keep soaked satchel on left shoulder",
-            imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-            negativePrompt: null,
-            motionHint: "slow push-in",
-            durationSec: 4,
+            ...baseSegment,
+            status: "approved" as const,
+            approvedAt: "2026-03-23T00:00:04.000Z",
+          },
+        ],
+      },
+      {
+        id: "shot_script_1",
+        title: "Episode 1 Shot Script Revised",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_2",
+        updatedAt: "2026-03-23T00:00:05.000Z",
+        approvedAt: "2026-03-23T00:00:05.000Z",
+        segmentCount: 1,
+        shotCount: 2,
+        totalDurationSec: 6,
+        segments: [
+          {
+            ...baseSegment,
+            status: "approved" as const,
+            approvedAt: "2026-03-23T00:00:05.000Z",
           },
         ],
       },
       {
         id: "task_3",
         projectId: "proj_1",
-        type: "shot_script_generate",
+        type: "shot_script_segment_generate",
         status: "pending",
-        createdAt: "2026-03-23T00:00:05.000Z",
-        updatedAt: "2026-03-23T00:00:05.000Z",
+        createdAt: "2026-03-23T00:00:06.000Z",
+        updatedAt: "2026-03-23T00:00:06.000Z",
         startedAt: null,
         finishedAt: null,
         errorMessage: null,
@@ -261,48 +269,61 @@ describe("API Client", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => responses[2] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[3] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[4] })
-      .mockResolvedValueOnce({ ok: true, json: async () => responses[5] });
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[5] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[6] });
     global.fetch = mockFetch;
 
     await apiClient.createShotScriptGenerateTask("proj_1");
     await apiClient.getCurrentShotScript("proj_1");
     await apiClient.getShotScriptReviewWorkspace("proj_1");
-    await apiClient.saveShotScript("proj_1", {
-      title: "Episode 1 Shot Script Revised",
-      sourceStoryboardId: "storyboard_1",
-      sourceTaskId: "task_2",
+    await apiClient.saveShotScriptSegment("proj_1", "segment_1", {
+      name: "雨夜码头加强版",
+      summary: "林夏在暴雨码头第一次听见异响。",
+      durationSec: 6,
       shots: [
         {
           id: "shot_1",
           sceneId: "scene_1",
           segmentId: "segment_1",
           order: 1,
-          shotCode: "S01-SG01",
-          shotPurpose: "Establish the flooded market.",
-          subjectCharacters: ["Rin"],
-          environment: "Flooded dawn market",
-          framing: "medium wide shot",
-          cameraAngle: "eye level",
-          composition: "Rin framed by lanterns",
-          actionMoment: "Rin pauses at the waterline",
-          emotionTone: "uneasy anticipation",
-          continuityNotes: "Keep soaked satchel on left shoulder",
-          imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-          negativePrompt: null,
-          motionHint: "slow push-in",
-          durationSec: 4,
+          shotCode: "S01-SG01-SH01",
+          purpose: "建立码头空间和危险气氛。",
+          visual: "雨水顺着集装箱边缘流下，远处探照灯扫过积水。",
+          subject: "林夏",
+          action: "林夏撑伞快步走进码头入口。",
+          dialogue: null,
+          os: "今晚绝不能出错。",
+          audio: "暴雨、风声、远处船笛。",
+          transitionHint: "硬切入",
+          continuityNotes: "黑伞保持右手持伞。",
+          durationSec: 3,
+        },
+        {
+          id: "shot_2",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 2,
+          shotCode: "S01-SG01-SH02",
+          purpose: "把注意力收束到异响来源。",
+          visual: "镜头越过林夏肩膀，看向被风掀动的警戒带。",
+          subject: "林夏与警戒带",
+          action: "林夏停步回头，目光锁定响动方向。",
+          dialogue: null,
+          os: null,
+          audio: "警戒带抽打铁栏的声音。",
+          transitionHint: "推近到警戒带",
+          continuityNotes: "林夏仍在码头入口区域。",
+          durationSec: 3,
         },
       ],
     });
-    await apiClient.approveShotScript("proj_1");
-    await apiClient.rejectShotScript("proj_1", {
-      reason: "Need more coverage on the reveal.",
-      nextAction: "regenerate",
-    });
+    await apiClient.approveShotScriptSegment("proj_1", "segment_1");
+    await apiClient.approveAllShotScriptSegments("proj_1");
+    await apiClient.regenerateShotScriptSegment("proj_1", "segment_1");
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
-      `${config.apiBaseUrl}/projects/proj_1/tasks/shot-script-generate`,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/generate`,
       expect.objectContaining({ method: "POST" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
@@ -317,28 +338,68 @@ describe("API Client", () => {
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       4,
-      `${config.apiBaseUrl}/projects/proj_1/shot-script`,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/segments/segment_1`,
       expect.objectContaining({ method: "PUT" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       5,
-      `${config.apiBaseUrl}/projects/proj_1/shot-script/approve`,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/segments/segment_1/approve`,
       expect.objectContaining({ method: "POST" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       6,
-      `${config.apiBaseUrl}/projects/proj_1/shot-script/reject`,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/approve-all`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      7,
+      `${config.apiBaseUrl}/projects/proj_1/shot-script/segments/segment_1/regenerate`,
       expect.objectContaining({ method: "POST" }),
     );
 
     const saveHeaders = mockFetch.mock.calls[3]?.[1]?.headers as Headers;
     expect(saveHeaders.get("Content-Type")).toBe("application/json");
-    expect(mockFetch.mock.calls[5]?.[1]?.body).toBe(
-      JSON.stringify({
-        reason: "Need more coverage on the reveal.",
-        nextAction: "regenerate",
-      }),
-    );
+    expect(JSON.parse(mockFetch.mock.calls[3]?.[1]?.body as string)).toEqual({
+      name: "雨夜码头加强版",
+      summary: "林夏在暴雨码头第一次听见异响。",
+      durationSec: 6,
+      shots: [
+        {
+          id: "shot_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 1,
+          shotCode: "S01-SG01-SH01",
+          purpose: "建立码头空间和危险气氛。",
+          visual: "雨水顺着集装箱边缘流下，远处探照灯扫过积水。",
+          subject: "林夏",
+          action: "林夏撑伞快步走进码头入口。",
+          dialogue: null,
+          os: "今晚绝不能出错。",
+          audio: "暴雨、风声、远处船笛。",
+          transitionHint: "硬切入",
+          continuityNotes: "黑伞保持右手持伞。",
+          durationSec: 3,
+        },
+        {
+          id: "shot_2",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 2,
+          shotCode: "S01-SG01-SH02",
+          purpose: "把注意力收束到异响来源。",
+          visual: "镜头越过林夏肩膀，看向被风掀动的警戒带。",
+          subject: "林夏与警戒带",
+          action: "林夏停步回头，目光锁定响动方向。",
+          dialogue: null,
+          os: null,
+          audio: "警戒带抽打铁栏的声音。",
+          transitionHint: "推近到警戒带",
+          continuityNotes: "林夏仍在码头入口区域。",
+          durationSec: 3,
+        },
+      ],
+    });
   });
 
   it("uses FormData without forcing a JSON content-type header for reference-image uploads", async () => {
@@ -374,4 +435,5 @@ describe("API Client", () => {
     const headers = mockFetch.mock.calls[0]?.[1]?.headers as Headers;
     expect(headers.has("Content-Type")).toBe(false);
   });
+
 });
