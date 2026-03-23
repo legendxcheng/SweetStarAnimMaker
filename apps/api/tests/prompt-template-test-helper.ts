@@ -12,6 +12,11 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "prompt-templates",
     "storyboard.generate.txt",
   );
+  const shotScriptPromptTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "shot_script.generate.txt",
+  );
   const characterPromptTemplatePath = path.join(
     workspaceRoot,
     "prompt-templates",
@@ -36,6 +41,15 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
       "{{masterPlot.title}}",
       "{{masterPlot.logline}}",
       "{{masterPlot.synopsis}}",
+    ].join("\n"),
+    "utf8",
+  );
+  await fs.writeFile(
+    shotScriptPromptTemplatePath,
+    [
+      "Turn this storyboard into shot script JSON:",
+      "{{storyboard.title}}",
+      "{{storyboard.scenes.0.segments.0.visual}}",
     ].join("\n"),
     "utf8",
   );

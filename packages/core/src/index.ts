@@ -6,13 +6,20 @@ export {
   toProjectStorageDir,
 } from "./domain/project";
 export type {
+  CharacterReferenceImage,
   CharacterSheetListResponse,
   CharacterSheetRecord,
   CharacterSheetStatus,
   CurrentCharacterSheetBatchSummary,
   CurrentMasterPlot,
+  CurrentShotScript,
+  CurrentShotScriptSummary,
   CurrentStoryboard,
   CurrentStoryboardSummary,
+  ShotScriptReviewSummary,
+  ShotScriptReviewWorkspace,
+  ShotScriptReviewAvailableActions,
+  ShotScriptItem,
   MasterPlotReviewAvailableActions,
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
@@ -54,6 +61,15 @@ export {
   type CreateCharacterSheetRecordInput,
 } from "./domain/character-sheet";
 export {
+  currentShotScriptJsonFileName,
+  currentShotScriptJsonRelPath,
+  currentShotScriptMarkdownFileName,
+  currentShotScriptMarkdownRelPath,
+  shotScriptDirectoryName,
+  shotScriptVersionsDirectoryName,
+  toCurrentShotScriptSummary,
+} from "./domain/shot-script";
+export {
   currentMasterPlotJsonFileName,
   currentMasterPlotJsonRelPath,
   currentMasterPlotMarkdownFileName,
@@ -84,6 +100,10 @@ export {
   type StoryboardVersionRecord,
 } from "./domain/storyboard";
 export {
+  createShotScriptReviewRecord,
+  type CreateShotScriptReviewRecordInput,
+} from "./domain/shot-script-review";
+export {
   createStoryboardReviewRecord,
   type CreateStoryboardReviewRecordInput,
 } from "./domain/storyboard-review";
@@ -92,6 +112,7 @@ export {
   characterSheetsGenerateQueueName,
   createTaskRecord,
   masterPlotGenerateQueueName,
+  shotScriptGenerateQueueName,
   storyboardGenerateQueueName,
   taskArtifactsDirectoryName,
   taskInputFileName,
@@ -129,6 +150,7 @@ export {
 } from "./errors/character-sheet-errors";
 export {
   CurrentMasterPlotNotFoundError,
+  CurrentShotScriptNotFoundError,
   CurrentStoryboardNotFoundError,
 } from "./errors/storyboard-errors";
 export {
@@ -150,7 +172,6 @@ export type {
 export type {
   CharacterSheetStorage,
   CharacterSheetReferenceImageContent,
-  DeleteCharacterSheetReferenceImageInput,
   GetCharacterSheetReferenceImageContentInput,
   InitializeCharacterSheetPromptTemplateInput,
   ListCharacterSheetReferenceImagesInput,
@@ -166,10 +187,27 @@ export type {
   ProjectRepository,
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,
   UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
+export type {
+  GenerateShotScriptInput,
+  GenerateShotScriptResult,
+  ShotScriptProvider,
+} from "./ports/shot-script-provider";
+export type {
+  InitializeShotScriptPromptTemplateInput,
+  ReadCurrentShotScriptInput,
+  ReadShotScriptPromptTemplateInput,
+  ReadShotScriptVersionInput,
+  ShotScriptStorage,
+  WriteCurrentShotScriptInput,
+  WriteShotScriptPromptSnapshotInput,
+  WriteShotScriptRawResponseInput,
+  WriteShotScriptVersionInput,
+} from "./ports/shot-script-storage";
 export type {
   DeletePremiseInput,
   PremiseStorage,
@@ -187,6 +225,9 @@ export type {
   StoryboardProvider,
 } from "./ports/storyboard-provider";
 export type { StoryboardReviewRepository } from "./ports/storyboard-review-repository";
+export type {
+  ShotScriptReviewRepository,
+} from "./ports/shot-script-review-repository";
 export type {
   InitializePromptTemplateInput,
   MasterPlotStorage,
@@ -234,6 +275,12 @@ export {
   type CreateCharacterSheetsGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-character-sheets-generate-task";
 export {
+  createCreateShotScriptGenerateTaskUseCase,
+  type CreateShotScriptGenerateTaskInput,
+  type CreateShotScriptGenerateTaskUseCase,
+  type CreateShotScriptGenerateTaskUseCaseDependencies,
+} from "./use-cases/create-shot-script-generate-task";
+export {
   createCreateStoryboardGenerateTaskUseCase,
   type CreateStoryboardGenerateTaskInput,
   type CreateStoryboardGenerateTaskUseCase,
@@ -270,6 +317,12 @@ export {
   type GetCharacterSheetReferenceImageContentUseCaseDependencies,
 } from "./use-cases/get-character-sheet-reference-image-content";
 export {
+  createGetCurrentShotScriptUseCase,
+  type GetCurrentShotScriptInput,
+  type GetCurrentShotScriptUseCase,
+  type GetCurrentShotScriptUseCaseDependencies,
+} from "./use-cases/get-current-shot-script";
+export {
   createGetCurrentStoryboardUseCase,
   type GetCurrentStoryboardInput,
   type GetCurrentStoryboardUseCase,
@@ -281,6 +334,12 @@ export {
   type GetMasterPlotReviewUseCase,
   type GetMasterPlotReviewUseCaseDependencies,
 } from "./use-cases/get-master-plot-review";
+export {
+  createGetShotScriptReviewUseCase,
+  type GetShotScriptReviewInput,
+  type GetShotScriptReviewUseCase,
+  type GetShotScriptReviewUseCaseDependencies,
+} from "./use-cases/get-shot-script-review";
 export {
   createGetStoryboardReviewUseCase,
   type GetStoryboardReviewInput,
@@ -310,6 +369,12 @@ export {
   type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessMasterPlotGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-master-plot-generate-task";
+export {
+  createProcessShotScriptGenerateTaskUseCase,
+  type ProcessShotScriptGenerateTaskInput,
+  type ProcessShotScriptGenerateTaskUseCase,
+  type ProcessShotScriptGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-shot-script-generate-task";
 export {
   createProcessStoryboardGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskInput,
@@ -347,6 +412,12 @@ export {
   type ApproveCharacterSheetUseCaseDependencies,
 } from "./use-cases/approve-character-sheet";
 export {
+  createSaveHumanShotScriptUseCase,
+  type SaveHumanShotScriptInput,
+  type SaveHumanShotScriptUseCase,
+  type SaveHumanShotScriptUseCaseDependencies,
+} from "./use-cases/save-human-shot-script";
+export {
   createSaveHumanMasterPlotUseCase,
   type SaveHumanMasterPlotInput,
   type SaveHumanMasterPlotUseCase,
@@ -359,6 +430,12 @@ export {
   type SaveHumanStoryboardVersionUseCaseDependencies,
 } from "./use-cases/save-human-storyboard-version";
 export {
+  createApproveShotScriptUseCase,
+  type ApproveShotScriptInput,
+  type ApproveShotScriptUseCase,
+  type ApproveShotScriptUseCaseDependencies,
+} from "./use-cases/approve-shot-script";
+export {
   createApproveMasterPlotUseCase,
   type ApproveMasterPlotInput,
   type ApproveMasterPlotUseCase,
@@ -370,6 +447,12 @@ export {
   type ApproveStoryboardUseCase,
   type ApproveStoryboardUseCaseDependencies,
 } from "./use-cases/approve-storyboard";
+export {
+  createRejectShotScriptUseCase,
+  type RejectShotScriptInput,
+  type RejectShotScriptUseCase,
+  type RejectShotScriptUseCaseDependencies,
+} from "./use-cases/reject-shot-script";
 export {
   createRejectMasterPlotUseCase,
   type RejectMasterPlotInput,

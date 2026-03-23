@@ -29,6 +29,7 @@ describe("project api schema", () => {
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
+      currentShotScript: null,
     });
 
     expect(parsed.currentMasterPlot).toBeNull();
@@ -46,6 +47,9 @@ describe("project api schema", () => {
       "storyboard_generating",
       "storyboard_in_review",
       "storyboard_approved",
+      "shot_script_generating",
+      "shot_script_in_review",
+      "shot_script_approved",
     ]);
   });
 
@@ -61,6 +65,7 @@ describe("project api schema", () => {
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
+      currentShotScript: null,
     });
 
     expect(parsed.id).toBe("proj_20260317_ab12cd");
@@ -92,6 +97,7 @@ describe("project api schema", () => {
       },
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
+      currentShotScript: null,
     });
 
     expect(parsed.currentMasterPlot).not.toBeNull();
@@ -111,6 +117,7 @@ describe("project api schema", () => {
         currentMasterPlot: null,
         currentCharacterSheetBatch: null,
         currentStoryboard: null,
+        currentShotScript: null,
       },
       {
         id: "proj_2",
@@ -136,6 +143,7 @@ describe("project api schema", () => {
         },
         currentCharacterSheetBatch: null,
         currentStoryboard: null,
+        currentShotScript: null,
       },
     ]);
 
@@ -193,10 +201,21 @@ describe("project api schema", () => {
         segmentCount: 5,
         totalDurationSec: 31,
       },
+      currentShotScript: {
+        id: "shot_script_v1",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_v1",
+        sourceTaskId: "task_789",
+        updatedAt: "2026-03-21T12:40:00.000Z",
+        approvedAt: null,
+        shotCount: 5,
+        totalDurationSec: 31,
+      },
     });
 
     expect(parsed.currentStoryboard).not.toBeNull();
     expect(parsed.currentStoryboard?.segmentCount).toBe(5);
     expect(parsed.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
+    expect(parsed.currentShotScript?.shotCount).toBe(5);
   });
 });

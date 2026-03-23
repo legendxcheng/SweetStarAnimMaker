@@ -5,10 +5,10 @@ import {
   CharacterReferenceImageNotFoundError,
   toCharacterSheetReferenceManifestRelPath,
   toCharacterSheetReferencesStorageDir,
+  type CharacterReferenceImage,
   type CharacterSheetStorage,
   type CharacterSheetRecord,
 } from "@sweet-star/core";
-import type { CharacterReferenceImage } from "@sweet-star/shared";
 
 import { ensureParentDirectory } from "./fs-utils";
 import type { LocalDataPaths } from "./local-data-paths";

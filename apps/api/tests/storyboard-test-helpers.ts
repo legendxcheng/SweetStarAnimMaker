@@ -9,7 +9,7 @@ import {
   createSqliteProjectRepository,
   createStoryboardStorage,
 } from "@sweet-star/services";
-import type { CurrentMasterPlot } from "@sweet-star/shared";
+import type { CurrentMasterPlot, CurrentStoryboard } from "@sweet-star/shared";
 
 const approvedMasterPlot: CurrentMasterPlot = {
   id: "mp_20260321_ab12cd",
@@ -107,6 +107,63 @@ export async function seedApprovedCharacterSheets(input: {
     projectId: input.projectId,
     status: "character_sheets_approved",
     updatedAt: "2026-03-21T12:10:00.000Z",
+  });
+  db.close();
+}
+
+export async function seedApprovedStoryboard(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+  storyboard?: CurrentStoryboard;
+}) {
+  const storyboard: CurrentStoryboard = input.storyboard ?? {
+    id: "storyboard_20260322_ab12cd",
+    title: "The Last Sky Choir",
+    episodeTitle: "Episode 1",
+    sourceMasterPlotId: approvedMasterPlot.id,
+    sourceTaskId: "task_20260322_storyboard",
+    updatedAt: "2026-03-22T12:15:00.000Z",
+    approvedAt: "2026-03-22T12:20:00.000Z",
+    scenes: [
+      {
+        id: "scene_1",
+        order: 1,
+        name: "Rin Hears The Sky",
+        dramaticPurpose: "Trigger the inciting beat.",
+        segments: [
+          {
+            id: "segment_1",
+            order: 1,
+            durationSec: 6,
+            visual: "Rain shakes across the cockpit glass.",
+            characterAction: "Rin looks up.",
+            dialogue: "",
+            voiceOver: "That sound again.",
+            audio: "A comet hum under distant thunder.",
+            purpose: "Start the mystery.",
+          },
+        ],
+      },
+    ],
+  };
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const projectRepository = createSqliteProjectRepository({ db });
+  const storyboardStorage = createStoryboardStorage({ paths });
+
+  await storyboardStorage.writeCurrentStoryboard({
+    storageDir: input.projectStorageDir,
+    storyboard,
+  });
+  projectRepository.updateCurrentStoryboard({
+    projectId: input.projectId,
+    storyboardId: storyboard.id,
+  });
+  projectRepository.updateStatus({
+    projectId: input.projectId,
+    status: "storyboard_approved",
+    updatedAt: storyboard.approvedAt ?? storyboard.updatedAt,
   });
   db.close();
 }

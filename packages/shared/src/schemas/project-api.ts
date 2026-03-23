@@ -8,6 +8,7 @@ import {
   currentMasterPlotResponseSchema,
   currentStoryboardSummaryResponseSchema,
 } from "./storyboard-api";
+import { currentShotScriptSummaryResponseSchema } from "./shot-script-api";
 
 const requiredTextSchema = z.string().trim().min(1);
 const premiseMetadataSchema = z.object({
@@ -32,6 +33,7 @@ export const projectSummaryResponseSchema = z.object({
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
   currentCharacterSheetBatch: currentCharacterSheetBatchSummaryResponseSchema.nullable(),
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
+  currentShotScript: currentShotScriptSummaryResponseSchema.nullable(),
 });
 
 export const projectListResponseSchema = z.array(projectSummaryResponseSchema);
@@ -48,4 +50,5 @@ export const projectDetailResponseSchema = z.object({
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
   currentCharacterSheetBatch: currentCharacterSheetBatchSummaryResponseSchema.nullable(),
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
+  currentShotScript: currentShotScriptSummaryResponseSchema.nullable(),
 });

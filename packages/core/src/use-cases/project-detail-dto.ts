@@ -1,6 +1,7 @@
 import type {
   CurrentCharacterSheetBatchSummary,
   CurrentMasterPlot,
+  CurrentShotScriptSummary,
   CurrentStoryboardSummary,
   ProjectDetail,
 } from "@sweet-star/shared";
@@ -12,6 +13,7 @@ export function toProjectDetailDto(
   currentMasterPlot: CurrentMasterPlot | null,
   currentCharacterSheetBatch: CurrentCharacterSheetBatchSummary | null = null,
   currentStoryboard: CurrentStoryboardSummary | null = null,
+  currentShotScript: CurrentShotScriptSummary | null = null,
 ): ProjectDetail {
   return {
     id: project.id,
@@ -29,5 +31,6 @@ export function toProjectDetailDto(
     currentMasterPlot,
     currentCharacterSheetBatch,
     currentStoryboard,
+    currentShotScript,
   };
 }

@@ -3,6 +3,7 @@ import {
   CharacterSheetNotFoundError,
   CurrentCharacterSheetBatchNotFoundError,
   CurrentMasterPlotNotFoundError,
+  CurrentShotScriptNotFoundError,
   CurrentStoryboardNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
@@ -36,6 +37,7 @@ export function createApiErrorHandler() {
       error instanceof CharacterReferenceImageNotFoundError ||
       error instanceof CurrentCharacterSheetBatchNotFoundError ||
       error instanceof CurrentMasterPlotNotFoundError ||
+      error instanceof CurrentShotScriptNotFoundError ||
       error instanceof CurrentStoryboardNotFoundError ||
       error instanceof ProjectNotFoundError ||
       error instanceof TaskNotFoundError

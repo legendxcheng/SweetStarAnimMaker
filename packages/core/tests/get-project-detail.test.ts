@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("get project detail use case", () => {
-  it("returns premise metadata, the current master plot, and the current storyboard summary", async () => {
+  it("returns premise metadata, the current master plot, the current storyboard summary, and the current shot-script summary", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue({
@@ -19,6 +19,7 @@ describe("get project detail use case", () => {
         currentMasterPlotId: "mp_20260317_ab12cd",
         currentCharacterSheetBatchId: "char_batch_v1",
         currentStoryboardId: "storyboard_20260321_ab12cd",
+        currentShotScriptId: "shot_script_20260322_ab12cd",
         status: "master_plot_in_review",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
@@ -29,6 +30,7 @@ describe("get project detail use case", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -90,6 +92,45 @@ describe("get project detail use case", () => {
           ],
         }),
       },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn().mockResolvedValue({
+          id: "shot_script_20260322_ab12cd",
+          title: "Episode 1 Shot Script",
+          sourceStoryboardId: "storyboard_20260321_ab12cd",
+          sourceTaskId: "task_20260322_shot_script",
+          updatedAt: "2026-03-22T12:00:00.000Z",
+          approvedAt: null,
+          shots: [
+            {
+              id: "shot_1",
+              sceneId: "scene_1",
+              segmentId: "segment_1",
+              order: 1,
+              shotCode: "S01-SG01",
+              shotPurpose: "Establish the flooded market",
+              subjectCharacters: ["Rin"],
+              environment: "Flooded dawn market",
+              framing: "medium wide shot",
+              cameraAngle: "eye level",
+              composition: "Rin framed by hanging lanterns",
+              actionMoment: "Rin pauses at the waterline",
+              emotionTone: "uneasy anticipation",
+              continuityNotes: "Keep soaked satchel on left shoulder",
+              imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
+              negativePrompt: null,
+              motionHint: null,
+              durationSec: 4,
+            },
+          ],
+        }),
+      },
       characterSheetRepository: {
         insertBatch: vi.fn(),
         findBatchById: vi.fn().mockResolvedValue({
@@ -129,6 +170,13 @@ describe("get project detail use case", () => {
         segmentCount: 1,
       }),
     );
+    expect(result.currentShotScript).toEqual(
+      expect.objectContaining({
+        id: "shot_script_20260322_ab12cd",
+        shotCount: 1,
+        totalDurationSec: 4,
+      }),
+    );
   });
 
   it("throws when the project does not exist", async () => {
@@ -140,6 +188,7 @@ describe("get project detail use case", () => {
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -158,6 +207,16 @@ describe("get project detail use case", () => {
         readStoryboardVersion: vi.fn(),
         writeCurrentStoryboard: vi.fn(),
         readCurrentStoryboard: vi.fn(),
+      },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn(),
       },
       characterSheetRepository: {
         insertBatch: vi.fn(),

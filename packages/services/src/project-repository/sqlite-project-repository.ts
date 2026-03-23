@@ -3,6 +3,7 @@ import type {
   ProjectRepository,
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
   UpdateProjectStatusInput,
 } from "@sweet-star/core";
@@ -23,6 +24,7 @@ interface SqliteProjectRow {
   current_master_plot_id: string | null;
   current_character_sheet_batch_id: string | null;
   current_storyboard_id: string | null;
+  current_shot_script_id: string | null;
   script_rel_path?: string | null;
   script_bytes?: number | null;
   script_updated_at?: string | null;
@@ -69,6 +71,7 @@ export function createSqliteProjectRepository(
                 current_master_plot_id,
                 current_character_sheet_batch_id,
                 current_storyboard_id,
+                current_shot_script_id,
                 script_rel_path,
                 script_bytes,
                 script_updated_at
@@ -86,6 +89,7 @@ export function createSqliteProjectRepository(
                 @current_master_plot_id,
                 @current_character_sheet_batch_id,
                 @current_storyboard_id,
+                @current_shot_script_id,
                 @script_rel_path,
                 @script_bytes,
                 @script_updated_at
@@ -112,7 +116,8 @@ export function createSqliteProjectRepository(
               premise_updated_at,
               current_master_plot_id,
               current_character_sheet_batch_id,
-              current_storyboard_id
+              current_storyboard_id,
+              current_shot_script_id
             ) VALUES (
               @id,
               @name,
@@ -126,7 +131,8 @@ export function createSqliteProjectRepository(
               @premise_updated_at,
               @current_master_plot_id,
               @current_character_sheet_batch_id,
-              @current_storyboard_id
+              @current_storyboard_id,
+              @current_shot_script_id
             )
           `,
         )
@@ -149,7 +155,8 @@ export function createSqliteProjectRepository(
               premise_updated_at,
               current_master_plot_id,
               current_character_sheet_batch_id,
-              current_storyboard_id${legacySelectColumns}
+              current_storyboard_id,
+              current_shot_script_id${legacySelectColumns}
             FROM projects
             WHERE id = ?
           `,
@@ -175,7 +182,8 @@ export function createSqliteProjectRepository(
               premise_updated_at,
               current_master_plot_id,
               current_character_sheet_batch_id,
-              current_storyboard_id${legacySelectColumns}
+              current_storyboard_id,
+              current_shot_script_id${legacySelectColumns}
             FROM projects
             ORDER BY updated_at DESC
           `,
@@ -234,6 +242,9 @@ export function createSqliteProjectRepository(
     updateCurrentStoryboard(input) {
       updateCurrentStoryboard(options.db, input);
     },
+    updateCurrentShotScript(input) {
+      updateCurrentShotScript(options.db, input);
+    },
     updateStatus(input) {
       updateProjectStatus(options.db, input);
     },
@@ -282,6 +293,19 @@ function updateCurrentStoryboard(db: SqliteDatabase, input: UpdateCurrentStorybo
   });
 }
 
+function updateCurrentShotScript(db: SqliteDatabase, input: UpdateCurrentShotScriptInput) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET current_shot_script_id = @current_shot_script_id
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    current_shot_script_id: input.shotScriptId,
+  });
+}
+
 function updateProjectStatus(db: SqliteDatabase, input: UpdateProjectStatusInput) {
   db.prepare(
     `
@@ -313,6 +337,7 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     current_master_plot_id: project.currentMasterPlotId,
     current_character_sheet_batch_id: project.currentCharacterSheetBatchId,
     current_storyboard_id: project.currentStoryboardId,
+    current_shot_script_id: project.currentShotScriptId,
     script_rel_path: project.premiseRelPath,
     script_bytes: project.premiseBytes,
     script_updated_at: project.premiseUpdatedAt,
@@ -338,6 +363,7 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     currentMasterPlotId: row.current_master_plot_id,
     currentCharacterSheetBatchId: row.current_character_sheet_batch_id,
     currentStoryboardId: row.current_storyboard_id,
+    currentShotScriptId: row.current_shot_script_id,
     status: normalizeProjectStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -364,6 +390,9 @@ function normalizeProjectStatus(status: string): ProjectRecord["status"] {
     case "storyboard_generating":
     case "storyboard_in_review":
     case "storyboard_approved":
+    case "shot_script_generating":
+    case "shot_script_in_review":
+    case "shot_script_approved":
       return status;
     default:
       throw new Error(`Unknown project status in sqlite storage: ${status}`);

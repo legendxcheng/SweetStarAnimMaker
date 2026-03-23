@@ -8,6 +8,7 @@ describe("task api schema", () => {
       "character_sheets_generate",
       "character_sheet_generate",
       "storyboard_generate",
+      "shot_script_generate",
     ]);
   });
 
@@ -25,6 +26,12 @@ describe("task api schema", () => {
 
   it("exports a character-sheet task response schema", () => {
     const schema = shared.createCharacterSheetsGenerateTaskResponseSchema;
+
+    expect(schema).toBeDefined();
+  });
+
+  it("exports a shot-script task response schema", () => {
+    const schema = shared.createShotScriptGenerateTaskResponseSchema;
 
     expect(schema).toBeDefined();
   });
@@ -111,5 +118,26 @@ describe("task api schema", () => {
     });
 
     expect(parsed.type).toBe("character_sheet_generate");
+  });
+
+  it("accepts a shot-script generation task detail response", () => {
+    const parsed = shared.taskDetailResponseSchema.parse({
+      id: "task_20260322_shot",
+      projectId: "proj_20260322_ab12cd",
+      type: "shot_script_generate",
+      status: "succeeded",
+      createdAt: "2026-03-22T12:10:00.000Z",
+      updatedAt: "2026-03-22T12:12:00.000Z",
+      startedAt: "2026-03-22T12:10:05.000Z",
+      finishedAt: "2026-03-22T12:12:00.000Z",
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260322_shot/input.json",
+        outputPath: "tasks/task_20260322_shot/output.json",
+        logPath: "tasks/task_20260322_shot/log.txt",
+      },
+    });
+
+    expect(parsed.type).toBe("shot_script_generate");
   });
 });

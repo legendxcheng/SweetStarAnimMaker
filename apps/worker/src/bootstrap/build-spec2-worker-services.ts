@@ -4,6 +4,7 @@ import {
   createProcessMasterPlotGenerateTaskUseCase,
   createProcessCharacterSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
+  createProcessShotScriptGenerateTaskUseCase,
   createProcessStoryboardGenerateTaskUseCase,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
@@ -15,10 +16,13 @@ import {
   type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessCharacterSheetGenerateTaskUseCase,
   type ProcessCharacterSheetsGenerateTaskUseCase,
+  type ProcessShotScriptGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProjectRepository,
   type StoryboardProvider,
   type StoryboardStorage,
+  type ShotScriptProvider,
+  type ShotScriptStorage,
   type TaskFileStorage,
   type TaskIdGenerator,
   type TaskQueue,
@@ -28,6 +32,7 @@ import {
   createBullMqTaskQueue,
   createCharacterSheetStorage,
   createGeminiCharacterSheetProvider,
+  createGeminiShotScriptProvider,
   createGeminiStoryboardProvider,
   createLocalDataPaths,
   createReferenceImageUploader,
@@ -35,6 +40,7 @@ import {
   createSqliteDb,
   createSqliteProjectRepository,
   createSqliteTaskRepository,
+  createShotScriptStorage,
   createStoryboardStorage,
   createTaskFileStorage,
   createTurnaroundImageProvider,
@@ -50,10 +56,12 @@ export interface BuildSpec2WorkerServicesOptions {
   taskFileStorage?: TaskFileStorage;
   masterPlotStorage?: MasterPlotStorage;
   storyboardStorage?: StoryboardStorage;
+  shotScriptStorage?: ShotScriptStorage;
   characterSheetRepository?: CharacterSheetRepository;
   characterSheetStorage?: CharacterSheetStorage;
   masterPlotProvider?: MasterPlotProvider;
   storyboardProvider?: StoryboardProvider;
+  shotScriptProvider?: ShotScriptProvider;
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
   taskQueue?: TaskQueue;
@@ -65,6 +73,7 @@ export interface BuildSpec2WorkerServicesOptions {
 export interface Spec2WorkerServices {
   processMasterPlotGenerateTask: ProcessMasterPlotGenerateTaskUseCase;
   processStoryboardGenerateTask: ProcessStoryboardGenerateTaskUseCase;
+  processShotScriptGenerateTask: ProcessShotScriptGenerateTaskUseCase;
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
   close(): Promise<void>;
@@ -76,6 +85,7 @@ export function buildSpec2WorkerServices(
   const paths = options.workspaceRoot ? createLocalDataPaths(options.workspaceRoot) : null;
   const db = paths ? createSqliteDb({ paths }) : null;
   const defaultStoryboardStorage = paths ? createStoryboardStorage({ paths }) : null;
+  const defaultShotScriptStorage = paths ? createShotScriptStorage({ paths }) : null;
   const defaultCharacterSheetStorage = paths ? createCharacterSheetStorage({ paths }) : null;
 
   if (db) {
@@ -89,6 +99,8 @@ export function buildSpec2WorkerServices(
   const taskFileStorage =
     options.taskFileStorage ?? (paths ? createTaskFileStorage({ paths }) : null);
   const storyboardStorage = options.storyboardStorage ?? defaultStoryboardStorage;
+  const shotScriptStorage =
+    options.shotScriptStorage ?? defaultShotScriptStorage ?? createUnsupportedShotScriptStorage();
   const masterPlotStorage = options.masterPlotStorage ?? defaultStoryboardStorage;
   const characterSheetRepository =
     options.characterSheetRepository ?? (db ? createSqliteCharacterSheetRepository({ db }) : null);
@@ -117,6 +129,19 @@ export function buildSpec2WorkerServices(
       : {
           async generateMasterPlot() {
             throw new Error("VECTORENGINE_API_TOKEN is required for master plot generation");
+          },
+        });
+  const shotScriptProvider =
+    options.shotScriptProvider ??
+    (process.env.VECTORENGINE_API_TOKEN?.trim()
+      ? createGeminiShotScriptProvider({
+          baseUrl: process.env.VECTORENGINE_BASE_URL,
+          apiToken: process.env.VECTORENGINE_API_TOKEN,
+          model: process.env.SHOT_SCRIPT_LLM_MODEL,
+        })
+      : {
+          async generateShotScript() {
+            throw new Error("VECTORENGINE_API_TOKEN is required for shot script generation");
           },
         });
   const characterSheetPromptProvider =
@@ -220,6 +245,16 @@ export function buildSpec2WorkerServices(
         now: () => new Date().toISOString(),
       },
     }),
+    processShotScriptGenerateTask: createProcessShotScriptGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotScriptProvider,
+      shotScriptStorage,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
     processCharacterSheetsGenerateTask: createProcessCharacterSheetsGenerateTaskUseCase({
       taskRepository,
       projectRepository,
@@ -249,6 +284,25 @@ export function buildSpec2WorkerServices(
       await Promise.all(Array.from(bullMqQueues.values()).map((queue) => queue.close()));
       await queueConnection?.quit();
       db?.close();
+    },
+  };
+}
+
+function createUnsupportedShotScriptStorage(): ShotScriptStorage {
+  return {
+    async initializePromptTemplate() {},
+    async readPromptTemplate() {
+      throw new Error("Shot script storage is not configured");
+    },
+    async writePromptSnapshot() {},
+    async writeRawResponse() {},
+    async writeShotScriptVersion() {},
+    async readShotScriptVersion() {
+      throw new Error("Shot script storage is not configured");
+    },
+    async writeCurrentShotScript() {},
+    async readCurrentShotScript() {
+      return null;
     },
   };
 }

@@ -41,6 +41,7 @@ describe("sqlite project repository", () => {
     expect(columns.map((column) => column.name)).toContain("current_master_plot_id");
     expect(columns.map((column) => column.name)).toContain("current_character_sheet_batch_id");
     expect(columns.map((column) => column.name)).toContain("current_storyboard_id");
+    expect(columns.map((column) => column.name)).toContain("current_shot_script_id");
   });
 
   it("inserts and finds a project by id", async () => {
@@ -88,7 +89,7 @@ describe("sqlite project repository", () => {
     });
   });
 
-  it("updates the current master plot and storyboard pointers on the project row", async () => {
+  it("updates the current master plot, storyboard, and shot script pointers on the project row", async () => {
     const { db, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_20260321_ab12cd",
@@ -113,16 +114,21 @@ describe("sqlite project repository", () => {
       projectId: "proj_20260321_ab12cd",
       storyboardId: "storyboard_20260321_ab12cd",
     });
+    repository.updateCurrentShotScript({
+      projectId: "proj_20260321_ab12cd",
+      shotScriptId: "shot_script_20260321_ab12cd",
+    });
 
     const row = db
       .prepare(
-        "SELECT current_master_plot_id, current_character_sheet_batch_id, current_storyboard_id FROM projects WHERE id = ?",
+        "SELECT current_master_plot_id, current_character_sheet_batch_id, current_storyboard_id, current_shot_script_id FROM projects WHERE id = ?",
       )
       .get("proj_20260321_ab12cd") as
       | {
           current_master_plot_id: string | null;
           current_character_sheet_batch_id: string | null;
           current_storyboard_id: string | null;
+          current_shot_script_id: string | null;
         }
       | undefined;
 
@@ -130,6 +136,7 @@ describe("sqlite project repository", () => {
       current_master_plot_id: "mp_20260321_ab12cd",
       current_character_sheet_batch_id: "char_batch_v1",
       current_storyboard_id: "storyboard_20260321_ab12cd",
+      current_shot_script_id: "shot_script_20260321_ab12cd",
     });
   });
 
@@ -148,13 +155,13 @@ describe("sqlite project repository", () => {
     repository.insert(project);
     repository.updateStatus({
       projectId: project.id,
-      status: "storyboard_in_review",
+      status: "shot_script_in_review",
       updatedAt: "2026-03-21T01:00:00.000Z",
     });
 
     expect(repository.findById(project.id)).toEqual({
       ...project,
-      status: "storyboard_in_review",
+      status: "shot_script_in_review",
       updatedAt: "2026-03-21T01:00:00.000Z",
     });
   });

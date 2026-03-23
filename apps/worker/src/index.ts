@@ -7,6 +7,8 @@ import {
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
   type MasterPlotProvider,
+  shotScriptGenerateQueueName,
+  type ShotScriptProvider,
   storyboardGenerateQueueName,
   type StoryboardProvider,
 } from "@sweet-star/core";
@@ -37,6 +39,9 @@ export interface StartWorkerOptions {
     processStoryboardGenerateTask: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
+    processShotScriptGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
     processCharacterSheetsGenerateTask: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
@@ -49,6 +54,7 @@ export interface StartWorkerOptions {
   redisUrl?: string;
   masterPlotProvider?: MasterPlotProvider;
   storyboardProvider?: StoryboardProvider;
+  shotScriptProvider?: ShotScriptProvider;
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
   workerFactory?: (input: {
@@ -68,6 +74,7 @@ export async function startWorker(
       redisUrl: options.redisUrl,
       masterPlotProvider: options.masterPlotProvider,
       storyboardProvider: options.storyboardProvider,
+      shotScriptProvider: options.shotScriptProvider,
       characterSheetPromptProvider: options.characterSheetPromptProvider,
       characterSheetImageProvider: options.characterSheetImageProvider,
     });
@@ -108,6 +115,19 @@ export async function startWorker(
       },
     },
   ];
+
+  const shotScriptTaskProcessor = services.processShotScriptGenerateTask;
+
+  if (shotScriptTaskProcessor) {
+    processors.splice(2, 0, {
+      queueName: shotScriptGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await shotScriptTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
   const redisConnection = options.workerFactory
     ? null
     : new IORedis(options.redisUrl ?? process.env.REDIS_URL ?? "redis://127.0.0.1:6379", {

@@ -8,6 +8,10 @@ export {
   type CreateTaskFileStorageOptions,
 } from "./storage/task-file-storage";
 export {
+  createShotScriptStorage,
+  type CreateShotScriptStorageOptions,
+} from "./storage/shot-script-storage";
+export {
   createStoryboardStorage,
   type CreateStoryboardStorageOptions,
 } from "./storage/storyboard-storage";
@@ -46,6 +50,10 @@ export {
   type CreateGeminiStoryboardProviderOptions,
 } from "./providers/gemini-storyboard-provider";
 export {
+  createGeminiShotScriptProvider,
+  type CreateGeminiShotScriptProviderOptions,
+} from "./providers/gemini-shot-script-provider";
+export {
   createSqliteTaskRepository,
   type CreateSqliteTaskRepositoryOptions,
 } from "./task-repository/sqlite-task-repository";
@@ -60,3 +68,8 @@ export {
   type CreateSqliteStoryboardReviewRepositoryOptions,
 } from "./storyboard-repository/sqlite-storyboard-review-repository";
 export { initializeSqliteStoryboardReviewSchema } from "./storyboard-repository/sqlite-storyboard-review-schema";
+export {
+  createSqliteShotScriptReviewRepository,
+  type CreateSqliteShotScriptReviewRepositoryOptions,
+} from "./shot-script-repository/sqlite-shot-script-review-repository";
+export { initializeSqliteShotScriptReviewSchema } from "./shot-script-repository/sqlite-shot-script-review-schema";

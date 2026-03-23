@@ -1,6 +1,7 @@
 import type { ProjectStatus } from "../constants/project-status";
 import type { CurrentCharacterSheetBatchSummary } from "./character-sheet";
 import type { CurrentMasterPlot } from "./master-plot";
+import type { CurrentShotScriptSummary } from "./shot-script";
 import type { CurrentStoryboardSummary } from "./storyboard";
 
 export interface ProjectSummary {
@@ -14,4 +15,5 @@ export interface ProjectSummary {
   currentMasterPlot: CurrentMasterPlot | null;
   currentCharacterSheetBatch: CurrentCharacterSheetBatchSummary | null;
   currentStoryboard: CurrentStoryboardSummary | null;
+  currentShotScript: CurrentShotScriptSummary | null;
 }

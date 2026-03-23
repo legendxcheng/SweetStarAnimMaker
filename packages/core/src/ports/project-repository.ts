@@ -24,6 +24,11 @@ export interface UpdateCurrentStoryboardInput {
   storyboardId: string | null;
 }
 
+export interface UpdateCurrentShotScriptInput {
+  projectId: string;
+  shotScriptId: string | null;
+}
+
 export interface UpdateProjectStatusInput {
   projectId: string;
   status: ProjectStatus;
@@ -45,6 +50,9 @@ export interface ProjectRepository {
   ): Promise<void> | void;
   updateCurrentStoryboard(
     input: UpdateCurrentStoryboardInput,
+  ): Promise<void> | void;
+  updateCurrentShotScript(
+    input: UpdateCurrentShotScriptInput,
   ): Promise<void> | void;
   updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
 }
