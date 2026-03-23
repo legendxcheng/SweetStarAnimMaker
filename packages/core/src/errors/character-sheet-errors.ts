@@ -18,3 +18,10 @@ export class CharacterReferenceImageNotFoundError extends Error {
     this.name = "CharacterReferenceImageNotFoundError";
   }
 }
+
+export class CharacterSheetImageNotFoundError extends Error {
+  constructor(characterId: string) {
+    super(`Character sheet image not found: ${characterId}`);
+    this.name = "CharacterSheetImageNotFoundError";
+  }
+}

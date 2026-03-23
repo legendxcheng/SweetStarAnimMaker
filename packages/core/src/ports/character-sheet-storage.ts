@@ -75,6 +75,10 @@ export interface GetCharacterSheetReferenceImageContentInput {
   referenceImageId: string;
 }
 
+export interface GetCharacterSheetImageContentInput {
+  character: CharacterSheetRecordEntity;
+}
+
 export interface CharacterSheetReferenceImageContent {
   filePath: string;
   fileName: string;
@@ -115,5 +119,8 @@ export interface CharacterSheetStorage {
   ): Promise<string[]> | string[];
   getReferenceImageContent(
     input: GetCharacterSheetReferenceImageContentInput,
+  ): Promise<CharacterSheetReferenceImageContent | null> | CharacterSheetReferenceImageContent | null;
+  getImageContent(
+    input: GetCharacterSheetImageContentInput,
   ): Promise<CharacterSheetReferenceImageContent | null> | CharacterSheetReferenceImageContent | null;
 }

@@ -113,6 +113,37 @@ describe("CharacterSheetsPhasePanel", () => {
     expect(screen.getByDisplayValue("silver pilot jacket")).toBeInTheDocument();
   });
 
+  it("renders the current character image preview and opens a larger viewer", async () => {
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
+      currentBatch: baseProject.currentCharacterSheetBatch,
+      characters: [rinCharacter],
+    });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(rinCharacter);
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText("Rin")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Rin 待审核$/i }));
+
+    const previewImage = await screen.findByAltText("Rin 当前立绘");
+    expect(previewImage).toBeInTheDocument();
+    expect(previewImage).toHaveClass("object-contain");
+
+    fireEvent.click(screen.getByRole("button", { name: "查看大图" }));
+
+    expect(await screen.findByRole("dialog", { name: "Rin 当前立绘预览" })).toBeInTheDocument();
+    expect(screen.getByAltText("Rin 当前立绘大图")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭大图预览" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Rin 当前立绘预览" })).not.toBeInTheDocument();
+    });
+  });
+
   it("renders existing reference-image thumbnails, uploads files, and deletes one reference image", async () => {
     const characterWithReferenceImage = {
       ...rinCharacter,

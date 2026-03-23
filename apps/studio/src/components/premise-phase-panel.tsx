@@ -41,6 +41,12 @@ export function PremisePhasePanel({ project }: PremisePhasePanelProps) {
             </p>
           </div>
           <div>
+            <p className={metaLabelClass}>Premise 文本</p>
+            <div className="mt-1 rounded-xl border border-(--color-border) bg-(--color-bg-elevated) px-4 py-3 text-sm leading-6 text-(--color-text-primary) whitespace-pre-wrap">
+              {project.premise.text}
+            </div>
+          </div>
+          <div>
             <p className={metaLabelClass}>创建时间</p>
             <p className={metaValueClass}>{new Date(project.createdAt).toLocaleString("zh-CN")}</p>
           </div>

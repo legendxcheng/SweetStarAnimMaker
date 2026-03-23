@@ -55,6 +55,7 @@ describe("delete character sheet reference image use case", () => {
       deleteReferenceImage: vi.fn().mockResolvedValue([]),
       resolveReferenceImagePaths: vi.fn(),
       getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
     };
     const useCase = createDeleteCharacterSheetReferenceImageUseCase({
       projectRepository: {
@@ -147,6 +148,7 @@ describe("delete character sheet reference image use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
     });
 

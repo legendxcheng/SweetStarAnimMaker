@@ -13,6 +13,7 @@ export function toProjectDetailDto(
   currentMasterPlot: CurrentMasterPlot | null,
   currentCharacterSheetBatch: CurrentCharacterSheetBatchSummary | null = null,
   currentStoryboard: CurrentStoryboardSummary | null = null,
+  premiseText = "",
   currentShotScript: CurrentShotScriptSummary | null = null,
 ): ProjectDetail {
   return {
@@ -27,6 +28,7 @@ export function toProjectDetailDto(
       path: project.premiseRelPath,
       bytes: project.premiseBytes,
       updatedAt: project.premiseUpdatedAt,
+      text: premiseText,
     },
     currentMasterPlot,
     currentCharacterSheetBatch,

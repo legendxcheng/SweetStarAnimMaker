@@ -145,6 +145,7 @@ export {
 } from "./errors/project-errors";
 export {
   CharacterReferenceImageNotFoundError,
+  CharacterSheetImageNotFoundError,
   CharacterSheetNotFoundError,
   CurrentCharacterSheetBatchNotFoundError,
 } from "./errors/character-sheet-errors";
@@ -172,6 +173,7 @@ export type {
 export type {
   CharacterSheetStorage,
   CharacterSheetReferenceImageContent,
+  GetCharacterSheetImageContentInput,
   GetCharacterSheetReferenceImageContentInput,
   InitializeCharacterSheetPromptTemplateInput,
   ListCharacterSheetReferenceImagesInput,
@@ -310,6 +312,12 @@ export {
   type GetCharacterSheetUseCase,
   type GetCharacterSheetUseCaseDependencies,
 } from "./use-cases/get-character-sheet";
+export {
+  createGetCharacterSheetImageContentUseCase,
+  type GetCharacterSheetImageContentInput as GetCharacterSheetImageContentUseCaseInput,
+  type GetCharacterSheetImageContentUseCase,
+  type GetCharacterSheetImageContentUseCaseDependencies,
+} from "./use-cases/get-character-sheet-image-content";
 export {
   createGetCharacterSheetReferenceImageContentUseCase,
   type GetCharacterSheetReferenceImageContentInput as GetCharacterSheetReferenceImageContentUseCaseInput,

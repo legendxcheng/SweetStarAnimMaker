@@ -37,13 +37,20 @@ describe("project domain", () => {
       updatedAt: "2026-03-17T01:00:00.000Z",
     };
 
-    const detail = toProjectDetailDto(project, null, currentCharacterSheetBatch, null);
+    const detail = toProjectDetailDto(
+      project,
+      null,
+      currentCharacterSheetBatch,
+      null,
+      "A washed-up pilot discovers a singing comet above a drowned city.",
+    );
     const summary = toProjectSummaryDto(project, null, currentCharacterSheetBatch, null);
 
     expect(detail.premise).toEqual({
       path: "premise/v1.md",
       bytes: 0,
       updatedAt: "2026-03-17T00:00:00.000Z",
+      text: "A washed-up pilot discovers a singing comet above a drowned city.",
     });
     expect(detail.currentMasterPlot).toBeNull();
     expect(detail.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);

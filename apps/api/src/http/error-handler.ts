@@ -1,5 +1,6 @@
 import {
   CharacterReferenceImageNotFoundError,
+  CharacterSheetImageNotFoundError,
   CharacterSheetNotFoundError,
   CurrentCharacterSheetBatchNotFoundError,
   CurrentMasterPlotNotFoundError,
@@ -34,6 +35,7 @@ export function createApiErrorHandler() {
 
     if (
       error instanceof CharacterSheetNotFoundError ||
+      error instanceof CharacterSheetImageNotFoundError ||
       error instanceof CharacterReferenceImageNotFoundError ||
       error instanceof CurrentCharacterSheetBatchNotFoundError ||
       error instanceof CurrentMasterPlotNotFoundError ||

@@ -6,6 +6,7 @@ import { ProjectNotFoundError } from "../errors/project-errors";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
+import type { PremiseStorage } from "../ports/script-storage";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { toProjectDetailDto } from "./project-detail-dto";
@@ -20,6 +21,7 @@ export interface GetProjectDetailUseCase {
 
 export interface GetProjectDetailUseCaseDependencies {
   repository: ProjectRepository;
+  premiseStorage: PremiseStorage;
   masterPlotStorage: MasterPlotStorage;
   storyboardStorage: StoryboardStorage;
   shotScriptStorage: ShotScriptStorage;
@@ -37,6 +39,9 @@ export function createGetProjectDetailUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
+      const premiseText = await dependencies.premiseStorage.readPremise({
+        storageDir: project.storageDir,
+      });
       const currentMasterPlot = project.currentMasterPlotId
         ? await dependencies.masterPlotStorage.readCurrentMasterPlot({
             storageDir: project.storageDir,
@@ -72,6 +77,7 @@ export function createGetProjectDetailUseCase(
         currentMasterPlot,
         currentCharacterSheetBatch,
         currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
+        premiseText,
         currentShotScript ? toCurrentShotScriptSummary(currentShotScript) : null,
       );
     },

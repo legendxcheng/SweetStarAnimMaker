@@ -133,6 +133,7 @@ describe("create shot script generate task use case", () => {
       deleteReferenceImage: vi.fn(),
       resolveReferenceImagePaths: vi.fn(),
       getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
     };
     const useCase = createCreateShotScriptGenerateTaskUseCase({
       projectRepository,
@@ -236,6 +237,7 @@ describe("create shot script generate task use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       taskRepository: {
         insert: vi.fn(),
@@ -328,6 +330,7 @@ describe("create shot script generate task use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       taskRepository: {
         insert: vi.fn(),
@@ -420,6 +423,7 @@ describe("create shot script generate task use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       taskRepository: {
         insert: vi.fn(),

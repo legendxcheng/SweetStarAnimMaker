@@ -73,6 +73,7 @@ export function createUpdateProjectScriptUseCase(
         null,
         null,
         null,
+        premiseText,
       );
     },
   };

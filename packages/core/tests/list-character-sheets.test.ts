@@ -128,6 +128,7 @@ describe("list character sheets use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
     });
 

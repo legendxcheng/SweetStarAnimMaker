@@ -50,12 +50,16 @@ export function CharacterSheetsPhasePanel({
   const [actionBusy, setActionBusy] = useState<
     "save" | "upload" | "delete" | "regenerate" | "approve" | null
   >(null);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
   const batchSummary = project.currentCharacterSheetBatch;
   const selectedReferenceImages = selectedCharacter?.referenceImages ?? [];
+  const selectedCharacterImageUrl = selectedCharacter
+    ? config.characterSheetImageContentUrl(project.id, selectedCharacter.id)
+    : null;
   const selectedListCharacter = useMemo(
     () => characters.find((character) => character.id === selectedCharacterId) ?? null,
     [characters, selectedCharacterId],
@@ -151,6 +155,30 @@ export function CharacterSheetsPhasePanel({
       cancelled = true;
     };
   }, [project.id, selectedCharacterId]);
+
+  useEffect(() => {
+    if (!imagePreviewOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setImagePreviewOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [imagePreviewOpen]);
+
+  useEffect(() => {
+    if (!selectedCharacter?.imageAssetPath) {
+      setImagePreviewOpen(false);
+    }
+  }, [selectedCharacter?.id, selectedCharacter?.imageAssetPath]);
 
   async function refreshProject() {
     await onProjectRefresh?.();
@@ -424,6 +452,43 @@ export function CharacterSheetsPhasePanel({
 
             {selectedCharacter && !detailLoading && !detailError && (
               <div className="grid gap-4">
+                <div className="rounded-xl border border-(--color-border) bg-(--color-bg-base) p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className={metaLabelClass}>当前立绘预览</p>
+                      <p className="text-sm text-(--color-text-muted)">
+                        点击缩略图或按钮查看大图。
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setImagePreviewOpen(true)}
+                      disabled={!selectedCharacter.imageAssetPath}
+                      className="rounded-lg border border-(--color-border-muted) px-3 py-2 text-sm font-semibold text-(--color-text-primary) disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      查看大图
+                    </button>
+                  </div>
+
+                  {selectedCharacter.imageAssetPath && selectedCharacterImageUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setImagePreviewOpen(true)}
+                      className="block w-full overflow-hidden rounded-xl border border-(--color-border) bg-(--color-bg-surface)"
+                    >
+                      <img
+                        src={selectedCharacterImageUrl}
+                        alt={`${selectedCharacter.characterName} 当前立绘`}
+                        className="h-72 w-full object-contain bg-(--color-bg-elevated)"
+                      />
+                    </button>
+                  ) : (
+                    <div className="flex h-72 items-center justify-center rounded-xl border border-dashed border-(--color-border-muted) bg-(--color-bg-surface) text-sm text-(--color-text-muted)">
+                      尚未生成当前立绘
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <p className={metaLabelClass}>当前状态</p>
@@ -545,6 +610,49 @@ export function CharacterSheetsPhasePanel({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {selectedCharacter && selectedCharacterImageUrl && imagePreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          onClick={() => setImagePreviewOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${selectedCharacter.characterName} 当前立绘预览`}
+            className="relative max-h-full w-full max-w-6xl rounded-2xl border border-white/10 bg-(--color-bg-surface) p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-(--color-text-primary)">
+                  {selectedCharacter.characterName} 当前立绘预览
+                </p>
+                <p className="text-sm text-(--color-text-muted)">
+                  {selectedCharacter.imageWidth && selectedCharacter.imageHeight
+                    ? `${selectedCharacter.imageWidth} × ${selectedCharacter.imageHeight}`
+                    : "原始尺寸"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImagePreviewOpen(false)}
+                className="rounded-lg border border-(--color-border-muted) px-3 py-2 text-sm font-semibold text-(--color-text-primary)"
+              >
+                关闭大图预览
+              </button>
+            </div>
+
+            <div className="max-h-[80vh] overflow-auto rounded-xl bg-black/20">
+              <img
+                src={selectedCharacterImageUrl}
+                alt={`${selectedCharacter.characterName} 当前立绘大图`}
+                className="mx-auto block h-auto max-w-full rounded-xl"
+              />
+            </div>
           </div>
         </div>
       )}

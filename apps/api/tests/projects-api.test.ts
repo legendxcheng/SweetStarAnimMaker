@@ -46,6 +46,7 @@ describe("projects api", () => {
         premise: {
           path: "premise/v1.md",
           bytes: Buffer.byteLength(premiseText, "utf8"),
+          text: premiseText,
           updatedAt: expect.any(String),
         },
       }),
@@ -92,6 +93,7 @@ describe("projects api", () => {
         premise: expect.objectContaining({
           path: "premise/v1.md",
           bytes: Buffer.byteLength(premiseText, "utf8"),
+          text: premiseText,
         }),
       }),
     );

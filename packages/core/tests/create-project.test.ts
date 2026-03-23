@@ -72,6 +72,7 @@ describe("create project use case", () => {
         path: "premise/v1.md",
         bytes: 88,
         updatedAt: "2026-03-17T00:00:00.000Z",
+        text: "A washed-up pilot discovers a singing comet above a drowned city.",
       },
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,

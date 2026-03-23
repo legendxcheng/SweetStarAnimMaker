@@ -94,6 +94,7 @@ describe("regenerate character sheet use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn().mockResolvedValue(["E:/tmp/ref-1.png"]),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       taskRepository,
       taskFileStorage,

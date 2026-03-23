@@ -59,7 +59,7 @@ describe("spec6 shot script flow", () => {
 
     const createTaskResponse = await app.instance.inject({
       method: "POST",
-      url: `/projects/${project.id}/shot-script/generate`,
+      url: `/projects/${project.id}/tasks/shot-script-generate`,
     });
     expect(createTaskResponse.statusCode).toBe(201);
 
@@ -162,7 +162,7 @@ describe("spec6 shot script flow", () => {
 
     const createTaskResponse = await app.instance.inject({
       method: "POST",
-      url: `/projects/${project.id}/shot-script/generate`,
+      url: `/projects/${project.id}/tasks/shot-script-generate`,
     });
     expect(createTaskResponse.statusCode).toBe(201);
 

@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../src/app";
 import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
+import { seedApprovedStoryboard } from "./storyboard-test-helpers";
 
 describe("tasks api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -205,6 +206,54 @@ describe("tasks api", () => {
       taskId: "task_20260321_ab12cd",
       queueName: "character-sheets-generate",
       taskType: "character_sheets_generate",
+    });
+  });
+
+  it("creates a shot-script task for a storyboard-approved project", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+    });
+
+    const createProjectResponse = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: { name: "My Story", premiseText },
+    });
+    const project = createProjectResponse.json();
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+    });
+    await seedApprovedStoryboard({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/tasks/shot-script-generate`,
+    });
+
+    expect(taskResponse.statusCode).toBe(201);
+    expect(taskResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "task_20260321_ab12cd",
+        projectId: project.id,
+        type: "shot_script_generate",
+        status: "pending",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_ab12cd",
+      queueName: "shot-script-generate",
+      taskType: "shot_script_generate",
     });
   });
 

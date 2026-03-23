@@ -15,6 +15,7 @@ const premiseMetadataSchema = z.object({
   path: z.string(),
   bytes: z.number().int().nonnegative(),
   updatedAt: z.string(),
+  text: z.string(),
 });
 
 export const createProjectRequestSchema = z.object({

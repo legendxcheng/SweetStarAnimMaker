@@ -220,6 +220,28 @@ export function createCharacterSheetStorage(
         mimeType: referenceImage.mimeType,
       };
     },
+    async getImageContent(input) {
+      const filePath = options.paths.projectCharacterSheetAssetPath(
+        input.character.projectStorageDir,
+        input.character.currentImageRelPath,
+      );
+
+      try {
+        await fs.access(filePath);
+      } catch (error) {
+        if (isMissingFileError(error)) {
+          return null;
+        }
+
+        throw error;
+      }
+
+      return {
+        filePath,
+        fileName: path.basename(input.character.currentImageRelPath),
+        mimeType: toImageMimeType(input.character.currentImageRelPath),
+      };
+    },
   };
 
   async function readReferenceManifest(character: {
@@ -333,4 +355,18 @@ function toReferenceImageExtension(originalFileName: string, mimeType: string) {
   }
 
   return ".png";
+}
+
+function toImageMimeType(fileName: string) {
+  const extension = path.extname(fileName).toLowerCase();
+
+  switch (extension) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".webp":
+      return "image/webp";
+    default:
+      return "image/png";
+  }
 }

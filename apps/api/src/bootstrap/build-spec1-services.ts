@@ -12,6 +12,7 @@ import {
   createCreateProjectUseCase,
   createAddCharacterSheetReferenceImagesUseCase,
   createDeleteCharacterSheetReferenceImageUseCase,
+  createGetCharacterSheetImageContentUseCase,
   createGetCharacterSheetUseCase,
   createGetCharacterSheetReferenceImageContentUseCase,
   createGetCurrentShotScriptUseCase,
@@ -204,6 +205,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
+      premiseStorage,
       masterPlotStorage,
       storyboardStorage,
       shotScriptStorage,
@@ -226,6 +228,11 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       characterSheetStorage,
     }),
     getCharacterSheet: createGetCharacterSheetUseCase({
+      projectRepository: repository,
+      characterSheetRepository,
+      characterSheetStorage,
+    }),
+    getCharacterSheetImageContent: createGetCharacterSheetImageContentUseCase({
       projectRepository: repository,
       characterSheetRepository,
       characterSheetStorage,

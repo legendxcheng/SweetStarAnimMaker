@@ -33,7 +33,7 @@ export function registerTaskRoutes(
     return reply.status(201).send(task);
   });
 
-  app.post("/projects/:projectId/shot-script/generate", async (request, reply) => {
+  app.post("/projects/:projectId/tasks/shot-script-generate", async (request, reply) => {
     const params = request.params as { projectId: string };
     const task = await services.createShotScriptGenerateTask.execute({
       projectId: params.projectId,

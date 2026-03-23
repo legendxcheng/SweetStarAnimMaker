@@ -8,6 +8,7 @@ export interface ProjectPremiseMetadata {
   path: string;
   bytes: number;
   updatedAt: string;
+  text: string;
 }
 
 export interface ProjectDetail {

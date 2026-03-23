@@ -267,6 +267,40 @@ describe("character sheets api", () => {
     expect(response.body.length).toBeGreaterThan(0);
   });
 
+  it("streams current character image content", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_in_review",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+    await seedCurrentCharacterImage({
+      tempDir,
+      projectStorageDir: project.storageDir,
+      batchId: "char_batch_v1",
+      characterId: "char_rin_1",
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}/character-sheets/char_rin_1/content`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("image/png");
+    expect(response.body.length).toBeGreaterThan(0);
+  });
+
   it("rejects non-image uploads", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
@@ -542,6 +576,38 @@ async function seedCharacterReferenceImages(input: {
         createdAt: "2026-03-22T12:00:00.000Z",
       },
     ],
+  });
+}
+
+async function seedCurrentCharacterImage(input: {
+  tempDir: string;
+  projectStorageDir: string;
+  batchId: string;
+  characterId: string;
+}) {
+  const storage = createCharacterSheetStorage({
+    paths: createLocalDataPaths(input.tempDir),
+  });
+  const character = createCharacterSheetRecord({
+    id: input.characterId,
+    projectId: "proj_1",
+    projectStorageDir: input.projectStorageDir,
+    batchId: input.batchId,
+    sourceMasterPlotId: "mp_20260321_ab12cd",
+    characterName: "Rin",
+    promptTextGenerated: "Rin generated prompt",
+    promptTextCurrent: "Rin current prompt",
+    updatedAt: "2026-03-21T12:00:00.000Z",
+  });
+
+  await storage.writeCurrentImage({
+    character,
+    imageBytes: new Uint8Array([137, 80, 78, 71]),
+    metadata: {
+      imageAssetPath: character.currentImageRelPath,
+      imageWidth: 1536,
+      imageHeight: 1024,
+    },
   });
 }
 

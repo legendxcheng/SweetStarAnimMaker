@@ -33,6 +33,18 @@ export function registerCharacterSheetRoutes(
     });
   });
 
+  app.get("/projects/:projectId/character-sheets/:characterId/content", async (request, reply) => {
+    const params = request.params as { projectId: string; characterId: string };
+    const content = await services.getCharacterSheetImageContent.execute({
+      projectId: params.projectId,
+      characterId: params.characterId,
+    });
+
+    return reply
+      .header("content-type", content.mimeType)
+      .send(await fs.readFile(content.filePath));
+  });
+
   app.post("/projects/:projectId/character-sheets/:characterId/reference-images", async (request) => {
     const params = request.params as { projectId: string; characterId: string };
     const files = [];

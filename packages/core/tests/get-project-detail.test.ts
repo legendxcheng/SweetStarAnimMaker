@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("get project detail use case", () => {
-  it("returns premise metadata, the current master plot, the current storyboard summary, and the current shot-script summary", async () => {
+  it("returns premise text, premise metadata, the current master plot, the current storyboard summary, and the current shot-script summary", async () => {
     const repository = {
       insert: vi.fn(),
       findById: vi.fn().mockReturnValue({
@@ -35,6 +35,13 @@ describe("get project detail use case", () => {
     };
     const useCase = createGetProjectDetailUseCase({
       repository,
+      premiseStorage: {
+        readPremise: vi
+          .fn()
+          .mockResolvedValue("A washed-up pilot discovers a singing comet above a drowned city."),
+        writePremise: vi.fn(),
+        deletePremise: vi.fn(),
+      },
       masterPlotStorage: {
         initializePromptTemplate: vi.fn(),
         readPromptTemplate: vi.fn(),
@@ -160,6 +167,9 @@ describe("get project detail use case", () => {
 
     expect(result.premise.bytes).toBe(88);
     expect(result.premise.path).toBe("premise/v1.md");
+    expect(result.premise.text).toBe(
+      "A washed-up pilot discovers a singing comet above a drowned city.",
+    );
     expect(result.currentMasterPlot?.title).toBe("The Last Sky Choir");
     expect(result.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result.currentStoryboard).toEqual(
@@ -193,6 +203,11 @@ describe("get project detail use case", () => {
     };
     const useCase = createGetProjectDetailUseCase({
       repository,
+      premiseStorage: {
+        readPremise: vi.fn(),
+        writePremise: vi.fn(),
+        deletePremise: vi.fn(),
+      },
       masterPlotStorage: {
         initializePromptTemplate: vi.fn(),
         readPromptTemplate: vi.fn(),

@@ -64,6 +64,7 @@ describe("add character sheet reference images use case", () => {
       deleteReferenceImage: vi.fn(),
       resolveReferenceImagePaths: vi.fn(),
       getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
     };
     const useCase = createAddCharacterSheetReferenceImagesUseCase({
       projectRepository: {
@@ -206,6 +207,7 @@ describe("add character sheet reference images use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       clock: { now: vi.fn() },
     });

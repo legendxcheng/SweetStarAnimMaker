@@ -86,7 +86,7 @@ describe("shot script api", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: `/projects/${project.id}/shot-script/generate`,
+      url: `/projects/${project.id}/tasks/shot-script-generate`,
     });
 
     expect(response.statusCode).toBe(201);

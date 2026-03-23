@@ -205,6 +205,7 @@ describe("process character sheet generate task use case", () => {
       deleteReferenceImage: vi.fn(),
       resolveReferenceImagePaths: vi.fn(),
       getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
     };
     const imageProvider = {
       generateCharacterSheetImage: vi.fn().mockResolvedValue({
@@ -321,6 +322,7 @@ describe("process character sheet generate task use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       characterSheetImageProvider: { generateCharacterSheetImage: vi.fn() },
       clock: { now: vi.fn() },
@@ -405,6 +407,7 @@ describe("process character sheet generate task use case", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       characterSheetImageProvider: { generateCharacterSheetImage: vi.fn() },
       clock: {

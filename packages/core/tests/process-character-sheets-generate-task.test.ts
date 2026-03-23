@@ -117,6 +117,7 @@ describe("process character sheets generate task use case", () => {
       saveReferenceImages: vi.fn(),
       deleteReferenceImage: vi.fn(),
       getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
       resolveReferenceImagePaths: vi
         .fn()
         .mockResolvedValueOnce(["E:/tmp/ref-rin-1.png"])
@@ -295,6 +296,7 @@ describe("process character sheets generate task use case", () => {
         saveReferenceImages: vi.fn(),
         deleteReferenceImage: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
       },
       characterSheetPromptProvider: { generateCharacterPrompt: vi.fn() },
@@ -386,6 +388,7 @@ describe("process character sheets generate task use case", () => {
         saveReferenceImages: vi.fn(),
         deleteReferenceImage: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
       },
       characterSheetPromptProvider: { generateCharacterPrompt: vi.fn() },

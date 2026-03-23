@@ -25,6 +25,7 @@ describe("project api schema", () => {
         path: "premise/v1.md",
         bytes: 123,
         updatedAt: "2026-03-17T12:00:00.000Z",
+        text: "A washed-up pilot discovers a singing comet above a drowned city.",
       },
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
@@ -33,6 +34,7 @@ describe("project api schema", () => {
     });
 
     expect(parsed.currentMasterPlot).toBeNull();
+    expect(parsed.premise.text).toContain("singing comet");
   });
 
   it("exposes the expanded master-plot workflow statuses", () => {
@@ -165,6 +167,7 @@ describe("project api schema", () => {
         path: "premise/v1.md",
         bytes: 123,
         updatedAt: "2026-03-21T12:00:00.000Z",
+        text: "A washed-up pilot discovers a singing comet above a drowned city.",
       },
       currentMasterPlot: {
         id: "master_plot_v1",

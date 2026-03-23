@@ -92,6 +92,7 @@ describe("spec1 project flow", () => {
         premise: {
           path: "premise/v1.md",
           bytes: Buffer.byteLength(premiseText, "utf8"),
+          text: premiseText,
           updatedAt: expect.any(String),
         },
       }),
