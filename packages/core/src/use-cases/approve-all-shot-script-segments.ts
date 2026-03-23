@@ -1,5 +1,6 @@
-import type { ApproveShotScriptRequest, CurrentShotScript } from "@sweet-star/shared";
+import type { CurrentShotScript } from "@sweet-star/shared";
 
+import { mergeShotScriptSegment, toApprovedShotScriptSegment } from "../domain/shot-script";
 import { createShotScriptReviewRecord } from "../domain/shot-script-review";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
@@ -8,24 +9,24 @@ import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptReviewRepository } from "../ports/shot-script-review-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 
-export interface ApproveShotScriptInput extends ApproveShotScriptRequest {
+export interface ApproveAllShotScriptSegmentsInput {
   projectId: string;
 }
 
-export interface ApproveShotScriptUseCase {
-  execute(input: ApproveShotScriptInput): Promise<CurrentShotScript>;
+export interface ApproveAllShotScriptSegmentsUseCase {
+  execute(input: ApproveAllShotScriptSegmentsInput): Promise<CurrentShotScript>;
 }
 
-export interface ApproveShotScriptUseCaseDependencies {
+export interface ApproveAllShotScriptSegmentsUseCaseDependencies {
   projectRepository: ProjectRepository;
   shotScriptStorage: ShotScriptStorage;
   shotScriptReviewRepository: ShotScriptReviewRepository;
   clock: Clock;
 }
 
-export function createApproveShotScriptUseCase(
-  dependencies: ApproveShotScriptUseCaseDependencies,
-): ApproveShotScriptUseCase {
+export function createApproveAllShotScriptSegmentsUseCase(
+  dependencies: ApproveAllShotScriptSegmentsUseCaseDependencies,
+): ApproveAllShotScriptSegmentsUseCase {
   return {
     async execute(input) {
       const project = await dependencies.projectRepository.findById(input.projectId);
@@ -43,19 +44,27 @@ export function createApproveShotScriptUseCase(
       }
 
       const approvedAt = dependencies.clock.now();
-      const shotScript: CurrentShotScript = {
-        ...currentShotScript,
-        updatedAt: approvedAt,
-        approvedAt,
-      };
+      let updatedShotScript = currentShotScript;
+
+      for (const segment of currentShotScript.segments) {
+        if (segment.status === "approved" || segment.shots.length === 0) {
+          continue;
+        }
+
+        updatedShotScript = mergeShotScriptSegment(
+          updatedShotScript,
+          toApprovedShotScriptSegment(segment, approvedAt),
+          approvedAt,
+        );
+      }
 
       await dependencies.shotScriptStorage.writeCurrentShotScript({
         storageDir: project.storageDir,
-        shotScript,
+        shotScript: updatedShotScript,
       });
       await dependencies.shotScriptReviewRepository.insert(
         createShotScriptReviewRecord({
-          id: `ssr_${currentShotScript.id}_approve`,
+          id: `ssr_${currentShotScript.id}_approve_all`,
           projectId: project.id,
           shotScriptId: currentShotScript.id,
           action: "approve",
@@ -66,11 +75,11 @@ export function createApproveShotScriptUseCase(
       );
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "shot_script_approved",
+        status: updatedShotScript.approvedAt ? "shot_script_approved" : "shot_script_in_review",
         updatedAt: approvedAt,
       });
 
-      return shotScript;
+      return updatedShotScript;
     },
   };
 }

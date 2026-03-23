@@ -27,3 +27,4 @@ export const createCharacterSheetsGenerateTaskResponseSchema = taskDetailRespons
 export const createCharacterSheetGenerateTaskResponseSchema = taskDetailResponseSchema;
 export const createStoryboardGenerateTaskResponseSchema = taskDetailResponseSchema;
 export const createShotScriptGenerateTaskResponseSchema = taskDetailResponseSchema;
+export const createShotScriptSegmentGenerateTaskResponseSchema = taskDetailResponseSchema;

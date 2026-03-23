@@ -120,35 +120,49 @@ const shotScriptWorkspace = {
     sourceTaskId: "task-shot-script-1",
     updatedAt: "2024-01-01T00:00:00Z",
     approvedAt: null,
-    shots: [
+    segmentCount: 1,
+    shotCount: 1,
+    totalDurationSec: 4,
+    segments: [
       {
-        id: "shot-1",
-        sceneId: "scene-1",
         segmentId: "segment-1",
+        sceneId: "scene-1",
         order: 1,
-        shotCode: "S01-SG01",
-        shotPurpose: "Establish the flooded market.",
-        subjectCharacters: ["Rin"],
-        environment: "Flooded dawn market",
-        framing: "medium wide shot",
-        cameraAngle: "eye level",
-        composition: "Rin framed by lanterns",
-        actionMoment: "Rin pauses at the waterline",
-        emotionTone: "uneasy anticipation",
-        continuityNotes: "Keep soaked satchel on left shoulder",
-        imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-        negativePrompt: null,
-        motionHint: null,
+        name: "雨夜码头",
+        summary: "林夏在暴雨码头听见异响。",
         durationSec: 4,
+        status: "in_review" as const,
+        lastGeneratedAt: "2024-01-01T00:00:00Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot-1",
+            sceneId: "scene-1",
+            segmentId: "segment-1",
+            order: 1,
+            shotCode: "S01-SG01-SH01",
+            purpose: "建立码头空间。",
+            visual: "暴雨中的码头反着冷蓝色灯牌。",
+            subject: "林夏",
+            action: "林夏撑伞穿过码头入口。",
+            dialogue: null,
+            os: "今晚绝不能出错。",
+            audio: "暴雨、风声、船笛。",
+            transitionHint: null,
+            continuityNotes: "黑伞保持右手持伞。",
+            durationSec: 4,
+          },
+        ],
       },
     ],
   },
   latestReview: null,
   latestTask: null,
   availableActions: {
-    save: true,
-    approve: true,
-    reject: true,
+    saveSegment: true,
+    regenerateSegment: true,
+    approveSegment: true,
+    approveAll: true,
   },
 };
 
@@ -340,32 +354,40 @@ describe("Review Actions", () => {
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 
-  it("approves the shot script and redirects back to the project detail page", async () => {
-    vi.spyOn(apiModule.apiClient, "approveShotScript").mockResolvedValue({
+  it("approves the current shot-script segment and redirects when the whole draft becomes approved", async () => {
+    vi.spyOn(apiModule.apiClient, "approveShotScriptSegment").mockResolvedValue({
       ...shotScriptWorkspace.currentShotScript,
       approvedAt: "2024-01-01T00:00:01Z",
       updatedAt: "2024-01-01T00:00:01Z",
+      segments: [
+        {
+          ...shotScriptWorkspace.currentShotScript.segments[0],
+          status: "approved",
+          approvedAt: "2024-01-01T00:00:01Z",
+        },
+      ],
     });
 
     renderShotScriptPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "通过" }));
+    fireEvent.click(await screen.findByRole("button", { name: "通过本段" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.approveShotScript).toHaveBeenCalledWith("proj-1", {});
+      expect(apiModule.apiClient.approveShotScriptSegment).toHaveBeenCalledWith(
+        "proj-1",
+        "segment-1",
+        {},
+      );
     });
 
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 
-  it("rejects the shot script with reason and nextAction, then redirects back", async () => {
-    globalThis.prompt = vi.fn()
-      .mockReturnValueOnce("Need more coverage on the reveal.")
-      .mockReturnValueOnce("regenerate");
-    vi.spyOn(apiModule.apiClient, "rejectShotScript").mockResolvedValue({
+  it("regenerates the current shot-script segment and refreshes the workspace", async () => {
+    vi.spyOn(apiModule.apiClient, "regenerateShotScriptSegment").mockResolvedValue({
       id: "task-3",
       projectId: "proj-1",
-      type: "shot_script_generate",
+      type: "shot_script_segment_generate",
       status: "pending",
       createdAt: "2024-01-01T00:00:02Z",
       updatedAt: "2024-01-01T00:00:02Z",
@@ -381,13 +403,39 @@ describe("Review Actions", () => {
 
     renderShotScriptPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+    fireEvent.click(await screen.findByRole("button", { name: "重生成本段" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.rejectShotScript).toHaveBeenCalledWith("proj-1", {
-        reason: "Need more coverage on the reveal.",
-        nextAction: "regenerate",
-      });
+      expect(apiModule.apiClient.regenerateShotScriptSegment).toHaveBeenCalledWith(
+        "proj-1",
+        "segment-1",
+        {},
+      );
+    });
+
+    expect(apiModule.apiClient.getShotScriptReviewWorkspace).toHaveBeenCalledTimes(2);
+  });
+
+  it("approves all shot-script segments and redirects back to the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "approveAllShotScriptSegments").mockResolvedValue({
+      ...shotScriptWorkspace.currentShotScript,
+      approvedAt: "2024-01-01T00:00:02Z",
+      updatedAt: "2024-01-01T00:00:02Z",
+      segments: [
+        {
+          ...shotScriptWorkspace.currentShotScript.segments[0],
+          status: "approved",
+          approvedAt: "2024-01-01T00:00:02Z",
+        },
+      ],
+    });
+
+    renderShotScriptPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "全部通过" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.approveAllShotScriptSegments).toHaveBeenCalledWith("proj-1", {});
     });
 
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");

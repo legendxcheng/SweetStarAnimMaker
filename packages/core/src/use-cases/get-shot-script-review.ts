@@ -45,10 +45,14 @@ export function createGetShotScriptReviewUseCase(
       const latestReview = await dependencies.shotScriptReviewRepository.findLatestByProjectId(
         project.id,
       );
-      const latestTask = await dependencies.taskRepository.findLatestByProjectId(
-        project.id,
-        "shot_script_generate",
-      );
+      const [latestSegmentTask, latestBatchTask] = await Promise.all([
+        dependencies.taskRepository.findLatestByProjectId(
+          project.id,
+          "shot_script_segment_generate",
+        ),
+        dependencies.taskRepository.findLatestByProjectId(project.id, "shot_script_generate"),
+      ]);
+      const latestTask = latestSegmentTask ?? latestBatchTask;
 
       return {
         projectId: project.id,
@@ -58,9 +62,10 @@ export function createGetShotScriptReviewUseCase(
         latestReview,
         latestTask: latestTask ? toTaskDetailDto(latestTask) : null,
         availableActions: {
-          save: project.status === "shot_script_in_review",
-          approve: project.status === "shot_script_in_review",
-          reject: project.status === "shot_script_in_review",
+          saveSegment: project.status === "shot_script_in_review",
+          regenerateSegment: project.status === "shot_script_in_review",
+          approveSegment: project.status === "shot_script_in_review",
+          approveAll: project.status === "shot_script_in_review",
         },
       };
     },

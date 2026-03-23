@@ -17,6 +17,11 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "prompt-templates",
     "shot_script.generate.txt",
   );
+  const shotScriptSegmentPromptTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "shot_script.segment.generate.txt",
+  );
   const characterPromptTemplatePath = path.join(
     workspaceRoot,
     "prompt-templates",
@@ -26,6 +31,11 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     workspaceRoot,
     "prompt-templates",
     "character_sheet.turnaround.generate.txt",
+  );
+  const shotImageTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "shot_image.generate.txt",
   );
 
   await fs.mkdir(path.dirname(masterPlotPromptTemplatePath), { recursive: true });
@@ -54,6 +64,17 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "utf8",
   );
   await fs.writeFile(
+    shotScriptSegmentPromptTemplatePath,
+    [
+      "Expand one storyboard segment into multiple Chinese cinematic shots:",
+      "{{storyboardTitle}}",
+      "{{scene.name}}",
+      "{{segment.visual}}",
+      "{{segment.characterAction}}",
+    ].join("\n"),
+    "utf8",
+  );
+  await fs.writeFile(
     characterPromptTemplatePath,
     [
       "Design a single reusable character appearance prompt for {{characterName}}.",
@@ -65,6 +86,17 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
   await fs.writeFile(
     characterTurnaroundTemplatePath,
     "Create a combined turnaround sheet for {{characterName}}.\n{{promptTextCurrent}}",
+    "utf8",
+  );
+  await fs.writeFile(
+    shotImageTemplatePath,
+    [
+      "Create a cinematic shot image prompt.",
+      "{{shot.shotCode}}",
+      "{{shot.environment}}",
+      "{{shot.subjectCharacters}}",
+      "{{promptTextCurrent}}",
+    ].join("\n"),
     "utf8",
   );
 }

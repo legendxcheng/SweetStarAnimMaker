@@ -29,6 +29,7 @@ describe("approve storyboard use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -73,6 +74,7 @@ describe("approve storyboard use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };

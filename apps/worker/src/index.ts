@@ -8,6 +8,7 @@ import {
   type CharacterSheetPromptProvider,
   type MasterPlotProvider,
   shotScriptGenerateQueueName,
+  shotScriptSegmentGenerateQueueName,
   type ShotScriptProvider,
   storyboardGenerateQueueName,
   type StoryboardProvider,
@@ -40,6 +41,9 @@ export interface StartWorkerOptions {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processShotScriptGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processShotScriptSegmentGenerateTask?: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processCharacterSheetsGenerateTask: {
@@ -123,6 +127,18 @@ export async function startWorker(
       queueName: shotScriptGenerateQueueName,
       processor: async (job: WorkerJob) => {
         await shotScriptTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const shotScriptSegmentTaskProcessor = services.processShotScriptSegmentGenerateTask;
+
+  if (shotScriptSegmentTaskProcessor) {
+    processors.splice(3, 0, {
+      queueName: shotScriptSegmentGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await shotScriptSegmentTaskProcessor.execute({
           taskId: job.data.taskId,
         });
       },

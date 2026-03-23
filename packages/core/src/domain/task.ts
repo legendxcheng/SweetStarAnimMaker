@@ -5,6 +5,7 @@ export const characterSheetsGenerateQueueName = "character-sheets-generate";
 export const characterSheetGenerateQueueName = "character-sheet-generate";
 export const storyboardGenerateQueueName = "storyboard-generate";
 export const shotScriptGenerateQueueName = "shot-script-generate";
+export const shotScriptSegmentGenerateQueueName = "shot-script-segment-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -121,7 +122,46 @@ export interface ShotScriptGenerateTaskInput {
     promptTextCurrent: string;
     imageAssetPath?: string | null;
   }>;
-  promptTemplateKey: "shot_script.generate";
+  promptTemplateKey: "shot_script.segment.generate";
+}
+
+export interface ShotScriptSegmentSnapshot {
+  id: string;
+  order: number;
+  durationSec: number | null;
+  visual: string;
+  characterAction: string;
+  dialogue: string;
+  voiceOver: string;
+  audio: string;
+  purpose: string;
+}
+
+export interface ShotScriptSceneSnapshot {
+  id: string;
+  order: number;
+  name: string;
+  dramaticPurpose: string;
+  segments: ShotScriptSegmentSnapshot[];
+}
+
+export interface ShotScriptSegmentGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "shot_script_segment_generate";
+  sourceStoryboardId: string;
+  sourceShotScriptId: string;
+  sceneId: string;
+  segmentId: string;
+  segment: ShotScriptSegmentSnapshot;
+  scene: Omit<ShotScriptSceneSnapshot, "segments">;
+  storyboardTitle: string | null;
+  episodeTitle: string | null;
+  sourceMasterPlotId?: string;
+  masterPlot?: ShotScriptGenerateTaskInput["masterPlot"];
+  sourceCharacterSheetBatchId?: string;
+  characterSheets?: ShotScriptGenerateTaskInput["characterSheets"];
+  promptTemplateKey: "shot_script.segment.generate";
 }
 
 export interface CreateTaskRecordInput {

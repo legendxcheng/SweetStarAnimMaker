@@ -13,6 +13,7 @@ describe("create project use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -77,6 +78,7 @@ describe("create project use case", () => {
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
+      currentImageBatch: null,
     });
   });
 
@@ -92,6 +94,7 @@ describe("create project use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {

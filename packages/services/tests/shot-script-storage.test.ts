@@ -31,26 +31,56 @@ describe("shot script storage", () => {
       sourceTaskId: "task_20260322_shot_script",
       updatedAt: "2026-03-22T12:30:00.000Z",
       approvedAt: null,
-      shots: [
+      segmentCount: 1,
+      shotCount: 2,
+      totalDurationSec: 4,
+      segments: [
         {
-          id: "shot_1",
-          sceneId: "scene_1",
           segmentId: "segment_1",
+          sceneId: "scene_1",
           order: 1,
-          shotCode: "S01-SG01",
-          shotPurpose: "Establish the flooded market and Rin's hesitation.",
-          subjectCharacters: ["Rin"],
-          environment: "Flooded dawn market",
-          framing: "medium wide shot",
-          cameraAngle: "eye level",
-          composition: "Rin framed by hanging lanterns",
-          actionMoment: "Rin pauses at the waterline",
-          emotionTone: "uneasy anticipation",
-          continuityNotes: "Keep soaked satchel on left shoulder",
-          imagePrompt: "anime storyboard frame of Rin in a flooded market at dawn",
-          negativePrompt: null,
-          motionHint: null,
+          name: "雨市相遇",
+          summary: "林在积水市场边停下，看到熟悉身影。",
           durationSec: 4,
+          status: "in_review",
+          lastGeneratedAt: "2026-03-22T12:30:00.000Z",
+          approvedAt: null,
+          shots: [
+            {
+              id: "shot_1",
+              sceneId: "scene_1",
+              segmentId: "segment_1",
+              order: 1,
+              shotCode: "SC01-SG01-SH01",
+              durationSec: 2,
+              purpose: "建立雨市空间和主角位置。",
+              visual: "清晨积水市场，林站在灯笼下。",
+              subject: "林",
+              action: "停在水边，观察前方人群。",
+              dialogue: null,
+              os: null,
+              audio: "雨声、远处叫卖声。",
+              transitionHint: "切近景",
+              continuityNotes: "书包保持在左肩。",
+            },
+            {
+              id: "shot_2",
+              sceneId: "scene_1",
+              segmentId: "segment_1",
+              order: 2,
+              shotCode: "SC01-SG01-SH02",
+              durationSec: 2,
+              purpose: "推进林的情绪反应。",
+              visual: "林看见熟悉背影，神情一滞。",
+              subject: "林",
+              action: "抬头，目光定住。",
+              dialogue: "是她？",
+              os: null,
+              audio: "环境声压低，心跳声轻起。",
+              transitionHint: null,
+              continuityNotes: "延续前镜头站位和朝向。",
+            },
+          ],
         },
       ],
     };
@@ -89,7 +119,7 @@ describe("shot script storage", () => {
         ),
         "utf8",
       ),
-    ).resolves.toContain("S01-SG01");
+    ).resolves.toContain("SC01-SG01-SH01");
     await expect(
       fs.readFile(
         path.join(
@@ -103,7 +133,7 @@ describe("shot script storage", () => {
         ),
         "utf8",
       ),
-    ).resolves.toContain("Flooded dawn market");
+    ).resolves.toContain("雨市相遇");
   });
 
   it("initializes and reads shot script prompt templates using project override first", async () => {
@@ -113,18 +143,22 @@ describe("shot script storage", () => {
     const storage = createShotScriptStorage({
       paths: createLocalDataPaths(tempDir),
     });
-    const globalPromptPath = path.join(tempDir, "prompt-templates", "shot_script.generate.txt");
+    const globalPromptPath = path.join(
+      tempDir,
+      "prompt-templates",
+      "shot_script.segment.generate.txt",
+    );
 
     await fs.mkdir(path.dirname(globalPromptPath), { recursive: true });
     await fs.writeFile(
       globalPromptPath,
-      "Global shot script prompt\n{{storyboard.title}}\n{{storyboard.scenes.0.segments.0.visual}}",
+      "Global shot script prompt\n{{storyboardTitle}}\n{{segment.visual}}",
       "utf8",
     );
 
     await storage.initializePromptTemplate({
       storageDir: "projects/proj_20260322_ab12cd-my-story",
-      promptTemplateKey: "shot_script.generate",
+      promptTemplateKey: "shot_script.segment.generate",
     });
 
     const projectPromptPath = path.join(
@@ -133,17 +167,17 @@ describe("shot script storage", () => {
       "projects",
       "proj_20260322_ab12cd-my-story",
       "prompt-templates",
-      "shot_script.generate.txt",
+      "shot_script.segment.generate.txt",
     );
 
-    await expect(fs.readFile(projectPromptPath, "utf8")).resolves.toContain("{{storyboard.title}}");
+    await expect(fs.readFile(projectPromptPath, "utf8")).resolves.toContain("{{storyboardTitle}}");
 
     await fs.writeFile(projectPromptPath, "Project shot script prompt", "utf8");
 
     await expect(
       storage.readPromptTemplate({
         storageDir: "projects/proj_20260322_ab12cd-my-story",
-        promptTemplateKey: "shot_script.generate",
+        promptTemplateKey: "shot_script.segment.generate",
       }),
     ).resolves.toBe("Project shot script prompt");
   });
@@ -155,7 +189,11 @@ describe("shot script storage", () => {
     const storage = createShotScriptStorage({
       paths: createLocalDataPaths(tempDir),
     });
-    const globalPromptPath = path.join(tempDir, "prompt-templates", "shot_script.generate.txt");
+    const globalPromptPath = path.join(
+      tempDir,
+      "prompt-templates",
+      "shot_script.segment.generate.txt",
+    );
 
     await fs.mkdir(path.dirname(globalPromptPath), { recursive: true });
     await fs.writeFile(globalPromptPath, "global shot script prompt", "utf8");
@@ -163,7 +201,7 @@ describe("shot script storage", () => {
     await expect(
       storage.readPromptTemplate({
         storageDir: "projects/proj_20260322_ab12cd-my-story",
-        promptTemplateKey: "shot_script.generate",
+        promptTemplateKey: "shot_script.segment.generate",
       }),
     ).resolves.toBe("global shot script prompt");
   });
@@ -179,8 +217,8 @@ describe("shot script storage", () => {
     await expect(
       storage.readPromptTemplate({
         storageDir: "projects/proj_20260322_ab12cd-my-story",
-        promptTemplateKey: "shot_script.generate",
+        promptTemplateKey: "shot_script.segment.generate",
       }),
-    ).rejects.toThrow("Prompt template not found: shot_script.generate");
+    ).rejects.toThrow("Prompt template not found: shot_script.segment.generate");
   });
 });

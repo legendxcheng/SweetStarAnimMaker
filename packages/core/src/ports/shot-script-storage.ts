@@ -2,12 +2,12 @@ import type { CurrentShotScript } from "@sweet-star/shared";
 
 export interface InitializeShotScriptPromptTemplateInput {
   storageDir: string;
-  promptTemplateKey: "shot_script.generate";
+  promptTemplateKey: "shot_script.segment.generate";
 }
 
 export interface ReadShotScriptPromptTemplateInput {
   storageDir: string;
-  promptTemplateKey: "shot_script.generate";
+  promptTemplateKey: "shot_script.segment.generate";
 }
 
 export interface WriteCurrentShotScriptInput {

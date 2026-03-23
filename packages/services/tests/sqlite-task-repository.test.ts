@@ -38,20 +38,20 @@ describe("sqlite task repository", () => {
     expect(table?.name).toBe("tasks");
   });
 
-  it("inserts and finds a shot script task by id", async () => {
+  it("inserts and finds an image task by id", async () => {
     const { repository } = await createRepositoryContext();
     const task = createTaskRecord({
-      id: "task_20260321_shot_script",
+      id: "task_20260323_image",
       projectId: "proj_20260321_ab12cd",
       projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
-      type: "shot_script_generate",
-      queueName: "shot-script-generate",
-      createdAt: "2026-03-21T12:00:00.000Z",
+      type: "image_generate",
+      queueName: "image-generate",
+      createdAt: "2026-03-23T12:00:00.000Z",
     });
 
     repository.insert(task);
 
-    expect(repository.findById("task_20260321_shot_script")).toEqual(task);
+    expect(repository.findById("task_20260323_image")).toEqual(task);
   });
 
   it("updates status transitions and error metadata", async () => {

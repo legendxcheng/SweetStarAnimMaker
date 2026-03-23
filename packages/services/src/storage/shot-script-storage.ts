@@ -23,7 +23,10 @@ export function createShotScriptStorage(
 ): ShotScriptStorage {
   return {
     async initializePromptTemplate(input) {
-      const projectPromptTemplatePath = toProjectPromptTemplatePath(input.storageDir);
+      const projectPromptTemplatePath = toProjectPromptTemplatePath(
+        input.storageDir,
+        input.promptTemplateKey,
+      );
       const globalPromptTemplatePath = options.paths.globalPromptTemplatePath(
         input.promptTemplateKey,
       );
@@ -32,7 +35,10 @@ export function createShotScriptStorage(
       await fs.copyFile(globalPromptTemplatePath, projectPromptTemplatePath);
     },
     async readPromptTemplate(input) {
-      const projectPromptTemplatePath = toProjectPromptTemplatePath(input.storageDir);
+      const projectPromptTemplatePath = toProjectPromptTemplatePath(
+        input.storageDir,
+        input.promptTemplateKey,
+      );
 
       try {
         return await fs.readFile(projectPromptTemplatePath, "utf8");
@@ -132,11 +138,11 @@ export function createShotScriptStorage(
     },
   };
 
-  function toProjectPromptTemplatePath(storageDir: string) {
+  function toProjectPromptTemplatePath(storageDir: string, promptTemplateKey: string) {
     return path.join(
       options.paths.projectPath(storageDir),
       "prompt-templates",
-      "shot_script.generate.txt",
+      `${promptTemplateKey}.txt`,
     );
   }
 
@@ -166,25 +172,37 @@ function renderShotScriptMarkdown(shotScript: CurrentShotScript) {
     `Source Storyboard: ${shotScript.sourceStoryboardId}`,
     `Updated At: ${shotScript.updatedAt}`,
     `Approved At: ${shotScript.approvedAt ?? "Not approved"}`,
+    `Segments: ${shotScript.segmentCount}`,
+    `Shots: ${shotScript.shotCount}`,
     "",
   ];
 
-  for (const shot of shotScript.shots) {
-    lines.push(`## ${shot.order}. ${shot.shotCode}`);
-    lines.push(`Purpose: ${shot.shotPurpose}`);
-    lines.push(`Scene / Segment: ${shot.sceneId} / ${shot.segmentId}`);
-    lines.push(`Characters: ${shot.subjectCharacters.join(", ") || "(none)"}`);
-    lines.push(`Environment: ${shot.environment}`);
-    lines.push(`Framing: ${shot.framing}`);
-    lines.push(`Camera Angle: ${shot.cameraAngle}`);
-    lines.push(`Composition: ${shot.composition}`);
-    lines.push(`Action: ${shot.actionMoment}`);
-    lines.push(`Emotion: ${shot.emotionTone}`);
-    lines.push(`Continuity: ${shot.continuityNotes}`);
-    lines.push(`Image Prompt: ${shot.imagePrompt}`);
-    lines.push(`Negative Prompt: ${shot.negativePrompt ?? "(none)"}`);
-    lines.push(`Motion Hint: ${shot.motionHint ?? "(none)"}`);
-    lines.push(`Duration (sec): ${shot.durationSec ?? "Unspecified"}`);
+  for (const segment of shotScript.segments) {
+    lines.push(
+      `## Segment ${segment.order}: ${segment.name ?? segment.segmentId}`,
+    );
+    lines.push(`Scene / Segment: ${segment.sceneId} / ${segment.segmentId}`);
+    lines.push(`Summary: ${segment.summary}`);
+    lines.push(`Status: ${segment.status}`);
+    lines.push(`Duration (sec): ${segment.durationSec ?? "Unspecified"}`);
+    lines.push(`Approved At: ${segment.approvedAt ?? "Not approved"}`);
+    lines.push("");
+
+    for (const shot of segment.shots) {
+      lines.push(`### ${shot.order}. ${shot.shotCode}`);
+      lines.push(`Purpose: ${shot.purpose}`);
+      lines.push(`Subject: ${shot.subject}`);
+      lines.push(`Visual: ${shot.visual}`);
+      lines.push(`Action: ${shot.action}`);
+      lines.push(`Dialogue: ${shot.dialogue ?? "(none)"}`);
+      lines.push(`OS: ${shot.os ?? "(none)"}`);
+      lines.push(`Audio: ${shot.audio ?? "(none)"}`);
+      lines.push(`Transition Hint: ${shot.transitionHint ?? "(none)"}`);
+      lines.push(`Continuity: ${shot.continuityNotes ?? "(none)"}`);
+      lines.push(`Duration (sec): ${shot.durationSec ?? "Unspecified"}`);
+      lines.push("");
+    }
+
     lines.push("");
   }
 

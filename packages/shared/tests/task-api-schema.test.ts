@@ -9,6 +9,7 @@ describe("task api schema", () => {
       "character_sheet_generate",
       "storyboard_generate",
       "shot_script_generate",
+      "shot_script_segment_generate",
     ]);
   });
 
@@ -140,4 +141,26 @@ describe("task api schema", () => {
 
     expect(parsed.type).toBe("shot_script_generate");
   });
+
+  it("accepts a shot-script-segment generation task detail response", () => {
+    const parsed = shared.taskDetailResponseSchema.parse({
+      id: "task_20260323_shot_segment_1",
+      projectId: "proj_20260323_ab12cd",
+      type: "shot_script_segment_generate",
+      status: "pending",
+      createdAt: "2026-03-23T12:10:00.000Z",
+      updatedAt: "2026-03-23T12:10:00.000Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260323_shot_segment_1/input.json",
+        outputPath: "tasks/task_20260323_shot_segment_1/output.json",
+        logPath: "tasks/task_20260323_shot_segment_1/log.txt",
+      },
+    });
+
+    expect(parsed.type).toBe("shot_script_segment_generate");
+  });
+
 });

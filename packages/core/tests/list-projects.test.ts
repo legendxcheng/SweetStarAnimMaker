@@ -19,6 +19,7 @@ describe("list projects use case", () => {
           currentCharacterSheetBatchId: "char_batch_v1",
           currentStoryboardId: null,
           currentShotScriptId: "shot_script_20260322_ab12cd",
+          currentImageBatchId: "image_batch_1",
           status: "master_plot_in_review",
           createdAt: "2026-03-20T10:00:00.000Z",
           updatedAt: "2026-03-20T10:30:00.000Z",
@@ -35,6 +36,7 @@ describe("list projects use case", () => {
           currentCharacterSheetBatchId: null,
           currentStoryboardId: null,
           currentShotScriptId: null,
+          currentImageBatchId: null,
           status: "premise_ready",
           createdAt: "2026-03-20T11:00:00.000Z",
           updatedAt: "2026-03-20T11:05:00.000Z",
@@ -46,6 +48,7 @@ describe("list projects use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const masterPlotStorage = {
@@ -136,12 +139,35 @@ describe("list projects use case", () => {
       findCharacterById: vi.fn(),
       updateCharacter: vi.fn(),
     };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn().mockResolvedValue({
+        id: "image_batch_1",
+        projectId: "proj_20260320_ab12cd",
+        projectStorageDir: "projects/proj_20260320_ab12cd-sky-choir",
+        sourceShotScriptId: "shot_script_20260322_ab12cd",
+        imageCount: 2,
+        storageDir: "projects/proj_20260320_ab12cd-sky-choir/images/batches/image_batch_1",
+        manifestRelPath: "images/batches/image_batch_1/manifest.json",
+        createdAt: "2026-03-23T12:00:00.000Z",
+        updatedAt: "2026-03-23T12:10:00.000Z",
+      }),
+      listImagesByBatchId: vi.fn().mockResolvedValue([
+        { id: "image_1", status: "approved" },
+        { id: "image_2", status: "in_review" },
+      ]),
+      insertImage: vi.fn(),
+      findImageById: vi.fn(),
+      updateImage: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+    };
     const useCase = createListProjectsUseCase({
       repository,
       masterPlotStorage,
       storyboardStorage,
       shotScriptStorage,
       characterSheetRepository,
+      shotImageRepository,
     });
 
     const result = await useCase.execute();
@@ -153,8 +179,11 @@ describe("list projects use case", () => {
     expect(result[0].currentMasterPlot?.title).toBe("The Last Sky Choir");
     expect(result[0].currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result[0].currentShotScript?.shotCount).toBe(1);
+    expect(result[0].currentImageBatch?.id).toBe("image_batch_1");
+    expect(result[0].currentImageBatch?.approvedImageCount).toBe(1);
     expect(result[1].currentMasterPlot).toBeNull();
     expect(result[1].currentCharacterSheetBatch).toBeNull();
     expect(result[1].currentShotScript).toBeNull();
+    expect(result[1].currentImageBatch).toBeNull();
   });
 });

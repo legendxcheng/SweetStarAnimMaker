@@ -25,10 +25,6 @@ function formatDuration(durationSec: number | null) {
   return durationSec === null ? "未设置" : `${durationSec} 秒`;
 }
 
-function formatCharacters(characters: string[]) {
-  return characters.length > 0 ? characters.join("，") : "无";
-}
-
 export function ShotScriptPhasePanel({
   project,
   task,
@@ -92,7 +88,7 @@ export function ShotScriptPhasePanel({
           <div>
             <h3 className="text-lg font-semibold text-(--color-text-primary)">镜头脚本工作区</h3>
             <p className="text-sm text-(--color-text-muted) mt-1">
-              基于已通过的分镜生成镜头级拍摄脚本，并在审核通过后进入出图阶段。
+              基于已通过的分镜逐段生成镜头级拍摄脚本，作为后续视频阶段的输入。
             </p>
           </div>
           <button
@@ -165,6 +161,10 @@ export function ShotScriptPhasePanel({
               <p className={metaValueClass}>{project.currentShotScript.shotCount}</p>
             </div>
             <div>
+              <p className={metaLabelClass}>段落数</p>
+              <p className={metaValueClass}>{project.currentShotScript.segmentCount}</p>
+            </div>
+            <div>
               <p className={metaLabelClass}>总时长</p>
               <p className={metaValueClass}>
                 {formatDuration(project.currentShotScript.totalDurationSec)}
@@ -184,9 +184,9 @@ export function ShotScriptPhasePanel({
         <div className={cardClass}>
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
-              <h4 className="text-base font-semibold text-(--color-text-primary)">镜头详情</h4>
+              <h4 className="text-base font-semibold text-(--color-text-primary)">段落详情</h4>
               <p className="text-sm text-(--color-text-muted) mt-1">
-                当前镜头脚本的完整只读内容，便于在项目详情页直接核查。
+                当前镜头脚本按 Segment 分组展示，每个 Segment 内包含多个镜头。
               </p>
             </div>
           </div>
@@ -221,94 +221,130 @@ export function ShotScriptPhasePanel({
                   <p className={metaLabelClass}>来源分镜</p>
                   <p className={metaValueClass}>{currentShotScript.sourceStoryboardId}</p>
                 </div>
+                <div>
+                  <p className={metaLabelClass}>段落数</p>
+                  <p className={metaValueClass}>{currentShotScript.segmentCount}</p>
+                </div>
+                <div>
+                  <p className={metaLabelClass}>镜头数</p>
+                  <p className={metaValueClass}>{currentShotScript.shotCount}</p>
+                </div>
               </div>
 
-              {currentShotScript.shots.map((shot) => (
+              {currentShotScript.segments.map((segment) => (
                 <article
-                  key={shot.id}
+                  key={segment.segmentId}
                   className="rounded-xl border border-(--color-border-muted) bg-(--color-bg-base) p-4"
                 >
-                  <div className="grid gap-4">
+                  <div className="grid gap-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className={metaLabelClass}>镜头 {shot.order}</p>
+                        <p className={metaLabelClass}>段落 {segment.order}</p>
                         <p className="text-base font-semibold text-(--color-text-primary)">
-                          {shot.shotCode}
+                          {segment.name ?? segment.segmentId}
                         </p>
                       </div>
                       <span className="text-xs text-(--color-text-muted)">
-                        时长：{formatDuration(shot.durationSec)}
+                        时长：{formatDuration(segment.durationSec)}
                       </span>
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
                       <div>
-                        <p className={metaLabelClass}>镜头目的</p>
+                        <p className={metaLabelClass}>场景 / 段落 ID</p>
                         <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.shotPurpose}
+                          {segment.sceneId} / {segment.segmentId}
                         </p>
                       </div>
                       <div>
-                        <p className={metaLabelClass}>角色</p>
+                        <p className={metaLabelClass}>状态</p>
                         <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {formatCharacters(shot.subjectCharacters)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>环境</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.environment}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>景别 / 机位</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.framing} / {shot.cameraAngle}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>构图</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.composition}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>动作瞬间</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.actionMoment}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>情绪</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.emotionTone}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>连续性提示</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.continuityNotes}
+                          {segment.status}
                         </p>
                       </div>
                     </div>
                     <div>
-                      <p className={metaLabelClass}>出图提示词</p>
+                      <p className={metaLabelClass}>段落摘要</p>
                       <p className="text-sm leading-7 text-(--color-text-primary)">
-                        {shot.imagePrompt}
+                        {segment.summary}
                       </p>
                     </div>
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div>
-                        <p className={metaLabelClass}>负面提示</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.negativePrompt || "无"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className={metaLabelClass}>运动提示</p>
-                        <p className="text-sm leading-7 text-(--color-text-primary)">
-                          {shot.motionHint || "无"}
-                        </p>
-                      </div>
+                    <div className="grid gap-4">
+                      {segment.shots.map((shot) => (
+                        <article
+                          key={shot.id}
+                          className="rounded-lg border border-(--color-border-muted) bg-(--color-bg-surface) p-4"
+                        >
+                          <div className="grid gap-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className={metaLabelClass}>镜头 {shot.order}</p>
+                                <p className="text-base font-semibold text-(--color-text-primary)">
+                                  {shot.shotCode}
+                                </p>
+                              </div>
+                              <span className="text-xs text-(--color-text-muted)">
+                                时长：{formatDuration(shot.durationSec)}
+                              </span>
+                            </div>
+                            <div className="grid gap-4 lg:grid-cols-2">
+                              <div>
+                                <p className={metaLabelClass}>镜头目的</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.purpose}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>主体</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.subject}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>画面</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.visual}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>动作</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.action}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>对白</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.dialogue || "无"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>旁白 / OS</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.os || "无"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>音频</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.audio || "无"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>转场提示</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.transitionHint || "无"}
+                                </p>
+                              </div>
+                              <div className="lg:col-span-2">
+                                <p className={metaLabelClass}>连续性提示</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {shot.continuityNotes || "无"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </div>
                 </article>

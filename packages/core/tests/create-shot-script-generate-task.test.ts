@@ -32,6 +32,7 @@ describe("create shot script generate task use case", () => {
       updateCurrentCharacterSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -171,7 +172,7 @@ describe("create shot script generate task use case", () => {
         masterPlot: expect.objectContaining({
           title: "The Last Sky Choir",
         }),
-        promptTemplateKey: "shot_script.generate",
+        promptTemplateKey: "shot_script.segment.generate",
       }),
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
@@ -197,6 +198,7 @@ describe("create shot script generate task use case", () => {
         updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -289,6 +291,7 @@ describe("create shot script generate task use case", () => {
         updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },
@@ -381,6 +384,7 @@ describe("create shot script generate task use case", () => {
         updateCurrentCharacterSheetBatch: vi.fn(),
         updateCurrentStoryboard: vi.fn(),
         updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
         updateStatus: vi.fn(),
         listAll: vi.fn(),
       },

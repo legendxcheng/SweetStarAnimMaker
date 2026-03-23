@@ -1,22 +1,38 @@
+export type ShotScriptSegmentStatus =
+  | "pending"
+  | "generating"
+  | "in_review"
+  | "approved";
+
 export interface ShotScriptItem {
   id: string;
   sceneId: string;
   segmentId: string;
   order: number;
   shotCode: string;
-  shotPurpose: string;
-  subjectCharacters: string[];
-  environment: string;
-  framing: string;
-  cameraAngle: string;
-  composition: string;
-  actionMoment: string;
-  emotionTone: string;
-  continuityNotes: string;
-  imagePrompt: string;
-  negativePrompt: string | null;
-  motionHint: string | null;
   durationSec: number | null;
+  purpose: string;
+  visual: string;
+  subject: string;
+  action: string;
+  dialogue: string | null;
+  os: string | null;
+  audio: string | null;
+  transitionHint: string | null;
+  continuityNotes: string | null;
+}
+
+export interface ShotScriptSegment {
+  segmentId: string;
+  sceneId: string;
+  order: number;
+  name: string | null;
+  summary: string;
+  durationSec: number | null;
+  status: ShotScriptSegmentStatus;
+  lastGeneratedAt: string | null;
+  approvedAt: string | null;
+  shots: ShotScriptItem[];
 }
 
 export interface CurrentShotScriptSummary {
@@ -26,16 +42,11 @@ export interface CurrentShotScriptSummary {
   sourceTaskId: string | null;
   updatedAt: string;
   approvedAt: string | null;
+  segmentCount: number;
   shotCount: number;
   totalDurationSec: number | null;
 }
 
-export interface CurrentShotScript {
-  id: string;
-  title: string | null;
-  sourceStoryboardId: string;
-  sourceTaskId: string | null;
-  updatedAt: string;
-  approvedAt: string | null;
-  shots: ShotScriptItem[];
+export interface CurrentShotScript extends CurrentShotScriptSummary {
+  segments: ShotScriptSegment[];
 }

@@ -45,20 +45,23 @@ export {
   masterPlotReviewWorkspaceResponseSchema,
 } from "./schemas/storyboard-api";
 export {
-  approveShotScriptRequestSchema,
+  approveAllShotScriptSegmentsRequestSchema,
+  approveShotScriptSegmentRequestSchema,
   currentShotScriptResponseSchema,
   currentShotScriptSummaryResponseSchema,
-  rejectShotScriptRequestSchema,
-  saveShotScriptRequestSchema,
   shotScriptItemResponseSchema,
+  shotScriptSegmentResponseSchema,
   shotScriptReviewSummarySchema,
   shotScriptReviewWorkspaceResponseSchema,
+  regenerateShotScriptSegmentRequestSchema,
+  saveShotScriptSegmentRequestSchema,
 } from "./schemas/shot-script-api";
 export {
   createMasterPlotGenerateTaskResponseSchema,
   createCharacterSheetGenerateTaskResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
   createShotScriptGenerateTaskResponseSchema,
+  createShotScriptSegmentGenerateTaskResponseSchema,
   createStoryboardGenerateTaskResponseSchema,
   taskDetailResponseSchema,
 } from "./schemas/task-api";
@@ -81,6 +84,8 @@ export type {
   CurrentShotScript,
   CurrentShotScriptSummary,
   ShotScriptItem,
+  ShotScriptSegment,
+  ShotScriptSegmentStatus,
 } from "./types/shot-script";
 export type {
   CurrentStoryboardSummary,
@@ -105,9 +110,10 @@ export type {
   StoryboardReviewWorkspace,
 } from "./types/storyboard-review";
 export type {
-  ApproveShotScriptRequest,
-  RejectShotScriptRequest,
-  SaveShotScriptRequest,
+  ApproveAllShotScriptSegmentsRequest,
+  ApproveShotScriptSegmentRequest,
+  RegenerateShotScriptSegmentRequest,
+  SaveShotScriptSegmentRequest,
   ShotScriptReviewAvailableActions,
   ShotScriptReviewSummary,
   ShotScriptReviewWorkspace,
