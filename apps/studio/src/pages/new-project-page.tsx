@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiClient } from "../services/api-client";
 import { PageHeader } from "../components/page-header";
 import { ErrorState } from "../components/error-state";
+import { getButtonClassName } from "../styles/button-styles";
 
 export function NewProjectPage() {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ export function NewProjectPage() {
           <button
             type="submit"
             disabled={submitting || !name.trim() || !premiseText.trim()}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName()}
           >
             {submitting ? "创建中..." : "创建项目"}
           </button>
@@ -96,7 +97,7 @@ export function NewProjectPage() {
             type="button"
             onClick={() => navigate("/projects")}
             disabled={submitting}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName({ variant: "secondary" })}
           >
             取消
           </button>

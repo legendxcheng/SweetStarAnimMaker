@@ -8,6 +8,7 @@ import type {
 
 import { apiClient } from "../services/api-client";
 import { ErrorState } from "./error-state";
+import { getButtonClassName } from "../styles/button-styles";
 
 const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -359,7 +360,7 @@ export function ImagePhasePanel({
                   void handleRegenerateAllPrompts();
                 }}
                 disabled={actionBusy !== null}
-                className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-warning)/30 text-(--color-warning) disabled:opacity-40 disabled:cursor-not-allowed"
+                className={getButtonClassName({ variant: "warning" })}
               >
                 重新生成当前批次全部 Prompt
               </button>
@@ -371,7 +372,7 @@ export function ImagePhasePanel({
                   void handleApproveAll();
                 }}
                 disabled={actionBusy !== null}
-                className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-success)/30 text-(--color-success) disabled:opacity-40 disabled:cursor-not-allowed"
+                className={getButtonClassName({ variant: "success" })}
               >
                 全部画面审核通过
               </button>
@@ -380,7 +381,7 @@ export function ImagePhasePanel({
               type="button"
               onClick={onGenerate}
               disabled={disableGenerate}
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              className={getButtonClassName()}
             >
               {creatingTask ? "启动中..." : "生成画面"}
             </button>
@@ -678,7 +679,7 @@ function FrameEditorCard({
               void onSavePrompt(frame);
             }}
             disabled={isBusy || !canSavePrompt}
-            className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-border-muted) text-(--color-text-primary) disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName({ variant: "secondary" })}
           >
             保存{frameLabel}提示词
           </button>
@@ -688,7 +689,7 @@ function FrameEditorCard({
               void onRegeneratePrompt(frame);
             }}
             disabled={isBusy || isPromptPending}
-            className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-warning)/30 text-(--color-warning) disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName({ variant: "warning" })}
           >
             重新生成{frameLabel} Prompt
           </button>
@@ -698,7 +699,7 @@ function FrameEditorCard({
               void onGenerateFrame(frame);
             }}
             disabled={isBusy || !canGenerateFrame}
-            className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-accent)/30 text-(--color-accent) disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName()}
           >
             生成{frameLabel}图片
           </button>
@@ -708,7 +709,7 @@ function FrameEditorCard({
               void onApproveFrame(frame);
             }}
             disabled={isBusy || !canApproveFrame}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-(--color-success) text-(--color-bg-base) disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName({ variant: "success" })}
           >
             审核通过{frameLabel}
           </button>

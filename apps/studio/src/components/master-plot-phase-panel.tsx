@@ -2,6 +2,7 @@ import type { ProjectDetail, TaskDetail } from "@sweet-star/shared";
 import { Link } from "react-router-dom";
 
 import { ErrorState } from "./error-state";
+import { getButtonClassName } from "../styles/button-styles";
 
 const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -54,7 +55,7 @@ export function MasterPlotPhasePanel({
             type="button"
             onClick={onGenerate}
             disabled={disableGenerate}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName()}
           >
             {creatingTask ? "启动中..." : "生成主情节"}
           </button>
@@ -101,7 +102,7 @@ export function MasterPlotPhasePanel({
             {project.status === "master_plot_in_review" && (
               <Link
                 to={`/projects/${project.id}/master-plot/review`}
-                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity no-underline"
+                className={`inline-flex items-center no-underline ${getButtonClassName()}`}
               >
                 进入主情节审核 →
               </Link>

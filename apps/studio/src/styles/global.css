@@ -12,9 +12,12 @@
   --color-text-muted: #8b949e;
   --color-text-disabled: #4b5563;
   --color-success: #22c55e;
+  --color-success-end: #4ade80;
   --color-warning: #f59e0b;
+  --color-warning-end: #fbbf24;
   --color-info: #3b82f6;
   --color-danger: #f87171;
+  --color-danger-end: #fb7185;
 }
 
 @layer base {

@@ -1,3 +1,5 @@
+import { getButtonClassName } from "../styles/button-styles";
+
 interface ErrorStateProps {
   error: Error;
   retry?: () => void;
@@ -11,7 +13,10 @@ export function ErrorState({ error, retry }: ErrorStateProps) {
       {retry && (
         <button
           onClick={retry}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors cursor-pointer"
+          className={`${getButtonClassName({
+            variant: "danger",
+            size: "compact",
+          })} text-xs`}
         >
           重试
         </button>

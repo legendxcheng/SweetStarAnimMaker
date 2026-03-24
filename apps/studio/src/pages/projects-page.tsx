@@ -7,6 +7,7 @@ import { PageHeader } from "../components/page-header";
 import { StatusBadge } from "../components/status-badge";
 import { EmptyState } from "../components/empty-state";
 import { ErrorState } from "../components/error-state";
+import { getButtonClassName } from "../styles/button-styles";
 
 export function ProjectsPage() {
   const [data, setData] = useState<ProjectSummary[] | null>(null);
@@ -47,7 +48,7 @@ export function ProjectsPage() {
               action={
                 <Link
                   to="/projects/new"
-                  className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity"
+                  className={`inline-flex items-center no-underline ${getButtonClassName()}`}
                 >
                   创建项目
                 </Link>

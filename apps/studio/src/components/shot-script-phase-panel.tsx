@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 
 import { apiClient } from "../services/api-client";
 import { ErrorState } from "./error-state";
+import { getButtonClassName } from "../styles/button-styles";
 
 const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -101,7 +102,7 @@ export function ShotScriptPhasePanel({
             type="button"
             onClick={onGenerate}
             disabled={disableGenerate}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName()}
           >
             {creatingTask ? "启动中..." : generateLabel}
           </button>
@@ -148,7 +149,7 @@ export function ShotScriptPhasePanel({
             {project.status === "shot_script_in_review" && (
               <Link
                 to={`/projects/${project.id}/shot-script/review`}
-                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity no-underline"
+                className={`inline-flex items-center no-underline ${getButtonClassName()}`}
               >
                 进入镜头脚本审核 →
               </Link>

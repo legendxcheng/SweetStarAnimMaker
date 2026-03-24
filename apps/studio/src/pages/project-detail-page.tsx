@@ -13,6 +13,7 @@ import { ShotScriptPhasePanel } from "../components/shot-script-phase-panel";
 import { StoryboardPhasePanel } from "../components/storyboard-phase-panel";
 import { useTaskPolling } from "../hooks/use-task-polling";
 import { apiClient } from "../services/api-client";
+import { getButtonClassName } from "../styles/button-styles";
 
 function isActiveTask(task: TaskDetail | null) {
   return task?.status === "pending" || task?.status === "running";
@@ -261,7 +262,7 @@ export function ProjectDetailPage() {
               actions={
                 <Link
                   to="/projects"
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-(--color-bg-elevated) text-(--color-text-primary) border border-(--color-border-muted) hover:border-(--color-text-muted) transition-colors no-underline"
+                  className={`no-underline ${getButtonClassName({ variant: "secondary" })}`}
                 >
                   ← 返回项目列表
                 </Link>
@@ -364,3 +365,5 @@ export function ProjectDetailPage() {
     </div>
   );
 }
+
+

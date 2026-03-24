@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 
+import { getButtonClassName } from "../styles/button-styles";
+
 export function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-(--color-bg-base)">
@@ -35,7 +37,9 @@ export function Layout() {
         <div className="px-2 py-3 border-t border-(--color-border)">
           <NavLink
             to="/projects/new"
-            className="flex items-center justify-center w-full px-3 py-2 rounded-md text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity"
+            className={`flex items-center justify-center w-full no-underline ${getButtonClassName({
+              size: "compact",
+            })}`}
           >
             + 新建项目
           </NavLink>

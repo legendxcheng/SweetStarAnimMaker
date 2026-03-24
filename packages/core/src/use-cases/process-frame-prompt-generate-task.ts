@@ -44,6 +44,10 @@ export function createProcessFramePromptGenerateTaskUseCase(
   return {
     async execute(input) {
       const task = await dependencies.taskRepository.findById(input.taskId);
+      let frame:
+        | Awaited<ReturnType<ProcessFramePromptGenerateTaskUseCaseDependencies["shotImageRepository"]["findFrameById"]>>
+        | null
+        | undefined;
 
       if (!task) {
         throw new TaskNotFoundError(input.taskId);
@@ -66,7 +70,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
           throw new ProjectNotFoundError(task.projectId);
         }
 
-        const frame = await dependencies.shotImageRepository.findFrameById(taskInput.frameId);
+        frame = await dependencies.shotImageRepository.findFrameById(taskInput.frameId);
 
         if (!frame || frame.projectId !== project.id) {
           throw new Error(`Frame not found for prompt generation: ${taskInput.frameId}`);
@@ -185,6 +189,15 @@ export function createProcessFramePromptGenerateTaskUseCase(
       } catch (error) {
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
+
+        if (frame) {
+          await dependencies.shotImageRepository.updateFrame({
+            ...frame,
+            planStatus: "plan_failed",
+            updatedAt: finishedAt,
+            sourceTaskId: task.id,
+          });
+        }
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,

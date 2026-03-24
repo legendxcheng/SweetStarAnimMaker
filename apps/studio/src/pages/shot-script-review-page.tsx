@@ -13,6 +13,7 @@ import {
 import { AsyncState } from "../components/async-state";
 import { StatusBadge } from "../components/status-badge";
 import { apiClient } from "../services/api-client";
+import { getButtonClassName } from "../styles/button-styles";
 
 function toSegmentDrafts(workspace: ShotScriptReviewWorkspace) {
   return Object.fromEntries(
@@ -212,7 +213,10 @@ export function ShotScriptReviewPage() {
                       void handleApproveAll();
                     }}
                     disabled={approvingAll || hasDirtySegments}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-success)/10 text-(--color-success) border border-(--color-success)/30 hover:bg-(--color-success)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={getButtonClassName({
+                      variant: "success",
+                      size: "compact",
+                    })}
                   >
                     {approvingAll ? "提交中..." : "全部通过"}
                   </button>
@@ -295,7 +299,7 @@ export function ShotScriptReviewPage() {
                               void handleSaveSegment(segmentSelector);
                             }}
                             disabled={isSaving}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={getButtonClassName({ size: "compact" })}
                           >
                             {isSaving ? "保存中..." : "保存本段"}
                           </button>
@@ -306,7 +310,10 @@ export function ShotScriptReviewPage() {
                               void handleRegenerateSegment(segmentSelector);
                             }}
                             disabled={isSubmitting}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-warning)/10 text-(--color-warning) border border-(--color-warning)/30 hover:bg-(--color-warning)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={getButtonClassName({
+                              variant: "warning",
+                              size: "compact",
+                            })}
                           >
                             重生成本段
                           </button>
@@ -317,7 +324,10 @@ export function ShotScriptReviewPage() {
                               void handleApproveSegment(segmentSelector);
                             }}
                             disabled={isSubmitting}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-success)/10 text-(--color-success) border border-(--color-success)/30 hover:bg-(--color-success)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={getButtonClassName({
+                              variant: "success",
+                              size: "compact",
+                            })}
                           >
                             通过本段
                           </button>

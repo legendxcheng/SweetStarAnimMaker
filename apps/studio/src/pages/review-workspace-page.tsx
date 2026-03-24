@@ -9,6 +9,7 @@ import type {
 import { AsyncState } from "../components/async-state";
 import { StatusBadge } from "../components/status-badge";
 import { apiClient } from "../services/api-client";
+import { getButtonClassName } from "../styles/button-styles";
 
 function toEditableStoryboard(storyboard: CurrentStoryboard): SaveStoryboardRequest {
   return {
@@ -193,7 +194,7 @@ export function ReviewWorkspacePage() {
                         void handleSave();
                       }}
                       disabled={saving}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                      className={getButtonClassName({ size: "compact" })}
                     >
                       {saving ? "保存中..." : "保存修改"}
                     </button>
@@ -204,7 +205,10 @@ export function ReviewWorkspacePage() {
                         void handleApprove();
                       }}
                       disabled={submittingAction}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-success)/10 text-(--color-success) border border-(--color-success)/30 hover:bg-(--color-success)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className={getButtonClassName({
+                        variant: "success",
+                        size: "compact",
+                      })}
                     >
                       通过
                     </button>
@@ -215,7 +219,10 @@ export function ReviewWorkspacePage() {
                         void handleReject();
                       }}
                       disabled={submittingAction}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-danger)/10 text-(--color-danger) border border-(--color-danger)/30 hover:bg-(--color-danger)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className={getButtonClassName({
+                        variant: "danger",
+                        size: "compact",
+                      })}
                     >
                       驳回
                     </button>

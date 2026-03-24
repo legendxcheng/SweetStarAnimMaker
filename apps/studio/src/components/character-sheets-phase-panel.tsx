@@ -4,6 +4,7 @@ import type { CharacterSheetRecord, ProjectDetail, TaskDetail } from "@sweet-sta
 import { ErrorState } from "./error-state";
 import { apiClient } from "../services/api-client";
 import { config } from "../services/config";
+import { getButtonClassName } from "../styles/button-styles";
 
 const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -332,7 +333,7 @@ export function CharacterSheetsPhasePanel({
             type="button"
             onClick={onGenerate}
             disabled={disableGenerate}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className={getButtonClassName()}
           >
             {creatingTask ? "启动中..." : "生成角色三视图"}
           </button>
@@ -464,7 +465,10 @@ export function CharacterSheetsPhasePanel({
                       type="button"
                       onClick={() => setImagePreviewOpen(true)}
                       disabled={!selectedCharacter.imageAssetPath}
-                      className="rounded-lg border border-(--color-border-muted) px-3 py-2 text-sm font-semibold text-(--color-text-primary) disabled:cursor-not-allowed disabled:opacity-40"
+                      className={getButtonClassName({
+                        variant: "secondary",
+                        size: "compact",
+                      })}
                     >
                       查看大图
                     </button>
@@ -517,7 +521,12 @@ export function CharacterSheetsPhasePanel({
                   <div className="flex items-center justify-between gap-3">
                     <p className={metaLabelClass}>参考图</p>
                     <div>
-                      <label className="inline-flex cursor-pointer items-center rounded-lg border border-(--color-border-muted) px-3 py-2 text-sm font-semibold text-(--color-text-primary)">
+                      <label
+                        className={`inline-flex cursor-pointer items-center ${getButtonClassName({
+                          variant: "secondary",
+                          size: "compact",
+                        })}`}
+                      >
                         添加参考图
                         <input
                           aria-label="添加参考图"
@@ -560,7 +569,10 @@ export function CharacterSheetsPhasePanel({
                             }}
                             disabled={actionBusy !== null}
                             aria-label={`删除参考图 ${referenceImage.originalFileName}`}
-                            className="rounded-lg border border-(--color-danger)/30 px-3 py-2 text-sm font-semibold text-(--color-danger) disabled:opacity-40 disabled:cursor-not-allowed"
+                            className={getButtonClassName({
+                              variant: "danger",
+                              size: "compact",
+                            })}
                           >
                             删除
                           </button>
@@ -583,7 +595,7 @@ export function CharacterSheetsPhasePanel({
                       void handleSavePrompt();
                     }}
                     disabled={actionBusy !== null}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-border-muted) text-(--color-text-primary) disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={getButtonClassName({ variant: "secondary" })}
                   >
                     保存提示词
                   </button>
@@ -593,7 +605,7 @@ export function CharacterSheetsPhasePanel({
                       void handleRegenerate();
                     }}
                     disabled={actionBusy !== null}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-warning)/30 text-(--color-warning) disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={getButtonClassName({ variant: "warning" })}
                   >
                     重新生成
                   </button>
@@ -603,7 +615,7 @@ export function CharacterSheetsPhasePanel({
                       void handleApprove();
                     }}
                     disabled={actionBusy !== null}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-(--color-success) text-(--color-bg-base) disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={getButtonClassName({ variant: "success" })}
                   >
                     通过当前角色
                   </button>
@@ -640,7 +652,10 @@ export function CharacterSheetsPhasePanel({
               <button
                 type="button"
                 onClick={() => setImagePreviewOpen(false)}
-                className="rounded-lg border border-(--color-border-muted) px-3 py-2 text-sm font-semibold text-(--color-text-primary)"
+                className={getButtonClassName({
+                  variant: "secondary",
+                  size: "compact",
+                })}
               >
                 关闭大图预览
               </button>
