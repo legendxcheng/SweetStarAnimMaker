@@ -206,6 +206,10 @@ function assertShotScriptSegmentTaskInput(input: {
 
 function renderTemplate(template: string, variables: Record<string, unknown>) {
   return template.replaceAll(/\{\{([^}]+)\}\}/g, (_, rawPath: string) => {
+    if (rawPath.trim() === "characterSheets") {
+      return renderCharacterSheets(variables.characterSheets);
+    }
+
     const path = rawPath.trim().split(".");
     let current: unknown = variables;
 
@@ -242,4 +246,46 @@ function renderTemplate(template: string, variables: Record<string, unknown>) {
 
     return String(current);
   });
+}
+
+function renderCharacterSheets(value: unknown) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return "无已批准角色设定";
+  }
+
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const characterName = readTemplateString(
+        (entry as { characterName?: unknown }).characterName,
+        "未命名角色",
+      );
+      const promptTextCurrent = readTemplateString(
+        (entry as { promptTextCurrent?: unknown }).promptTextCurrent,
+        "未提供当前造型",
+      );
+      const imageAssetPath = readTemplateString(
+        (entry as { imageAssetPath?: unknown }).imageAssetPath,
+        "未提供参考图路径",
+      );
+
+      return [
+        `- 标准角色名：${characterName}`,
+        `  当前造型：${promptTextCurrent}`,
+        `  参考图路径：${imageAssetPath}`,
+      ].join("\n");
+    })
+    .filter((entry): entry is string => typeof entry === "string")
+    .join("\n");
+}
+
+function readTemplateString(value: unknown, fallback: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  return value;
 }

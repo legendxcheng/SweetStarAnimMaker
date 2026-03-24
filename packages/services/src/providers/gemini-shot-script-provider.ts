@@ -2,7 +2,9 @@ import type {
   GenerateShotScriptSegmentInput,
   GenerateShotScriptSegmentResult,
   ShotScriptProvider,
+  ShotScriptCanonicalCharacterContext,
 } from "@sweet-star/core";
+import { buildShotScriptCanonicalCharacterValidator } from "@sweet-star/core";
 
 export interface CreateGeminiShotScriptProviderOptions {
   baseUrl?: string;
@@ -29,23 +31,48 @@ export function createGeminiShotScriptProvider(
     async generateShotScriptSegment(
       input: GenerateShotScriptSegmentInput,
     ): Promise<GenerateShotScriptSegmentResult> {
-      const rawText = await requestGeminiJson({
-        baseUrl,
-        apiToken,
-        model,
-        timeoutMs: options.timeoutMs,
-        errorLabel: "shot script",
-        systemText:
-          "You generate structured JSON shot scripts for exactly one storyboard segment. All reviewable narrative fields must be in Simplified Chinese.",
-        promptText: input.promptText,
-        responseJsonSchema: shotScriptSegmentResponseJsonSchema,
-      });
-      const segment = normalizeShotScriptSegmentPayload(JSON.parse(rawText), input.variables);
+      const characterSheets = readCanonicalCharacterContext(input.variables);
+      const validator = buildShotScriptCanonicalCharacterValidator(characterSheets);
+      const maxAttempts = characterSheets.length > 0 ? 3 : 1;
+      let promptText = input.promptText;
+      let lastViolationsMessage = "";
 
-      return {
-        rawResponse: rawText,
-        segment,
-      };
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        const rawText = await requestGeminiJson({
+          baseUrl,
+          apiToken,
+          model,
+          timeoutMs: options.timeoutMs,
+          errorLabel: "shot script",
+          systemText:
+            "You generate structured JSON shot scripts for exactly one storyboard segment. All reviewable narrative fields must be in Simplified Chinese.",
+          promptText,
+          responseJsonSchema: shotScriptSegmentResponseJsonSchema,
+        });
+        const segment = normalizeShotScriptSegmentPayload(JSON.parse(rawText), input.variables);
+        const violations = validator.validateShots(segment.shots);
+
+        if (violations.length === 0) {
+          return {
+            rawResponse: rawText,
+            segment,
+          };
+        }
+
+        lastViolationsMessage = violations.map((violation) => violation.message).join("\n");
+
+        if (attempt === maxAttempts) {
+          throw new Error(
+            `Gemini shot script provider failed canonical character validation after ${attempt} attempts: ${lastViolationsMessage}`,
+          );
+        }
+
+        promptText = buildCorrectionPrompt(input.promptText, lastViolationsMessage);
+      }
+
+      throw new Error(
+        `Gemini shot script provider failed canonical character validation after ${maxAttempts} attempts: ${lastViolationsMessage}`,
+      );
     },
   };
 }
@@ -222,6 +249,57 @@ function normalizeShotScriptSegmentPayload(
     approvedAt: null,
     shots: normalizedShots,
   };
+}
+
+function readCanonicalCharacterContext(
+  variables: Record<string, unknown>,
+): ShotScriptCanonicalCharacterContext[] {
+  const characterSheets = variables.characterSheets;
+
+  if (!Array.isArray(characterSheets)) {
+    return [];
+  }
+
+  return characterSheets.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+
+    const characterName = (entry as { characterName?: unknown }).characterName;
+    const promptTextCurrent = (entry as { promptTextCurrent?: unknown }).promptTextCurrent;
+    const characterId = (entry as { characterId?: unknown }).characterId;
+    const imageAssetPath = (entry as { imageAssetPath?: unknown }).imageAssetPath;
+
+    if (
+      typeof characterId !== "string" ||
+      !characterId.trim() ||
+      typeof characterName !== "string" ||
+      !characterName.trim() ||
+      typeof promptTextCurrent !== "string" ||
+      !promptTextCurrent.trim()
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        characterId,
+        characterName,
+        promptTextCurrent,
+        imageAssetPath: typeof imageAssetPath === "string" ? imageAssetPath : null,
+      },
+    ];
+  });
+}
+
+function buildCorrectionPrompt(basePromptText: string, violationsMessage: string) {
+  return [
+    basePromptText,
+    "",
+    "上一次输出存在以下角色命名问题，请只修正这些问题后重新输出完整 JSON：",
+    violationsMessage,
+    "所有涉及已批准角色的镜头，必须保留标准角色名，不得使用简称或泛称。",
+  ].join("\n");
 }
 
 function normalizeShot(

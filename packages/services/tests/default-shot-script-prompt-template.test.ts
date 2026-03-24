@@ -16,5 +16,9 @@ describe("default shot script prompt template", () => {
     expect(template).toContain("不要输出 imagePrompt、negativePrompt、motionHint 等出图字段");
     expect(template).toContain("{{storyboardTitle}}");
     expect(template).toContain("{{segment.visual}}");
+    expect(template).toContain("已批准角色设定");
+    expect(template).toContain("{{characterSheets}}");
+    expect(template).toContain("必须使用角色设定中的标准角色名");
+    expect(template).toContain("禁止使用未登记简称");
   });
 });

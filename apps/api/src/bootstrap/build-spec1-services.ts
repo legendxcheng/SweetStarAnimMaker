@@ -318,6 +318,8 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     saveHumanShotScriptSegment: createSaveHumanShotScriptSegmentUseCase({
       projectRepository: repository,
+      characterSheetRepository,
+      characterSheetStorage,
       shotScriptStorage,
       clock,
     }),

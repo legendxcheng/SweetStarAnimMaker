@@ -8,6 +8,9 @@ import {
   mergeShotScriptSegment,
   toEditedShotScriptSegment,
 } from "../domain/shot-script";
+import { buildShotScriptCanonicalCharacterValidator } from "../domain/shot-script-canonical-character-validator";
+import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
+import type { CharacterSheetStorage } from "../ports/character-sheet-storage";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
@@ -26,6 +29,8 @@ export interface SaveHumanShotScriptSegmentUseCase {
 
 export interface SaveHumanShotScriptSegmentUseCaseDependencies {
   projectRepository: ProjectRepository;
+  characterSheetRepository: CharacterSheetRepository;
+  characterSheetStorage: CharacterSheetStorage;
   shotScriptStorage: ShotScriptStorage;
   clock: Clock;
 }
@@ -53,6 +58,18 @@ export function createSaveHumanShotScriptSegmentUseCase(
         currentShotScript.segments,
         input.segmentId,
       );
+      const approvedCharacters = await loadApprovedCharacters({
+        project,
+        characterSheetRepository: dependencies.characterSheetRepository,
+        characterSheetStorage: dependencies.characterSheetStorage,
+      });
+      const violations = buildShotScriptCanonicalCharacterValidator(approvedCharacters).validateShots(
+        input.shots,
+      );
+
+      if (violations.length > 0) {
+        throw new Error(violations.map((violation) => violation.message).join("\n"));
+      }
 
       const updatedAt = dependencies.clock.now();
       const updatedShotScript = mergeShotScriptSegment(
@@ -93,4 +110,43 @@ function toHumanShotScriptVersionId(
   segment: { sceneId: string; segmentId: string },
 ) {
   return `human-${toShotScriptSegmentStorageKey(segment)}-${updatedAt.replaceAll(/[:.]/g, "-")}`;
+}
+
+async function loadApprovedCharacters(input: {
+  project: {
+    currentCharacterSheetBatchId: string | null;
+    storageDir: string;
+  };
+  characterSheetRepository: CharacterSheetRepository;
+  characterSheetStorage: CharacterSheetStorage;
+}) {
+  if (!input.project.currentCharacterSheetBatchId) {
+    return [];
+  }
+
+  const characters = await input.characterSheetRepository.listCharactersByBatchId(
+    input.project.currentCharacterSheetBatchId,
+  );
+
+  return (
+    await Promise.all(
+      characters.map(async (character) => {
+        const currentCharacter = await input.characterSheetStorage.readCurrentCharacterSheet({
+          storageDir: input.project.storageDir,
+          characterId: character.id,
+        });
+
+        if (!currentCharacter) {
+          return null;
+        }
+
+        return {
+          characterId: currentCharacter.id,
+          characterName: currentCharacter.characterName,
+          promptTextCurrent: currentCharacter.promptTextCurrent,
+          imageAssetPath: currentCharacter.imageAssetPath,
+        };
+      }),
+    )
+  ).filter((character): character is NonNullable<typeof character> => character !== null);
 }
