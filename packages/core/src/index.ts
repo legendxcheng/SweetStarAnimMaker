@@ -539,6 +539,36 @@ export {
   type RegenerateCharacterSheetUseCaseDependencies,
 } from "./use-cases/regenerate-character-sheet";
 export {
+  createRegenerateMasterPlotUseCase,
+  type RegenerateMasterPlotInput,
+  type RegenerateMasterPlotUseCase,
+  type RegenerateMasterPlotUseCaseDependencies,
+} from "./use-cases/regenerate-master-plot";
+export {
+  createRegenerateCharacterSheetsUseCase,
+  type RegenerateCharacterSheetsInput,
+  type RegenerateCharacterSheetsUseCase,
+  type RegenerateCharacterSheetsUseCaseDependencies,
+} from "./use-cases/regenerate-character-sheets";
+export {
+  createRegenerateStoryboardUseCase,
+  type RegenerateStoryboardInput,
+  type RegenerateStoryboardUseCase,
+  type RegenerateStoryboardUseCaseDependencies,
+} from "./use-cases/regenerate-storyboard";
+export {
+  createRegenerateShotScriptUseCase,
+  type RegenerateShotScriptInput,
+  type RegenerateShotScriptUseCase,
+  type RegenerateShotScriptUseCaseDependencies,
+} from "./use-cases/regenerate-shot-script";
+export {
+  createRegenerateImagesUseCase,
+  type RegenerateImagesInput,
+  type RegenerateImagesUseCase,
+  type RegenerateImagesUseCaseDependencies,
+} from "./use-cases/regenerate-images";
+export {
   createRegenerateFramePromptUseCase,
   type RegenerateFramePromptInput,
   type RegenerateFramePromptUseCase,

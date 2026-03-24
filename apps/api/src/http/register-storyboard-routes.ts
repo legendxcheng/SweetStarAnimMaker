@@ -12,6 +12,15 @@ export function registerStoryboardRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
+  app.post("/projects/:projectId/master-plot/regenerate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.regenerateMasterPlot.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.get("/projects/:projectId/master-plot/review", async (request) => {
     const params = request.params as { projectId: string };
 
@@ -88,5 +97,14 @@ export function registerStoryboardRoutes(
     return services.rejectStoryboard.execute({
       projectId: params.projectId,
     });
+  });
+
+  app.post("/projects/:projectId/storyboard/regenerate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.regenerateStoryboard.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
   });
 }

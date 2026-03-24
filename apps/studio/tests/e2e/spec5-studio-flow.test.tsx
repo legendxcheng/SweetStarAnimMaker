@@ -27,6 +27,8 @@ const createdProject = {
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
   currentStoryboard: null,
+  currentShotScript: null,
+  currentImageBatch: null,
 };
 
 const masterPlotApprovedProject = {
@@ -180,6 +182,7 @@ async function flushMicrotasks() {
 
 describe("Spec5 Studio Flow", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     globalThis.alert = vi.fn();
     globalThis.confirm = vi.fn(() => true);
@@ -199,7 +202,7 @@ describe("Spec5 Studio Flow", () => {
       .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
       .mockResolvedValueOnce(characterSheetsApprovedProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
+    vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
       ...runningTask,
       status: "succeeded",
@@ -259,7 +262,7 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
     });
 
     await act(async () => {
@@ -315,7 +318,7 @@ describe("Spec5 Studio Flow", () => {
       .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
       .mockResolvedValueOnce(storyboardApprovedProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
+    vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
       ...runningTask,
       status: "succeeded",
@@ -354,7 +357,7 @@ describe("Spec5 Studio Flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
     });
 
     await act(async () => {
@@ -375,7 +378,7 @@ describe("Spec5 Studio Flow", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("已通过")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
     });
 
     expect(screen.queryByRole("link", { name: /进入分镜审核/i })).not.toBeInTheDocument();

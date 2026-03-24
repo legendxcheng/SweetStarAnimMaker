@@ -230,6 +230,98 @@ describe("storyboard api", () => {
     expect(detailResponse.json().currentStoryboard.approvedAt).toEqual(expect.any(String));
   });
 
+  it("regenerates the master plot while master-plot generation is already running", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260321_master_plot_regen",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
+    });
+    await updateProjectStatus({
+      tempDir,
+      projectId: project.id,
+      status: "master_plot_generating",
+      updatedAt: "2026-03-21T12:06:00.000Z",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/master-plot/regenerate`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "task_20260321_master_plot_regen",
+        type: "master_plot_generate",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_master_plot_regen",
+      queueName: "master-plot-generate",
+      taskType: "master_plot_generate",
+    });
+  });
+
+  it("regenerates the storyboard while a later stage is already generating", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260321_storyboard_regen",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      masterPlot: baseMasterPlot,
+    });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedCurrentStoryboard({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      storyboard: baseStoryboard,
+      status: "images_generating",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/storyboard/regenerate`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "task_20260321_storyboard_regen",
+        type: "storyboard_generate",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_storyboard_regen",
+      queueName: "storyboard-generate",
+      taskType: "storyboard_generate",
+    });
+  });
+
   it("rejects the current storyboard and triggers regeneration", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
@@ -351,7 +443,11 @@ async function seedCurrentStoryboard(input: {
   projectId: string;
   projectStorageDir: string;
   storyboard: CurrentStoryboard;
-  status: "storyboard_in_review" | "storyboard_approved";
+  status:
+    | "storyboard_in_review"
+    | "storyboard_approved"
+    | "storyboard_generating"
+    | "images_generating";
 }) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
@@ -370,6 +466,27 @@ async function seedCurrentStoryboard(input: {
     projectId: input.projectId,
     status: input.status,
     updatedAt: input.storyboard.updatedAt,
+  });
+  db.close();
+}
+
+async function updateProjectStatus(input: {
+  tempDir: string;
+  projectId: string;
+  status:
+    | "master_plot_generating"
+    | "storyboard_generating"
+    | "images_generating";
+  updatedAt: string;
+}) {
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const projectRepository = createSqliteProjectRepository({ db });
+
+  projectRepository.updateStatus({
+    projectId: input.projectId,
+    status: input.status,
+    updatedAt: input.updatedAt,
   });
   db.close();
 }

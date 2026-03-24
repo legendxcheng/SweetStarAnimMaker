@@ -116,6 +116,59 @@ describe("shot script api", () => {
     });
   });
 
+  it("regenerates the current shot script while the stage is generating", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260322_shot_script_regen",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedStoryboard({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedCurrentShotScript({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      shotScript: baseShotScript,
+      status: "shot_script_generating",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/shot-script/regenerate`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "task_20260322_shot_script_regen",
+        type: "shot_script_generate",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260322_shot_script_regen",
+      queueName: "shot-script-generate",
+      taskType: "shot_script_generate",
+    });
+  });
+
   it("returns the current shot script", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);

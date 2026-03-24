@@ -383,6 +383,55 @@ describe("character sheets api", () => {
     });
   });
 
+  it("regenerates the current character-sheet batch while the stage is generating", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260321_char_batch_regen",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedApprovedMasterPlot({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_generating",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/character-sheets/regenerate`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "task_20260321_char_batch_regen",
+        type: "character_sheets_generate",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260321_char_batch_regen",
+      queueName: "character-sheets-generate",
+      taskType: "character_sheets_generate",
+    });
+  });
+
   it("approves the final character and moves the project to character_sheets_approved", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);

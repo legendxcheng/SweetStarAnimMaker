@@ -24,6 +24,16 @@ export function registerImageRoutes(
     return reply.status(201).send(task);
   });
 
+  app.post("/projects/:projectId/images/regenerate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    generateImageFrameRequestSchema.parse(request.body ?? {});
+    const task = await services.regenerateImages.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.post("/projects/:projectId/images/regenerate-prompts", async (request, reply) => {
     const params = request.params as { projectId: string };
     regenerateImageFramePromptRequestSchema.parse(request.body ?? {});

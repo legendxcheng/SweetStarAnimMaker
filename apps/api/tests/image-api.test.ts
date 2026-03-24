@@ -212,6 +212,48 @@ describe("images api", () => {
     });
   });
 
+  it("regenerates the current image batch while images are generating", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_images_regen_1",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedApprovedShotScript({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedImageBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "images_generating",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/regenerate`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "task_images_regen_1",
+        type: "images_generate",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_images_regen_1",
+      queueName: "images-generate",
+      taskType: "images_generate",
+    });
+  });
+
   it("creates prompt-regeneration tasks for every frame in the current image batch", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({

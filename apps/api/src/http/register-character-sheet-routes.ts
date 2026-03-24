@@ -16,6 +16,15 @@ export function registerCharacterSheetRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
+  app.post("/projects/:projectId/character-sheets/regenerate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.regenerateCharacterSheets.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.get("/projects/:projectId/character-sheets", async (request) => {
     const params = request.params as { projectId: string };
 

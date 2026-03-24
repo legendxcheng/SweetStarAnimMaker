@@ -19,6 +19,10 @@ function isActiveTask(task: TaskDetail | null) {
   return task?.status === "pending" || task?.status === "running";
 }
 
+function isGeneratingProject(project: ProjectDetail | null) {
+  return project?.status.endsWith("_generating") ?? false;
+}
+
 const PROJECT_PHASES = [
   { key: "premise", label: "前提" },
   { key: "master_plot", label: "主情节" },
@@ -29,18 +33,91 @@ const PROJECT_PHASES = [
   { key: "final_cut", label: "成片" },
 ] as const;
 
+type ProjectPhaseKey = (typeof PROJECT_PHASES)[number]["key"];
+
+function getDefaultProjectPhase(project: ProjectDetail | null): ProjectPhaseKey {
+  if (!project) {
+    return "premise";
+  }
+
+  if (
+    project.status === "images_generating" ||
+    project.status === "images_in_review" ||
+    project.status === "images_approved" ||
+    project.currentImageBatch != null
+  ) {
+    return "images";
+  }
+
+  if (
+    project.status === "shot_script_generating" ||
+    project.status === "shot_script_in_review" ||
+    project.status === "shot_script_approved" ||
+    project.currentShotScript != null
+  ) {
+    return "shot_script";
+  }
+
+  if (
+    project.status === "storyboard_generating" ||
+    project.status === "storyboard_in_review" ||
+    project.status === "storyboard_approved" ||
+    project.currentStoryboard != null
+  ) {
+    return "storyboard";
+  }
+
+  if (
+    project.status === "character_sheets_generating" ||
+    project.status === "character_sheets_in_review" ||
+    project.status === "character_sheets_approved" ||
+    project.currentCharacterSheetBatch != null
+  ) {
+    return "character_sheets";
+  }
+
+  if (
+    project.status === "master_plot_generating" ||
+    project.status === "master_plot_in_review" ||
+    project.status === "master_plot_approved" ||
+    project.currentMasterPlot != null
+  ) {
+    return "master_plot";
+  }
+
+  return "premise";
+}
+
 function isCharacterSheetsPhaseEnabled(project: ProjectDetail | null) {
   if (!project) {
     return false;
   }
 
+  return hasApprovedMasterPlot(project) || project.currentCharacterSheetBatch != null;
+}
+
+function hasApprovedMasterPlot(project: ProjectDetail | null) {
+  return project?.currentMasterPlot?.approvedAt != null;
+}
+
+function hasApprovedCharacterSheets(project: ProjectDetail | null) {
+  if (!project?.currentCharacterSheetBatch) {
+    return false;
+  }
+
   return (
-    project.status === "master_plot_approved" ||
-    project.status === "character_sheets_generating" ||
-    project.status === "character_sheets_in_review" ||
-    project.status === "character_sheets_approved" ||
-    project.currentCharacterSheetBatch !== null
+    project.currentCharacterSheetBatch.characterCount > 0 &&
+    project.currentCharacterSheetBatch.approvedCharacterCount ===
+      project.currentCharacterSheetBatch.characterCount
   );
+}
+
+function hasApprovedStoryboard(project: ProjectDetail | null) {
+  return project?.currentStoryboard?.approvedAt != null;
+}
+
+function hasApprovedShotScript(project: ProjectDetail | null) {
+  return project?.currentShotScript?.approvedAt != null;
 }
 
 function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
@@ -48,13 +125,7 @@ function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
     return false;
   }
 
-  return (
-    project.status === "character_sheets_approved" ||
-    project.status === "storyboard_generating" ||
-    project.status === "storyboard_in_review" ||
-    project.status === "storyboard_approved" ||
-    project.currentStoryboard !== null
-  );
+  return hasApprovedCharacterSheets(project) || project.currentStoryboard != null;
 }
 
 function isShotScriptPhaseEnabled(project: ProjectDetail | null) {
@@ -62,21 +133,27 @@ function isShotScriptPhaseEnabled(project: ProjectDetail | null) {
     return false;
   }
 
-  return (
-    project.status === "storyboard_approved" ||
-    project.status === "shot_script_generating" ||
-    project.status === "shot_script_in_review" ||
-    project.status === "shot_script_approved" ||
-    project.currentShotScript !== null
-  );
+  return hasApprovedStoryboard(project) || project.currentShotScript != null;
 }
 
-function canGenerateShotScript(project: ProjectDetail | null) {
-  if (!project) {
-    return false;
-  }
+function canRegenerateMasterPlot(project: ProjectDetail | null) {
+  return project !== null;
+}
 
-  return project.status === "storyboard_approved";
+function canRegenerateCharacterSheets(project: ProjectDetail | null) {
+  return hasApprovedMasterPlot(project);
+}
+
+function canRegenerateStoryboard(project: ProjectDetail | null) {
+  return hasApprovedCharacterSheets(project);
+}
+
+function canRegenerateShotScript(project: ProjectDetail | null) {
+  return hasApprovedStoryboard(project);
+}
+
+function canRegenerateImages(project: ProjectDetail | null) {
+  return hasApprovedShotScript(project);
 }
 
 function isImagesPhaseEnabled(project: ProjectDetail | null) {
@@ -84,14 +161,7 @@ function isImagesPhaseEnabled(project: ProjectDetail | null) {
     return false;
   }
 
-  return (
-    project.currentShotScript?.approvedAt !== null ||
-    project.status === "shot_script_approved" ||
-    project.status === "images_generating" ||
-    project.status === "images_in_review" ||
-    project.status === "images_approved" ||
-    project.currentImageBatch !== null
-  );
+  return canRegenerateImages(project) || project.currentImageBatch != null;
 }
 
 export function ProjectDetailPage() {
@@ -101,9 +171,8 @@ export function ProjectDetailPage() {
   const [error, setError] = useState<Error | null>(null);
   const [activeTask, setActiveTask] = useState<TaskDetail | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
-  const [selectedPhase, setSelectedPhase] = useState<(typeof PROJECT_PHASES)[number]["key"]>(
-    "premise",
-  );
+  const [selectedPhase, setSelectedPhase] = useState<ProjectPhaseKey>("premise");
+  const [hasAutoSelectedPhase, setHasAutoSelectedPhase] = useState(false);
 
   const loadProject = async (options?: { showLoading?: boolean }) => {
     if (!projectId) return;
@@ -116,6 +185,10 @@ export function ProjectDetailPage() {
       setError(null);
       const response = await apiClient.getProjectDetail(projectId);
       setProject(response);
+      if (!hasAutoSelectedPhase) {
+        setSelectedPhase(getDefaultProjectPhase(response));
+        setHasAutoSelectedPhase(true);
+      }
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -124,6 +197,11 @@ export function ProjectDetailPage() {
       }
     }
   };
+
+  useEffect(() => {
+    setSelectedPhase("premise");
+    setHasAutoSelectedPhase(false);
+  }, [projectId]);
 
   useEffect(() => {
     void loadProject({ showLoading: true });
@@ -162,11 +240,19 @@ export function ProjectDetailPage() {
   const task = polling.task ?? activeTask;
   const taskError = polling.error ?? error;
 
-  const handleGenerateStoryboard = async () => {
-    if (!projectId || creatingTask || isActiveTask(task)) return;
+  const confirmRegeneration = () => {
+    if (!isGeneratingProject(project)) {
+      return true;
+    }
+
+    return window.confirm("这会放弃当前生成中的结果，并重置到该环节重新生成。是否继续？");
+  };
+
+  const handleRegenerateStoryboard = async () => {
+    if (!projectId || creatingTask || !confirmRegeneration()) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createStoryboardGenerateTask(projectId);
+      const nextTask = await apiClient.regenerateStoryboard(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -176,11 +262,11 @@ export function ProjectDetailPage() {
     }
   };
 
-  const handleGenerateMasterPlot = async () => {
-    if (!projectId || creatingTask || isActiveTask(task)) return;
+  const handleRegenerateMasterPlot = async () => {
+    if (!projectId || creatingTask || !confirmRegeneration()) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createMasterPlotGenerateTask(projectId);
+      const nextTask = await apiClient.regenerateMasterPlot(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -190,11 +276,11 @@ export function ProjectDetailPage() {
     }
   };
 
-  const handleGenerateCharacterSheets = async () => {
-    if (!projectId || creatingTask || isActiveTask(task)) return;
+  const handleRegenerateCharacterSheets = async () => {
+    if (!projectId || creatingTask || !confirmRegeneration()) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createCharacterSheetsGenerateTask(projectId);
+      const nextTask = await apiClient.regenerateCharacterSheets(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -204,11 +290,11 @@ export function ProjectDetailPage() {
     }
   };
 
-  const handleGenerateShotScript = async () => {
-    if (!projectId || creatingTask || isActiveTask(task)) return;
+  const handleRegenerateShotScript = async () => {
+    if (!projectId || creatingTask || !confirmRegeneration()) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createShotScriptGenerateTask(projectId);
+      const nextTask = await apiClient.regenerateShotScript(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -218,11 +304,11 @@ export function ProjectDetailPage() {
     }
   };
 
-  const handleGenerateImages = async () => {
-    if (!projectId || creatingTask || isActiveTask(task)) return;
+  const handleRegenerateImages = async () => {
+    if (!projectId || creatingTask || !confirmRegeneration()) return;
     try {
       setCreatingTask(true);
-      const nextTask = await apiClient.createImagesGenerateTask(projectId);
+      const nextTask = await apiClient.regenerateImages(projectId);
       setActiveTask(nextTask);
       setError(null);
     } catch (err) {
@@ -281,13 +367,9 @@ export function ProjectDetailPage() {
                     task={task}
                     taskError={taskError}
                     creatingTask={creatingTask}
-                    disableGenerate={
-                      creatingTask ||
-                      isActiveTask(task) ||
-                      currentProject.status !== "premise_ready"
-                    }
+                    disableGenerate={creatingTask || !canRegenerateMasterPlot(currentProject)}
                     onGenerate={() => {
-                      void handleGenerateMasterPlot();
+                      void handleRegenerateMasterPlot();
                     }}
                   />
                 ) : selectedPhase === "character_sheets" ? (
@@ -296,13 +378,9 @@ export function ProjectDetailPage() {
                     task={task}
                     taskError={taskError}
                     creatingTask={creatingTask}
-                    disableGenerate={
-                      creatingTask ||
-                      isActiveTask(task) ||
-                      currentProject.status !== "master_plot_approved"
-                    }
+                    disableGenerate={creatingTask || !canRegenerateCharacterSheets(currentProject)}
                     onGenerate={() => {
-                      void handleGenerateCharacterSheets();
+                      void handleRegenerateCharacterSheets();
                     }}
                     onProjectRefresh={loadProject}
                   />
@@ -312,13 +390,9 @@ export function ProjectDetailPage() {
                     task={task}
                     taskError={taskError}
                     creatingTask={creatingTask}
-                    disableGenerate={
-                      creatingTask ||
-                      isActiveTask(task) ||
-                      currentProject.status !== "character_sheets_approved"
-                    }
+                    disableGenerate={creatingTask || !canRegenerateStoryboard(currentProject)}
                     onGenerate={() => {
-                      void handleGenerateStoryboard();
+                      void handleRegenerateStoryboard();
                     }}
                   />
                 ) : selectedPhase === "shot_script" ? (
@@ -327,13 +401,9 @@ export function ProjectDetailPage() {
                     task={task}
                     taskError={taskError}
                     creatingTask={creatingTask}
-                    disableGenerate={
-                      creatingTask ||
-                      isActiveTask(task) ||
-                      !canGenerateShotScript(currentProject)
-                    }
+                    disableGenerate={creatingTask || !canRegenerateShotScript(currentProject)}
                     onGenerate={() => {
-                      void handleGenerateShotScript();
+                      void handleRegenerateShotScript();
                     }}
                   />
                 ) : (
@@ -342,13 +412,9 @@ export function ProjectDetailPage() {
                     task={task}
                     taskError={taskError}
                     creatingTask={creatingTask}
-                    disableGenerate={
-                      creatingTask ||
-                      isActiveTask(task) ||
-                      currentProject.status !== "shot_script_approved"
-                    }
+                    disableGenerate={creatingTask || !canRegenerateImages(currentProject)}
                     onGenerate={() => {
-                      void handleGenerateImages();
+                      void handleRegenerateImages();
                     }}
                     onProjectRefresh={loadProject}
                   />

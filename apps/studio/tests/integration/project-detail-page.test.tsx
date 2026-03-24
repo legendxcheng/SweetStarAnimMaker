@@ -186,6 +186,19 @@ const imagesInReviewProject = {
   },
 };
 
+const imagesGeneratingProject = {
+  ...shotScriptApprovedProject,
+  status: "images_generating" as const,
+  currentImageBatch: {
+    id: "image-batch-1",
+    sourceShotScriptId: "shot-script-1",
+    segmentCount: 1,
+    totalFrameCount: 2,
+    approvedFrameCount: 0,
+    updatedAt: "2024-01-01T00:00:09Z",
+  },
+};
+
 const generatingShotScriptProject = {
   ...storyboardApprovedProject,
   status: "shot_script_generating" as const,
@@ -273,7 +286,7 @@ const fullStoryboard = {
 };
 
 const generatingProject = {
-  ...approvedMasterPlotProject,
+  ...characterSheetsApprovedProject,
   status: "storyboard_generating" as const,
 };
 
@@ -294,6 +307,7 @@ async function flushMicrotasks() {
 
 describe("Project Detail Page", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -348,14 +362,11 @@ describe("Project Detail Page", () => {
     );
   });
 
-  it("starts master-plot generation from the master-plot panel", async () => {
+  it("starts master-plot regeneration from the master-plot panel", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
-    const createMasterPlotGenerateTask = vi
-      .fn()
+    const regenerateMasterPlot = vi
+      .spyOn(apiModule.apiClient, "regenerateMasterPlot")
       .mockResolvedValue(runningMasterPlotTask);
-    Object.assign(apiModule.apiClient as object, {
-      createMasterPlotGenerateTask,
-    });
 
     renderPage();
 
@@ -369,7 +380,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(createMasterPlotGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(regenerateMasterPlot).toHaveBeenCalledWith("proj-1");
     });
 
     expect(screen.queryByRole("button", { name: /生成分镜文案/i })).not.toBeInTheDocument();
@@ -506,6 +517,26 @@ describe("Project Detail Page", () => {
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
   });
 
+  it("auto-selects the current image phase when the project is already generating images", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(imagesGeneratingProject);
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: imagesGeneratingProject.currentImageBatch,
+      frames: [],
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "画面" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
+
+    expect(screen.getByRole("heading", { name: "画面工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeEnabled();
+  });
+
   it("enables the image phase when the current shot script summary is approved even before project status catches up", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
       shotScriptApprovedSummaryProject,
@@ -518,11 +549,11 @@ describe("Project Detail Page", () => {
     });
   });
 
-  it("loads project detail and lets the user start storyboard generation", async () => {
+  it("loads project detail and lets the user start storyboard regeneration", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
       characterSheetsApprovedProject,
     );
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
+    vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
 
     renderPage();
 
@@ -534,7 +565,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
     });
 
     expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
@@ -624,11 +655,9 @@ describe("Project Detail Page", () => {
     expect(screen.queryByRole("link", { name: /进入镜头脚本审核/i })).not.toBeInTheDocument();
   });
 
-  it("starts shot-script generation from the shot-script panel", async () => {
+  it("starts shot-script regeneration from the shot-script panel", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(storyboardApprovedProject);
-    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue(
-      runningShotScriptTask,
-    );
+    vi.spyOn(apiModule.apiClient, "regenerateShotScript").mockResolvedValue(runningShotScriptTask);
 
     renderPage();
 
@@ -640,14 +669,14 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.regenerateShotScript).toHaveBeenCalledWith("proj-1");
     });
 
     expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
     expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
-  it("keeps the top shot-script regenerate button disabled after the project has moved past storyboard approval", async () => {
+  it("keeps the top shot-script regenerate button enabled after the project has moved past storyboard approval", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(shotScriptApprovedProject);
     vi.spyOn(apiModule.apiClient, "getCurrentShotScript").mockResolvedValue(fullShotScript);
 
@@ -660,7 +689,33 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
 
     const regenerateButton = await screen.findByRole("button", { name: "重新生成" });
-    expect(regenerateButton).toBeDisabled();
+    expect(regenerateButton).toBeEnabled();
+  });
+
+  it("allows top-level shot-script regenerate while the stage is generating after confirmation", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(generatingShotScriptProject);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const regenerateShotScript = vi
+      .spyOn(apiModule.apiClient, "regenerateShotScript")
+      .mockResolvedValue(runningShotScriptTask);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
+
+    const regenerateButton = await screen.findByRole("button", { name: "重新生成" });
+    expect(regenerateButton).toBeEnabled();
+
+    fireEvent.click(regenerateButton);
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(regenerateShotScript).toHaveBeenCalledWith("proj-1");
+    });
   });
 
   it("shows the shot-script review entry after generation completes", async () => {
@@ -786,7 +841,7 @@ describe("Project Detail Page", () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
       .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(reviewedProject);
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
+    vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     const getTaskDetail = vi
       .spyOn(apiModule.apiClient, "getTaskDetail")
       .mockResolvedValueOnce(runningTask)
@@ -802,7 +857,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
     });
 
     expect(pollTimer).toBeDefined();
@@ -835,7 +890,7 @@ describe("Project Detail Page", () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
       characterSheetsApprovedProject,
     );
-    vi.spyOn(apiModule.apiClient, "createStoryboardGenerateTask").mockResolvedValue(runningTask);
+    vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     const getTaskDetail = vi
       .spyOn(apiModule.apiClient, "getTaskDetail")
       .mockResolvedValue(failedTask);
@@ -850,7 +905,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
     });
 
     expect(pollTimer).toBeDefined();

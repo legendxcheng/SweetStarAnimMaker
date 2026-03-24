@@ -128,10 +128,24 @@ export const apiClient = {
       },
     ),
 
+  regenerateMasterPlot: (projectId: string) =>
+    request<TaskDetail>(`/projects/${projectId}/master-plot/regenerate`, taskDetailResponseSchema, {
+      method: "POST",
+    }),
+
   createCharacterSheetsGenerateTask: (projectId: string) =>
     request<TaskDetail>(
       `/projects/${projectId}/tasks/character-sheets-generate`,
       createCharacterSheetsGenerateTaskResponseSchema,
+      {
+        method: "POST",
+      },
+    ),
+
+  regenerateCharacterSheets: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/character-sheets/regenerate`,
+      taskDetailResponseSchema,
       {
         method: "POST",
       },
@@ -146,6 +160,11 @@ export const apiClient = {
       },
     ),
 
+  regenerateStoryboard: (projectId: string) =>
+    request<TaskDetail>(`/projects/${projectId}/storyboard/regenerate`, taskDetailResponseSchema, {
+      method: "POST",
+    }),
+
   createShotScriptGenerateTask: (projectId: string) =>
     request<TaskDetail>(
       `/projects/${projectId}/shot-script/generate`,
@@ -155,6 +174,11 @@ export const apiClient = {
       },
     ),
 
+  regenerateShotScript: (projectId: string) =>
+    request<TaskDetail>(`/projects/${projectId}/shot-script/regenerate`, taskDetailResponseSchema, {
+      method: "POST",
+    }),
+
   createImagesGenerateTask: (projectId: string) =>
     request<TaskDetail>(
       `/projects/${projectId}/images/generate`,
@@ -163,6 +187,11 @@ export const apiClient = {
         method: "POST",
       },
     ),
+
+  regenerateImages: (projectId: string) =>
+    request<TaskDetail>(`/projects/${projectId}/images/regenerate`, taskDetailResponseSchema, {
+      method: "POST",
+    }),
 
   listCharacterSheets: (projectId: string) =>
     request<CharacterSheetListResponse>(

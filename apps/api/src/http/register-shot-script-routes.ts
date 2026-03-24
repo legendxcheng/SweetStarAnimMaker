@@ -22,6 +22,15 @@ export function registerShotScriptRoutes(
     return reply.status(201).send(task);
   });
 
+  app.post("/projects/:projectId/shot-script/regenerate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.regenerateShotScript.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.get("/projects/:projectId/shot-script/current", async (request) => {
     const params = request.params as { projectId: string };
 

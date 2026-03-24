@@ -14,7 +14,7 @@ export async function seedCurrentShotScript(input: {
   projectId: string;
   projectStorageDir: string;
   shotScript: CurrentShotScript;
-  status: "shot_script_in_review" | "shot_script_approved";
+  status: "shot_script_generating" | "shot_script_in_review" | "shot_script_approved";
 }) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
