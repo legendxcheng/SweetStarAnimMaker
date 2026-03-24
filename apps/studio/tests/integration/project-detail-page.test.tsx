@@ -737,6 +737,53 @@ describe("Project Detail Page", () => {
     );
   });
 
+  it("keeps the current project detail visible during background refresh polling", async () => {
+    let refreshTimer: (() => void) | undefined;
+    let resolveRefresh: ((value: typeof reviewedProject) => void) | undefined;
+    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
+      refreshTimer = callback as () => void;
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+
+    vi.spyOn(apiModule.apiClient, "getProjectDetail")
+      .mockResolvedValueOnce(generatingProject)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          }),
+      );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+    expect(screen.getByRole("heading", { name: "分镜工作区" })).toBeInTheDocument();
+    expect(screen.getByText(/分镜文案生成中/)).toBeInTheDocument();
+
+    await act(async () => {
+      refreshTimer?.();
+      await flushMicrotasks();
+    });
+
+    expect(screen.getByRole("heading", { name: "分镜工作区" })).toBeInTheDocument();
+    expect(screen.getByText(/分镜文案生成中/)).toBeInTheDocument();
+    expect(screen.queryByText("加载中...")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRefresh?.(reviewedProject);
+      await flushMicrotasks();
+    });
+
+    expect(screen.getByRole("link", { name: /进入分镜审核/i })).toHaveAttribute(
+      "href",
+      "/projects/proj-1/storyboard/review",
+    );
+  });
+
   it("polls task detail until success, refreshes the project, and shows the review entry", async () => {
     let pollTimer: (() => void) | undefined;
     const clearIntervalSpy = vi

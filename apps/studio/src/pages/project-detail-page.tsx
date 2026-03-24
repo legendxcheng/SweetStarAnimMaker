@@ -108,22 +108,28 @@ export function ProjectDetailPage() {
     "premise",
   );
 
-  const loadProject = async () => {
+  const loadProject = async (options?: { showLoading?: boolean }) => {
     if (!projectId) return;
+    const shouldShowLoading = options?.showLoading ?? project === null;
+
     try {
-      setLoading(true);
+      if (shouldShowLoading) {
+        setLoading(true);
+      }
       setError(null);
       const response = await apiClient.getProjectDetail(projectId);
       setProject(response);
     } catch (err) {
       setError(err as Error);
     } finally {
-      setLoading(false);
+      if (shouldShowLoading) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void loadProject();
+    void loadProject({ showLoading: true });
   }, [projectId]);
 
   useEffect(() => {
@@ -140,7 +146,7 @@ export function ProjectDetailPage() {
     }
 
     const interval = setInterval(() => {
-      void loadProject();
+      void loadProject({ showLoading: false });
     }, 3000);
     return () => {
       clearInterval(interval);
@@ -152,7 +158,7 @@ export function ProjectDetailPage() {
     enabled: isActiveTask(activeTask),
     onTaskUpdate: setActiveTask,
     onTerminal: async () => {
-      await loadProject();
+      await loadProject({ showLoading: false });
     },
   });
 
