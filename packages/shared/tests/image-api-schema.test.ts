@@ -111,6 +111,17 @@ describe("image api schema", () => {
     expect(parsed.frames[0]?.imageStatus).toBe("approved");
   });
 
+  it("accepts a batch regenerate-prompts response", () => {
+    const parsed = shared.regenerateAllImagePromptsResponseSchema.parse({
+      batchId: "image_batch_20260324_ab12cd",
+      frameCount: 4,
+      taskIds: ["task_1", "task_2", "task_3", "task_4"],
+    });
+
+    expect(parsed.frameCount).toBe(4);
+    expect(parsed.taskIds).toHaveLength(4);
+  });
+
   it("accepts an update-frame-prompt request with nullable negative prompt", () => {
     const parsed = shared.updateImageFramePromptRequestSchema.parse({
       promptTextCurrent: "清晨积水集市入口，林夏回头确认退路已经被封住。",

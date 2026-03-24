@@ -53,6 +53,11 @@ export function createRegenerateFramePromptUseCase(
       }
 
       const timestamp = dependencies.clock.now();
+      await dependencies.shotImageRepository.updateFrame({
+        ...frame,
+        planStatus: "pending",
+        updatedAt: timestamp,
+      });
       const task = createTaskRecord({
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,

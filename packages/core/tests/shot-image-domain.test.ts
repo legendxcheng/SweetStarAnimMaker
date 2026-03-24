@@ -18,7 +18,7 @@ describe("shot image domain", () => {
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
     const startFrame = createSegmentFrameRecord({
-      id: "frame_segment_1_start",
+      id: "frame_scene_1__segment_1_start",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
@@ -30,7 +30,7 @@ describe("shot image domain", () => {
       updatedAt: "2026-03-24T00:01:00.000Z",
     });
     const endFrame = createSegmentFrameRecord({
-      id: "frame_segment_1_end",
+      id: "frame_scene_1__segment_1_end",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
@@ -47,19 +47,19 @@ describe("shot image domain", () => {
     expect(batch.totalFrameCount).toBe(4);
 
     expect(startFrame.storageDir).toBe(
-      "projects/proj_1-my-story/images/batches/image_batch_v1/segments/segment_1/start-frame",
+      "projects/proj_1-my-story/images/batches/image_batch_v1/segments/scene_1__segment_1/start-frame",
     );
     expect(startFrame.planningRelPath).toBe(
-      "images/batches/image_batch_v1/segments/segment_1/start-frame/planning.json",
+      "images/batches/image_batch_v1/segments/scene_1__segment_1/start-frame/planning.json",
     );
     expect(startFrame.promptSeedRelPath).toBe(
-      "images/batches/image_batch_v1/segments/segment_1/start-frame/prompt.seed.txt",
+      "images/batches/image_batch_v1/segments/scene_1__segment_1/start-frame/prompt.seed.txt",
     );
     expect(endFrame.promptCurrentRelPath).toBe(
-      "images/batches/image_batch_v1/segments/segment_1/end-frame/prompt.current.txt",
+      "images/batches/image_batch_v1/segments/scene_1__segment_1/end-frame/prompt.current.txt",
     );
     expect(endFrame.currentImageRelPath).toBe(
-      "images/batches/image_batch_v1/segments/segment_1/end-frame/current.png",
+      "images/batches/image_batch_v1/segments/scene_1__segment_1/end-frame/current.png",
     );
   });
 

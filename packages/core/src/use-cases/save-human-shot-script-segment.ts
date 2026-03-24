@@ -1,4 +1,8 @@
-import type { CurrentShotScript, SaveShotScriptSegmentRequest } from "@sweet-star/shared";
+import {
+  toShotScriptSegmentStorageKey,
+  type CurrentShotScript,
+  type SaveShotScriptSegmentRequest,
+} from "@sweet-star/shared";
 
 import {
   mergeShotScriptSegment,
@@ -9,6 +13,7 @@ import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
+import { resolveShotScriptSegment } from "./resolve-shot-script-segment";
 
 export interface SaveHumanShotScriptSegmentInput extends SaveShotScriptSegmentRequest {
   projectId: string;
@@ -44,13 +49,10 @@ export function createSaveHumanShotScriptSegmentUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
-      const currentSegment = currentShotScript.segments.find(
-        (segment) => segment.segmentId === input.segmentId,
+      const { segment: currentSegment } = resolveShotScriptSegment(
+        currentShotScript.segments,
+        input.segmentId,
       );
-
-      if (!currentSegment) {
-        throw new Error(`Shot script segment not found: ${input.segmentId}`);
-      }
 
       const updatedAt = dependencies.clock.now();
       const updatedShotScript = mergeShotScriptSegment(
@@ -67,7 +69,7 @@ export function createSaveHumanShotScriptSegmentUseCase(
 
       await dependencies.shotScriptStorage.writeShotScriptVersion({
         storageDir: project.storageDir,
-        versionId: toHumanShotScriptVersionId(updatedAt, input.segmentId),
+        versionId: toHumanShotScriptVersionId(updatedAt, currentSegment),
         kind: "human",
         shotScript: updatedShotScript,
       });
@@ -86,6 +88,9 @@ export function createSaveHumanShotScriptSegmentUseCase(
   };
 }
 
-function toHumanShotScriptVersionId(updatedAt: string, segmentId: string) {
-  return `human-${segmentId}-${updatedAt.replaceAll(/[:.]/g, "-")}`;
+function toHumanShotScriptVersionId(
+  updatedAt: string,
+  segment: { sceneId: string; segmentId: string },
+) {
+  return `human-${toShotScriptSegmentStorageKey(segment)}-${updatedAt.replaceAll(/[:.]/g, "-")}`;
 }

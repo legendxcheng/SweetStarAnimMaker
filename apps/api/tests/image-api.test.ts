@@ -212,6 +212,50 @@ describe("images api", () => {
     });
   });
 
+  it("creates prompt-regeneration tasks for every frame in the current image batch", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: vi
+          .fn()
+          .mockReturnValueOnce("task_batch_frame_prompt_1")
+          .mockReturnValueOnce("task_batch_frame_prompt_2"),
+      },
+    });
+    const project = await createProject(app);
+
+    await seedImageBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "images_in_review",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/regenerate-prompts`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      batchId: "image_batch_1",
+      frameCount: 2,
+      taskIds: ["task_batch_frame_prompt_1", "task_batch_frame_prompt_2"],
+    });
+    expect(enqueue).toHaveBeenNthCalledWith(1, {
+      taskId: "task_batch_frame_prompt_1",
+      queueName: "frame-prompt-generate",
+      taskType: "frame_prompt_generate",
+    });
+    expect(enqueue).toHaveBeenNthCalledWith(2, {
+      taskId: "task_batch_frame_prompt_2",
+      queueName: "frame-prompt-generate",
+      taskType: "frame_prompt_generate",
+    });
+  });
+
   it("approves all remaining frames and marks the project as images_approved", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);

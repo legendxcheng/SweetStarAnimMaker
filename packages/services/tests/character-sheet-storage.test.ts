@@ -107,4 +107,46 @@ describe("character sheet storage", () => {
       ),
     ).resolves.toContain('"width": 1536');
   });
+
+  it("reads the current character sheet metadata from the batch-scoped character directory", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-character-sheets-"));
+    tempDirs.push(tempDir);
+
+    const storage = createCharacterSheetStorage({
+      paths: createLocalDataPaths(tempDir),
+    });
+    const batch = createCharacterSheetBatchRecord({
+      id: "char_batch_v1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceMasterPlotId: "mp_1",
+      characterCount: 1,
+      createdAt: "2026-03-21T00:00:00.000Z",
+      updatedAt: "2026-03-21T00:00:00.000Z",
+    });
+    const character = createCharacterSheetRecord({
+      id: "char_rin_1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      batchId: batch.id,
+      sourceMasterPlotId: "mp_1",
+      characterName: "Rin",
+      promptTextGenerated: "silver pilot jacket",
+      promptTextCurrent: "silver pilot jacket",
+      updatedAt: "2026-03-21T00:00:00.000Z",
+    });
+
+    await storage.writeCurrentImage({
+      character,
+      imageBytes: new Uint8Array([1, 2, 3]),
+      metadata: character,
+    });
+
+    await expect(
+      storage.readCurrentCharacterSheet({
+        storageDir: character.projectStorageDir,
+        characterId: character.id,
+      }),
+    ).resolves.toEqual(expect.objectContaining({ id: "char_rin_1", batchId: "char_batch_v1" }));
+  });
 });

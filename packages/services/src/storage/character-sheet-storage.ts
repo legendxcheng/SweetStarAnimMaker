@@ -132,20 +132,29 @@ export function createCharacterSheetStorage(
       await fs.writeFile(metadataPath, JSON.stringify(input.metadata, null, 2), "utf8");
     },
     async readCurrentCharacterSheet(input) {
-      try {
-        const currentMetadataPath = options.paths.projectCharacterSheetAssetPath(
-          input.storageDir,
-          `character-sheets/characters/${input.characterId}/current.json`,
-        );
+      const batchScopedMetadataPath = await findBatchScopedCurrentMetadataPath(input);
+      const legacyMetadataPath = options.paths.projectCharacterSheetAssetPath(
+        input.storageDir,
+        `character-sheets/characters/${input.characterId}/current.json`,
+      );
 
-        return JSON.parse(await fs.readFile(currentMetadataPath, "utf8")) as CharacterSheetRecord;
-      } catch (error) {
-        if (isMissingFileError(error)) {
-          return null;
+      for (const candidatePath of [batchScopedMetadataPath, legacyMetadataPath]) {
+        if (!candidatePath) {
+          continue;
         }
 
-        throw error;
+        try {
+          return JSON.parse(await fs.readFile(candidatePath, "utf8")) as CharacterSheetRecord;
+        } catch (error) {
+          if (isMissingFileError(error)) {
+            continue;
+          }
+
+          throw error;
+        }
       }
+
+      return null;
     },
     async listReferenceImages(input) {
       return readReferenceManifest(input.character);
@@ -321,6 +330,49 @@ export function createCharacterSheetStorage(
       "project",
       "active.template.txt",
     );
+  }
+
+  async function findBatchScopedCurrentMetadataPath(input: {
+    storageDir: string;
+    characterId: string;
+  }) {
+    const batchesDir = options.paths.projectCharacterSheetAssetPath(
+      input.storageDir,
+      "character-sheets/batches",
+    );
+
+    try {
+      const entries = await fs.readdir(batchesDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+
+        const candidatePath = path.join(
+          batchesDir,
+          entry.name,
+          "characters",
+          input.characterId,
+          "current.json",
+        );
+
+        try {
+          await fs.access(candidatePath);
+          return candidatePath;
+        } catch (error) {
+          if (!isMissingFileError(error)) {
+            throw error;
+          }
+        }
+      }
+    } catch (error) {
+      if (!isMissingFileError(error)) {
+        throw error;
+      }
+    }
+
+    return null;
   }
 }
 

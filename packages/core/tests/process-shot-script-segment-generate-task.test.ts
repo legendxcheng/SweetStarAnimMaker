@@ -178,4 +178,175 @@ describe("process shot script segment generate task use case", () => {
       updatedAt: "2026-03-23T12:05:00.000Z",
     });
   });
+
+  it("updates the matching scene segment when raw segment ids repeat", async () => {
+    const taskRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "task_segment_2",
+        projectId: "proj_1",
+        type: "shot_script_segment_generate",
+        queueName: "shot-script-segment-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_segment_2",
+      }),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        status: "shot_script_generating",
+      }),
+      updateStatus: vi.fn(),
+    };
+    const taskFileStorage = {
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_segment_2",
+        projectId: "proj_1",
+        taskType: "shot_script_segment_generate",
+        sourceStoryboardId: "storyboard_1",
+        sourceShotScriptId: "shot_script_task_batch_1",
+        sceneId: "scene_2",
+        segmentId: "segment_1",
+        scene: {
+          id: "scene_2",
+          order: 2,
+          name: "废站台",
+          dramaticPurpose: "逼主角转向。",
+        },
+        segment: {
+          id: "segment_1",
+          order: 1,
+          durationSec: 5,
+          visual: "第二场原始分镜。",
+          characterAction: "回头。",
+          dialogue: "",
+          voiceOver: "",
+          audio: "广播杂音。",
+          purpose: "更新第二场。",
+        },
+        storyboardTitle: "第1集",
+        episodeTitle: "暴雨封路",
+        promptTemplateKey: "shot_script.segment.generate",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      readPromptTemplate: vi.fn().mockResolvedValue("{{segment.visual}}"),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_task_batch_1",
+        title: "第1集",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_batch_1",
+        updatedAt: "2026-03-23T12:03:00.000Z",
+        approvedAt: null,
+        segmentCount: 2,
+        shotCount: 0,
+        totalDurationSec: null,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "第一场",
+            summary: "保留第一场。",
+            durationSec: 6,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_2",
+            order: 1,
+            name: "第二场",
+            summary: "等待更新。",
+            durationSec: 5,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      }),
+      writeCurrentShotScript: vi.fn(),
+    };
+    const shotScriptProvider = {
+      generateShotScriptSegment: vi.fn().mockResolvedValue({
+        rawResponse: "{\"segmentId\":\"segment_1\"}",
+        segment: {
+          segmentId: "segment_1",
+          sceneId: "scene_2",
+          order: 1,
+          name: "第二场新稿",
+          summary: "只更新第二场。",
+          durationSec: 5,
+          status: "in_review",
+          lastGeneratedAt: null,
+          approvedAt: null,
+          shots: [
+            {
+              id: "shot_scene_2",
+              sceneId: "scene_2",
+              segmentId: "segment_1",
+              order: 1,
+              shotCode: "S02-SG01-SH01",
+              durationSec: 5,
+              purpose: "第二场。",
+              visual: "第二场新镜头。",
+              subject: "林夏",
+              action: "回头。",
+              dialogue: null,
+              os: null,
+              audio: "广播杂音。",
+              transitionHint: null,
+              continuityNotes: null,
+            },
+          ],
+        },
+      }),
+    };
+
+    const useCase = createProcessShotScriptSegmentGenerateTaskUseCase({
+      taskRepository: taskRepository as never,
+      projectRepository: projectRepository as never,
+      taskFileStorage: taskFileStorage as never,
+      shotScriptProvider: shotScriptProvider as never,
+      shotScriptStorage: shotScriptStorage as never,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-23T12:04:00.000Z")
+          .mockReturnValueOnce("2026-03-23T12:05:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_segment_2" });
+
+    expect(shotScriptStorage.writeCurrentShotScript).toHaveBeenCalledWith({
+      storageDir: "projects/proj_1-my-story",
+      shotScript: expect.objectContaining({
+        segments: [
+          expect.objectContaining({
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            name: "第一场",
+            status: "pending",
+          }),
+          expect.objectContaining({
+            sceneId: "scene_2",
+            segmentId: "segment_1",
+            name: "第二场新稿",
+            status: "in_review",
+            shots: [expect.objectContaining({ shotCode: "S02-SG01-SH01" })],
+          }),
+        ],
+      }),
+    });
+  });
 });

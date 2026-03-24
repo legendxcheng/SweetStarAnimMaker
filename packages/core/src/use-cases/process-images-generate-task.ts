@@ -1,7 +1,6 @@
-import {
-  createSegmentFrameRecord,
-  createShotImageBatchRecord,
-} from "../domain/shot-image";
+import { toShotScriptSegmentStorageKey } from "@sweet-star/shared";
+
+import { createSegmentFrameRecord, createShotImageBatchRecord } from "../domain/shot-image";
 import {
   createTaskRecord,
   framePromptGenerateQueueName,
@@ -96,7 +95,7 @@ export function createProcessImagesGenerateTaskUseCase(
         for (const segment of currentShotScript.segments) {
           for (const frameType of ["start_frame", "end_frame"] as const) {
             const frame = createSegmentFrameRecord({
-              id: toSegmentFrameId(segment.segmentId, frameType),
+              id: toSegmentFrameId(segment.sceneId, segment.segmentId, frameType),
               batchId: batch.id,
               projectId: project.id,
               projectStorageDir: project.storageDir,
@@ -198,7 +197,11 @@ function toShotImageBatchId(taskId: string) {
   return `image_batch_${taskId}`;
 }
 
-function toSegmentFrameId(segmentId: string, frameType: "start_frame" | "end_frame") {
+function toSegmentFrameId(
+  sceneId: string,
+  segmentId: string,
+  frameType: "start_frame" | "end_frame",
+) {
   const token = frameType === "start_frame" ? "start" : "end";
-  return `frame_${segmentId}_${token}`;
+  return `frame_${toShotScriptSegmentStorageKey({ sceneId, segmentId })}_${token}`;
 }

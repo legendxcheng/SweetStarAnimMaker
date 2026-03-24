@@ -31,6 +31,7 @@ import {
   createListImagesUseCase,
   createListProjectsUseCase,
   createGenerateFrameImageUseCase,
+  createRegenerateAllFramePromptsUseCase,
   createRegenerateShotScriptSegmentUseCase,
   createRegenerateCharacterSheetUseCase,
   createRegenerateFramePromptUseCase,
@@ -370,6 +371,15 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       clock,
     }),
     regenerateFramePrompt: createRegenerateFramePromptUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
+    regenerateAllFramePrompts: createRegenerateAllFramePromptsUseCase({
       projectRepository: repository,
       shotImageRepository,
       taskRepository,

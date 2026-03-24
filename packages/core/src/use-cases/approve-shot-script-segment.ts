@@ -1,16 +1,23 @@
-import type { CurrentShotScript } from "@sweet-star/shared";
+import {
+  toShotScriptSegmentStorageKey,
+  type CurrentShotScript,
+} from "@sweet-star/shared";
 
 import {
   mergeShotScriptSegment,
   toApprovedShotScriptSegment,
 } from "../domain/shot-script";
-import { createShotScriptReviewRecord } from "../domain/shot-script-review";
+import {
+  createShotScriptReviewId,
+  createShotScriptReviewRecord,
+} from "../domain/shot-script-review";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptReviewRepository } from "../ports/shot-script-review-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
+import { resolveShotScriptSegment } from "./resolve-shot-script-segment";
 
 export interface ApproveShotScriptSegmentInput {
   projectId: string;
@@ -47,13 +54,10 @@ export function createApproveShotScriptSegmentUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
-      const currentSegment = currentShotScript.segments.find(
-        (segment) => segment.segmentId === input.segmentId,
+      const { segment: currentSegment } = resolveShotScriptSegment(
+        currentShotScript.segments,
+        input.segmentId,
       );
-
-      if (!currentSegment) {
-        throw new Error(`Shot script segment not found: ${input.segmentId}`);
-      }
 
       const approvedAt = dependencies.clock.now();
       const updatedShotScript = mergeShotScriptSegment(
@@ -68,7 +72,11 @@ export function createApproveShotScriptSegmentUseCase(
       });
       await dependencies.shotScriptReviewRepository.insert(
         createShotScriptReviewRecord({
-          id: `ssr_${currentShotScript.id}_${input.segmentId}_approve`,
+          id: createShotScriptReviewId(
+            currentShotScript.id,
+            toShotScriptSegmentStorageKey(currentSegment),
+            "approve",
+          ),
           projectId: project.id,
           shotScriptId: currentShotScript.id,
           action: "approve",

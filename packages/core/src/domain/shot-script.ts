@@ -68,7 +68,9 @@ export function mergeShotScriptSegment(
   updatedAt: string,
 ): CurrentShotScript {
   const segments = shotScript.segments.map((segment) =>
-    segment.segmentId === updatedSegment.segmentId ? updatedSegment : segment,
+    segment.sceneId === updatedSegment.sceneId && segment.segmentId === updatedSegment.segmentId
+      ? updatedSegment
+      : segment,
   );
   const summary = summarizeShotScriptSegments(segments);
 

@@ -5,6 +5,10 @@ import type {
   ShotScriptItem,
   ShotScriptReviewWorkspace,
 } from "@sweet-star/shared";
+import {
+  toShotScriptSegmentSelector,
+  toShotScriptSegmentStorageKey,
+} from "@sweet-star/shared";
 
 import { AsyncState } from "../components/async-state";
 import { StatusBadge } from "../components/status-badge";
@@ -13,7 +17,7 @@ import { apiClient } from "../services/api-client";
 function toSegmentDrafts(workspace: ShotScriptReviewWorkspace) {
   return Object.fromEntries(
     workspace.currentShotScript.segments.map((segment) => [
-      segment.segmentId,
+      toShotScriptSegmentSelector(segment),
       {
         name: segment.name,
         summary: segment.summary,
@@ -255,19 +259,21 @@ export function ShotScriptReviewPage() {
               </div>
 
               {orderedSegments.map((segment) => {
-                const draft = drafts[segment.segmentId] ?? {
+                const segmentSelector = toShotScriptSegmentSelector(segment);
+                const segmentStorageKey = toShotScriptSegmentStorageKey(segment);
+                const draft = drafts[segmentSelector] ?? {
                   name: segment.name,
                   summary: segment.summary,
                   durationSec: segment.durationSec,
                   shots: segment.shots,
                 };
-                const isDirty = dirtySegmentIds.includes(segment.segmentId);
-                const isSaving = savingSegmentId === segment.segmentId;
-                const isSubmitting = submittingActionId === segment.segmentId;
+                const isDirty = dirtySegmentIds.includes(segmentSelector);
+                const isSaving = savingSegmentId === segmentSelector;
+                const isSubmitting = submittingActionId === segmentSelector;
 
                 return (
                   <section
-                    key={segment.segmentId}
+                    key={segmentSelector}
                     className="rounded-xl border border-(--color-border) bg-(--color-bg-surface) p-5"
                   >
                     <div className="flex items-start justify-between gap-4 mb-5">
@@ -286,7 +292,7 @@ export function ShotScriptReviewPage() {
                         {isDirty && ws.availableActions.saveSegment && (
                           <button
                             onClick={() => {
-                              void handleSaveSegment(segment.segmentId);
+                              void handleSaveSegment(segmentSelector);
                             }}
                             disabled={isSaving}
                             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
@@ -297,7 +303,7 @@ export function ShotScriptReviewPage() {
                         {!isDirty && ws.availableActions.regenerateSegment && (
                           <button
                             onClick={() => {
-                              void handleRegenerateSegment(segment.segmentId);
+                              void handleRegenerateSegment(segmentSelector);
                             }}
                             disabled={isSubmitting}
                             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-warning)/10 text-(--color-warning) border border-(--color-warning)/30 hover:bg-(--color-warning)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -308,7 +314,7 @@ export function ShotScriptReviewPage() {
                         {!isDirty && ws.availableActions.approveSegment && (
                           <button
                             onClick={() => {
-                              void handleApproveSegment(segment.segmentId);
+                              void handleApproveSegment(segmentSelector);
                             }}
                             disabled={isSubmitting}
                             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-(--color-success)/10 text-(--color-success) border border-(--color-success)/30 hover:bg-(--color-success)/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -322,17 +328,17 @@ export function ShotScriptReviewPage() {
                     <div className="grid gap-4 lg:grid-cols-2 mb-5">
                       <div>
                         <label
-                          htmlFor={`segment-name-${segment.segmentId}`}
+                          htmlFor={`segment-name-${segmentStorageKey}`}
                           className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                         >
                           段落 {segment.order} 标题
                         </label>
                         <input
-                          id={`segment-name-${segment.segmentId}`}
+                          id={`segment-name-${segmentStorageKey}`}
                           value={draft.name ?? ""}
                           onChange={(event) =>
                             updateSegmentField(
-                              segment.segmentId,
+                              segmentSelector,
                               "name",
                               event.target.value || null,
                             )
@@ -342,18 +348,18 @@ export function ShotScriptReviewPage() {
                       </div>
                       <div>
                         <label
-                          htmlFor={`segment-duration-${segment.segmentId}`}
+                          htmlFor={`segment-duration-${segmentStorageKey}`}
                           className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                         >
                           段落 {segment.order} 时长（秒）
                         </label>
                         <input
-                          id={`segment-duration-${segment.segmentId}`}
+                          id={`segment-duration-${segmentStorageKey}`}
                           type="number"
                           value={draft.durationSec ?? ""}
                           onChange={(event) =>
                             updateSegmentField(
-                              segment.segmentId,
+                              segmentSelector,
                               "durationSec",
                               event.target.value ? Number(event.target.value) : null,
                             )
@@ -363,16 +369,16 @@ export function ShotScriptReviewPage() {
                       </div>
                       <div className="lg:col-span-2">
                         <label
-                          htmlFor={`segment-summary-${segment.segmentId}`}
+                          htmlFor={`segment-summary-${segmentStorageKey}`}
                           className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
                         >
                           段落 {segment.order} 摘要
                         </label>
                         <textarea
-                          id={`segment-summary-${segment.segmentId}`}
+                          id={`segment-summary-${segmentStorageKey}`}
                           value={draft.summary}
                           onChange={(event) =>
-                            updateSegmentField(segment.segmentId, "summary", event.target.value)
+                            updateSegmentField(segmentSelector, "summary", event.target.value)
                           }
                           rows={3}
                           className={textareaClass}
@@ -408,7 +414,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.shotCode}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "shotCode",
                                     event.target.value,
@@ -430,7 +436,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.durationSec ?? ""}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "durationSec",
                                     event.target.value ? Number(event.target.value) : null,
@@ -451,7 +457,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.purpose}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "purpose",
                                     event.target.value,
@@ -473,7 +479,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.subject}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "subject",
                                     event.target.value,
@@ -494,7 +500,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.visual}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "visual",
                                     event.target.value,
@@ -516,7 +522,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.action}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "action",
                                     event.target.value,
@@ -538,7 +544,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.dialogue ?? ""}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "dialogue",
                                     event.target.value || null,
@@ -560,7 +566,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.os ?? ""}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "os",
                                     event.target.value || null,
@@ -582,7 +588,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.audio ?? ""}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "audio",
                                     event.target.value || null,
@@ -604,7 +610,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.transitionHint ?? ""}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "transitionHint",
                                     event.target.value || null,
@@ -625,7 +631,7 @@ export function ShotScriptReviewPage() {
                                 value={shot.continuityNotes ?? ""}
                                 onChange={(event) =>
                                   updateShotField(
-                                    segment.segmentId,
+                                    segmentSelector,
                                     shotIndex,
                                     "continuityNotes",
                                     event.target.value || null,

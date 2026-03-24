@@ -318,6 +318,60 @@ describe("shot script api", () => {
     expect(detailResponse.json().status).toBe("shot_script_approved");
   });
 
+  it("approves all shot script segments repeatedly without review id collisions", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCurrentShotScript({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      shotScript: baseShotScript,
+      status: "shot_script_in_review",
+    });
+
+    const firstResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/shot-script/approve-all`,
+      payload: {},
+    });
+
+    expect(firstResponse.statusCode).toBe(200);
+    expect(firstResponse.json()).toEqual(
+      expect.objectContaining({
+        id: baseShotScript.id,
+        approvedAt: expect.any(String),
+        segments: expect.arrayContaining([
+          expect.objectContaining({
+            segmentId: "segment_1",
+            status: "approved",
+          }),
+        ]),
+      }),
+    );
+
+    const secondResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/shot-script/approve-all`,
+      payload: {},
+    });
+
+    expect(secondResponse.statusCode).toBe(200);
+    expect(secondResponse.json()).toEqual(
+      expect.objectContaining({
+        id: baseShotScript.id,
+        approvedAt: expect.any(String),
+      }),
+    );
+
+    const detailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
+    });
+
+    expect(detailResponse.json().status).toBe("shot_script_approved");
+  });
+
   it("regenerates one shot script segment", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({

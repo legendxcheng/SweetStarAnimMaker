@@ -545,6 +545,13 @@ export {
   type RegenerateFramePromptUseCaseDependencies,
 } from "./use-cases/regenerate-frame-prompt";
 export {
+  createRegenerateAllFramePromptsUseCase,
+  type RegenerateAllFramePromptsInput,
+  type RegenerateAllFramePromptsResult,
+  type RegenerateAllFramePromptsUseCase,
+  type RegenerateAllFramePromptsUseCaseDependencies,
+} from "./use-cases/regenerate-all-frame-prompts";
+export {
   createApproveCharacterSheetUseCase,
   type ApproveCharacterSheetInput,
   type ApproveCharacterSheetUseCase,

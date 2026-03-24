@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   ShotScriptReviewSummary,
   StoryboardReviewAction,
@@ -28,4 +30,8 @@ export function createShotScriptReviewRecord(
     triggeredTaskId: input.triggeredTaskId ?? null,
     createdAt: input.createdAt,
   };
+}
+
+export function createShotScriptReviewId(...parts: string[]) {
+  return ["ssr", ...parts, randomUUID()].join("_");
 }

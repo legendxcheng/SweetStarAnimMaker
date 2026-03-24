@@ -24,6 +24,12 @@ const FRAME_STATUS_LABELS: Record<SegmentFrameRecord["imageStatus"], string> = {
   failed: "失败",
 };
 
+const FRAME_PLAN_STATUS_LABELS: Record<SegmentFrameRecord["planStatus"], string> = {
+  pending: "Prompt 生成中",
+  planned: "Prompt 已就绪",
+  plan_failed: "Prompt 生成失败",
+};
+
 interface ImagePhasePanelProps {
   project: ProjectDetail;
   task: TaskDetail | null;
@@ -53,7 +59,16 @@ export function ImagePhasePanel({
   const [listError, setListError] = useState<Error | null>(null);
   const [actionError, setActionError] = useState<Error | null>(null);
   const [actionBusy, setActionBusy] = useState<
-    | { kind: "save" | "regenerate" | "generate" | "approve" | "approve-all"; frameId?: string }
+    | {
+        kind:
+          | "save"
+          | "regenerate"
+          | "regenerate-all-prompts"
+          | "generate"
+          | "approve"
+          | "approve-all";
+        frameId?: string;
+      }
     | null
   >(null);
   const [drafts, setDrafts] = useState<Record<string, FrameDraftState>>({});
@@ -62,6 +77,7 @@ export function ImagePhasePanel({
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
   const batchSummary = project.currentImageBatch;
+  const hasPendingFramePlans = frames.some((frame) => frame.planStatus === "pending");
 
   useEffect(() => {
     if (!batchSummary) {
@@ -104,6 +120,44 @@ export function ImagePhasePanel({
     };
   }, [batchSummary?.id, project.id]);
 
+  useEffect(() => {
+    if (!batchSummary) {
+      return;
+    }
+
+    const shouldPoll = project.status === "images_generating" || hasPendingFramePlans;
+
+    if (!shouldPoll) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const intervalId = setInterval(() => {
+      void (async () => {
+        try {
+          const response = await apiClient.listImages(project.id);
+
+          if (cancelled) {
+            return;
+          }
+
+          applyImageListResponse(response);
+          setListError(null);
+        } catch (error) {
+          if (!cancelled) {
+            setListError(error as Error);
+          }
+        }
+      })();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [batchSummary?.id, hasPendingFramePlans, project.id, project.status]);
+
   const segmentGroups = useMemo(() => {
     const groups = new Map<
       string,
@@ -116,7 +170,7 @@ export function ImagePhasePanel({
     >();
 
     for (const frame of frames) {
-      const key = `${frame.segmentId}:${frame.order}`;
+      const key = `${frame.sceneId}:${frame.segmentId}:${frame.order}`;
       const group = groups.get(key);
 
       if (group) {
@@ -146,9 +200,21 @@ export function ImagePhasePanel({
     setFrames(response.frames);
     setDrafts((currentDrafts) => {
       const nextDrafts: Record<string, FrameDraftState> = {};
+      const previousFramesById = new Map(frames.map((frame) => [frame.id, frame]));
 
       for (const frame of response.frames) {
-        nextDrafts[frame.id] = currentDrafts[frame.id] ?? createFrameDraft(frame);
+        const currentDraft = currentDrafts[frame.id];
+        const previousFrame = previousFramesById.get(frame.id);
+        const shouldSyncWithServer =
+          !currentDraft ||
+          !previousFrame ||
+          (currentDraft.promptTextCurrent === previousFrame.promptTextCurrent &&
+            currentDraft.negativePromptTextCurrent ===
+              (previousFrame.negativePromptTextCurrent ?? ""));
+
+        nextDrafts[frame.id] = shouldSyncWithServer
+          ? createFrameDraft(frame)
+          : currentDraft;
       }
 
       return nextDrafts;
@@ -167,6 +233,13 @@ export function ImagePhasePanel({
 
   async function refreshProject() {
     await onProjectRefresh?.();
+  }
+
+  async function refreshFrames() {
+    const response = await apiClient.listImages(project.id);
+
+    applyImageListResponse(response);
+    setListError(null);
   }
 
   async function handleSavePrompt(frame: SegmentFrameRecord) {
@@ -196,6 +269,7 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "regenerate", frameId: frame.id });
       await apiClient.regenerateImageFramePrompt(project.id, frame.id);
+      await refreshFrames();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -250,6 +324,23 @@ export function ImagePhasePanel({
     }
   }
 
+  async function handleRegenerateAllPrompts() {
+    if (!batchSummary) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "regenerate-all-prompts" });
+      await apiClient.regenerateAllImagePrompts(project.id);
+      await refreshFrames();
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   return (
     <section aria-label="画面工作区">
       <div className={cardClass}>
@@ -261,6 +352,18 @@ export function ImagePhasePanel({
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-3">
+            {batchSummary && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleRegenerateAllPrompts();
+                }}
+                disabled={actionBusy !== null}
+                className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-warning)/30 text-(--color-warning) disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                重新生成当前批次全部 Prompt
+              </button>
+            )}
             {batchSummary && (
               <button
                 type="button"
@@ -364,7 +467,7 @@ export function ImagePhasePanel({
       )}
 
       {segmentGroups.map((segment) => (
-        <article key={`${segment.segmentId}:${segment.order}`} className={cardClass}>
+        <article key={`${segment.sceneId}:${segment.segmentId}:${segment.order}`} className={cardClass}>
           <div className="mb-4">
             <h4 className="text-base font-semibold text-(--color-text-primary)">
               Segment {segment.order}
@@ -420,7 +523,16 @@ interface FrameEditorCardProps {
   frame: SegmentFrameRecord | null;
   draft: FrameDraftState | undefined;
   actionBusy:
-    | { kind: "save" | "regenerate" | "generate" | "approve" | "approve-all"; frameId?: string }
+    | {
+        kind:
+          | "save"
+          | "regenerate"
+          | "regenerate-all-prompts"
+          | "generate"
+          | "approve"
+          | "approve-all";
+        frameId?: string;
+      }
     | null;
   metaLabelClass: string;
   metaValueClass: string;
@@ -452,8 +564,16 @@ function FrameEditorCard({
   }
 
   const frameLabel = frame.frameType === "start_frame" ? "起始帧" : "结束帧";
+  const isPromptPending = frame.planStatus === "pending";
+  const visiblePromptText = isPromptPending ? "" : draft.promptTextCurrent;
+  const visibleNegativePromptText = isPromptPending ? "" : draft.negativePromptTextCurrent;
+  const canSavePrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
+  const canGenerateFrame =
+    frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0;
+  const canApproveFrame = frame.imageAssetPath !== null;
   const isBusy =
     actionBusy?.kind === "approve-all" ||
+    actionBusy?.kind === "regenerate-all-prompts" ||
     (actionBusy?.frameId === frame.id &&
       (actionBusy.kind === "save" ||
         actionBusy.kind === "regenerate" ||
@@ -467,6 +587,9 @@ function FrameEditorCard({
           <h5 className="text-base font-semibold text-(--color-text-primary)">{frameLabel}</h5>
           <p className="text-sm text-(--color-text-muted) mt-1">
             当前状态：{FRAME_STATUS_LABELS[frame.imageStatus]}
+          </p>
+          <p className="text-sm text-(--color-text-muted) mt-1">
+            Prompt 状态：{FRAME_PLAN_STATUS_LABELS[frame.planStatus]}
           </p>
         </div>
         <div className="text-right">
@@ -491,13 +614,14 @@ function FrameEditorCard({
           <label className="block">
             <span className={metaLabelClass}>{frameLabel}提示词</span>
             <textarea
-              value={draft.promptTextCurrent}
+              value={visiblePromptText}
               onChange={(event) =>
                 onDraftChange(frame.id, {
                   ...draft,
                   promptTextCurrent: event.target.value,
                 })
               }
+              disabled={isBusy || isPromptPending}
               className="w-full min-h-32 rounded-xl border border-(--color-border) bg-(--color-bg-surface) px-3 py-3 text-sm text-(--color-text-primary)"
             />
           </label>
@@ -508,13 +632,14 @@ function FrameEditorCard({
             <span className={metaLabelClass}>{frameLabel}负面提示词</span>
             <textarea
               aria-label={`${frameLabel}负面提示词`}
-              value={draft.negativePromptTextCurrent}
+              value={visibleNegativePromptText}
               onChange={(event) =>
                 onDraftChange(frame.id, {
                   ...draft,
                   negativePromptTextCurrent: event.target.value,
                 })
               }
+              disabled={isBusy || isPromptPending}
               className="w-full min-h-24 rounded-xl border border-(--color-border) bg-(--color-bg-surface) px-3 py-3 text-sm text-(--color-text-primary)"
             />
           </label>
@@ -552,7 +677,7 @@ function FrameEditorCard({
             onClick={() => {
               void onSavePrompt(frame);
             }}
-            disabled={isBusy}
+            disabled={isBusy || !canSavePrompt}
             className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-border-muted) text-(--color-text-primary) disabled:opacity-40 disabled:cursor-not-allowed"
           >
             保存{frameLabel}提示词
@@ -562,7 +687,7 @@ function FrameEditorCard({
             onClick={() => {
               void onRegeneratePrompt(frame);
             }}
-            disabled={isBusy}
+            disabled={isBusy || isPromptPending}
             className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-warning)/30 text-(--color-warning) disabled:opacity-40 disabled:cursor-not-allowed"
           >
             重新生成{frameLabel} Prompt
@@ -572,7 +697,7 @@ function FrameEditorCard({
             onClick={() => {
               void onGenerateFrame(frame);
             }}
-            disabled={isBusy}
+            disabled={isBusy || !canGenerateFrame}
             className="px-4 py-2 rounded-lg text-sm font-semibold border border-(--color-accent)/30 text-(--color-accent) disabled:opacity-40 disabled:cursor-not-allowed"
           >
             生成{frameLabel}图片
@@ -582,12 +707,18 @@ function FrameEditorCard({
             onClick={() => {
               void onApproveFrame(frame);
             }}
-            disabled={isBusy}
+            disabled={isBusy || !canApproveFrame}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-(--color-success) text-(--color-bg-base) disabled:opacity-40 disabled:cursor-not-allowed"
           >
             审核通过{frameLabel}
           </button>
         </div>
+
+        {!canGenerateFrame && frame.planStatus === "pending" && (
+          <p className="text-sm text-(--color-text-muted)">
+            Prompt 仍在生成，完成前不能生成图片。
+          </p>
+        )}
       </div>
     </section>
   );

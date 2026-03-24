@@ -5,6 +5,7 @@ import type {
   ImageFrameType,
   SegmentFrameRecord,
 } from "@sweet-star/shared";
+import { toShotScriptSegmentStorageKey } from "@sweet-star/shared";
 
 export const shotImagesDirectoryName = "images";
 export const shotImageBatchesDirectoryName = "batches";
@@ -180,6 +181,11 @@ export function createShotImageBatchRecord(
 export function createSegmentFrameRecord(
   input: CreateSegmentFrameRecordInput,
 ): SegmentFrameRecordEntity {
+  const segmentStorageKey = toShotScriptSegmentStorageKey({
+    sceneId: input.sceneId,
+    segmentId: input.segmentId,
+  });
+
   return {
     id: input.id,
     batchId: input.batchId,
@@ -209,42 +215,42 @@ export function createSegmentFrameRecord(
     sourceTaskId: input.sourceTaskId ?? null,
     storageDir: `${input.projectStorageDir}/${toSegmentFrameStorageDir(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     )}`,
     planningRelPath: toSegmentFramePlanningRelPath(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
     promptSeedRelPath: toSegmentFramePromptSeedRelPath(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
     promptCurrentRelPath: toSegmentFramePromptCurrentRelPath(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
     currentImageRelPath: toSegmentFrameCurrentImageRelPath(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
     currentMetadataRelPath: toSegmentFrameCurrentMetadataRelPath(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
     promptVersionsStorageDir: toSegmentFramePromptVersionsStorageDir(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
     versionsStorageDir: toSegmentFrameVersionsStorageDir(
       input.batchId,
-      input.segmentId,
+      segmentStorageKey,
       input.frameType,
     ),
   };

@@ -88,6 +88,7 @@ function isImagesPhaseEnabled(project: ProjectDetail | null) {
   }
 
   return (
+    project.currentShotScript?.approvedAt !== null ||
     project.status === "shot_script_approved" ||
     project.status === "images_generating" ||
     project.status === "images_in_review" ||

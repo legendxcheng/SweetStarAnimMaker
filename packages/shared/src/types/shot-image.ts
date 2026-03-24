@@ -51,6 +51,12 @@ export interface ImageFrameListResponse {
   frames: SegmentFrameRecord[];
 }
 
+export interface RegenerateAllImagePromptsResponse {
+  batchId: string;
+  frameCount: number;
+  taskIds: string[];
+}
+
 export interface UpdateImageFramePromptRequest {
   promptTextCurrent: string;
   negativePromptTextCurrent: string | null;

@@ -25,6 +25,7 @@ const baseProject = {
   currentCharacterSheetBatch: null,
   currentStoryboard: null,
   currentShotScript: null,
+  currentImageBatch: null,
 };
 
 const approvedMasterPlotProject = {
@@ -157,6 +158,15 @@ const shotScriptInReviewProject = {
 const shotScriptApprovedProject = {
   ...shotScriptInReviewProject,
   status: "shot_script_approved" as const,
+  currentShotScript: {
+    ...shotScriptInReviewProject.currentShotScript,
+    approvedAt: "2024-01-01T00:00:08Z",
+  },
+};
+
+const shotScriptApprovedSummaryProject = {
+  ...shotScriptInReviewProject,
+  status: "shot_script_in_review" as const,
   currentShotScript: {
     ...shotScriptInReviewProject.currentShotScript,
     approvedAt: "2024-01-01T00:00:08Z",
@@ -494,6 +504,18 @@ describe("Project Detail Page", () => {
     expect(screen.getByText("Segment 1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
+  });
+
+  it("enables the image phase when the current shot script summary is approved even before project status catches up", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      shotScriptApprovedSummaryProject,
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "画面" })).toBeEnabled();
+    });
   });
 
   it("loads project detail and lets the user start storyboard generation", async () => {

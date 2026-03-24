@@ -768,6 +768,11 @@ describe("API Client", () => {
           },
         ],
       },
+      {
+        batchId: "image_batch_1",
+        frameCount: 2,
+        taskIds: ["task_frame_prompt_1", "task_frame_prompt_2"],
+      },
     ];
     const mockFetch = vi
       .fn()
@@ -778,7 +783,8 @@ describe("API Client", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => responses[4] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[5] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[6] })
-      .mockResolvedValueOnce({ ok: true, json: async () => responses[7] });
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[7] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[8] });
     global.fetch = mockFetch;
 
     await apiClient.createImagesGenerateTask("proj_1");
@@ -792,6 +798,7 @@ describe("API Client", () => {
     await apiClient.generateImageFrame("proj_1", "frame_start_1");
     await apiClient.approveImageFrame("proj_1", "frame_start_1");
     await apiClient.approveAllImageFrames("proj_1");
+    await apiClient.regenerateAllImagePrompts("proj_1");
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -833,6 +840,62 @@ describe("API Client", () => {
       `${config.apiBaseUrl}/projects/proj_1/images/approve-all`,
       expect.objectContaining({ method: "POST" }),
     );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      9,
+      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-prompts`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("accepts pending image frames with empty prompts while frame prompt generation is still running", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        currentBatch: {
+          id: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          totalFrameCount: 2,
+          approvedFrameCount: 0,
+          updatedAt: "2026-03-24T00:00:01.000Z",
+        },
+        frames: [
+          {
+            id: "frame_start_1",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            frameType: "start_frame",
+            planStatus: "pending",
+            imageStatus: "pending",
+            selectedCharacterIds: [],
+            matchedReferenceImagePaths: [],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "",
+            promptTextCurrent: "",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: null,
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            approvedAt: null,
+            updatedAt: "2026-03-24T00:00:01.000Z",
+            sourceTaskId: "task_frame_prompt_1",
+          },
+        ],
+      }),
+    });
+
+    const response = await apiClient.listImages("proj_1");
+
+    expect(response.frames[0]?.planStatus).toBe("pending");
+    expect(response.frames[0]?.promptTextSeed).toBe("");
+    expect(response.frames[0]?.promptTextCurrent).toBe("");
   });
 
 });

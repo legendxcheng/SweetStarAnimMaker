@@ -395,7 +395,7 @@ describe("Project Review Page", () => {
     await waitFor(() => {
       expect(apiModule.apiClient.saveShotScriptSegment).toHaveBeenCalledWith(
         "proj-1",
-        "segment-1",
+        "scene-1:segment-1",
         {
           name: "雨夜码头加强版",
           summary: "林夏在暴雨码头听见异响。",

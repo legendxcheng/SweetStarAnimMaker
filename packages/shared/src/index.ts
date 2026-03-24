@@ -30,6 +30,7 @@ export {
   generateImageFrameRequestSchema,
   imageFrameListResponseSchema,
   imageFrameResponseSchema,
+  regenerateAllImagePromptsResponseSchema,
   regenerateImageFramePromptRequestSchema,
   updateImageFramePromptRequestSchema,
 } from "./schemas/image-api";
@@ -67,6 +68,14 @@ export {
   saveShotScriptSegmentRequestSchema,
 } from "./schemas/shot-script-api";
 export {
+  matchesShotScriptSegmentSelector,
+  parseShotScriptSegmentSelector,
+  toShotScriptSegmentSelector,
+  toShotScriptSegmentStorageKey,
+  type ParsedShotScriptSegmentSelector,
+  type ShotScriptSegmentIdentity,
+} from "./shot-script-segment-selector";
+export {
   createMasterPlotGenerateTaskResponseSchema,
   createCharacterSheetGenerateTaskResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
@@ -99,6 +108,7 @@ export type {
   ImageFramePlanStatus,
   ImageFrameStatus,
   ImageFrameType,
+  RegenerateAllImagePromptsResponse,
   RegenerateImageFramePromptRequest,
   SegmentFrameRecord,
   UpdateImageFramePromptRequest,

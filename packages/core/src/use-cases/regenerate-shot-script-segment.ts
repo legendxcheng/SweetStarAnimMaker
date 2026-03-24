@@ -1,11 +1,17 @@
-import type { TaskDetail } from "@sweet-star/shared";
+import {
+  toShotScriptSegmentStorageKey,
+  type TaskDetail,
+} from "@sweet-star/shared";
 
 import {
   createTaskRecord,
   shotScriptSegmentGenerateQueueName,
   type ShotScriptSegmentGenerateTaskInput,
 } from "../domain/task";
-import { createShotScriptReviewRecord } from "../domain/shot-script-review";
+import {
+  createShotScriptReviewId,
+  createShotScriptReviewRecord,
+} from "../domain/shot-script-review";
 import { mergeShotScriptSegment } from "../domain/shot-script";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import {
@@ -21,6 +27,7 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import { requireSceneId, resolveShotScriptSegment } from "./resolve-shot-script-segment";
 import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface RegenerateShotScriptSegmentInput {
@@ -73,17 +80,17 @@ export function createRegenerateShotScriptSegmentUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
-      const matchedScene = currentStoryboard.scenes.find((scene) =>
-        scene.segments.some((segment) => segment.id === input.segmentId),
+      const { selector, segment: currentSegment } = resolveShotScriptSegment(
+        currentShotScript.segments,
+        input.segmentId,
       );
+      const sceneId = requireSceneId(selector, currentSegment.sceneId);
+      const matchedScene = currentStoryboard.scenes.find((scene) => scene.id === sceneId);
       const matchedSegment = matchedScene?.segments.find(
-        (segment) => segment.id === input.segmentId,
-      );
-      const currentSegment = currentShotScript.segments.find(
-        (segment) => segment.segmentId === input.segmentId,
+        (segment) => segment.id === currentSegment.segmentId,
       );
 
-      if (!matchedScene || !matchedSegment || !currentSegment) {
+      if (!matchedScene || !matchedSegment) {
         throw new Error(`Shot script segment not found: ${input.segmentId}`);
       }
 
@@ -144,7 +151,11 @@ export function createRegenerateShotScriptSegmentUseCase(
       });
       await dependencies.shotScriptReviewRepository.insert(
         createShotScriptReviewRecord({
-          id: `ssr_${currentShotScript.id}_${input.segmentId}_regenerate`,
+          id: createShotScriptReviewId(
+            currentShotScript.id,
+            toShotScriptSegmentStorageKey(currentSegment),
+            "regenerate",
+          ),
           projectId: project.id,
           shotScriptId: currentShotScript.id,
           action: "reject",

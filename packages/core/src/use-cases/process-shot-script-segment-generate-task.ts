@@ -1,7 +1,6 @@
-import {
-  mergeShotScriptSegment,
-  toInReviewShotScriptSegment,
-} from "../domain/shot-script";
+import { matchesShotScriptSegmentSelector } from "@sweet-star/shared";
+
+import { mergeShotScriptSegment, toInReviewShotScriptSegment } from "../domain/shot-script";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
@@ -97,8 +96,11 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           rawResponse: providerResult.rawResponse,
         });
 
-        const existingSegment = currentShotScript.segments.find(
-          (segment) => segment.segmentId === taskInput.segmentId,
+        const existingSegment = currentShotScript.segments.find((segment) =>
+          matchesShotScriptSegmentSelector(segment, {
+            sceneId: taskInput.sceneId,
+            segmentId: taskInput.segmentId,
+          }),
         );
 
         if (!existingSegment) {

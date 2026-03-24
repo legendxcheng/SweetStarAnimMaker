@@ -375,7 +375,7 @@ describe("Review Actions", () => {
     await waitFor(() => {
       expect(apiModule.apiClient.approveShotScriptSegment).toHaveBeenCalledWith(
         "proj-1",
-        "segment-1",
+        "scene-1:segment-1",
         {},
       );
     });
@@ -408,7 +408,7 @@ describe("Review Actions", () => {
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateShotScriptSegment).toHaveBeenCalledWith(
         "proj-1",
-        "segment-1",
+        "scene-1:segment-1",
         {},
       );
     });
@@ -439,5 +439,71 @@ describe("Review Actions", () => {
     });
 
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
+  });
+
+  it("uses a scene-aware selector for shot-script actions when raw segment ids repeat", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue({
+      ...shotScriptWorkspace,
+      currentShotScript: {
+        ...shotScriptWorkspace.currentShotScript,
+        segmentCount: 2,
+        shotCount: 2,
+        totalDurationSec: 8,
+        segments: [
+          {
+            ...shotScriptWorkspace.currentShotScript.segments[0],
+            segmentId: "segment-1",
+            sceneId: "scene-1",
+            name: "第一场",
+          },
+          {
+            ...shotScriptWorkspace.currentShotScript.segments[0],
+            segmentId: "segment-1",
+            sceneId: "scene-2",
+            name: "第二场",
+            shots: [
+              {
+                ...shotScriptWorkspace.currentShotScript.segments[0].shots[0],
+                id: "shot-2",
+                sceneId: "scene-2",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    vi.spyOn(apiModule.apiClient, "approveShotScriptSegment").mockResolvedValue({
+      ...shotScriptWorkspace.currentShotScript,
+      approvedAt: null,
+      segments: [
+        {
+          ...shotScriptWorkspace.currentShotScript.segments[0],
+          segmentId: "segment-1",
+          sceneId: "scene-1",
+          status: "in_review",
+          approvedAt: null,
+        },
+        {
+          ...shotScriptWorkspace.currentShotScript.segments[0],
+          segmentId: "segment-1",
+          sceneId: "scene-2",
+          status: "approved",
+          approvedAt: "2024-01-01T00:00:01Z",
+        },
+      ],
+    });
+
+    renderShotScriptPage();
+
+    const approveButtons = await screen.findAllByRole("button", { name: "通过本段" });
+    fireEvent.click(approveButtons[1]!);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.approveShotScriptSegment).toHaveBeenCalledWith(
+        "proj-1",
+        "scene-2:segment-1",
+        {},
+      );
+    });
   });
 });

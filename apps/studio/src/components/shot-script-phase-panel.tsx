@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import type { CurrentShotScript, ProjectDetail, TaskDetail } from "@sweet-star/shared";
+import {
+  toShotScriptSegmentSelector,
+  type CurrentShotScript,
+  type ProjectDetail,
+  type TaskDetail,
+} from "@sweet-star/shared";
 import { Link } from "react-router-dom";
 
 import { apiClient } from "../services/api-client";
@@ -234,7 +239,7 @@ export function ShotScriptPhasePanel({
 
               {currentShotScript.segments.map((segment) => (
                 <article
-                  key={segment.segmentId}
+                  key={toShotScriptSegmentSelector(segment)}
                   className="rounded-xl border border-(--color-border-muted) bg-(--color-bg-base) p-4"
                 >
                   <div className="grid gap-5">

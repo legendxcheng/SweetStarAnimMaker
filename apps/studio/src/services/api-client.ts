@@ -14,6 +14,7 @@ import {
   generateImageFrameRequestSchema,
   imageFrameListResponseSchema,
   imageFrameResponseSchema,
+  regenerateAllImagePromptsResponseSchema,
   regenerateImageFramePromptRequestSchema,
   updateCharacterSheetPromptRequestSchema,
   updateImageFramePromptRequestSchema,
@@ -40,6 +41,7 @@ import {
   type MasterPlotReviewWorkspace,
   type ProjectDetail,
   type ProjectSummary,
+  type RegenerateAllImagePromptsResponse,
   type SaveShotScriptSegmentRequest,
   type SaveMasterPlotRequest,
   type SegmentFrameRecord,
@@ -334,6 +336,16 @@ export const apiClient = {
     request<TaskDetail>(
       `/projects/${projectId}/images/frames/${frameId}/regenerate-prompt`,
       taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateAllImagePrompts: (projectId: string, data: Record<string, never> = {}) =>
+    request<RegenerateAllImagePromptsResponse>(
+      `/projects/${projectId}/images/regenerate-prompts`,
+      regenerateAllImagePromptsResponseSchema,
       {
         method: "POST",
         body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),

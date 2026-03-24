@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImagePhasePanel } from "../../src/components/image-phase-panel";
@@ -122,6 +122,66 @@ describe("ImagePhasePanel", () => {
     vi.clearAllMocks();
   });
 
+  it("renders separate segment cards when different scenes reuse the same segment id and order", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentImageBatch,
+        segmentCount: 2,
+        totalFrameCount: 4,
+      },
+      frames: [
+        {
+          ...imageListResponse.frames[0],
+          id: "frame-scene-1-start",
+          sceneId: "scene-1",
+          segmentId: "segment-1",
+          order: 1,
+          promptTextCurrent: "scene 1 start",
+          promptTextSeed: "scene 1 start",
+        },
+        {
+          ...imageListResponse.frames[1],
+          id: "frame-scene-1-end",
+          sceneId: "scene-1",
+          segmentId: "segment-1",
+          order: 1,
+          promptTextCurrent: "scene 1 end",
+          promptTextSeed: "scene 1 end",
+        },
+        {
+          ...imageListResponse.frames[0],
+          id: "frame-scene-2-start",
+          sceneId: "scene-2",
+          segmentId: "segment-1",
+          order: 1,
+          promptTextCurrent: "scene 2 start",
+          promptTextSeed: "scene 2 start",
+        },
+        {
+          ...imageListResponse.frames[1],
+          id: "frame-scene-2-end",
+          sceneId: "scene-2",
+          segmentId: "segment-1",
+          order: 1,
+          promptTextCurrent: "scene 2 end",
+          promptTextSeed: "scene 2 end",
+        },
+      ],
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getAllByRole("heading", { name: "Segment 1" })).toHaveLength(2);
+    expect(screen.getByText("scene-1 / segment-1")).toBeInTheDocument();
+    expect(screen.getByText("scene-2 / segment-1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("scene 1 start")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("scene 2 start")).toBeInTheDocument();
+  });
+
   it("renders one segment card with independent start and end frame panels", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
 
@@ -185,6 +245,11 @@ describe("ImagePhasePanel", () => {
       imageStatus: "approved",
       approvedAt: "2024-01-01T00:00:11Z",
     });
+    vi.spyOn(apiModule.apiClient, "regenerateAllImagePrompts").mockResolvedValue({
+      batchId: "image-batch-1",
+      frameCount: 2,
+      taskIds: ["task-frame-prompt-1", "task-frame-prompt-2"],
+    });
 
     render(
       <ImagePhasePanel
@@ -242,5 +307,127 @@ describe("ImagePhasePanel", () => {
       );
     });
     expect(refreshProject).toHaveBeenCalled();
+  });
+
+  it("submits a batch prompt regeneration request and disables prompt actions while pending", async () => {
+    let resolveBatchRequest: (() => void) | undefined;
+
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce(imageListResponse)
+      .mockResolvedValueOnce({
+        ...imageListResponse,
+        frames: imageListResponse.frames.map((frame) => ({
+          ...frame,
+          planStatus: "pending" as const,
+        })),
+      });
+    vi.spyOn(apiModule.apiClient, "regenerateAllImagePrompts").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveBatchRequest = () =>
+            resolve({
+              batchId: "image-batch-1",
+              frameCount: 2,
+              taskIds: ["task-a", "task-b"],
+            });
+        }),
+    );
+
+    renderPanel();
+
+    const batchButton = await screen.findByRole("button", {
+      name: "重新生成当前批次全部 Prompt",
+    });
+    const singleFrameButton = screen.getByRole("button", { name: "重新生成起始帧 Prompt" });
+
+    fireEvent.click(batchButton);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateAllImagePrompts).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(batchButton).toBeDisabled();
+    expect(singleFrameButton).toBeDisabled();
+
+    resolveBatchRequest?.();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getAllByText(/Prompt 状态：/).some((node) => node.textContent?.includes("Prompt 生成中"))).toBe(true);
+  });
+
+  it("polls pending frame prompts and keeps image generation disabled until prompts are ready", async () => {
+    let refreshTimer: (() => void) | undefined;
+    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
+      refreshTimer = callback as () => void;
+      return 1 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce({
+        currentBatch: imageListResponse.currentBatch,
+        frames: imageListResponse.frames.map((frame) => ({
+          ...frame,
+          planStatus: "pending" as const,
+          imageStatus: "pending" as const,
+          promptTextSeed: "",
+          promptTextCurrent: "",
+          imageAssetPath: null,
+          imageWidth: null,
+          imageHeight: null,
+          provider: null,
+          model: null,
+          sourceTaskId: "task-frame-prompt-pending",
+        })),
+      })
+      .mockResolvedValueOnce(imageListResponse);
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "生成结束帧图片" })).toBeDisabled();
+    expect(refreshTimer).toBeDefined();
+
+    await act(async () => {
+      refreshTimer?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
+  });
+
+  it("clears visible prompt text while frame prompts are pending", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce({
+        currentBatch: imageListResponse.currentBatch,
+        frames: imageListResponse.frames.map((frame) => ({
+          ...frame,
+          planStatus: "pending" as const,
+          imageStatus: "pending" as const,
+          sourceTaskId: "task-frame-prompt-pending",
+        })),
+      })
+      .mockResolvedValueOnce(imageListResponse);
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("尾帧定格在林与天际冷白尾光的对视。")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Prompt 仍在生成，完成前不能生成图片。")).toHaveLength(2);
   });
 });

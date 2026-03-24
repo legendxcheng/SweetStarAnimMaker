@@ -1,7 +1,10 @@
 import type { CurrentShotScript } from "@sweet-star/shared";
 
 import { mergeShotScriptSegment, toApprovedShotScriptSegment } from "../domain/shot-script";
-import { createShotScriptReviewRecord } from "../domain/shot-script-review";
+import {
+  createShotScriptReviewId,
+  createShotScriptReviewRecord,
+} from "../domain/shot-script-review";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
@@ -64,7 +67,7 @@ export function createApproveAllShotScriptSegmentsUseCase(
       });
       await dependencies.shotScriptReviewRepository.insert(
         createShotScriptReviewRecord({
-          id: `ssr_${currentShotScript.id}_approve_all`,
+          id: createShotScriptReviewId(currentShotScript.id, "approve_all"),
           projectId: project.id,
           shotScriptId: currentShotScript.id,
           action: "approve",

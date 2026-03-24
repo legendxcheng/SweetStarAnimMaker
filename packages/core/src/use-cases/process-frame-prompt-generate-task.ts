@@ -1,4 +1,7 @@
-import type { CharacterSheetRecord } from "@sweet-star/shared";
+import {
+  matchesShotScriptSegmentSelector,
+  type CharacterSheetRecord,
+} from "@sweet-star/shared";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
@@ -77,7 +80,12 @@ export function createProcessFramePromptGenerateTaskUseCase(
           throw new CurrentShotScriptNotFoundError(project.id);
         }
 
-        const segment = currentShotScript.segments.find((item) => item.segmentId === taskInput.segmentId);
+        const segment = currentShotScript.segments.find((item) =>
+          matchesShotScriptSegmentSelector(item, {
+            sceneId: taskInput.sceneId,
+            segmentId: taskInput.segmentId,
+          }),
+        );
 
         if (!segment) {
           throw new Error(`Shot script segment not found: ${taskInput.segmentId}`);
