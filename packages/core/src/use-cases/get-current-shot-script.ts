@@ -1,5 +1,6 @@
 import type { CurrentShotScript } from "@sweet-star/shared";
 
+import { toNormalizedCurrentShotScript } from "../domain/shot-script";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -37,7 +38,7 @@ export function createGetCurrentShotScriptUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
-      return shotScript;
+      return toNormalizedCurrentShotScript(shotScript);
     },
   };
 }

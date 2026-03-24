@@ -532,6 +532,33 @@ describe("Project Detail Page", () => {
     expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
+  it("allows regenerating shot script after a shot script already exists", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(shotScriptApprovedProject);
+    vi.spyOn(apiModule.apiClient, "getCurrentShotScript").mockResolvedValue(fullShotScript);
+    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue(
+      runningShotScriptTask,
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "镜头脚本" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
+
+    const regenerateButton = await screen.findByRole("button", {
+      name: "重新生成镜头脚本",
+    });
+    expect(regenerateButton).toBeEnabled();
+
+    fireEvent.click(regenerateButton);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+  });
+
   it("shows the shot-script review entry after generation completes", async () => {
     let refreshTimer: (() => void) | undefined;
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {

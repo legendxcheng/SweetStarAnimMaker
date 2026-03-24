@@ -26,6 +26,23 @@ describe("shot script api schema", () => {
     expect(parsed.shotCount).toBe(3);
   });
 
+  it("accepts a generating shot-script summary payload with zero shots", () => {
+    const parsed = shared.currentShotScriptSummaryResponseSchema.parse({
+      id: "shot_script_20260322_ab12cd",
+      title: "Episode 1 Shot Script",
+      sourceStoryboardId: "storyboard_20260322_ab12cd",
+      sourceTaskId: "task_20260322_shot_script",
+      updatedAt: "2026-03-22T12:00:00.000Z",
+      approvedAt: null,
+      segmentCount: 2,
+      shotCount: 0,
+      totalDurationSec: null,
+    });
+
+    expect(parsed.segmentCount).toBe(2);
+    expect(parsed.shotCount).toBe(0);
+  });
+
   it("accepts a full current shot-script payload", () => {
     const parsed = shared.currentShotScriptResponseSchema.parse({
       id: "shot_script_20260322_ab12cd",
@@ -73,6 +90,37 @@ describe("shot script api schema", () => {
 
     expect(parsed.segments).toHaveLength(1);
     expect(parsed.segments[0]?.shots[0]?.segmentId).toBe("segment_1");
+  });
+
+  it("accepts a generating current shot-script payload with empty segment shots", () => {
+    const parsed = shared.currentShotScriptResponseSchema.parse({
+      id: "shot_script_20260322_ab12cd",
+      title: "Ep01 Shot Script",
+      sourceStoryboardId: "storyboard_20260322_ab12cd",
+      sourceTaskId: "task_20260322_shot_script",
+      updatedAt: "2026-03-22T12:00:00.000Z",
+      approvedAt: null,
+      segmentCount: 2,
+      shotCount: 0,
+      totalDurationSec: null,
+      segments: [
+        {
+          segmentId: "segment_1",
+          sceneId: "scene_1",
+          order: 1,
+          name: null,
+          summary: "林夏在积水集市口停住，发现对手已经先一步封住退路。",
+          durationSec: 6,
+          status: "generating",
+          lastGeneratedAt: null,
+          approvedAt: null,
+          shots: [],
+        },
+      ],
+    });
+
+    expect(parsed.shotCount).toBe(0);
+    expect(parsed.segments[0]?.shots).toEqual([]);
   });
 
   it("accepts a save-shot-script-segment request payload", () => {

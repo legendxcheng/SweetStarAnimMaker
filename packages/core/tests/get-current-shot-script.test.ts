@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("get current shot script use case", () => {
-  it("returns the current shot script document", async () => {
+  it("normalizes a legacy flat shot script document into segment-first shape", async () => {
     const useCase = createGetCurrentShotScriptUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -81,7 +81,11 @@ describe("get current shot script use case", () => {
     });
 
     expect(result.id).toBe("shot_script_20260322_ab12cd");
-    expect(result.shots[0]?.segmentId).toBe("segment_1");
+    expect(result.segmentCount).toBe(1);
+    expect(result.shotCount).toBe(1);
+    expect(result.totalDurationSec).toBe(4);
+    expect(result.segments[0]?.segmentId).toBe("segment_1");
+    expect(result.segments[0]?.shots[0]?.shotCode).toBe("S01-SG01");
   });
 
   it("throws when the project has no current shot script", async () => {

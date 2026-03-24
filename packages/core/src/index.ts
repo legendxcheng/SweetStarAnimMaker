@@ -69,6 +69,7 @@ export {
   currentShotScriptMarkdownRelPath,
   shotScriptDirectoryName,
   shotScriptVersionsDirectoryName,
+  toNormalizedCurrentShotScript,
   toCurrentShotScriptSummary,
 } from "./domain/shot-script";
 export {

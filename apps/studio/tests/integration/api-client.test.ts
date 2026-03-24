@@ -50,6 +50,102 @@ describe("API Client", () => {
     await expect(apiClient.getProjectDetail("proj-1")).rejects.toThrow();
   });
 
+  it("accepts generating shot-script shell responses", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "proj-1",
+          name: "Test Project",
+          slug: "test-project",
+          status: "shot_script_generating",
+          storageDir: "/path/to/project",
+          createdAt: "2024-01-01T00:00:00Z",
+          updatedAt: "2024-01-01T00:00:00Z",
+          premise: {
+            path: "premise/v1.md",
+            bytes: 42,
+            updatedAt: "2024-01-01T00:00:00Z",
+            text: "A washed-up pilot discovers a singing comet above a drowned city.",
+          },
+          currentMasterPlot: null,
+          currentCharacterSheetBatch: null,
+          currentStoryboard: {
+            id: "storyboard-1",
+            title: "Episode 1",
+            episodeTitle: "Episode 1",
+            sourceMasterPlotId: "mp-1",
+            sourceTaskId: "task-storyboard-1",
+            updatedAt: "2024-01-01T00:00:00Z",
+            approvedAt: "2024-01-01T00:00:00Z",
+            sceneCount: 1,
+            segmentCount: 2,
+            totalDurationSec: 12,
+          },
+          currentShotScript: {
+            id: "shot-script-1",
+            title: "Episode 1 Shot Script",
+            sourceStoryboardId: "storyboard-1",
+            sourceTaskId: "task-shot-script-1",
+            updatedAt: "2024-01-01T00:00:00Z",
+            approvedAt: null,
+            segmentCount: 2,
+            shotCount: 0,
+            totalDurationSec: null,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "shot-script-1",
+          title: "Episode 1 Shot Script",
+          sourceStoryboardId: "storyboard-1",
+          sourceTaskId: "task-shot-script-1",
+          updatedAt: "2024-01-01T00:00:00Z",
+          approvedAt: null,
+          segmentCount: 2,
+          shotCount: 0,
+          totalDurationSec: null,
+          segments: [
+            {
+              segmentId: "segment-1",
+              sceneId: "scene-1",
+              order: 1,
+              name: null,
+              summary: "林夏靠近码头入口。",
+              durationSec: 6,
+              status: "generating",
+              lastGeneratedAt: null,
+              approvedAt: null,
+              shots: [],
+            },
+            {
+              segmentId: "segment-2",
+              sceneId: "scene-1",
+              order: 2,
+              name: null,
+              summary: "远处警笛响起。",
+              durationSec: 6,
+              status: "pending",
+              lastGeneratedAt: null,
+              approvedAt: null,
+              shots: [],
+            },
+          ],
+        }),
+      });
+    global.fetch = mockFetch;
+
+    const detail = await apiClient.getProjectDetail("proj-1");
+    const current = await apiClient.getCurrentShotScript("proj-1");
+
+    expect(detail.currentShotScript?.shotCount).toBe(0);
+    expect(current.shotCount).toBe(0);
+    expect(current.segments[0]?.shots).toEqual([]);
+  });
+
   it("does not send a JSON content-type header for POST requests without a body", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

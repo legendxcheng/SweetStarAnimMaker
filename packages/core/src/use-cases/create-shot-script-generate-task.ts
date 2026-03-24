@@ -50,9 +50,13 @@ export function createCreateShotScriptGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      if (project.status !== "storyboard_approved") {
+      if (
+        project.status !== "storyboard_approved" &&
+        project.status !== "shot_script_in_review" &&
+        project.status !== "shot_script_approved"
+      ) {
         throw new ProjectValidationError(
-          "Shot script generation requires storyboard_approved",
+          "Shot script generation requires an approved storyboard",
         );
       }
 

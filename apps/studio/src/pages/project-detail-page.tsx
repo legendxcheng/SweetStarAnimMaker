@@ -68,6 +68,18 @@ function isShotScriptPhaseEnabled(project: ProjectDetail | null) {
   );
 }
 
+function canGenerateShotScript(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return (
+    project.status === "storyboard_approved" ||
+    project.status === "shot_script_in_review" ||
+    project.status === "shot_script_approved"
+  );
+}
+
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -282,7 +294,7 @@ export function ProjectDetailPage() {
                     disableGenerate={
                       creatingTask ||
                       isActiveTask(task) ||
-                      currentProject.status !== "storyboard_approved"
+                      !canGenerateShotScript(currentProject)
                     }
                     onGenerate={() => {
                       void handleGenerateShotScript();

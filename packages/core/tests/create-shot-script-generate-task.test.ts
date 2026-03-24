@@ -453,4 +453,151 @@ describe("create shot script generate task use case", () => {
       useCase.execute({ projectId: "proj_20260322_ab12cd" }),
     ).rejects.toBeInstanceOf(ProjectValidationError);
   });
+
+  it("allows regenerating shot script when the project already has an approved shot script", async () => {
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_20260322_ab12cd",
+        name: "My Story",
+        slug: "my-story",
+        storageDir: "projects/proj_20260322_ab12cd-my-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "mp_20260322_ab12cd",
+        currentCharacterSheetBatchId: "char_batch_v1",
+        currentStoryboardId: "storyboard_20260322_ab12cd",
+        currentShotScriptId: "shot_script_existing",
+        status: "shot_script_approved",
+        createdAt: "2026-03-22T11:59:00.000Z",
+        updatedAt: "2026-03-22T12:00:00.000Z",
+        premiseUpdatedAt: "2026-03-22T12:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn(),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn(),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const taskQueue = {
+      enqueue: vi.fn(),
+    };
+    const storyboardStorage = {
+      writeRawResponse: vi.fn(),
+      writeStoryboardVersion: vi.fn(),
+      readStoryboardVersion: vi.fn(),
+      writeCurrentStoryboard: vi.fn(),
+      readCurrentStoryboard: vi.fn().mockResolvedValue({
+        id: "storyboard_20260322_ab12cd",
+        title: "The Last Sky Choir",
+        episodeTitle: "Episode 1",
+        sourceMasterPlotId: "mp_20260322_ab12cd",
+        sourceTaskId: "task_storyboard",
+        updatedAt: "2026-03-22T11:58:00.000Z",
+        approvedAt: "2026-03-22T11:59:00.000Z",
+        scenes: [
+          {
+            id: "scene_1",
+            order: 1,
+            name: "Rin Hears The Sky",
+            dramaticPurpose: "Trigger the inciting beat.",
+            segments: [
+              {
+                id: "segment_1",
+                order: 1,
+                durationSec: 6,
+                visual: "Rain shakes across the cockpit glass.",
+                characterAction: "Rin looks up.",
+                dialogue: "",
+                voiceOver: "That sound again.",
+                audio: "",
+                purpose: "Start the mystery.",
+              },
+            ],
+          },
+        ],
+      }),
+    };
+    const masterPlotStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeCurrentMasterPlot: vi.fn(),
+      readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
+    };
+    const characterSheetRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+      insertCharacter: vi.fn(),
+      findCharacterById: vi.fn(),
+      updateCharacter: vi.fn(),
+    };
+    const characterSheetStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writeBatchManifest: vi.fn(),
+      writeGeneratedPrompt: vi.fn(),
+      writeImageVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      readCurrentCharacterSheet: vi.fn(),
+      listReferenceImages: vi.fn(),
+      saveReferenceImages: vi.fn(),
+      deleteReferenceImage: vi.fn(),
+      resolveReferenceImagePaths: vi.fn(),
+      getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
+    };
+    const useCase = createCreateShotScriptGenerateTaskUseCase({
+      projectRepository,
+      storyboardStorage,
+      masterPlotStorage,
+      characterSheetRepository,
+      characterSheetStorage,
+      taskRepository,
+      taskFileStorage,
+      taskQueue,
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260322_shot_script_retry",
+      },
+      clock: {
+        now: () => "2026-03-22T12:00:00.000Z",
+      },
+    });
+
+    const result = await useCase.execute({
+      projectId: "proj_20260322_ab12cd",
+    });
+
+    expect(taskQueue.enqueue).toHaveBeenCalledWith({
+      taskId: "task_20260322_shot_script_retry",
+      queueName: "shot-script-generate",
+      taskType: "shot_script_generate",
+    });
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_20260322_ab12cd",
+      status: "shot_script_generating",
+      updatedAt: "2026-03-22T12:00:00.000Z",
+    });
+    expect(result.id).toBe("task_20260322_shot_script_retry");
+  });
 });

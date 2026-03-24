@@ -234,7 +234,7 @@ describe("gemini storyboard provider", () => {
                         dramaticPurpose: "Establish the threat.",
                         segments: [
                           {
-                            durationSec: null,
+                            durationSec: 12,
                             visual: "The foundry glows in the storm.",
                             characterAction: "Mara steps inside.",
                             dialogue: "",
@@ -283,5 +283,259 @@ describe("gemini storyboard provider", () => {
       "Master Plot: A lonely mechanic bargains with a star trapped in iron.",
     );
     expect(promptText).toContain("Expand this master plot into a storyboard.");
+  });
+
+  it("accepts a storyboard whose final segment is shorter than 10 seconds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: "The Last Sky Choir",
+                      episodeTitle: "Episode 1",
+                      scenes: [
+                        {
+                          name: "Storm Warning",
+                          dramaticPurpose: "Trigger the mission.",
+                          segments: [
+                            {
+                              durationSec: 12,
+                              visual: "Rin sees the flooded skyline flash with blue lightning.",
+                              characterAction: "Rin grips the cockpit frame.",
+                              dialogue: "",
+                              voiceOver: "",
+                              audio: "Thunder rolls across the bay.",
+                              purpose: "Raise the threat.",
+                            },
+                            {
+                              durationSec: 11,
+                              visual: "The comet's trail cuts above the city like a signal flare.",
+                              characterAction: "Rin powers the engine back on.",
+                              dialogue: "我去追它。",
+                              voiceOver: "",
+                              audio: "Engine relight clicks into a low roar.",
+                              purpose: "Commit to the pursuit.",
+                            },
+                          ],
+                        },
+                        {
+                          name: "Launch Hook",
+                          dramaticPurpose: "End on a forward hook.",
+                          segments: [
+                            {
+                              durationSec: 9,
+                              visual: "The aircraft punches through rain toward the singing sky.",
+                              characterAction: "Rin shoves the throttle to its limit.",
+                              dialogue: "",
+                              voiceOver: "这次我不会再逃。",
+                              audio: "Music swells under the turbine howl.",
+                              purpose: "Land the episode hook.",
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateStoryboard({
+        projectId: "proj_20260321_ab12cd",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+        promptText: "Turn this master plot into storyboard scenes.",
+      }),
+    ).resolves.toMatchObject({
+      storyboard: {
+        scenes: [
+          {
+            segments: [{ durationSec: 12 }, { durationSec: 11 }],
+          },
+          {
+            segments: [{ durationSec: 9 }],
+          },
+        ],
+      },
+    });
+  });
+
+  it("rejects a storyboard when a non-final segment is shorter than 10 seconds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: "The Last Sky Choir",
+                      episodeTitle: "Episode 1",
+                      scenes: [
+                        {
+                          name: "False Start",
+                          dramaticPurpose: "Set up the chase.",
+                          segments: [
+                            {
+                              durationSec: 6,
+                              visual: "Rain snaps across the hangar lights.",
+                              characterAction: "Rin freezes under the alarm siren.",
+                              dialogue: "",
+                              voiceOver: "",
+                              audio: "A siren stutters in the rafters.",
+                              purpose: "Open the problem.",
+                            },
+                            {
+                              durationSec: 12,
+                              visual: "Mechanics drag the launch rig into place.",
+                              characterAction: "Rin shoves past them.",
+                              dialogue: "别挡路。",
+                              voiceOver: "",
+                              audio: "Metal wheels screech on concrete.",
+                              purpose: "Escalate the urgency.",
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateStoryboard({
+        projectId: "proj_20260321_ab12cd",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+        promptText: "Turn this master plot into storyboard scenes.",
+      }),
+    ).rejects.toThrow("Gemini storyboard provider requires non-final segments to be 10 to 15 seconds");
+  });
+
+  it("rejects a storyboard when any segment is longer than 15 seconds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      title: "The Last Sky Choir",
+                      episodeTitle: "Episode 1",
+                      scenes: [
+                        {
+                          name: "Overlong Beat",
+                          dramaticPurpose: "Set up the chase.",
+                          segments: [
+                            {
+                              durationSec: 12,
+                              visual: "Rin traces the comet's reflection across the water.",
+                              characterAction: "Rin steadies the broken controls.",
+                              dialogue: "",
+                              voiceOver: "",
+                              audio: "Wind rattles the hull.",
+                              purpose: "Set the mission.",
+                            },
+                            {
+                              durationSec: 16,
+                              visual: "The aircraft rolls down the flooded causeway toward open sky.",
+                              characterAction: "Rin leans forward into the launch.",
+                              dialogue: "",
+                              voiceOver: "",
+                              audio: "The turbine scream drowns out the rain.",
+                              purpose: "Push into the act break.",
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateStoryboard({
+        projectId: "proj_20260321_ab12cd",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+        promptText: "Turn this master plot into storyboard scenes.",
+      }),
+    ).rejects.toThrow("Gemini storyboard provider requires every segment to stay within 15 seconds");
   });
 });

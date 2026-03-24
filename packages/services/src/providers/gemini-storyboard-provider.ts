@@ -61,14 +61,14 @@ export function createGeminiStoryboardProvider(
         promptText: buildStoryboardPromptText(input),
         responseJsonSchema: storyboardResponseJsonSchema,
       });
-        const storyboard = normalizeStoryboardPayload(JSON.parse(rawText));
+      const storyboard = normalizeStoryboardPayload(JSON.parse(rawText));
 
-        return {
-          rawResponse: rawText,
-          provider: "gemini",
-          model,
-          storyboard,
-        };
+      return {
+        rawResponse: rawText,
+        provider: "gemini",
+        model,
+        storyboard,
+      };
     },
   };
 }
@@ -277,6 +277,9 @@ function normalizeStoryboardPayload(payload: unknown): GenerateStoryboardResult[
     throw new Error("Gemini storyboard provider returned invalid scenes");
   }
 
+  const normalizedScenes = scenes.map((scene, sceneIndex) => normalizeScene(scene, sceneIndex));
+  assertStoryboardSegmentDurations(normalizedScenes);
+
   return {
     id: "storyboard_generated",
     title: readNullableString((payload as { title?: unknown }).title, "title"),
@@ -288,7 +291,7 @@ function normalizeStoryboardPayload(payload: unknown): GenerateStoryboardResult[
     sourceTaskId: null,
     updatedAt: "pending_updated_at",
     approvedAt: null,
-    scenes: scenes.map((scene, sceneIndex) => normalizeScene(scene, sceneIndex)),
+    scenes: normalizedScenes,
   };
 }
 
@@ -336,6 +339,35 @@ function normalizeSegment(segment: unknown, segmentIndex: number) {
     audio: readString((segment as { audio?: unknown }).audio, "audio"),
     purpose: readNonEmptyString((segment as { purpose?: unknown }).purpose, "purpose"),
   };
+}
+
+function assertStoryboardSegmentDurations(
+  scenes: GenerateStoryboardResult["storyboard"]["scenes"],
+) {
+  const segments = scenes.flatMap((scene) => scene.segments);
+
+  if (segments.length === 0) {
+    return;
+  }
+
+  segments.forEach((segment, index) => {
+    if (segment.durationSec === null) {
+      throw new Error("Gemini storyboard provider requires every segment to include durationSec");
+    }
+
+    if (segment.durationSec > 15) {
+      throw new Error(
+        "Gemini storyboard provider requires every segment to stay within 15 seconds",
+      );
+    }
+
+    const isLastSegment = index === segments.length - 1;
+    if (!isLastSegment && segment.durationSec < 10) {
+      throw new Error(
+        "Gemini storyboard provider requires non-final segments to be 10 to 15 seconds",
+      );
+    }
+  });
 }
 
 function readNonEmptyString(value: unknown, fieldName: string) {

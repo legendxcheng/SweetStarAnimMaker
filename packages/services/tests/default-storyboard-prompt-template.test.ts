@@ -14,7 +14,9 @@ describe("default storyboard prompt template", () => {
     expect(template).toContain("单集集纲");
     expect(template).toContain("场景");
     expect(template).toContain("段落");
-    expect(template).toContain("每个段落最多 15 秒");
+    expect(template).toContain("每个段落的目标时长控制在 10 到 15 秒");
+    expect(template).toContain("最后一个段落可以少于 10 秒");
+    expect(template).not.toContain("优先控制在 3 到 8 秒");
     expect(template).toContain("{{masterPlot.logline}}");
     expect(template).toContain("{{masterPlot.synopsis}}");
   });

@@ -133,6 +133,12 @@ export function toApprovedShotScriptSegment(
 export function toCurrentShotScriptSummary(
   shotScript: CurrentShotScript,
 ): CurrentShotScriptSummary {
+  return toNormalizedCurrentShotScript(shotScript);
+}
+
+export function toNormalizedCurrentShotScript(
+  shotScript: CurrentShotScript,
+): CurrentShotScript {
   const segments = readShotScriptSegments(shotScript);
   const summary = summarizeShotScriptSegments(segments);
 
@@ -146,6 +152,7 @@ export function toCurrentShotScriptSummary(
     segmentCount: segments.length,
     shotCount: summary.shotCount,
     totalDurationSec: summary.totalDurationSec,
+    segments,
   };
 }
 

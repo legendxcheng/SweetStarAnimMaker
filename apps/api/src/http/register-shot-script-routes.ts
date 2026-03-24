@@ -13,6 +13,15 @@ export function registerShotScriptRoutes(
   app: FastifyInstance,
   services: ReturnType<typeof buildSpec1Services>,
 ) {
+  app.post("/projects/:projectId/shot-script/generate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.createShotScriptGenerateTask.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.get("/projects/:projectId/shot-script/current", async (request) => {
     const params = request.params as { projectId: string };
 

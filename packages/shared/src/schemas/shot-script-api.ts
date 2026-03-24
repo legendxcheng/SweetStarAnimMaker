@@ -40,7 +40,7 @@ export const shotScriptSegmentResponseSchema = z.object({
   status: z.enum(shotScriptSegmentStatuses),
   lastGeneratedAt: z.string().nullable(),
   approvedAt: z.string().nullable(),
-  shots: z.array(shotScriptItemResponseSchema).min(1),
+  shots: z.array(shotScriptItemResponseSchema),
 });
 
 export const currentShotScriptSummaryResponseSchema = z.object({
@@ -51,7 +51,7 @@ export const currentShotScriptSummaryResponseSchema = z.object({
   updatedAt: z.string(),
   approvedAt: z.string().nullable(),
   segmentCount: z.number().int().positive(),
-  shotCount: z.number().int().positive(),
+  shotCount: z.number().int().nonnegative(),
   totalDurationSec: z.number().int().positive().nullable(),
 });
 
