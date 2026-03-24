@@ -342,4 +342,249 @@ describe("gemini shot script provider", () => {
       }),
     ).rejects.toThrow("Gemini shot script provider returned mismatched total duration");
   });
+
+  it("rejects shorthand aliases for approved characters", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "办公室寒光",
+                      summary: "职员K在深夜工位上强撑。",
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "建立主角状态。",
+                          visual: "冷色屏幕光打在K的脸上。",
+                          subject: "K",
+                          action: "K疲惫地敲击键盘。",
+                          dialogue: null,
+                          os: null,
+                          audio: "键盘声。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateShotScriptSegment({
+        promptText: "请生成中文镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+          characterSheets: [
+            {
+              characterId: "char_k",
+              characterName: "职员K",
+              promptTextCurrent: "黑眼圈明显，深色连帽衫。",
+              imageAssetPath: "character-sheets/char_k/current.png",
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow("使用了未登记简称“K”");
+  });
+
+  it("retries with correction feedback when canonical character validation fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "办公室寒光",
+                      summary: "职员K在深夜工位上强撑。",
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "建立主角状态。",
+                          visual: "冷色屏幕光打在K的脸上。",
+                          subject: "K",
+                          action: "K疲惫地敲击键盘。",
+                          dialogue: null,
+                          os: null,
+                          audio: "键盘声。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "办公室寒光",
+                      summary: "职员K在深夜工位上强撑。",
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "建立主角状态。",
+                          visual: "冷色屏幕光打在职员K的脸上。",
+                          subject: "职员K",
+                          action: "职员K疲惫地敲击键盘。",
+                          dialogue: null,
+                          os: null,
+                          audio: "键盘声。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请生成中文镜头脚本。",
+      variables: {
+        scene: { id: "scene_1" },
+        segment: { id: "segment_1", order: 1, durationSec: 6 },
+        characterSheets: [
+          {
+            characterId: "char_k",
+            characterName: "职员K",
+            promptTextCurrent: "黑眼圈明显，深色连帽衫。",
+            imageAssetPath: "character-sheets/char_k/current.png",
+          },
+        ],
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retryRequest = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
+    expect(retryRequest.contents[0].parts[0].text).toContain("上一次输出存在以下角色命名问题");
+    expect(retryRequest.contents[0].parts[0].text).toContain("使用了未登记简称“K”");
+    expect(result.segment.shots[0]?.subject).toBe("职员K");
+  });
+
+  it("fails after the canonical character retry budget is exhausted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    name: "办公室寒光",
+                    summary: "职员K在深夜工位上强撑。",
+                    shots: [
+                      {
+                        id: "shot_1",
+                        sceneId: "scene_1",
+                        segmentId: "segment_1",
+                        order: 1,
+                        shotCode: "SC01-SG01-SH01",
+                        durationSec: 6,
+                        purpose: "建立主角状态。",
+                        visual: "冷色屏幕光打在K的脸上。",
+                        subject: "K",
+                        action: "K疲惫地敲击键盘。",
+                        dialogue: null,
+                        os: null,
+                        audio: "键盘声。",
+                        transitionHint: null,
+                        continuityNotes: null,
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateShotScriptSegment({
+        promptText: "请生成中文镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+          characterSheets: [
+            {
+              characterId: "char_k",
+              characterName: "职员K",
+              promptTextCurrent: "黑眼圈明显，深色连帽衫。",
+              imageAssetPath: "character-sheets/char_k/current.png",
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow("Gemini shot script provider failed canonical character validation after 3 attempts");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
 });

@@ -8,8 +8,15 @@ describe("save human shot script segment use case", () => {
       findById: vi.fn().mockResolvedValue({
         id: "proj_1",
         storageDir: "projects/proj_1-my-story",
+        currentCharacterSheetBatchId: null,
       }),
       updateStatus: vi.fn(),
+    };
+    const characterSheetRepository = {
+      listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+    };
+    const characterSheetStorage = {
+      readCurrentCharacterSheet: vi.fn(),
     };
     const shotScriptStorage = {
       readCurrentShotScript: vi.fn().mockResolvedValue({
@@ -72,6 +79,8 @@ describe("save human shot script segment use case", () => {
     };
     const useCase = createSaveHumanShotScriptSegmentUseCase({
       projectRepository: projectRepository as never,
+      characterSheetRepository: characterSheetRepository as never,
+      characterSheetStorage: characterSheetStorage as never,
       shotScriptStorage: shotScriptStorage as never,
       clock: {
         now: () => "2026-03-23T12:10:00.000Z",
@@ -140,8 +149,15 @@ describe("save human shot script segment use case", () => {
       findById: vi.fn().mockResolvedValue({
         id: "proj_1",
         storageDir: "projects/proj_1-my-story",
+        currentCharacterSheetBatchId: null,
       }),
       updateStatus: vi.fn(),
+    };
+    const characterSheetRepository = {
+      listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+    };
+    const characterSheetStorage = {
+      readCurrentCharacterSheet: vi.fn(),
     };
     const shotScriptStorage = {
       readCurrentShotScript: vi.fn().mockResolvedValue({
@@ -186,6 +202,8 @@ describe("save human shot script segment use case", () => {
     };
     const useCase = createSaveHumanShotScriptSegmentUseCase({
       projectRepository: projectRepository as never,
+      characterSheetRepository: characterSheetRepository as never,
+      characterSheetStorage: characterSheetStorage as never,
       shotScriptStorage: shotScriptStorage as never,
       clock: {
         now: () => "2026-03-23T12:10:00.000Z",
@@ -246,8 +264,15 @@ describe("save human shot script segment use case", () => {
       findById: vi.fn().mockResolvedValue({
         id: "proj_1",
         storageDir: "projects/proj_1-my-story",
+        currentCharacterSheetBatchId: null,
       }),
       updateStatus: vi.fn(),
+    };
+    const characterSheetRepository = {
+      listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+    };
+    const characterSheetStorage = {
+      readCurrentCharacterSheet: vi.fn(),
     };
     const shotScriptStorage = {
       readCurrentShotScript: vi.fn().mockResolvedValue({
@@ -292,6 +317,8 @@ describe("save human shot script segment use case", () => {
     };
     const useCase = createSaveHumanShotScriptSegmentUseCase({
       projectRepository: projectRepository as never,
+      characterSheetRepository: characterSheetRepository as never,
+      characterSheetStorage: characterSheetStorage as never,
       shotScriptStorage: shotScriptStorage as never,
       clock: {
         now: () => "2026-03-23T12:10:00.000Z",
@@ -308,6 +335,101 @@ describe("save human shot script segment use case", () => {
         shots: [],
       }),
     ).rejects.toThrow("Ambiguous shot script segment selector: segment_1");
+    expect(shotScriptStorage.writeShotScriptVersion).not.toHaveBeenCalled();
+    expect(shotScriptStorage.writeCurrentShotScript).not.toHaveBeenCalled();
+  });
+
+  it("rejects manual save input that uses shorthand aliases for approved characters", async () => {
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        currentCharacterSheetBatchId: "char_batch_1",
+      }),
+      updateStatus: vi.fn(),
+    };
+    const characterSheetRepository = {
+      listCharactersByBatchId: vi.fn().mockResolvedValue([
+        {
+          id: "char_k",
+        },
+      ]),
+    };
+    const characterSheetStorage = {
+      readCurrentCharacterSheet: vi.fn().mockResolvedValue({
+        id: "char_k",
+        characterName: "职员K",
+        promptTextCurrent: "黑眼圈明显，深色连帽衫。",
+        imageAssetPath: "character-sheets/char_k/current.png",
+      }),
+    };
+    const shotScriptStorage = {
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_1",
+        title: "第1集",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_batch_1",
+        updatedAt: "2026-03-23T12:00:00.000Z",
+        approvedAt: null,
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 6,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "旧稿",
+            summary: "旧摘要",
+            durationSec: 6,
+            status: "in_review",
+            lastGeneratedAt: "2026-03-23T12:00:00.000Z",
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      }),
+      writeShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+    };
+    const useCase = createSaveHumanShotScriptSegmentUseCase({
+      projectRepository: projectRepository as never,
+      characterSheetRepository: characterSheetRepository as never,
+      characterSheetStorage: characterSheetStorage as never,
+      shotScriptStorage: shotScriptStorage as never,
+      clock: {
+        now: () => "2026-03-23T12:10:00.000Z",
+      },
+    });
+
+    await expect(
+      useCase.execute({
+        projectId: "proj_1",
+        segmentId: "segment_1",
+        name: "新稿",
+        summary: "职员K在深夜工位上强撑。",
+        durationSec: 6,
+        shots: [
+          {
+            id: "shot_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            shotCode: "SC01-SG01-SH01",
+            durationSec: 6,
+            purpose: "建立主角状态。",
+            visual: "冷色屏幕光打在K的脸上。",
+            subject: "K",
+            action: "K疲惫地敲击键盘。",
+            dialogue: null,
+            os: null,
+            audio: "键盘声。",
+            transitionHint: null,
+            continuityNotes: null,
+          },
+        ],
+      }),
+    ).rejects.toThrow("使用了未登记简称“K”");
     expect(shotScriptStorage.writeShotScriptVersion).not.toHaveBeenCalled();
     expect(shotScriptStorage.writeCurrentShotScript).not.toHaveBeenCalled();
   });

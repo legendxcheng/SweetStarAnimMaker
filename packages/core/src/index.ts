@@ -74,6 +74,12 @@ export {
   toCurrentShotScriptSummary,
 } from "./domain/shot-script";
 export {
+  buildShotScriptCanonicalCharacterValidator,
+  type ShotScriptCanonicalCharacterContext,
+  type ShotScriptCanonicalCharacterValidator,
+  type ShotScriptCanonicalCharacterViolation,
+} from "./domain/shot-script-canonical-character-validator";
+export {
   currentMasterPlotJsonFileName,
   currentMasterPlotJsonRelPath,
   currentMasterPlotMarkdownFileName,

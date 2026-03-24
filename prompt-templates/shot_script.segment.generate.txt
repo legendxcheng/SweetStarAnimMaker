@@ -35,6 +35,17 @@ Storyboard 标题：{{storyboardTitle}}
 - 音频: {{segment.audio}}
 - 段落目的: {{segment.purpose}}
 
+已批准角色设定：
+{{characterSheets}}
+
+角色命名硬约束：
+- 必须使用角色设定中的标准角色名
+- 只要该镜头出现已批准角色，subject 必须写该标准角色名
+- visual 和 action 中涉及该角色时，也应保持同一标准角色名
+- 禁止使用未登记简称
+- 禁止把已批准角色改写成“男人”“女人”“男特工”“主角”“年轻男子”等泛称
+- 如果镜头里没有任何已批准角色，才允许使用环境主体或未命名路人描述
+
 输出 JSON 结构要求：
 - name: 当前 segment 的中文镜头小节名
 - summary: 当前 segment 的中文镜头概述

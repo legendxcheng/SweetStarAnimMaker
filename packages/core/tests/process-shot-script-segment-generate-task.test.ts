@@ -52,13 +52,27 @@ describe("process shot script segment generate task use case", () => {
         },
         storyboardTitle: "第1集",
         episodeTitle: "暴雨封路",
+        characterSheets: [
+          {
+            characterId: "char_linxia",
+            characterName: "林夏",
+            promptTextCurrent: "短发，深蓝雨衣，肩背旧布包。",
+            imageAssetPath: "character-sheets/char_linxia/current.png",
+          },
+        ],
         promptTemplateKey: "shot_script.segment.generate",
       }),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
     };
     const shotScriptStorage = {
-      readPromptTemplate: vi.fn().mockResolvedValue("{{segment.visual}}"),
+      readPromptTemplate: vi.fn().mockResolvedValue(
+        [
+          "已批准角色设定",
+          "{{characterSheets}}",
+          "{{segment.visual}}",
+        ].join("\n"),
+      ),
       writePromptSnapshot: vi.fn(),
       writeRawResponse: vi.fn(),
       readCurrentShotScript: vi.fn().mockResolvedValue({
@@ -153,11 +167,21 @@ describe("process shot script segment generate task use case", () => {
     await useCase.execute({ taskId: "task_segment_1" });
 
     expect(shotScriptProvider.generateShotScriptSegment).toHaveBeenCalledWith({
-      promptText: "积水集市口被杂乱摊棚堵住。",
+      promptText: expect.stringContaining("标准角色名：林夏"),
       variables: expect.objectContaining({
         segment: expect.objectContaining({ id: "segment_1" }),
+        characterSheets: [
+          expect.objectContaining({
+            characterName: "林夏",
+          }),
+        ],
       }),
     });
+    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptText: expect.stringContaining("当前造型：短发，深蓝雨衣，肩背旧布包。"),
+      }),
+    );
     expect(shotScriptStorage.writeCurrentShotScript).toHaveBeenCalledWith({
       storageDir: "projects/proj_1-my-story",
       shotScript: expect.objectContaining({
