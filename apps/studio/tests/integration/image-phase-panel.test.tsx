@@ -122,7 +122,7 @@ describe("ImagePhasePanel", () => {
     vi.clearAllMocks();
   });
 
-  it("renders separate segment cards when different scenes reuse the same segment id and order", async () => {
+  it("renders scene tabs and shows only the active scene's segments", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: {
         ...baseProject.currentImageBatch,
@@ -175,11 +175,25 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
     });
 
-    expect(screen.getAllByRole("heading", { name: "Segment 1" })).toHaveLength(2);
+    // Tab 栏应出现两个 Scene 按钮
+    const nav = screen.getByRole("navigation", { name: "Scene 导航" });
+    expect(nav).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /scene-1/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /scene-2/ })).toBeInTheDocument();
+
+    // 默认选中第一个 Scene，只显示 scene-1 的内容
     expect(screen.getByText("scene-1 / segment-1")).toBeInTheDocument();
-    expect(screen.getByText("scene-2 / segment-1")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 1 start")).toBeInTheDocument();
+    expect(screen.queryByText("scene-2 / segment-1")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("scene 2 start")).not.toBeInTheDocument();
+
+    // 点击 scene-2 Tab 切换
+    fireEvent.click(screen.getByRole("button", { name: /scene-2/ }));
+
+    expect(screen.getByText("scene-2 / segment-1")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 2 start")).toBeInTheDocument();
+    expect(screen.queryByText("scene-1 / segment-1")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("scene 1 start")).not.toBeInTheDocument();
   });
 
   it("renders one segment card with independent start and end frame panels", async () => {
@@ -298,6 +312,10 @@ describe("ImagePhasePanel", () => {
         "frame-start-1",
       );
     });
+    expect(refreshProject).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(3);
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "审核通过起始帧" }));
     await waitFor(() => {
@@ -306,7 +324,7 @@ describe("ImagePhasePanel", () => {
         "frame-start-1",
       );
     });
-    expect(refreshProject).toHaveBeenCalled();
+    expect(refreshProject).toHaveBeenCalledTimes(2);
   });
 
   it("submits a batch prompt regeneration request and disables prompt actions while pending", async () => {
@@ -354,7 +372,11 @@ describe("ImagePhasePanel", () => {
     await waitFor(() => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
     });
-    expect(screen.getAllByText(/Prompt 状态：/).some((node) => node.textContent?.includes("Prompt 生成中"))).toBe(true);
+    expect(
+      screen
+        .getAllByText(/Prompt 状态：/)
+        .some((node) => node.textContent?.includes("Prompt 生成中")),
+    ).toBe(true);
   });
 
   it("polls pending frame prompts and keeps image generation disabled until prompts are ready", async () => {

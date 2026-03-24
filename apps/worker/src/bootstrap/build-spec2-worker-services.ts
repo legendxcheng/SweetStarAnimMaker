@@ -452,5 +452,8 @@ function createUnsupportedShotImageStorage(): ShotImageStorage {
     async readCurrentFrame() {
       throw new Error("Shot image storage is not configured");
     },
+    resolveProjectAssetPath() {
+      throw new Error("Shot image storage is not configured");
+    },
   };
 }

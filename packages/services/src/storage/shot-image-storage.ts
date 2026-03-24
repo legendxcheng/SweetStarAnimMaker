@@ -124,6 +124,9 @@ export function createShotImageStorage(options: CreateShotImageStorageOptions): 
         throw error;
       }
     },
+    resolveProjectAssetPath(input) {
+      return toProjectAssetPath(options.paths, input.projectStorageDir, input.assetRelPath);
+    },
   };
 }
 

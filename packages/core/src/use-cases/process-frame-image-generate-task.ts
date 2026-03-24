@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
@@ -61,12 +63,26 @@ export function createProcessFrameImageGenerateTaskUseCase(
           throw new ShotImageNotFoundError(taskInput.frameId);
         }
 
+        const resolvedReferenceImagePaths = await Promise.all(
+          frame.matchedReferenceImagePaths.map((referenceImagePath) =>
+            path.isAbsolute(referenceImagePath)
+              ? referenceImagePath
+              : dependencies.shotImageStorage.resolveProjectAssetPath({
+                  projectStorageDir: project.storageDir,
+                  assetRelPath: referenceImagePath,
+              }),
+          ),
+        );
+        await dependencies.taskFileStorage.appendTaskLog({
+          task,
+          message: `requesting shot image provider for frame ${frame.id} with ${resolvedReferenceImagePaths.length} reference image(s)`,
+        });
         const imageResult = await dependencies.shotImageProvider.generateShotImage({
           projectId: project.id,
           frameId: frame.id,
           promptText: frame.promptTextCurrent,
           negativePromptText: frame.negativePromptTextCurrent,
-          referenceImagePaths: frame.matchedReferenceImagePaths,
+          referenceImagePaths: resolvedReferenceImagePaths,
         });
         const finishedAt = dependencies.clock.now();
         const updatedFrame = {

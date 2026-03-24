@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  createProcessFrameImageGenerateTaskUseCase,
-} from "../src/index";
+import { createProcessFrameImageGenerateTaskUseCase } from "../src/index";
 
-describe("process frame image generate task use case", () => {
-  it("uses the current editable prompt and matched reference images to generate an in-review frame image", async () => {
+describe("process frame image generate task use case relative paths", () => {
+  it("resolves project-relative matched reference image paths before calling the provider", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -88,9 +86,11 @@ describe("process frame image generate task use case", () => {
         frameType: "start_frame",
         planStatus: "planned",
         imageStatus: "pending",
-        selectedCharacterIds: ["char_rin", "char_ivo"],
-        matchedReferenceImagePaths: ["E:/refs/char_rin.png"],
-        unmatchedCharacterIds: ["char_ivo"],
+        selectedCharacterIds: ["char_rin"],
+        matchedReferenceImagePaths: [
+          "character-sheets/batches/char_batch_v1/characters/char_rin/current.png",
+        ],
+        unmatchedCharacterIds: [],
         promptTextSeed: "原始规划 Prompt",
         promptTextCurrent: "用户编辑后的 Prompt",
         negativePromptTextCurrent: "模糊，低清晰度",
@@ -130,7 +130,11 @@ describe("process frame image generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
-      resolveProjectAssetPath: vi.fn(),
+      resolveProjectAssetPath: vi
+        .fn()
+        .mockReturnValue(
+          "E:/SweetStarAnimMaker/.local-data/projects/proj_20260324_ab12cd-my-story/character-sheets/batches/char_batch_v1/characters/char_rin/current.png",
+        ),
     };
     const shotImageProvider = {
       generateShotImage: vi.fn().mockResolvedValue({
@@ -160,41 +164,16 @@ describe("process frame image generate task use case", () => {
 
     await useCase.execute({ taskId: "task_frame_image_1" });
 
-    expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith({
-      projectId: "proj_20260324_ab12cd",
-      frameId: "frame_segment_1_start",
-      promptText: "用户编辑后的 Prompt",
-      negativePromptText: "模糊，低清晰度",
-      referenceImagePaths: ["E:/refs/char_rin.png"],
+    expect(shotImageStorage.resolveProjectAssetPath).toHaveBeenCalledWith({
+      projectStorageDir: "projects/proj_20260324_ab12cd-my-story",
+      assetRelPath: "character-sheets/batches/char_batch_v1/characters/char_rin/current.png",
     });
-    expect(taskFileStorage.appendTaskLog).toHaveBeenNthCalledWith(1, {
-      task: expect.objectContaining({ id: "task_frame_image_1" }),
-      message:
-        "requesting shot image provider for frame frame_segment_1_start with 1 reference image(s)",
-    });
-    expect(taskFileStorage.appendTaskLog).toHaveBeenNthCalledWith(2, {
-      task: expect.objectContaining({ id: "task_frame_image_1" }),
-      message: "frame image generation succeeded",
-    });
-    expect(shotImageStorage.writeCurrentImage).toHaveBeenCalledTimes(1);
-    expect(shotImageStorage.writeImageVersion).toHaveBeenCalledTimes(1);
-    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
+    expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "frame_segment_1_start",
-        imageStatus: "in_review",
-        imageAssetPath:
-          "images/batches/image_batch_task_20260324_images/segments/segment_1/start-frame/current.png",
-        imageWidth: 1024,
-        imageHeight: 1024,
-        provider: "vector-engine",
-        model: "doubao-seedream-5-0-260128",
-        sourceTaskId: "task_frame_image_1",
+        referenceImagePaths: [
+          "E:/SweetStarAnimMaker/.local-data/projects/proj_20260324_ab12cd-my-story/character-sheets/batches/char_batch_v1/characters/char_rin/current.png",
+        ],
       }),
     );
-    expect(taskRepository.markSucceeded).toHaveBeenCalledWith({
-      taskId: "task_frame_image_1",
-      updatedAt: "2026-03-24T00:18:00.000Z",
-      finishedAt: "2026-03-24T00:18:00.000Z",
-    });
   });
 });

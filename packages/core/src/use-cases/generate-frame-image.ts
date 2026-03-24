@@ -70,15 +70,55 @@ export function createGenerateFrameImageUseCase(
       };
 
       await dependencies.taskRepository.insert(task);
-      await dependencies.taskFileStorage.createTaskArtifacts({
-        task,
-        input: taskInput,
+
+      try {
+        await dependencies.taskFileStorage.createTaskArtifacts({
+          task,
+          input: taskInput,
+        });
+        await dependencies.taskFileStorage.appendTaskLog({
+          task,
+          message: `frame image task created for frame ${frame.id}`,
+        });
+      } catch (error) {
+        await dependencies.taskRepository.delete(task.id);
+        throw error;
+      }
+
+      await dependencies.shotImageRepository.updateFrame({
+        ...frame,
+        imageStatus: "generating",
+        approvedAt: null,
+        updatedAt: timestamp,
+        sourceTaskId: task.id,
       });
-      await dependencies.taskQueue.enqueue({
-        taskId: task.id,
-        queueName: task.queueName,
-        taskType: task.type,
-      });
+
+      try {
+        await dependencies.taskQueue.enqueue({
+          taskId: task.id,
+          queueName: task.queueName,
+          taskType: task.type,
+        });
+        await dependencies.taskFileStorage.appendTaskLog({
+          task,
+          message: `frame image task queued for frame ${frame.id}`,
+        });
+        await dependencies.projectRepository.updateStatus({
+          projectId: project.id,
+          status: "images_generating",
+          updatedAt: timestamp,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Task enqueue failed";
+
+        await dependencies.taskRepository.markFailed({
+          taskId: task.id,
+          errorMessage: message,
+          updatedAt: timestamp,
+          finishedAt: timestamp,
+        });
+        throw error;
+      }
 
       return toTaskDetailDto(task);
     },

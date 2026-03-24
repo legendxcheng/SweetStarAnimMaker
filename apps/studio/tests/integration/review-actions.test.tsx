@@ -524,8 +524,12 @@ describe("Review Actions", () => {
 
     renderShotScriptPage();
 
-    const approveButtons = await screen.findAllByRole("button", { name: "通过本段" });
-    fireEvent.click(approveButtons[1]!);
+    // Wait for initial load, then switch to scene-2 tab
+    await screen.findByRole("button", { name: /scene-2/ });
+    fireEvent.click(screen.getByRole("button", { name: /scene-2/ }));
+
+    const approveButton = screen.getByRole("button", { name: "通过本段" });
+    fireEvent.click(approveButton);
 
     await waitFor(() => {
       expect(apiModule.apiClient.approveShotScriptSegment).toHaveBeenCalledWith(

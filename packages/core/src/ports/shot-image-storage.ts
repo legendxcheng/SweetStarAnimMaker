@@ -43,6 +43,11 @@ export interface ReadCurrentShotImageInput {
   frameId: string;
 }
 
+export interface ResolveProjectAssetPathInput {
+  projectStorageDir: string;
+  assetRelPath: string;
+}
+
 export interface ShotImageStorage {
   writeBatchManifest(input: WriteShotImageBatchManifestInput): Promise<void> | void;
   writeFramePlanning(input: WriteFramePlanningInput): Promise<void> | void;
@@ -53,4 +58,7 @@ export interface ShotImageStorage {
   readCurrentFrame(
     input: ReadCurrentShotImageInput,
   ): Promise<SegmentFrameRecord | null> | SegmentFrameRecord | null;
+  resolveProjectAssetPath(
+    input: ResolveProjectAssetPathInput,
+  ): Promise<string> | string;
 }

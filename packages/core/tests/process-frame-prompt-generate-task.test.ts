@@ -134,6 +134,7 @@ describe("process frame prompt generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const shotScriptStorage = {
       initializePromptTemplate: vi.fn(),
@@ -499,6 +500,7 @@ describe("process frame prompt generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const shotScriptStorage = {
       initializePromptTemplate: vi.fn(),
@@ -760,6 +762,7 @@ describe("process frame prompt generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const shotScriptStorage = {
       initializePromptTemplate: vi.fn(),

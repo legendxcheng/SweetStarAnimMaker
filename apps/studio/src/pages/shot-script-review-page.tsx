@@ -41,6 +41,7 @@ export function ShotScriptReviewPage() {
   const [submittingActionId, setSubmittingActionId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
   const [regeneratingAll, setRegeneratingAll] = useState(false);
+  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
 
   const loadWorkspace = async () => {
     if (!projectId) {
@@ -68,6 +69,42 @@ export function ShotScriptReviewPage() {
   const hasDirtySegments = dirtySegmentIds.length > 0;
 
   const orderedSegments = useMemo(() => workspace?.currentShotScript.segments ?? [], [workspace]);
+
+  const sceneIds = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const seg of orderedSegments) {
+      if (!seen.has(seg.sceneId)) {
+        seen.add(seg.sceneId);
+        ordered.push(seg.sceneId);
+      }
+    }
+    return ordered;
+  }, [orderedSegments]);
+
+  const sceneSegmentCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const seg of orderedSegments) {
+      counts.set(seg.sceneId, (counts.get(seg.sceneId) ?? 0) + 1);
+    }
+    return counts;
+  }, [orderedSegments]);
+
+  useEffect(() => {
+    if (sceneIds.length === 0) {
+      setActiveSceneId(null);
+      return;
+    }
+    setActiveSceneId((current) => {
+      if (current && sceneIds.includes(current)) return current;
+      return sceneIds[0];
+    });
+  }, [sceneIds]);
+
+  const activeOrderedSegments = useMemo(
+    () => orderedSegments.filter((seg) => seg.sceneId === activeSceneId),
+    [orderedSegments, activeSceneId],
+  );
 
   const updateSegmentField = <K extends keyof SaveShotScriptSegmentRequest>(
     segmentId: string,
@@ -295,7 +332,41 @@ export function ShotScriptReviewPage() {
                 </div>
               </div>
 
-              {orderedSegments.map((segment) => {
+              {sceneIds.length > 1 && (
+                <nav aria-label="Scene 导航" className="rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5 flex gap-1 overflow-x-auto">
+                  {sceneIds.map((sceneId) => {
+                    const isActive = sceneId === activeSceneId;
+                    const count = sceneSegmentCounts.get(sceneId) ?? 0;
+                    return (
+                      <button
+                        key={sceneId}
+                        type="button"
+                        onClick={() => setActiveSceneId(sceneId)}
+                        className={[
+                          "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                          isActive
+                            ? "bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) shadow-sm"
+                            : "text-(--color-text-muted) hover:text-(--color-text-primary) hover:bg-(--color-bg-elevated)",
+                        ].join(" ")}
+                      >
+                        {sceneId}
+                        <span
+                          className={[
+                            "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold leading-none min-w-5",
+                            isActive
+                              ? "bg-(--color-bg-base)/20 text-(--color-bg-base)"
+                              : "bg-(--color-border-muted) text-(--color-text-muted)",
+                          ].join(" ")}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              )}
+
+              {activeOrderedSegments.map((segment) => {
                 const segmentSelector = toShotScriptSegmentSelector(segment);
                 const segmentStorageKey = toShotScriptSegmentStorageKey(segment);
                 const draft = drafts[segmentSelector] ?? {

@@ -197,6 +197,7 @@ describe("image worker integration", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
 
     const services = buildSpec2WorkerServices({

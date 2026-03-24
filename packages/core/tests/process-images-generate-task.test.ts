@@ -169,6 +169,7 @@ describe("process images generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const taskQueue = { enqueue: vi.fn() };
 
@@ -309,6 +310,7 @@ describe("process images generate task use case", () => {
         writeCurrentImage: vi.fn(),
         writeImageVersion: vi.fn(),
         readCurrentFrame: vi.fn(),
+        resolveProjectAssetPath: vi.fn(),
       },
       taskQueue: { enqueue: vi.fn() },
       taskIdGenerator: { generateTaskId: vi.fn() },
@@ -447,6 +449,7 @@ describe("process images generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const taskQueue = { enqueue: vi.fn() };
 
@@ -627,6 +630,7 @@ describe("process images generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const taskQueue = { enqueue: vi.fn() };
 
@@ -785,6 +789,7 @@ describe("process images generate task use case", () => {
       writeCurrentImage: vi.fn(),
       writeImageVersion: vi.fn(),
       readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
     };
     const taskQueue = { enqueue: vi.fn() };
 

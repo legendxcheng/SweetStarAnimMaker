@@ -31,6 +31,7 @@ export function ReviewWorkspacePage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
 
   const loadWorkspace = async () => {
     if (!projectId) return;
@@ -292,7 +293,43 @@ export function ReviewWorkspacePage() {
                   />
                 </div>
 
-                {currentDraft.scenes.map((scene, sceneIndex) => (
+                {currentDraft.scenes.length > 1 && (
+                  <nav aria-label="Scene 导航" className="rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5 flex gap-1 overflow-x-auto">
+                    {currentDraft.scenes.map((scene, index) => {
+                      const isActive = index === activeSceneIndex;
+                      return (
+                        <button
+                          key={scene.id}
+                          type="button"
+                          onClick={() => setActiveSceneIndex(index)}
+                          className={[
+                            "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                            isActive
+                              ? "bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) shadow-sm"
+                              : "text-(--color-text-muted) hover:text-(--color-text-primary) hover:bg-(--color-bg-elevated)",
+                          ].join(" ")}
+                        >
+                          {scene.name || `场景 ${scene.order}`}
+                          <span
+                            className={[
+                              "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold leading-none min-w-5",
+                              isActive
+                                ? "bg-(--color-bg-base)/20 text-(--color-bg-base)"
+                                : "bg-(--color-border-muted) text-(--color-text-muted)",
+                            ].join(" ")}
+                          >
+                            {scene.segments.length}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                )}
+
+                {currentDraft.scenes[activeSceneIndex] && (() => {
+                  const scene = currentDraft.scenes[activeSceneIndex];
+                  const sceneIndex = activeSceneIndex;
+                  return (
                   <section
                     key={scene.id}
                     className="rounded-xl border border-(--color-border) bg-(--color-bg-surface) p-4"
@@ -517,7 +554,8 @@ export function ReviewWorkspacePage() {
                       ))}
                     </div>
                   </section>
-                ))}
+                  );
+                })()}
               </div>
             </>
           );

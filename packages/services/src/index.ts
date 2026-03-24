@@ -60,6 +60,26 @@ export {
   type WaitForImageToVideoTaskInput,
 } from "./providers/kling-video-provider";
 export {
+  createSoraVideoProvider,
+  type CreateSoraVideoProviderOptions,
+  type GetSoraImageToVideoTaskInput,
+  type GetSoraImageToVideoTaskResult,
+  type SoraVideoProvider,
+  type SubmitSoraImageToVideoInput,
+  type SubmitSoraImageToVideoResult,
+  type WaitForSoraImageToVideoTaskInput,
+} from "./providers/sora-video-provider";
+export {
+  createWanVideoProvider,
+  type CreateWanVideoProviderOptions,
+  type GetWanImageToVideoTaskInput,
+  type GetWanImageToVideoTaskResult,
+  type SubmitWanImageToVideoInput,
+  type SubmitWanImageToVideoResult,
+  type WaitForWanImageToVideoTaskInput,
+  type WanVideoProvider,
+} from "./providers/wan-video-provider";
+export {
   createGeminiFramePromptProvider,
   type CreateGeminiFramePromptProviderOptions,
 } from "./providers/gemini-frame-prompt-provider";
