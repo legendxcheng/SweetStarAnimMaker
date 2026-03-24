@@ -3,6 +3,7 @@ import { initializeSqliteTaskSchema } from "../task-repository/sqlite-task-schem
 import { initializeSqliteStoryboardSchema } from "../storyboard-repository/sqlite-storyboard-schema";
 import { initializeSqliteStoryboardReviewSchema } from "../storyboard-repository/sqlite-storyboard-review-schema";
 import { initializeSqliteCharacterSheetSchema } from "../character-sheet-repository/sqlite-character-sheet-schema";
+import { initializeSqliteShotImageSchema } from "../shot-image-repository/sqlite-shot-image-schema";
 import { initializeSqliteShotScriptReviewSchema } from "../shot-script-repository/sqlite-shot-script-review-schema";
 
 export function initializeSqliteSchema(db: SqliteDatabase) {
@@ -21,7 +22,8 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
       current_master_plot_id TEXT NULL,
       current_character_sheet_batch_id TEXT NULL,
       current_storyboard_id TEXT NULL,
-      current_shot_script_id TEXT NULL
+      current_shot_script_id TEXT NULL,
+      current_image_batch_id TEXT NULL
     )
   `);
 
@@ -32,9 +34,11 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   ensureProjectsColumn(db, "current_character_sheet_batch_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_storyboard_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_shot_script_id", "TEXT NULL");
+  ensureProjectsColumn(db, "current_image_batch_id", "TEXT NULL");
 
   initializeSqliteStoryboardSchema(db);
   initializeSqliteCharacterSheetSchema(db);
+  initializeSqliteShotImageSchema(db);
   initializeSqliteTaskSchema(db);
   initializeSqliteStoryboardReviewSchema(db);
   initializeSqliteShotScriptReviewSchema(db);

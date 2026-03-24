@@ -1,11 +1,14 @@
 import crypto from "node:crypto";
 
 import {
+  createApproveAllImageFramesUseCase,
   createApproveAllShotScriptSegmentsUseCase,
   createApproveCharacterSheetUseCase,
+  createApproveImageFrameUseCase,
   createApproveMasterPlotUseCase,
   createApproveShotScriptSegmentUseCase,
   createApproveStoryboardUseCase,
+  createCreateImagesGenerateTaskUseCase,
   createCreateMasterPlotGenerateTaskUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
   createCreateShotScriptGenerateTaskUseCase,
@@ -16,6 +19,7 @@ import {
   createGetCharacterSheetImageContentUseCase,
   createGetCharacterSheetUseCase,
   createGetCharacterSheetReferenceImageContentUseCase,
+  createGetImageFrameUseCase,
   createGetCurrentShotScriptUseCase,
   createGetCurrentStoryboardUseCase,
   createGetMasterPlotReviewUseCase,
@@ -24,15 +28,19 @@ import {
   createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
   createListCharacterSheetsUseCase,
+  createListImagesUseCase,
   createListProjectsUseCase,
+  createGenerateFrameImageUseCase,
   createRegenerateShotScriptSegmentUseCase,
   createRegenerateCharacterSheetUseCase,
+  createRegenerateFramePromptUseCase,
   createRejectMasterPlotUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanMasterPlotUseCase,
   createSaveHumanShotScriptSegmentUseCase,
   createSaveHumanStoryboardVersionUseCase,
   createUpdateCharacterSheetPromptUseCase,
+  createUpdateFramePromptUseCase,
   createUpdateProjectScriptUseCase,
   type TaskIdGenerator,
   type TaskQueue,
@@ -45,6 +53,7 @@ import {
   createSqliteCharacterSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
+  createSqliteShotImageRepository,
   createSqliteShotScriptReviewRepository,
   createSqliteTaskRepository,
   createShotScriptStorage,
@@ -75,6 +84,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const storyboardStorage = createStoryboardStorage({ paths });
   const shotScriptStorage = createShotScriptStorage({ paths });
   const characterSheetRepository = createSqliteCharacterSheetRepository({ db });
+  const shotImageRepository = createSqliteShotImageRepository({ db });
   const shotScriptReviewRepository = createSqliteShotScriptReviewRepository({ db });
   const characterSheetStorage = createCharacterSheetStorage({ paths });
   const masterPlotStorage = storyboardStorage;
@@ -202,6 +212,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       shotScriptStorage,
       characterSheetRepository,
+      shotImageRepository,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
@@ -210,6 +221,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       shotScriptStorage,
       characterSheetRepository,
+      shotImageRepository,
     }),
     listCharacterSheets: createListCharacterSheetsUseCase({
       projectRepository: repository,
@@ -249,6 +261,14 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     getCurrentShotScript: createGetCurrentShotScriptUseCase({
       shotScriptStorage,
       projectRepository: repository,
+    }),
+    listImages: createListImagesUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+    }),
+    getImageFrame: createGetImageFrameUseCase({
+      projectRepository: repository,
+      shotImageRepository,
     }),
     getMasterPlotReview: createGetMasterPlotReviewUseCase({
       projectRepository: repository,
@@ -334,10 +354,33 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       characterSheetRepository,
       clock,
     }),
+    updateFramePrompt: createUpdateFramePromptUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      clock,
+    }),
     regenerateCharacterSheet: createRegenerateCharacterSheetUseCase({
       projectRepository: repository,
       characterSheetRepository,
       characterSheetStorage,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
+    regenerateFramePrompt: createRegenerateFramePromptUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
+    generateFrameImage: createGenerateFrameImageUseCase({
+      projectRepository: repository,
+      shotImageRepository,
       taskRepository,
       taskFileStorage,
       taskQueue: queuedTaskGateway,
@@ -349,10 +392,29 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       characterSheetRepository,
       clock,
     }),
+    approveImageFrame: createApproveImageFrameUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      clock,
+    }),
+    approveAllImageFrames: createApproveAllImageFramesUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      clock,
+    }),
     createMasterPlotGenerateTask,
     createCharacterSheetsGenerateTask,
     createStoryboardGenerateTask,
     createShotScriptGenerateTask,
+    createImagesGenerateTask: createCreateImagesGenerateTaskUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,
     }),

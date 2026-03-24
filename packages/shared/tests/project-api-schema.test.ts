@@ -31,6 +31,7 @@ describe("project api schema", () => {
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
+      currentImageBatch: null,
     });
 
     expect(parsed.currentMasterPlot).toBeNull();
@@ -52,6 +53,9 @@ describe("project api schema", () => {
       "shot_script_generating",
       "shot_script_in_review",
       "shot_script_approved",
+      "images_generating",
+      "images_in_review",
+      "images_approved",
     ]);
   });
 
@@ -68,6 +72,7 @@ describe("project api schema", () => {
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
+      currentImageBatch: null,
     });
 
     expect(parsed.id).toBe("proj_20260317_ab12cd");
@@ -100,6 +105,7 @@ describe("project api schema", () => {
       currentCharacterSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
+      currentImageBatch: null,
     });
 
     expect(parsed.currentMasterPlot).not.toBeNull();
@@ -120,6 +126,7 @@ describe("project api schema", () => {
         currentCharacterSheetBatch: null,
         currentStoryboard: null,
         currentShotScript: null,
+        currentImageBatch: null,
       },
       {
         id: "proj_2",
@@ -146,6 +153,7 @@ describe("project api schema", () => {
         currentCharacterSheetBatch: null,
         currentStoryboard: null,
         currentShotScript: null,
+        currentImageBatch: null,
       },
     ]);
 
@@ -215,6 +223,14 @@ describe("project api schema", () => {
         shotCount: 5,
         totalDurationSec: 31,
       },
+      currentImageBatch: {
+        id: "image_batch_v1",
+        sourceShotScriptId: "shot_script_v1",
+        segmentCount: 5,
+        totalFrameCount: 10,
+        approvedFrameCount: 3,
+        updatedAt: "2026-03-21T12:50:00.000Z",
+      },
     });
 
     expect(parsed.currentStoryboard).not.toBeNull();
@@ -222,5 +238,6 @@ describe("project api schema", () => {
     expect(parsed.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(parsed.currentShotScript?.segmentCount).toBe(5);
     expect(parsed.currentShotScript?.shotCount).toBe(5);
+    expect(parsed.currentImageBatch?.totalFrameCount).toBe(10);
   });
 });

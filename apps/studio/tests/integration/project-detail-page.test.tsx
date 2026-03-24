@@ -163,6 +163,19 @@ const shotScriptApprovedProject = {
   },
 };
 
+const imagesInReviewProject = {
+  ...shotScriptApprovedProject,
+  status: "images_in_review" as const,
+  currentImageBatch: {
+    id: "image-batch-1",
+    sourceShotScriptId: "shot-script-1",
+    segmentCount: 1,
+    totalFrameCount: 2,
+    approvedFrameCount: 0,
+    updatedAt: "2024-01-01T00:00:09Z",
+  },
+};
+
 const generatingShotScriptProject = {
   ...storyboardApprovedProject,
   status: "shot_script_generating" as const,
@@ -401,6 +414,86 @@ describe("Project Detail Page", () => {
 
     expect(screen.getByRole("heading", { name: "镜头脚本工作区" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /生成镜头脚本/i })).toBeInTheDocument();
+  });
+
+  it("enables the image phase after shot-script approval and loads frame cards", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(imagesInReviewProject);
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: imagesInReviewProject.currentImageBatch,
+      frames: [
+        {
+          id: "frame-start-1",
+          batchId: "image-batch-1",
+          projectId: "proj-1",
+          sourceShotScriptId: "shot-script-1",
+          segmentId: "segment-1",
+          sceneId: "scene-1",
+          order: 1,
+          frameType: "start_frame" as const,
+          planStatus: "planned" as const,
+          imageStatus: "in_review" as const,
+          selectedCharacterIds: ["char-rin"],
+          matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
+          unmatchedCharacterIds: [],
+          promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+          promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+          negativePromptTextCurrent: null,
+          promptUpdatedAt: "2024-01-01T00:00:09Z",
+          imageAssetPath: "images/frame-start-1/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "turnaround-image",
+          model: "doubao-seedream-5-0-260128",
+          approvedAt: null,
+          updatedAt: "2024-01-01T00:00:09Z",
+          sourceTaskId: "task-frame-start-1",
+        },
+        {
+          id: "frame-end-1",
+          batchId: "image-batch-1",
+          projectId: "proj-1",
+          sourceShotScriptId: "shot-script-1",
+          segmentId: "segment-1",
+          sceneId: "scene-1",
+          order: 1,
+          frameType: "end_frame" as const,
+          planStatus: "planned" as const,
+          imageStatus: "in_review" as const,
+          selectedCharacterIds: ["char-rin"],
+          matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
+          unmatchedCharacterIds: [],
+          promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
+          promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
+          negativePromptTextCurrent: null,
+          promptUpdatedAt: "2024-01-01T00:00:09Z",
+          imageAssetPath: "images/frame-end-1/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "turnaround-image",
+          model: "doubao-seedream-5-0-260128",
+          approvedAt: null,
+          updatedAt: "2024-01-01T00:00:09Z",
+          sourceTaskId: "task-frame-end-1",
+        },
+      ],
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "画面" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "画面" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByRole("heading", { name: "画面工作区" })).toBeInTheDocument();
+    expect(screen.getByText("Segment 1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
   });
 
   it("loads project detail and lets the user start storyboard generation", async () => {

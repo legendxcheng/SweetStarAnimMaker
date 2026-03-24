@@ -146,19 +146,20 @@ describe("list projects use case", () => {
         projectId: "proj_20260320_ab12cd",
         projectStorageDir: "projects/proj_20260320_ab12cd-sky-choir",
         sourceShotScriptId: "shot_script_20260322_ab12cd",
-        imageCount: 2,
+        segmentCount: 1,
+        totalFrameCount: 2,
         storageDir: "projects/proj_20260320_ab12cd-sky-choir/images/batches/image_batch_1",
         manifestRelPath: "images/batches/image_batch_1/manifest.json",
         createdAt: "2026-03-23T12:00:00.000Z",
         updatedAt: "2026-03-23T12:10:00.000Z",
       }),
-      listImagesByBatchId: vi.fn().mockResolvedValue([
-        { id: "image_1", status: "approved" },
-        { id: "image_2", status: "in_review" },
+      listFramesByBatchId: vi.fn().mockResolvedValue([
+        { id: "frame_1", imageStatus: "approved" },
+        { id: "frame_2", imageStatus: "in_review" },
       ]),
-      insertImage: vi.fn(),
-      findImageById: vi.fn(),
-      updateImage: vi.fn(),
+      insertFrame: vi.fn(),
+      findFrameById: vi.fn(),
+      updateFrame: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
     };
     const useCase = createListProjectsUseCase({
@@ -180,7 +181,7 @@ describe("list projects use case", () => {
     expect(result[0].currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result[0].currentShotScript?.shotCount).toBe(1);
     expect(result[0].currentImageBatch?.id).toBe("image_batch_1");
-    expect(result[0].currentImageBatch?.approvedImageCount).toBe(1);
+    expect(result[0].currentImageBatch?.approvedFrameCount).toBe(1);
     expect(result[1].currentMasterPlot).toBeNull();
     expect(result[1].currentCharacterSheetBatch).toBeNull();
     expect(result[1].currentShotScript).toBeNull();

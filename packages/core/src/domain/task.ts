@@ -6,6 +6,9 @@ export const characterSheetGenerateQueueName = "character-sheet-generate";
 export const storyboardGenerateQueueName = "storyboard-generate";
 export const shotScriptGenerateQueueName = "shot-script-generate";
 export const shotScriptSegmentGenerateQueueName = "shot-script-segment-generate";
+export const imagesGenerateQueueName = "images-generate";
+export const framePromptGenerateQueueName = "frame-prompt-generate";
+export const frameImageGenerateQueueName = "frame-image-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -162,6 +165,33 @@ export interface ShotScriptSegmentGenerateTaskInput {
   sourceCharacterSheetBatchId?: string;
   characterSheets?: ShotScriptGenerateTaskInput["characterSheets"];
   promptTemplateKey: "shot_script.segment.generate";
+}
+
+export interface ImagesGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "images_generate";
+  sourceShotScriptId: string;
+}
+
+export interface FramePromptGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "frame_prompt_generate";
+  batchId: string;
+  frameId: string;
+  sourceShotScriptId: string;
+  segmentId: string;
+  sceneId: string;
+  frameType: "start_frame" | "end_frame";
+}
+
+export interface FrameImageGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "frame_image_generate";
+  batchId: string;
+  frameId: string;
 }
 
 export interface CreateTaskRecordInput {

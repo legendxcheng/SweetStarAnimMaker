@@ -3,12 +3,17 @@ import IORedis from "ioredis";
 import {
   characterSheetGenerateQueueName,
   characterSheetsGenerateQueueName,
+  frameImageGenerateQueueName,
+  framePromptGenerateQueueName,
+  imagesGenerateQueueName,
   masterPlotGenerateQueueName,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
+  type FramePromptProvider,
   type MasterPlotProvider,
   shotScriptGenerateQueueName,
   shotScriptSegmentGenerateQueueName,
+  type ShotImageProvider,
   type ShotScriptProvider,
   storyboardGenerateQueueName,
   type StoryboardProvider,
@@ -52,6 +57,15 @@ export interface StartWorkerOptions {
     processCharacterSheetGenerateTask: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
+    processImagesGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processFramePromptGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processFrameImageGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
     close?(): Promise<void> | void;
   };
   workspaceRoot?: string;
@@ -61,6 +75,8 @@ export interface StartWorkerOptions {
   shotScriptProvider?: ShotScriptProvider;
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
+  framePromptProvider?: FramePromptProvider;
+  shotImageProvider?: ShotImageProvider;
   workerFactory?: (input: {
     queueName: string;
     processor(job: WorkerJob): Promise<void>;
@@ -81,6 +97,8 @@ export async function startWorker(
       shotScriptProvider: options.shotScriptProvider,
       characterSheetPromptProvider: options.characterSheetPromptProvider,
       characterSheetImageProvider: options.characterSheetImageProvider,
+      framePromptProvider: options.framePromptProvider,
+      shotImageProvider: options.shotImageProvider,
     });
   const processors: Array<{
     queueName: string;
@@ -139,6 +157,42 @@ export async function startWorker(
       queueName: shotScriptSegmentGenerateQueueName,
       processor: async (job: WorkerJob) => {
         await shotScriptSegmentTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const imagesTaskProcessor = services.processImagesGenerateTask;
+
+  if (imagesTaskProcessor) {
+    processors.push({
+      queueName: imagesGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await imagesTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const framePromptTaskProcessor = services.processFramePromptGenerateTask;
+
+  if (framePromptTaskProcessor) {
+    processors.push({
+      queueName: framePromptGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await framePromptTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const frameImageTaskProcessor = services.processFrameImageGenerateTask;
+
+  if (frameImageTaskProcessor) {
+    processors.push({
+      queueName: frameImageGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await frameImageTaskProcessor.execute({
           taskId: job.data.taskId,
         });
       },

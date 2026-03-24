@@ -5,6 +5,9 @@ export const taskTypes = [
   "storyboard_generate",
   "shot_script_generate",
   "shot_script_segment_generate",
+  "images_generate",
+  "frame_prompt_generate",
+  "frame_image_generate",
 ] as const;
 
 export type TaskType = (typeof taskTypes)[number];

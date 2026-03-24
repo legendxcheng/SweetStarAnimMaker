@@ -1,11 +1,13 @@
 import type { ProjectDetail } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
+import { toCurrentImageBatch } from "../domain/shot-image";
 import { toCurrentShotScriptSummary } from "../domain/shot-script";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { PremiseStorage } from "../ports/script-storage";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
@@ -26,6 +28,7 @@ export interface GetProjectDetailUseCaseDependencies {
   storyboardStorage: StoryboardStorage;
   shotScriptStorage: ShotScriptStorage;
   characterSheetRepository: CharacterSheetRepository;
+  shotImageRepository: ShotImageRepository;
 }
 
 export function createGetProjectDetailUseCase(
@@ -58,6 +61,7 @@ export function createGetProjectDetailUseCase(
           })
         : null;
       let currentCharacterSheetBatch = null;
+      let currentImageBatch = null;
 
       if (project.currentCharacterSheetBatchId) {
         const batch = await dependencies.characterSheetRepository.findBatchById(
@@ -72,6 +76,17 @@ export function createGetProjectDetailUseCase(
         }
       }
 
+      if (project.currentImageBatchId) {
+        const batch = await dependencies.shotImageRepository.findBatchById(
+          project.currentImageBatchId,
+        );
+
+        if (batch) {
+          const frames = await dependencies.shotImageRepository.listFramesByBatchId(batch.id);
+          currentImageBatch = toCurrentImageBatch(batch, frames);
+        }
+      }
+
       return toProjectDetailDto(
         project,
         currentMasterPlot,
@@ -79,6 +94,7 @@ export function createGetProjectDetailUseCase(
         currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
         premiseText,
         currentShotScript ? toCurrentShotScriptSummary(currentShotScript) : null,
+        currentImageBatch,
       );
     },
   };

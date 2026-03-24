@@ -265,4 +265,50 @@ describe("turnaround image provider", () => {
       'Turnaround image provider request failed with status 503; requestId=req_503_debug; body={"error":"service overloaded"}',
     );
   });
+
+  it("supports frame image generation with negative prompts and optional reference images", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            b64_json: "AQID",
+            width: 1920,
+            height: 1080,
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const uploader = {
+      uploadReferenceImage: vi.fn().mockResolvedValue("https://cdn.example/frame-ref.png"),
+    };
+
+    const provider = createTurnaroundImageProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      referenceImageUploader: uploader,
+    });
+
+    const result = await provider.generateShotImage({
+      projectId: "proj_20260324_ab12cd",
+      frameId: "frame_start_1",
+      promptText: "雨夜市场的开场定格，林站在水面反光前。",
+      negativePromptText: "低清晰度、崩坏手部",
+      referenceImagePaths: ["E:/tmp/frame-ref.png"],
+    });
+
+    expect(uploader.uploadReferenceImage).toHaveBeenCalledWith({
+      localFilePath: "E:/tmp/frame-ref.png",
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.model).toBe("doubao-seedream-5-0-260128");
+    expect(request.prompt).toContain("雨夜市场的开场定格");
+    expect(request.prompt).toContain("低清晰度、崩坏手部");
+    expect(request.image).toEqual(["https://cdn.example/frame-ref.png"]);
+    expect(result.provider).toBe("turnaround-image");
+    expect(result.width).toBe(1920);
+    expect(result.height).toBe(1080);
+  });
 });

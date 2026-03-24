@@ -10,6 +10,9 @@ describe("task api schema", () => {
       "storyboard_generate",
       "shot_script_generate",
       "shot_script_segment_generate",
+      "images_generate",
+      "frame_prompt_generate",
+      "frame_image_generate",
     ]);
   });
 

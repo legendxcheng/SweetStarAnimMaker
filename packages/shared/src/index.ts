@@ -24,6 +24,16 @@ export {
   projectSummaryResponseSchema,
 } from "./schemas/project-api";
 export {
+  approveAllImageFramesRequestSchema,
+  approveImageFrameRequestSchema,
+  currentImageBatchSummaryResponseSchema,
+  generateImageFrameRequestSchema,
+  imageFrameListResponseSchema,
+  imageFrameResponseSchema,
+  regenerateImageFramePromptRequestSchema,
+  updateImageFramePromptRequestSchema,
+} from "./schemas/image-api";
+export {
   approveCharacterSheetRequestSchema,
   characterReferenceImageResponseSchema,
   characterSheetDetailResponseSchema,
@@ -80,6 +90,19 @@ export type {
 export type {
   CurrentMasterPlot,
 } from "./types/master-plot";
+export type {
+  ApproveAllImageFramesRequest,
+  ApproveImageFrameRequest,
+  CurrentImageBatch,
+  GenerateImageFrameRequest,
+  ImageFrameListResponse,
+  ImageFramePlanStatus,
+  ImageFrameStatus,
+  ImageFrameType,
+  RegenerateImageFramePromptRequest,
+  SegmentFrameRecord,
+  UpdateImageFramePromptRequest,
+} from "./types/shot-image";
 export type {
   CurrentShotScript,
   CurrentShotScriptSummary,

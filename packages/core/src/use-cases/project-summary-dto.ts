@@ -1,5 +1,6 @@
 import type {
   CurrentCharacterSheetBatchSummary,
+  CurrentImageBatch,
   CurrentMasterPlot,
   CurrentShotScriptSummary,
   CurrentStoryboardSummary,
@@ -14,6 +15,7 @@ export function toProjectSummaryDto(
   currentCharacterSheetBatch: CurrentCharacterSheetBatchSummary | null = null,
   currentStoryboard: CurrentStoryboardSummary | null = null,
   currentShotScript: CurrentShotScriptSummary | null = null,
+  currentImageBatch: CurrentImageBatch | null = null,
 ): ProjectSummary {
   return {
     id: project.id,
@@ -27,5 +29,6 @@ export function toProjectSummaryDto(
     currentCharacterSheetBatch,
     currentStoryboard,
     currentShotScript,
+    currentImageBatch,
   };
 }

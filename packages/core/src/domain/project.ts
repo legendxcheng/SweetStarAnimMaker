@@ -13,6 +13,7 @@ export interface ProjectRecord {
   currentCharacterSheetBatchId: string | null;
   currentStoryboardId: string | null;
   currentShotScriptId: string | null;
+  currentImageBatchId: string | null;
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +32,7 @@ export interface CreateProjectRecordInput {
   currentCharacterSheetBatchId?: string | null;
   currentStoryboardId?: string | null;
   currentShotScriptId?: string | null;
+  currentImageBatchId?: string | null;
   status?: ProjectStatus;
 }
 
@@ -56,6 +58,7 @@ export function createProjectRecord(input: CreateProjectRecordInput): ProjectRec
     currentCharacterSheetBatchId: input.currentCharacterSheetBatchId ?? null,
     currentStoryboardId: input.currentStoryboardId ?? null,
     currentShotScriptId: input.currentShotScriptId ?? null,
+    currentImageBatchId: input.currentImageBatchId ?? null,
     status: input.status ?? initialProjectStatus,
     storageDir: toProjectStorageDir(input.id, input.slug),
     premiseRelPath: premiseRelPath,

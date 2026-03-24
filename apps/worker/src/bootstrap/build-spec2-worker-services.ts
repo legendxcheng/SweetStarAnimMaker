@@ -1,12 +1,16 @@
 import crypto from "node:crypto";
 
 import {
+  createProcessFrameImageGenerateTaskUseCase,
+  createProcessFramePromptGenerateTaskUseCase,
+  createProcessImagesGenerateTaskUseCase,
   createProcessMasterPlotGenerateTaskUseCase,
   createProcessCharacterSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
   createProcessShotScriptGenerateTaskUseCase,
   createProcessShotScriptSegmentGenerateTaskUseCase,
   createProcessStoryboardGenerateTaskUseCase,
+  type FramePromptProvider,
   type ProcessShotScriptSegmentGenerateTaskUseCase,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
@@ -18,9 +22,15 @@ import {
   type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessCharacterSheetGenerateTaskUseCase,
   type ProcessCharacterSheetsGenerateTaskUseCase,
+  type ProcessFrameImageGenerateTaskUseCase,
+  type ProcessFramePromptGenerateTaskUseCase,
+  type ProcessImagesGenerateTaskUseCase,
   type ProcessShotScriptGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProjectRepository,
+  type ShotImageProvider,
+  type ShotImageRepository,
+  type ShotImageStorage,
   type StoryboardProvider,
   type StoryboardStorage,
   type ShotScriptProvider,
@@ -33,6 +43,7 @@ import {
 import {
   createBullMqTaskQueue,
   createCharacterSheetStorage,
+  createGeminiFramePromptProvider,
   createGeminiCharacterSheetProvider,
   createGeminiShotScriptProvider,
   createGeminiStoryboardProvider,
@@ -41,7 +52,9 @@ import {
   createSqliteCharacterSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
+  createSqliteShotImageRepository,
   createSqliteTaskRepository,
+  createShotImageStorage,
   createShotScriptStorage,
   createStoryboardStorage,
   createTaskFileStorage,
@@ -61,11 +74,15 @@ export interface BuildSpec2WorkerServicesOptions {
   shotScriptStorage?: ShotScriptStorage;
   characterSheetRepository?: CharacterSheetRepository;
   characterSheetStorage?: CharacterSheetStorage;
+  shotImageRepository?: ShotImageRepository;
+  shotImageStorage?: ShotImageStorage;
   masterPlotProvider?: MasterPlotProvider;
   storyboardProvider?: StoryboardProvider;
   shotScriptProvider?: ShotScriptProvider;
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
+  framePromptProvider?: FramePromptProvider;
+  shotImageProvider?: ShotImageProvider;
   taskQueue?: TaskQueue;
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
@@ -79,6 +96,9 @@ export interface Spec2WorkerServices {
   processShotScriptSegmentGenerateTask: ProcessShotScriptSegmentGenerateTaskUseCase;
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
+  processImagesGenerateTask: ProcessImagesGenerateTaskUseCase;
+  processFramePromptGenerateTask: ProcessFramePromptGenerateTaskUseCase;
+  processFrameImageGenerateTask: ProcessFrameImageGenerateTaskUseCase;
   close(): Promise<void>;
 }
 
@@ -90,6 +110,7 @@ export function buildSpec2WorkerServices(
   const defaultStoryboardStorage = paths ? createStoryboardStorage({ paths }) : null;
   const defaultShotScriptStorage = paths ? createShotScriptStorage({ paths }) : null;
   const defaultCharacterSheetStorage = paths ? createCharacterSheetStorage({ paths }) : null;
+  const defaultShotImageStorage = paths ? createShotImageStorage({ paths }) : null;
 
   if (db) {
     initializeSqliteSchema(db);
@@ -108,6 +129,11 @@ export function buildSpec2WorkerServices(
   const characterSheetRepository =
     options.characterSheetRepository ?? (db ? createSqliteCharacterSheetRepository({ db }) : null);
   const characterSheetStorage = options.characterSheetStorage ?? defaultCharacterSheetStorage;
+  const shotImageRepository =
+    options.shotImageRepository ??
+    (db ? createSqliteShotImageRepository({ db }) : createUnsupportedShotImageRepository());
+  const shotImageStorage =
+    options.shotImageStorage ?? defaultShotImageStorage ?? createUnsupportedShotImageStorage();
   const storyboardProvider =
     options.storyboardProvider ??
     (process.env.VECTORENGINE_API_TOKEN?.trim()
@@ -164,6 +190,21 @@ export function buildSpec2WorkerServices(
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.CHARACTER_SHEET_IMAGE_MODEL,
+      referenceImageUploader,
+    });
+  const framePromptProvider =
+    options.framePromptProvider ??
+    createGeminiFramePromptProvider({
+      baseUrl: process.env.VECTORENGINE_BASE_URL,
+      apiToken: process.env.VECTORENGINE_API_TOKEN,
+      model: process.env.FRAME_PROMPT_MODEL,
+    });
+  const shotImageProvider =
+    options.shotImageProvider ??
+    createTurnaroundImageProvider({
+      baseUrl: process.env.VECTORENGINE_BASE_URL,
+      apiToken: process.env.VECTORENGINE_API_TOKEN,
+      model: process.env.FRAME_IMAGE_MODEL,
       referenceImageUploader,
     });
   const taskIdGenerator =
@@ -254,6 +295,8 @@ export function buildSpec2WorkerServices(
       taskFileStorage,
       shotScriptProvider,
       shotScriptStorage,
+      shotImageRepository,
+      shotImageStorage,
       taskQueue,
       taskIdGenerator,
       clock: options.clock ?? {
@@ -295,6 +338,44 @@ export function buildSpec2WorkerServices(
         now: () => new Date().toISOString(),
       },
     }),
+    processImagesGenerateTask: createProcessImagesGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotScriptStorage,
+      shotImageRepository,
+      shotImageStorage,
+      taskQueue,
+      taskIdGenerator,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processFramePromptGenerateTask: createProcessFramePromptGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotScriptStorage,
+      characterSheetRepository,
+      characterSheetStorage,
+      framePromptProvider,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processFrameImageGenerateTask: createProcessFrameImageGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotImageProvider,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
     async close() {
       await Promise.all(Array.from(bullMqQueues.values()).map((queue) => queue.close()));
       await queueConnection?.quit();
@@ -318,6 +399,58 @@ function createUnsupportedShotScriptStorage(): ShotScriptStorage {
     async writeCurrentShotScript() {},
     async readCurrentShotScript() {
       return null;
+    },
+  };
+}
+
+function createUnsupportedShotImageRepository(): ShotImageRepository {
+  return {
+    insertBatch() {
+      throw new Error("Shot image repository is not configured");
+    },
+    findBatchById() {
+      throw new Error("Shot image repository is not configured");
+    },
+    findCurrentBatchByProjectId() {
+      throw new Error("Shot image repository is not configured");
+    },
+    listFramesByBatchId() {
+      throw new Error("Shot image repository is not configured");
+    },
+    insertFrame() {
+      throw new Error("Shot image repository is not configured");
+    },
+    findFrameById() {
+      throw new Error("Shot image repository is not configured");
+    },
+    updateFrame() {
+      throw new Error("Shot image repository is not configured");
+    },
+  };
+}
+
+function createUnsupportedShotImageStorage(): ShotImageStorage {
+  return {
+    async writeBatchManifest() {
+      throw new Error("Shot image storage is not configured");
+    },
+    async writeFramePlanning() {
+      throw new Error("Shot image storage is not configured");
+    },
+    async writeFramePromptFiles() {
+      throw new Error("Shot image storage is not configured");
+    },
+    async writeFramePromptVersion() {
+      throw new Error("Shot image storage is not configured");
+    },
+    async writeCurrentImage() {
+      throw new Error("Shot image storage is not configured");
+    },
+    async writeImageVersion() {
+      throw new Error("Shot image storage is not configured");
+    },
+    async readCurrentFrame() {
+      throw new Error("Shot image storage is not configured");
     },
   };
 }
