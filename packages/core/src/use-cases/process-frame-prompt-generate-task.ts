@@ -1,7 +1,4 @@
-import {
-  matchesShotScriptSegmentSelector,
-  type CharacterSheetRecord,
-} from "@sweet-star/shared";
+import { matchesShotScriptSegmentSelector, type CharacterSheetRecord } from "@sweet-star/shared";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
@@ -228,18 +225,28 @@ async function loadApprovedCharacterRoster(input: {
   const characters = await input.characterSheetRepository.listCharactersByBatchId(
     input.characterSheetBatchId,
   );
-  const approvedCharacters = characters.filter((character) => character.status === "approved");
 
-  return (
-    await Promise.all(
-      approvedCharacters.map((character) =>
-        input.characterSheetStorage.readCurrentCharacterSheet({
-          storageDir: input.project.storageDir,
-          characterId: character.id,
-        })
-      ),
-    )
-  ).filter((character): character is CharacterSheetRecord => character !== null);
+  return characters
+    .filter((character) => character.status === "approved")
+    .map((character) => ({
+      id: character.id,
+      projectId: character.projectId,
+      batchId: character.batchId,
+      sourceMasterPlotId: character.sourceMasterPlotId,
+      characterName: character.characterName,
+      promptTextGenerated: character.promptTextGenerated,
+      promptTextCurrent: character.promptTextCurrent,
+      referenceImages: character.referenceImages,
+      imageAssetPath: character.imageAssetPath,
+      imageWidth: character.imageWidth,
+      imageHeight: character.imageHeight,
+      provider: character.provider,
+      model: character.model,
+      status: character.status,
+      updatedAt: character.updatedAt,
+      approvedAt: character.approvedAt,
+      sourceTaskId: character.sourceTaskId,
+    })) satisfies CharacterSheetRecord[];
 }
 
 function assertFramePromptTaskInput(input: {

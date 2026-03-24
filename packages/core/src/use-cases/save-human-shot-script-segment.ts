@@ -128,25 +128,10 @@ async function loadApprovedCharacters(input: {
     input.project.currentCharacterSheetBatchId,
   );
 
-  return (
-    await Promise.all(
-      characters.map(async (character) => {
-        const currentCharacter = await input.characterSheetStorage.readCurrentCharacterSheet({
-          storageDir: input.project.storageDir,
-          characterId: character.id,
-        });
-
-        if (!currentCharacter) {
-          return null;
-        }
-
-        return {
-          characterId: currentCharacter.id,
-          characterName: currentCharacter.characterName,
-          promptTextCurrent: currentCharacter.promptTextCurrent,
-          imageAssetPath: currentCharacter.imageAssetPath,
-        };
-      }),
-    )
-  ).filter((character): character is NonNullable<typeof character> => character !== null);
+  return characters.map((character) => ({
+    characterId: character.id,
+    characterName: character.characterName,
+    promptTextCurrent: character.promptTextCurrent,
+    imageAssetPath: character.imageAssetPath,
+  }));
 }

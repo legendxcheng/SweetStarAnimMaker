@@ -50,6 +50,16 @@ export {
   type CreateTurnaroundImageProviderOptions,
 } from "./providers/turnaround-image-provider";
 export {
+  createKlingVideoProvider,
+  type CreateKlingVideoProviderOptions,
+  type GetImageToVideoTaskInput,
+  type GetImageToVideoTaskResult,
+  type KlingVideoProvider,
+  type SubmitImageToVideoInput,
+  type SubmitImageToVideoResult,
+  type WaitForImageToVideoTaskInput,
+} from "./providers/kling-video-provider";
+export {
   createGeminiFramePromptProvider,
   type CreateGeminiFramePromptProviderOptions,
 } from "./providers/gemini-frame-prompt-provider";

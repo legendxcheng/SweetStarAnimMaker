@@ -352,15 +352,38 @@ describe("save human shot script segment use case", () => {
       listCharactersByBatchId: vi.fn().mockResolvedValue([
         {
           id: "char_k",
+          projectId: "proj_1",
+          projectStorageDir: "projects/proj_1-my-story",
+          batchId: "char_batch_1",
+          sourceMasterPlotId: "mp_1",
+          characterName: "职员K",
+          promptTextGenerated: "黑眼圈明显，深色连帽衫。",
+          promptTextCurrent: "黑眼圈明显，深色连帽衫。",
+          referenceImages: [],
+          imageAssetPath: "character-sheets/char_k/current.png",
+          imageWidth: 1024,
+          imageHeight: 1024,
+          provider: "mock-provider",
+          model: "mock-model",
+          status: "approved",
+          updatedAt: "2026-03-23T12:00:00.000Z",
+          approvedAt: "2026-03-23T12:00:00.000Z",
+          sourceTaskId: "task_char_k",
+          storageDir: "ignored",
+          currentImageRelPath: "ignored",
+          currentMetadataRelPath: "ignored",
+          promptGeneratedRelPath: "ignored",
+          promptCurrentRelPath: "ignored",
+          promptVariablesRelPath: "ignored",
+          imagePromptRelPath: "ignored",
+          versionsStorageDir: "ignored",
         },
       ]),
     };
     const characterSheetStorage = {
       readCurrentCharacterSheet: vi.fn().mockResolvedValue({
-        id: "char_k",
-        characterName: "职员K",
-        promptTextCurrent: "黑眼圈明显，深色连帽衫。",
-        imageAssetPath: "character-sheets/char_k/current.png",
+        width: 1024,
+        height: 1024,
       }),
     };
     const shotScriptStorage = {
@@ -432,5 +455,6 @@ describe("save human shot script segment use case", () => {
     ).rejects.toThrow("使用了未登记简称“K”");
     expect(shotScriptStorage.writeShotScriptVersion).not.toHaveBeenCalled();
     expect(shotScriptStorage.writeCurrentShotScript).not.toHaveBeenCalled();
+    expect(characterSheetStorage.readCurrentCharacterSheet).not.toHaveBeenCalled();
   });
 });

@@ -79,28 +79,12 @@ export function createCreateShotScriptGenerateTaskUseCase(
             project.currentCharacterSheetBatchId,
           )
         : [];
-      const characterSheetSnapshots = (
-        await Promise.all(
-          characterSheets.map(async (character) => {
-            const currentCharacter =
-              await dependencies.characterSheetStorage.readCurrentCharacterSheet({
-                storageDir: project.storageDir,
-                characterId: character.id,
-              });
-
-            if (!currentCharacter) {
-              return null;
-            }
-
-            return {
-              characterId: currentCharacter.id,
-              characterName: currentCharacter.characterName,
-              promptTextCurrent: currentCharacter.promptTextCurrent,
-              imageAssetPath: currentCharacter.imageAssetPath,
-            };
-          }),
-        )
-      ).filter((character): character is NonNullable<typeof character> => character !== null);
+      const characterSheetSnapshots = characterSheets.map((character) => ({
+        characterId: character.id,
+        characterName: character.characterName,
+        promptTextCurrent: character.promptTextCurrent,
+        imageAssetPath: character.imageAssetPath,
+      }));
 
       const timestamp = dependencies.clock.now();
       const task = createTaskRecord({
