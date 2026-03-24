@@ -87,15 +87,10 @@ export function createProcessImagesGenerateTaskUseCase(
 
         await dependencies.shotImageRepository.insertBatch(batch);
         await dependencies.shotImageStorage.writeBatchManifest({ batch });
-        await dependencies.projectRepository.updateCurrentImageBatch({
-          projectId: project.id,
-          batchId: batch.id,
-        });
-
         for (const segment of currentShotScript.segments) {
           for (const frameType of ["start_frame", "end_frame"] as const) {
             const frame = createSegmentFrameRecord({
-              id: toSegmentFrameId(segment.sceneId, segment.segmentId, frameType),
+              id: toSegmentFrameId(batch.id, segment.sceneId, segment.segmentId, frameType),
               batchId: batch.id,
               projectId: project.id,
               projectStorageDir: project.storageDir,
@@ -141,6 +136,11 @@ export function createProcessImagesGenerateTaskUseCase(
             });
           }
         }
+
+        await dependencies.projectRepository.updateCurrentImageBatch({
+          projectId: project.id,
+          batchId: batch.id,
+        });
 
         const finishedAt = dependencies.clock.now();
 
@@ -198,10 +198,11 @@ function toShotImageBatchId(taskId: string) {
 }
 
 function toSegmentFrameId(
+  batchId: string,
   sceneId: string,
   segmentId: string,
   frameType: "start_frame" | "end_frame",
 ) {
   const token = frameType === "start_frame" ? "start" : "end";
-  return `frame_${toShotScriptSegmentStorageKey({ sceneId, segmentId })}_${token}`;
+  return `frame_${batchId}_${toShotScriptSegmentStorageKey({ sceneId, segmentId })}_${token}`;
 }

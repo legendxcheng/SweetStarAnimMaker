@@ -483,4 +483,334 @@ describe("process images generate task use case", () => {
     expect(new Set(frameIds).size).toBe(4);
     expect(new Set(storageDirs).size).toBe(4);
   });
+
+  it("creates different frame ids for the same segment across separate image batches", async () => {
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: "task_20260324_images_first",
+          projectId: "proj_20260324_ab12cd",
+          type: "images_generate",
+          status: "pending",
+          queueName: "images-generate",
+          storageDir:
+            "projects/proj_20260324_ab12cd-my-story/tasks/task_20260324_images_first",
+          inputRelPath: "tasks/task_20260324_images_first/input.json",
+          outputRelPath: "tasks/task_20260324_images_first/output.json",
+          logRelPath: "tasks/task_20260324_images_first/log.txt",
+          errorMessage: null,
+          createdAt: "2026-03-24T00:11:00.000Z",
+          updatedAt: "2026-03-24T00:11:00.000Z",
+          startedAt: null,
+          finishedAt: null,
+        })
+        .mockResolvedValueOnce({
+          id: "task_20260324_images_second",
+          projectId: "proj_20260324_ab12cd",
+          type: "images_generate",
+          status: "pending",
+          queueName: "images-generate",
+          storageDir:
+            "projects/proj_20260324_ab12cd-my-story/tasks/task_20260324_images_second",
+          inputRelPath: "tasks/task_20260324_images_second/input.json",
+          outputRelPath: "tasks/task_20260324_images_second/output.json",
+          logRelPath: "tasks/task_20260324_images_second/log.txt",
+          errorMessage: null,
+          createdAt: "2026-03-24T00:14:00.000Z",
+          updatedAt: "2026-03-24T00:14:00.000Z",
+          startedAt: null,
+          finishedAt: null,
+        }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_20260324_ab12cd",
+        name: "My Story",
+        slug: "my-story",
+        storageDir: "projects/proj_20260324_ab12cd-my-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "master_plot_v1",
+        currentCharacterSheetBatchId: "char_batch_v1",
+        currentStoryboardId: "storyboard_v1",
+        currentShotScriptId: "shot_script_v1",
+        currentImageBatchId: null,
+        status: "images_generating",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:11:00.000Z",
+        premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi
+        .fn()
+        .mockResolvedValueOnce({
+          taskId: "task_20260324_images_first",
+          projectId: "proj_20260324_ab12cd",
+          taskType: "images_generate",
+          sourceShotScriptId: "shot_script_v1",
+        })
+        .mockResolvedValueOnce({
+          taskId: "task_20260324_images_second",
+          projectId: "proj_20260324_ab12cd",
+          taskType: "images_generate",
+          sourceShotScriptId: "shot_script_v1",
+        }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeShotScriptVersion: vi.fn(),
+      readShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_v1",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_v1",
+        sourceTaskId: "task_shot_script",
+        updatedAt: "2026-03-24T00:10:00.000Z",
+        approvedAt: "2026-03-24T00:10:00.000Z",
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 6,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "第一场",
+            summary: "第一场。",
+            durationSec: 6,
+            status: "approved",
+            lastGeneratedAt: "2026-03-24T00:09:00.000Z",
+            approvedAt: "2026-03-24T00:10:00.000Z",
+            shots: [],
+          },
+        ],
+      }),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      insertFrame: vi.fn(),
+      findFrameById: vi.fn(),
+      updateFrame: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+    };
+    const taskQueue = { enqueue: vi.fn() };
+
+    const useCase = createProcessImagesGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotScriptStorage,
+      shotImageRepository,
+      shotImageStorage,
+      taskQueue,
+      taskIdGenerator: {
+        generateTaskId: vi
+          .fn()
+          .mockReturnValueOnce("task_frame_prompt_1")
+          .mockReturnValueOnce("task_frame_prompt_2")
+          .mockReturnValueOnce("task_frame_prompt_3")
+          .mockReturnValueOnce("task_frame_prompt_4"),
+      },
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:12:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:13:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:15:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:16:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_20260324_images_first" });
+    await useCase.execute({ taskId: "task_20260324_images_second" });
+
+    const insertedFrames = shotImageRepository.insertFrame.mock.calls.map((call) => call[0]);
+    const firstBatchFrameIds = insertedFrames.slice(0, 2).map((frame: { id: string }) => frame.id);
+    const secondBatchFrameIds = insertedFrames
+      .slice(2, 4)
+      .map((frame: { id: string }) => frame.id);
+
+    expect(firstBatchFrameIds).not.toEqual(secondBatchFrameIds);
+  });
+
+  it("does not switch the current image batch when frame creation fails", async () => {
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_20260324_images_fail",
+        projectId: "proj_20260324_ab12cd",
+        type: "images_generate",
+        status: "pending",
+        queueName: "images-generate",
+        storageDir: "projects/proj_20260324_ab12cd-my-story/tasks/task_20260324_images_fail",
+        inputRelPath: "tasks/task_20260324_images_fail/input.json",
+        outputRelPath: "tasks/task_20260324_images_fail/output.json",
+        logRelPath: "tasks/task_20260324_images_fail/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:11:00.000Z",
+        updatedAt: "2026-03-24T00:11:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_20260324_ab12cd",
+        name: "My Story",
+        slug: "my-story",
+        storageDir: "projects/proj_20260324_ab12cd-my-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "master_plot_v1",
+        currentCharacterSheetBatchId: "char_batch_v1",
+        currentStoryboardId: "storyboard_v1",
+        currentShotScriptId: "shot_script_v1",
+        currentImageBatchId: "image_batch_previous",
+        status: "images_generating",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:11:00.000Z",
+        premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_20260324_images_fail",
+        projectId: "proj_20260324_ab12cd",
+        taskType: "images_generate",
+        sourceShotScriptId: "shot_script_v1",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeShotScriptVersion: vi.fn(),
+      readShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_v1",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_v1",
+        sourceTaskId: "task_shot_script",
+        updatedAt: "2026-03-24T00:10:00.000Z",
+        approvedAt: "2026-03-24T00:10:00.000Z",
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 6,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "第一场",
+            summary: "第一场。",
+            durationSec: 6,
+            status: "approved",
+            lastGeneratedAt: "2026-03-24T00:09:00.000Z",
+            approvedAt: "2026-03-24T00:10:00.000Z",
+            shots: [],
+          },
+        ],
+      }),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      insertFrame: vi.fn().mockImplementation(() => {
+        throw new Error("frame insert failed");
+      }),
+      findFrameById: vi.fn(),
+      updateFrame: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+    };
+    const taskQueue = { enqueue: vi.fn() };
+
+    const useCase = createProcessImagesGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotScriptStorage,
+      shotImageRepository,
+      shotImageStorage,
+      taskQueue,
+      taskIdGenerator: {
+        generateTaskId: vi.fn(),
+      },
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:12:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:13:00.000Z"),
+      },
+    });
+
+    await expect(useCase.execute({ taskId: "task_20260324_images_fail" })).rejects.toThrow(
+      "frame insert failed",
+    );
+
+    expect(projectRepository.updateCurrentImageBatch).not.toHaveBeenCalled();
+  });
 });
