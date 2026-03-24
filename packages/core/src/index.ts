@@ -11,6 +11,7 @@ export type {
   CharacterSheetRecord,
   CharacterSheetStatus,
   CurrentCharacterSheetBatchSummary,
+  CurrentImageBatch,
   CurrentMasterPlot,
   CurrentShotScript,
   CurrentShotScriptSummary,
@@ -81,6 +82,38 @@ export {
   type CurrentMasterPlotRecord,
 } from "./domain/master-plot";
 export {
+  createSegmentFrameRecord,
+  createShotImageBatchRecord,
+  shotImageBatchesDirectoryName,
+  shotImageCurrentBatchFileName,
+  shotImageCurrentMetadataFileName,
+  shotImageCurrentImageFileName,
+  shotImageManifestFileName,
+  shotImagePlanningFileName,
+  shotImagePromptCurrentFileName,
+  shotImagePromptSeedFileName,
+  shotImagePromptVersionsDirectoryName,
+  shotImageSegmentsDirectoryName,
+  shotImageVersionsDirectoryName,
+  shotImagesDirectoryName,
+  toCurrentImageBatch,
+  toSegmentFrameCurrentImageRelPath,
+  toSegmentFrameCurrentMetadataRelPath,
+  toSegmentFramePlanningRelPath,
+  toSegmentFramePromptCurrentRelPath,
+  toSegmentFramePromptSeedRelPath,
+  toSegmentFramePromptVersionsStorageDir,
+  toSegmentFrameStorageDir,
+  toSegmentFrameVersionsStorageDir,
+  toShotImageBatchManifestRelPath,
+  toShotImageBatchStorageDir,
+  toShotImageCurrentBatchRelPath,
+  type CreateSegmentFrameRecordInput,
+  type CreateShotImageBatchRecordInput,
+  type SegmentFrameRecordEntity,
+  type ShotImageBatchRecord,
+} from "./domain/shot-image";
+export {
   currentStoryboardDirectoryName,
   currentStoryboardJsonFileName,
   currentStoryboardJsonRelPath,
@@ -113,6 +146,9 @@ export {
   characterSheetGenerateQueueName,
   characterSheetsGenerateQueueName,
   createTaskRecord,
+  frameImageGenerateQueueName,
+  framePromptGenerateQueueName,
+  imagesGenerateQueueName,
   masterPlotGenerateQueueName,
   shotScriptGenerateQueueName,
   shotScriptSegmentGenerateQueueName,
@@ -128,6 +164,9 @@ export {
   type CreateTaskRecordInput,
   type CharacterSheetGenerateTaskInput,
   type CharacterSheetsGenerateTaskInput,
+  type FrameImageGenerateTaskInput,
+  type FramePromptGenerateTaskInput,
+  type ImagesGenerateTaskInput,
   type MasterPlotGenerateTaskInput,
   type ShotScriptGenerateTaskInput,
   type ShotScriptSegmentGenerateTaskInput,
@@ -159,6 +198,10 @@ export {
   CurrentShotScriptNotFoundError,
   CurrentStoryboardNotFoundError,
 } from "./errors/storyboard-errors";
+export {
+  CurrentImageBatchNotFoundError,
+  ShotImageNotFoundError,
+} from "./errors/shot-image-errors";
 export {
   RejectStoryboardReasonRequiredError,
   StoryboardReviewVersionConflictError,
@@ -193,6 +236,7 @@ export type {
 export type {
   ProjectRepository,
   UpdateCurrentCharacterSheetBatchInput,
+  UpdateCurrentImageBatchInput,
   UpdateCurrentMasterPlotInput,
   UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
@@ -200,10 +244,31 @@ export type {
   UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
 export type {
+  FramePromptProvider,
+  GenerateFramePromptInput,
+  GenerateFramePromptResult,
+} from "./ports/frame-prompt-provider";
+export type {
   GenerateShotScriptSegmentInput,
   GenerateShotScriptSegmentResult,
   ShotScriptProvider,
 } from "./ports/shot-script-provider";
+export type { ShotImageRepository } from "./ports/shot-image-repository";
+export type {
+  ReadCurrentShotImageInput,
+  ShotImageStorage,
+  WriteCurrentShotImageInput,
+  WriteFramePlanningInput,
+  WriteFramePromptFilesInput,
+  WriteFramePromptVersionInput,
+  WriteShotImageBatchManifestInput,
+  WriteShotImageVersionInput,
+} from "./ports/shot-image-storage";
+export type {
+  GenerateShotImageInput,
+  GenerateShotImageResult,
+  ShotImageProvider,
+} from "./ports/shot-image-provider";
 export type {
   InitializeShotScriptPromptTemplateInput,
   ReadCurrentShotScriptInput,
@@ -282,6 +347,12 @@ export {
   type CreateCharacterSheetsGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-character-sheets-generate-task";
 export {
+  createCreateImagesGenerateTaskUseCase,
+  type CreateImagesGenerateTaskInput,
+  type CreateImagesGenerateTaskUseCase,
+  type CreateImagesGenerateTaskUseCaseDependencies,
+} from "./use-cases/create-images-generate-task";
+export {
   createCreateShotScriptGenerateTaskUseCase,
   type CreateShotScriptGenerateTaskInput,
   type CreateShotScriptGenerateTaskUseCase,
@@ -336,6 +407,12 @@ export {
   type GetCurrentShotScriptUseCaseDependencies,
 } from "./use-cases/get-current-shot-script";
 export {
+  createGetImageFrameUseCase,
+  type GetImageFrameInput,
+  type GetImageFrameUseCase,
+  type GetImageFrameUseCaseDependencies,
+} from "./use-cases/get-image-frame";
+export {
   createGetCurrentStoryboardUseCase,
   type GetCurrentStoryboardInput,
   type GetCurrentStoryboardUseCase,
@@ -366,10 +443,22 @@ export {
   type GetProjectDetailUseCaseDependencies,
 } from "./use-cases/get-project-detail";
 export {
+  createListImagesUseCase,
+  type ListImagesInput,
+  type ListImagesUseCase,
+  type ListImagesUseCaseDependencies,
+} from "./use-cases/list-images";
+export {
   createListProjectsUseCase,
   type ListProjectsUseCase,
   type ListProjectsUseCaseDependencies,
 } from "./use-cases/list-projects";
+export {
+  createGenerateFrameImageUseCase,
+  type GenerateFrameImageInput,
+  type GenerateFrameImageUseCase,
+  type GenerateFrameImageUseCaseDependencies,
+} from "./use-cases/generate-frame-image";
 export {
   createGetTaskDetailUseCase,
   type GetTaskDetailInput,
@@ -382,6 +471,24 @@ export {
   type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessMasterPlotGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-master-plot-generate-task";
+export {
+  createProcessImagesGenerateTaskUseCase,
+  type ProcessImagesGenerateTaskInput,
+  type ProcessImagesGenerateTaskUseCase,
+  type ProcessImagesGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-images-generate-task";
+export {
+  createProcessFramePromptGenerateTaskUseCase,
+  type ProcessFramePromptGenerateTaskInput,
+  type ProcessFramePromptGenerateTaskUseCase,
+  type ProcessFramePromptGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-frame-prompt-generate-task";
+export {
+  createProcessFrameImageGenerateTaskUseCase,
+  type ProcessFrameImageGenerateTaskInput,
+  type ProcessFrameImageGenerateTaskUseCase,
+  type ProcessFrameImageGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-frame-image-generate-task";
 export {
   createProcessShotScriptGenerateTaskUseCase,
   type ProcessShotScriptGenerateTaskInput,
@@ -419,11 +526,23 @@ export {
   type UpdateCharacterSheetPromptUseCaseDependencies,
 } from "./use-cases/update-character-sheet-prompt";
 export {
+  createUpdateFramePromptUseCase,
+  type UpdateFramePromptInput,
+  type UpdateFramePromptUseCase,
+  type UpdateFramePromptUseCaseDependencies,
+} from "./use-cases/update-frame-prompt";
+export {
   createRegenerateCharacterSheetUseCase,
   type RegenerateCharacterSheetInput,
   type RegenerateCharacterSheetUseCase,
   type RegenerateCharacterSheetUseCaseDependencies,
 } from "./use-cases/regenerate-character-sheet";
+export {
+  createRegenerateFramePromptUseCase,
+  type RegenerateFramePromptInput,
+  type RegenerateFramePromptUseCase,
+  type RegenerateFramePromptUseCaseDependencies,
+} from "./use-cases/regenerate-frame-prompt";
 export {
   createApproveCharacterSheetUseCase,
   type ApproveCharacterSheetInput,
@@ -448,6 +567,18 @@ export {
   type SaveHumanStoryboardVersionUseCase,
   type SaveHumanStoryboardVersionUseCaseDependencies,
 } from "./use-cases/save-human-storyboard-version";
+export {
+  createApproveImageFrameUseCase,
+  type ApproveImageFrameInput,
+  type ApproveImageFrameUseCase,
+  type ApproveImageFrameUseCaseDependencies,
+} from "./use-cases/approve-image-frame";
+export {
+  createApproveAllImageFramesUseCase,
+  type ApproveAllImageFramesInput,
+  type ApproveAllImageFramesUseCase,
+  type ApproveAllImageFramesUseCaseDependencies,
+} from "./use-cases/approve-all-image-frames";
 export {
   createApproveShotScriptSegmentUseCase,
   type ApproveShotScriptSegmentInput,

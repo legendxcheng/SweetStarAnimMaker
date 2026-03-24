@@ -1,4 +1,6 @@
 import {
+  approveAllImageFramesRequestSchema,
+  approveImageFrameRequestSchema,
   characterSheetDetailResponseSchema,
   characterSheetListResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
@@ -9,7 +11,12 @@ import {
   currentMasterPlotResponseSchema,
   currentShotScriptResponseSchema,
   currentStoryboardResponseSchema,
+  generateImageFrameRequestSchema,
+  imageFrameListResponseSchema,
+  imageFrameResponseSchema,
+  regenerateImageFramePromptRequestSchema,
   updateCharacterSheetPromptRequestSchema,
+  updateImageFramePromptRequestSchema,
   masterPlotReviewWorkspaceResponseSchema,
   shotScriptReviewWorkspaceResponseSchema,
   storyboardReviewWorkspaceResponseSchema,
@@ -29,13 +36,16 @@ import {
   type CurrentMasterPlot,
   type CurrentShotScript,
   type CurrentStoryboard,
+  type ImageFrameListResponse,
   type MasterPlotReviewWorkspace,
   type ProjectDetail,
   type ProjectSummary,
   type SaveShotScriptSegmentRequest,
   type SaveMasterPlotRequest,
+  type SegmentFrameRecord,
   type ShotScriptReviewWorkspace,
   type UpdateCharacterSheetPromptRequest,
+  type UpdateImageFramePromptRequest,
   type SaveStoryboardRequest,
   type StoryboardReviewWorkspace,
   type TaskDetail,
@@ -138,6 +148,15 @@ export const apiClient = {
     request<TaskDetail>(
       `/projects/${projectId}/shot-script/generate`,
       createShotScriptGenerateTaskResponseSchema,
+      {
+        method: "POST",
+      },
+    ),
+
+  createImagesGenerateTask: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/images/generate`,
+      taskDetailResponseSchema,
       {
         method: "POST",
       },
@@ -272,6 +291,82 @@ export const apiClient = {
       currentShotScriptResponseSchema,
       {
         method: "GET",
+      },
+    ),
+
+  listImages: (projectId: string) =>
+    request<ImageFrameListResponse>(
+      `/projects/${projectId}/images`,
+      imageFrameListResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
+  getImageFrame: (projectId: string, frameId: string) =>
+    request<SegmentFrameRecord>(
+      `/projects/${projectId}/images/frames/${frameId}`,
+      imageFrameResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
+  updateImageFramePrompt: (
+    projectId: string,
+    frameId: string,
+    data: UpdateImageFramePromptRequest,
+  ) =>
+    request<SegmentFrameRecord>(
+      `/projects/${projectId}/images/frames/${frameId}/prompt`,
+      imageFrameResponseSchema,
+      {
+        method: "PUT",
+        body: JSON.stringify(updateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateImageFramePrompt: (
+    projectId: string,
+    frameId: string,
+    data: Record<string, never> = {},
+  ) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/images/frames/${frameId}/regenerate-prompt`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  generateImageFrame: (projectId: string, frameId: string, data: Record<string, never> = {}) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/images/frames/${frameId}/generate`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(generateImageFrameRequestSchema.parse(data)),
+      },
+    ),
+
+  approveImageFrame: (projectId: string, frameId: string, data: Record<string, never> = {}) =>
+    request<SegmentFrameRecord>(
+      `/projects/${projectId}/images/frames/${frameId}/approve`,
+      imageFrameResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveImageFrameRequestSchema.parse(data)),
+      },
+    ),
+
+  approveAllImageFrames: (projectId: string, data: Record<string, never> = {}) =>
+    request<ImageFrameListResponse>(
+      `/projects/${projectId}/images/approve-all`,
+      imageFrameListResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveAllImageFramesRequestSchema.parse(data)),
       },
     ),
 

@@ -1,7 +1,8 @@
 import type {
   CharacterSheetGenerateTaskInput,
   CharacterSheetsGenerateTaskInput,
-  ImageGenerateTaskInput,
+  FrameImageGenerateTaskInput,
+  FramePromptGenerateTaskInput,
   ImagesGenerateTaskInput,
   MasterPlotGenerateTaskInput,
   ShotScriptGenerateTaskInput,
@@ -20,7 +21,8 @@ export interface CreateTaskArtifactsInput {
     | ShotScriptGenerateTaskInput
     | ShotScriptSegmentGenerateTaskInput
     | ImagesGenerateTaskInput
-    | ImageGenerateTaskInput;
+    | FramePromptGenerateTaskInput
+    | FrameImageGenerateTaskInput;
 }
 
 export interface ReadTaskInputInput {
@@ -50,7 +52,8 @@ export interface TaskFileStorage {
         | ShotScriptGenerateTaskInput
         | ShotScriptSegmentGenerateTaskInput
         | ImagesGenerateTaskInput
-        | ImageGenerateTaskInput
+        | FramePromptGenerateTaskInput
+        | FrameImageGenerateTaskInput
       >
     | MasterPlotGenerateTaskInput
     | CharacterSheetsGenerateTaskInput
@@ -59,7 +62,8 @@ export interface TaskFileStorage {
     | ShotScriptGenerateTaskInput
     | ShotScriptSegmentGenerateTaskInput
     | ImagesGenerateTaskInput
-    | ImageGenerateTaskInput;
+    | FramePromptGenerateTaskInput
+    | FrameImageGenerateTaskInput;
   writeTaskOutput(input: WriteTaskOutputInput): Promise<void> | void;
   appendTaskLog(input: AppendTaskLogInput): Promise<void> | void;
 }

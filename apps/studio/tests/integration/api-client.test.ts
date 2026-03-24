@@ -436,4 +436,307 @@ describe("API Client", () => {
     expect(headers.has("Content-Type")).toBe(false);
   });
 
+  it("calls the image endpoints with the expected methods and payloads", async () => {
+    const responses = [
+      {
+        id: "task_images_generate_1",
+        projectId: "proj_1",
+        type: "images_generate",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:00:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_images_generate_1/input.json",
+          outputPath: "tasks/task_images_generate_1/output.json",
+          logPath: "tasks/task_images_generate_1/log.txt",
+        },
+      },
+      {
+        currentBatch: {
+          id: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          totalFrameCount: 2,
+          approvedFrameCount: 0,
+          updatedAt: "2026-03-24T00:00:01.000Z",
+        },
+        frames: [
+          {
+            id: "frame_start_1",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "in_review",
+            selectedCharacterIds: ["char_rin_1"],
+            matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+            promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: "2026-03-24T00:00:01.000Z",
+            imageAssetPath: "images/frame_start_1/current.png",
+            imageWidth: 1536,
+            imageHeight: 1024,
+            provider: "turnaround-image",
+            model: "doubao-seedream-5-0-260128",
+            approvedAt: null,
+            updatedAt: "2026-03-24T00:00:01.000Z",
+            sourceTaskId: "task_frame_start_1",
+          },
+        ],
+      },
+      {
+        id: "frame_start_1",
+        batchId: "image_batch_1",
+        projectId: "proj_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        frameType: "start_frame",
+        planStatus: "planned",
+        imageStatus: "in_review",
+        selectedCharacterIds: ["char_rin_1"],
+        matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
+        unmatchedCharacterIds: [],
+        promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+        promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+        negativePromptTextCurrent: null,
+        promptUpdatedAt: "2026-03-24T00:00:01.000Z",
+        imageAssetPath: "images/frame_start_1/current.png",
+        imageWidth: 1536,
+        imageHeight: 1024,
+        provider: "turnaround-image",
+        model: "doubao-seedream-5-0-260128",
+        approvedAt: null,
+        updatedAt: "2026-03-24T00:00:01.000Z",
+        sourceTaskId: "task_frame_start_1",
+      },
+      {
+        id: "frame_start_1",
+        batchId: "image_batch_1",
+        projectId: "proj_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        frameType: "start_frame",
+        planStatus: "planned",
+        imageStatus: "in_review",
+        selectedCharacterIds: ["char_rin_1"],
+        matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
+        unmatchedCharacterIds: [],
+        promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+        promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
+        negativePromptTextCurrent: "低清晰度",
+        promptUpdatedAt: "2026-03-24T00:00:02.000Z",
+        imageAssetPath: "images/frame_start_1/current.png",
+        imageWidth: 1536,
+        imageHeight: 1024,
+        provider: "turnaround-image",
+        model: "doubao-seedream-5-0-260128",
+        approvedAt: null,
+        updatedAt: "2026-03-24T00:00:02.000Z",
+        sourceTaskId: "task_frame_start_1",
+      },
+      {
+        id: "task_frame_prompt_1",
+        projectId: "proj_1",
+        type: "frame_prompt_generate",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:03.000Z",
+        updatedAt: "2026-03-24T00:00:03.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_frame_prompt_1/input.json",
+          outputPath: "tasks/task_frame_prompt_1/output.json",
+          logPath: "tasks/task_frame_prompt_1/log.txt",
+        },
+      },
+      {
+        id: "task_frame_image_1",
+        projectId: "proj_1",
+        type: "frame_image_generate",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:04.000Z",
+        updatedAt: "2026-03-24T00:00:04.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_frame_image_1/input.json",
+          outputPath: "tasks/task_frame_image_1/output.json",
+          logPath: "tasks/task_frame_image_1/log.txt",
+        },
+      },
+      {
+        id: "frame_start_1",
+        batchId: "image_batch_1",
+        projectId: "proj_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        frameType: "start_frame",
+        planStatus: "planned",
+        imageStatus: "approved",
+        selectedCharacterIds: ["char_rin_1"],
+        matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
+        unmatchedCharacterIds: [],
+        promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+        promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
+        negativePromptTextCurrent: "低清晰度",
+        promptUpdatedAt: "2026-03-24T00:00:02.000Z",
+        imageAssetPath: "images/frame_start_1/current.png",
+        imageWidth: 1536,
+        imageHeight: 1024,
+        provider: "turnaround-image",
+        model: "doubao-seedream-5-0-260128",
+        approvedAt: "2026-03-24T00:00:05.000Z",
+        updatedAt: "2026-03-24T00:00:05.000Z",
+        sourceTaskId: "task_frame_start_1",
+      },
+      {
+        currentBatch: {
+          id: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          totalFrameCount: 2,
+          approvedFrameCount: 2,
+          updatedAt: "2026-03-24T00:00:06.000Z",
+        },
+        frames: [
+          {
+            id: "frame_start_1",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "approved",
+            selectedCharacterIds: ["char_rin_1"],
+            matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+            promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
+            negativePromptTextCurrent: "低清晰度",
+            promptUpdatedAt: "2026-03-24T00:00:02.000Z",
+            imageAssetPath: "images/frame_start_1/current.png",
+            imageWidth: 1536,
+            imageHeight: 1024,
+            provider: "turnaround-image",
+            model: "doubao-seedream-5-0-260128",
+            approvedAt: "2026-03-24T00:00:05.000Z",
+            updatedAt: "2026-03-24T00:00:05.000Z",
+            sourceTaskId: "task_frame_start_1",
+          },
+          {
+            id: "frame_end_1",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            frameType: "end_frame",
+            planStatus: "planned",
+            imageStatus: "approved",
+            selectedCharacterIds: ["char_rin_1"],
+            matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
+            promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: "2026-03-24T00:00:02.000Z",
+            imageAssetPath: "images/frame_end_1/current.png",
+            imageWidth: 1536,
+            imageHeight: 1024,
+            provider: "turnaround-image",
+            model: "doubao-seedream-5-0-260128",
+            approvedAt: "2026-03-24T00:00:06.000Z",
+            updatedAt: "2026-03-24T00:00:06.000Z",
+            sourceTaskId: "task_frame_end_1",
+          },
+        ],
+      },
+    ];
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[0] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[1] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[2] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[3] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[4] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[5] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[6] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[7] });
+    global.fetch = mockFetch;
+
+    await apiClient.createImagesGenerateTask("proj_1");
+    await apiClient.listImages("proj_1");
+    await apiClient.getImageFrame("proj_1", "frame_start_1");
+    await apiClient.updateImageFramePrompt("proj_1", "frame_start_1", {
+      promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
+      negativePromptTextCurrent: "低清晰度",
+    });
+    await apiClient.regenerateImageFramePrompt("proj_1", "frame_start_1");
+    await apiClient.generateImageFrame("proj_1", "frame_start_1");
+    await apiClient.approveImageFrame("proj_1", "frame_start_1");
+    await apiClient.approveAllImageFrames("proj_1");
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      `${config.apiBaseUrl}/projects/proj_1/images/generate`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      `${config.apiBaseUrl}/projects/proj_1/images`,
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      `${config.apiBaseUrl}/projects/proj_1/images/frames/frame_start_1`,
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      4,
+      `${config.apiBaseUrl}/projects/proj_1/images/frames/frame_start_1/prompt`,
+      expect.objectContaining({ method: "PUT" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      5,
+      `${config.apiBaseUrl}/projects/proj_1/images/frames/frame_start_1/regenerate-prompt`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      6,
+      `${config.apiBaseUrl}/projects/proj_1/images/frames/frame_start_1/generate`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      7,
+      `${config.apiBaseUrl}/projects/proj_1/images/frames/frame_start_1/approve`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      8,
+      `${config.apiBaseUrl}/projects/proj_1/images/approve-all`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
 });

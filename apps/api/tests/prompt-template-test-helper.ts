@@ -32,6 +32,11 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "prompt-templates",
     "character_sheet.turnaround.generate.txt",
   );
+  const segmentFramePlanTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "segment_frame.plan.generate.txt",
+  );
   const shotImageTemplatePath = path.join(
     workspaceRoot,
     "prompt-templates",
@@ -86,6 +91,17 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
   await fs.writeFile(
     characterTurnaroundTemplatePath,
     "Create a combined turnaround sheet for {{characterName}}.\n{{promptTextCurrent}}",
+    "utf8",
+  );
+  await fs.writeFile(
+    segmentFramePlanTemplatePath,
+    [
+      "Plan one SeaDream segment frame in Chinese JSON.",
+      "{{projectId}}",
+      "{{frameType}}",
+      "{{segment.summary}}",
+      "{{approvedCharacterRosterJson}}",
+    ].join("\n"),
     "utf8",
   );
   await fs.writeFile(

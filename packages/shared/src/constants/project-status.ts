@@ -12,6 +12,9 @@ export const projectStatuses = [
   "shot_script_generating",
   "shot_script_in_review",
   "shot_script_approved",
+  "images_generating",
+  "images_in_review",
+  "images_approved",
 ] as const;
 
 export type ProjectStatus = (typeof projectStatuses)[number];

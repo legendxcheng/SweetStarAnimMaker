@@ -4,6 +4,7 @@ import type { ProjectDetail, TaskDetail } from "@sweet-star/shared";
 import { AsyncState } from "../components/async-state";
 import { CharacterSheetsPhasePanel } from "../components/character-sheets-phase-panel";
 import { ErrorState } from "../components/error-state";
+import { ImagePhasePanel } from "../components/image-phase-panel";
 import { MasterPlotPhasePanel } from "../components/master-plot-phase-panel";
 import { PageHeader } from "../components/page-header";
 import { PremisePhasePanel } from "../components/premise-phase-panel";
@@ -23,6 +24,7 @@ const PROJECT_PHASES = [
   { key: "character_sheets", label: "角色设定" },
   { key: "storyboard", label: "分镜" },
   { key: "shot_script", label: "镜头脚本" },
+  { key: "images", label: "画面" },
   { key: "final_cut", label: "成片" },
 ] as const;
 
@@ -68,6 +70,20 @@ function isShotScriptPhaseEnabled(project: ProjectDetail | null) {
   );
 }
 
+function isImagesPhaseEnabled(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return (
+    project.status === "shot_script_approved" ||
+    project.status === "images_generating" ||
+    project.status === "images_in_review" ||
+    project.status === "images_approved" ||
+    project.currentImageBatch !== null
+  );
+}
+
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -104,7 +120,8 @@ export function ProjectDetailPage() {
       (project.status !== "master_plot_generating" &&
         project.status !== "character_sheets_generating" &&
         project.status !== "storyboard_generating" &&
-        project.status !== "shot_script_generating")
+        project.status !== "shot_script_generating" &&
+        project.status !== "images_generating")
     ) {
       return;
     }
@@ -185,6 +202,20 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateImages = async () => {
+    if (!projectId || creatingTask || isActiveTask(task)) return;
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createImagesGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const phaseItems = PROJECT_PHASES.map((phase) => ({
     ...phase,
     enabled:
@@ -192,7 +223,8 @@ export function ProjectDetailPage() {
       phase.key === "master_plot" ||
       (phase.key === "character_sheets" && isCharacterSheetsPhaseEnabled(project)) ||
       (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)) ||
-      (phase.key === "shot_script" && isShotScriptPhaseEnabled(project)),
+      (phase.key === "shot_script" && isShotScriptPhaseEnabled(project)) ||
+      (phase.key === "images" && isImagesPhaseEnabled(project)),
   }));
 
   return (
@@ -273,7 +305,7 @@ export function ProjectDetailPage() {
                       void handleGenerateStoryboard();
                     }}
                   />
-                ) : (
+                ) : selectedPhase === "shot_script" ? (
                   <ShotScriptPhasePanel
                     project={currentProject}
                     task={task}
@@ -287,6 +319,22 @@ export function ProjectDetailPage() {
                     onGenerate={() => {
                       void handleGenerateShotScript();
                     }}
+                  />
+                ) : (
+                  <ImagePhasePanel
+                    project={currentProject}
+                    task={task}
+                    taskError={taskError}
+                    creatingTask={creatingTask}
+                    disableGenerate={
+                      creatingTask ||
+                      isActiveTask(task) ||
+                      currentProject.status !== "shot_script_approved"
+                    }
+                    onGenerate={() => {
+                      void handleGenerateImages();
+                    }}
+                    onProjectRefresh={loadProject}
                   />
                 )}
               </div>

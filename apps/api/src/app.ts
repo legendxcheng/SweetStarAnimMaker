@@ -5,6 +5,7 @@ import multipart from "@fastify/multipart";
 import { buildSpec1Services } from "./bootstrap/build-spec1-services";
 import { registerCharacterSheetRoutes } from "./http/register-character-sheet-routes";
 import { createApiErrorHandler } from "./http/error-handler";
+import { registerImageRoutes } from "./http/register-image-routes";
 import { registerProjectRoutes } from "./http/register-project-routes";
 import { registerShotScriptRoutes } from "./http/register-shot-script-routes";
 import { registerStoryboardRoutes } from "./http/register-storyboard-routes";
@@ -48,6 +49,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setErrorHandler(createApiErrorHandler());
   registerProjectRoutes(app, services);
   registerCharacterSheetRoutes(app, services);
+  registerImageRoutes(app, services);
   registerShotScriptRoutes(app, services);
   registerStoryboardRoutes(app, services);
   registerTaskRoutes(app, services);

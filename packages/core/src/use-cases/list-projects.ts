@@ -1,10 +1,12 @@
 import type { ProjectSummary } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
+import { toCurrentImageBatch } from "../domain/shot-image";
 import { toCurrentShotScriptSummary } from "../domain/shot-script";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
 import { toProjectSummaryDto } from "./project-summary-dto";
@@ -19,6 +21,7 @@ export interface ListProjectsUseCaseDependencies {
   storyboardStorage: StoryboardStorage;
   shotScriptStorage: ShotScriptStorage;
   characterSheetRepository: CharacterSheetRepository;
+  shotImageRepository: ShotImageRepository;
 }
 
 export function createListProjectsUseCase(
@@ -46,6 +49,7 @@ export function createListProjectsUseCase(
               })
             : null;
           let currentCharacterSheetBatch = null;
+          let currentImageBatch = null;
 
           if (project.currentCharacterSheetBatchId) {
             const batch = await dependencies.characterSheetRepository.findBatchById(
@@ -59,12 +63,24 @@ export function createListProjectsUseCase(
               currentCharacterSheetBatch = toCurrentCharacterSheetBatchSummary(batch, characters);
             }
           }
+
+          if (project.currentImageBatchId) {
+            const batch = await dependencies.shotImageRepository.findBatchById(
+              project.currentImageBatchId,
+            );
+
+            if (batch) {
+              const frames = await dependencies.shotImageRepository.listFramesByBatchId(batch.id);
+              currentImageBatch = toCurrentImageBatch(batch, frames);
+            }
+          }
           return toProjectSummaryDto(
             project,
             currentMasterPlot,
             currentCharacterSheetBatch,
             currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
             currentShotScript ? toCurrentShotScriptSummary(currentShotScript) : null,
+            currentImageBatch,
           );
         }),
       );
