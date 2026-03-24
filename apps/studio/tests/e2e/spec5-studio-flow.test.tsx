@@ -256,7 +256,7 @@ describe("Spec5 Studio Flow", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
@@ -351,7 +351,7 @@ describe("Spec5 Studio Flow", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");

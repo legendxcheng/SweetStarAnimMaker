@@ -76,11 +76,7 @@ function canGenerateShotScript(project: ProjectDetail | null) {
     return false;
   }
 
-  return (
-    project.status === "storyboard_approved" ||
-    project.status === "shot_script_in_review" ||
-    project.status === "shot_script_approved"
-  );
+  return project.status === "storyboard_approved";
 }
 
 function isImagesPhaseEnabled(project: ProjectDetail | null) {

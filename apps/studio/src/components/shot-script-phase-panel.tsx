@@ -47,8 +47,6 @@ export function ShotScriptPhasePanel({
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
-  const generateLabel = project.currentShotScript ? "重新生成镜头脚本" : "生成镜头脚本";
-
   useEffect(() => {
     if (!project.currentShotScript) {
       setCurrentShotScript(null);
@@ -104,7 +102,7 @@ export function ShotScriptPhasePanel({
             disabled={disableGenerate}
             className={getButtonClassName()}
           >
-            {creatingTask ? "启动中..." : generateLabel}
+            {creatingTask ? "启动中..." : "重新生成"}
           </button>
         </div>
       </div>

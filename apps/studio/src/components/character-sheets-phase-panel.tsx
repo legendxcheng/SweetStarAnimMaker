@@ -335,7 +335,7 @@ export function CharacterSheetsPhasePanel({
             disabled={disableGenerate}
             className={getButtonClassName()}
           >
-            {creatingTask ? "启动中..." : "生成角色三视图"}
+            {creatingTask ? "启动中..." : "重新生成"}
           </button>
         </div>
 

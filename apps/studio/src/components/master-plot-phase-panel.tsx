@@ -57,7 +57,7 @@ export function MasterPlotPhasePanel({
             disabled={disableGenerate}
             className={getButtonClassName()}
           >
-            {creatingTask ? "启动中..." : "生成主情节"}
+            {creatingTask ? "启动中..." : "重新生成"}
           </button>
         </div>
       </div>

@@ -40,6 +40,7 @@ export function ShotScriptReviewPage() {
   const [savingSegmentId, setSavingSegmentId] = useState<string | null>(null);
   const [submittingActionId, setSubmittingActionId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
+  const [regeneratingAll, setRegeneratingAll] = useState(false);
 
   const loadWorkspace = async () => {
     if (!projectId) {
@@ -183,6 +184,26 @@ export function ShotScriptReviewPage() {
     }
   };
 
+  const handleRegenerateAll = async () => {
+    if (!projectId) {
+      return;
+    }
+
+    if (!confirm("确认要重新生成整个镜头脚本吗？")) {
+      return;
+    }
+
+    try {
+      setRegeneratingAll(true);
+      await apiClient.createShotScriptGenerateTask(projectId);
+      navigate(`/projects/${projectId}`);
+    } catch (err) {
+      alert(`重新生成失败：${(err as Error).message}`);
+    } finally {
+      setRegeneratingAll(false);
+    }
+  };
+
   const inputClass =
     "w-full bg-(--color-bg-base) border border-(--color-border-muted) text-(--color-text-primary) rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20";
   const textareaClass = `${inputClass} resize-y`;
@@ -207,12 +228,24 @@ export function ShotScriptReviewPage() {
                 <StatusBadge status={ws.projectStatus} />
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    void handleRegenerateAll();
+                  }}
+                  disabled={regeneratingAll || approvingAll || hasDirtySegments}
+                  className={getButtonClassName({
+                    variant: "warning",
+                    size: "compact",
+                  })}
+                >
+                  重新生成
+                </button>
                 {ws.availableActions.approveAll && (
                   <button
                     onClick={() => {
                       void handleApproveAll();
                     }}
-                    disabled={approvingAll || hasDirtySegments}
+                    disabled={approvingAll || regeneratingAll || hasDirtySegments}
                     className={getButtonClassName({
                       variant: "success",
                       size: "compact",

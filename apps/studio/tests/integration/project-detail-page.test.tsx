@@ -366,7 +366,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "主情节" }));
 
     expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /生成主情节/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(createMasterPlotGenerateTask).toHaveBeenCalledWith("proj-1");
@@ -391,7 +391,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "角色设定" }));
 
     expect(screen.getByRole("heading", { name: "角色设定工作区" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /生成角色三视图/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "重新生成" }).length).toBeGreaterThan(0);
   });
 
   it("enables the storyboard panel after character sheets are approved", async () => {
@@ -408,7 +408,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
 
     expect(screen.getByRole("heading", { name: "分镜工作区" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /生成分镜文案/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
   });
 
   it("enables the shot-script panel after storyboard approval", async () => {
@@ -423,7 +423,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
 
     expect(screen.getByRole("heading", { name: "镜头脚本工作区" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /生成镜头脚本/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
   });
 
   it("enables the image phase after shot-script approval and loads frame cards", async () => {
@@ -531,7 +531,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
@@ -637,7 +637,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成镜头脚本/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
@@ -647,12 +647,9 @@ describe("Project Detail Page", () => {
     expect(screen.getByText("执行中")).toBeInTheDocument();
   });
 
-  it("allows regenerating shot script after a shot script already exists", async () => {
+  it("keeps the top shot-script regenerate button disabled after the project has moved past storyboard approval", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(shotScriptApprovedProject);
     vi.spyOn(apiModule.apiClient, "getCurrentShotScript").mockResolvedValue(fullShotScript);
-    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue(
-      runningShotScriptTask,
-    );
 
     renderPage();
 
@@ -662,16 +659,8 @@ describe("Project Detail Page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "镜头脚本" }));
 
-    const regenerateButton = await screen.findByRole("button", {
-      name: "重新生成镜头脚本",
-    });
-    expect(regenerateButton).toBeEnabled();
-
-    fireEvent.click(regenerateButton);
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
-    });
+    const regenerateButton = await screen.findByRole("button", { name: "重新生成" });
+    expect(regenerateButton).toBeDisabled();
   });
 
   it("shows the shot-script review entry after generation completes", async () => {
@@ -810,7 +799,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");
@@ -858,7 +847,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: /生成分镜文案/i }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createStoryboardGenerateTask).toHaveBeenCalledWith("proj-1");

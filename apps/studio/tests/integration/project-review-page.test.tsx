@@ -267,6 +267,7 @@ describe("Project Review Page", () => {
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Rin, Ivo")).toBeInTheDocument();
     expect(screen.getByDisplayValue("480")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
   });
 
   it("loads the shot-script workspace and renders editable segment shot fields", async () => {
@@ -284,6 +285,47 @@ describe("Project Review Page", () => {
     expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
     expect(screen.getByDisplayValue("S01-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("暴雨中的码头反着冷蓝色灯牌。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
+  });
+
+  it("disables storyboard top regenerate while there are unsaved changes", async () => {
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace").mockResolvedValue(workspace);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("The Last Sky Choir")).toBeInTheDocument();
+    });
+
+    const regenerateButton = screen.getByRole("button", { name: "重新生成" });
+    expect(regenerateButton).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "The Last Sky Choir Revised" },
+    });
+
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeDisabled();
+  });
+
+  it("disables master-plot top regenerate while there are unsaved changes", async () => {
+    vi.spyOn(apiModule.apiClient, "getMasterPlotReviewWorkspace").mockResolvedValue(
+      masterPlotWorkspace,
+    );
+
+    renderMasterPlotPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "主情节审核" })).toBeInTheDocument();
+    });
+
+    const regenerateButton = screen.getByRole("button", { name: "重新生成" });
+    expect(regenerateButton).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "The Last Sky Choir Revised" },
+    });
+
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeDisabled();
   });
 
   it("saves the edited draft and refreshes the workspace", async () => {
@@ -426,5 +468,26 @@ describe("Project Review Page", () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue("雨夜码头加强版")).toBeInTheDocument();
     });
+  });
+
+  it("disables shot-script top regenerate while there are dirty segments", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
+      shotScriptWorkspace,
+    );
+
+    renderShotScriptPage();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
+    });
+
+    const regenerateButton = screen.getByRole("button", { name: "重新生成" });
+    expect(regenerateButton).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText("段落 1 标题"), {
+      target: { value: "雨夜码头加强版" },
+    });
+
+    expect(screen.getByRole("button", { name: "重新生成" })).toBeDisabled();
   });
 });

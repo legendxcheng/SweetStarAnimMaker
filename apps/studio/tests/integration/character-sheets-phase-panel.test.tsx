@@ -286,7 +286,7 @@ describe("CharacterSheetsPhasePanel", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /重新生成/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /重新生成/i })[1]!);
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateCharacterSheet).toHaveBeenCalledWith(

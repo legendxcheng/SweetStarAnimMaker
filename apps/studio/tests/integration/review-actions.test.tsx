@@ -237,7 +237,7 @@ describe("Review Actions", () => {
     renderPage();
 
     const approveButton = await screen.findByRole("button", { name: "通过" });
-    const rejectButton = screen.getByRole("button", { name: "驳回" });
+    const regenerateButton = screen.getByRole("button", { name: "重新生成" });
 
     fireEvent.click(approveButton);
 
@@ -246,7 +246,7 @@ describe("Review Actions", () => {
     });
 
     expect(approveButton).toBeDisabled();
-    expect(rejectButton).toBeDisabled();
+    expect(regenerateButton).toBeDisabled();
 
     deferred.resolve({
       ...workspace.currentStoryboard,
@@ -259,7 +259,7 @@ describe("Review Actions", () => {
     });
   });
 
-  it("rejects and redirects back to the project detail page", async () => {
+  it("regenerates the storyboard and redirects back to the project detail page", async () => {
     vi.spyOn(apiModule.apiClient, "rejectStoryboard").mockResolvedValue({
       id: "task-2",
       projectId: "proj-1",
@@ -279,7 +279,7 @@ describe("Review Actions", () => {
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+    fireEvent.click(await screen.findByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.rejectStoryboard).toHaveBeenCalledWith("proj-1", {});
@@ -288,12 +288,12 @@ describe("Review Actions", () => {
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 
-  it("does not reject when the user cancels confirmation", async () => {
+  it("does not regenerate the storyboard when the user cancels confirmation", async () => {
     globalThis.confirm = vi.fn(() => false);
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+    fireEvent.click(await screen.findByRole("button", { name: "重新生成" }));
 
     expect(apiModule.apiClient.rejectStoryboard).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
@@ -320,7 +320,7 @@ describe("Review Actions", () => {
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 
-  it("rejects the master plot with a required reason and redirects back to the project detail page", async () => {
+  it("regenerates the master plot with a required reason and redirects back to the project detail page", async () => {
     vi.spyOn(apiModule.apiClient, "getMasterPlotReviewWorkspace").mockResolvedValue(
       masterPlotWorkspace,
     );
@@ -343,7 +343,7 @@ describe("Review Actions", () => {
 
     renderMasterPlotPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "驳回" }));
+    fireEvent.click(await screen.findByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.rejectMasterPlot).toHaveBeenCalledWith("proj-1", {
@@ -414,6 +414,35 @@ describe("Review Actions", () => {
     });
 
     expect(apiModule.apiClient.getShotScriptReviewWorkspace).toHaveBeenCalledTimes(2);
+  });
+
+  it("regenerates the whole shot-script stage and redirects back to the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue({
+      id: "task-4",
+      projectId: "proj-1",
+      type: "shot_script_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:02Z",
+      updatedAt: "2024-01-01T00:00:02Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-4/input.json",
+        outputPath: "tasks/task-4/output.json",
+        logPath: "tasks/task-4/log.txt",
+      },
+    });
+
+    renderShotScriptPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "重新生成" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 
   it("approves all shot-script segments and redirects back to the project detail page", async () => {

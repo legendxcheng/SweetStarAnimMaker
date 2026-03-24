@@ -162,6 +162,21 @@ export function ReviewWorkspacePage() {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!projectId || hasChanges) return;
+    if (!confirm("确认要重新生成当前分镜吗？")) return;
+    try {
+      setSubmittingAction(true);
+      await apiClient.rejectStoryboard(projectId, {});
+      alert("分镜已重新生成，已创建新任务。");
+      navigate(`/projects/${projectId}`);
+    } catch (err) {
+      alert(`重新生成失败：${(err as Error).message}`);
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
   const inputClass =
     "w-full bg-(--color-bg-base) border border-(--color-border-muted) text-(--color-text-primary) rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/20";
 
@@ -211,6 +226,20 @@ export function ReviewWorkspacePage() {
                       })}
                     >
                       通过
+                    </button>
+                  )}
+                  {ws.availableActions.reject && (
+                    <button
+                      onClick={() => {
+                        void handleRegenerate();
+                      }}
+                      disabled={submittingAction || hasChanges}
+                      className={getButtonClassName({
+                        variant: "warning",
+                        size: "compact",
+                      })}
+                    >
+                      重新生成
                     </button>
                   )}
                   {!hasChanges && ws.availableActions.reject && (
