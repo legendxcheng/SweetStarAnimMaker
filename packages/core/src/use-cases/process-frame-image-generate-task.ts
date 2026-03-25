@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import type { ProjectStatus } from "@sweet-star/shared";
+
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
@@ -48,47 +50,57 @@ export function createProcessFrameImageGenerateTaskUseCase(
         startedAt,
       });
 
+      let project:
+        | Awaited<ReturnType<ProjectRepository["findById"]>>
+        | null = null;
+      let frame:
+        | Awaited<ReturnType<ShotImageRepository["findFrameById"]>>
+        | null = null;
+
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
         assertFrameImageTaskInput(taskInput);
-        const project = await dependencies.projectRepository.findById(task.projectId);
+        project = await dependencies.projectRepository.findById(task.projectId);
 
         if (!project) {
           throw new ProjectNotFoundError(task.projectId);
         }
 
-        const frame = await dependencies.shotImageRepository.findFrameById(taskInput.frameId);
+        frame = await dependencies.shotImageRepository.findFrameById(taskInput.frameId);
 
         if (!frame || frame.projectId !== project.id) {
           throw new ShotImageNotFoundError(taskInput.frameId);
         }
 
+        const activeProject = project;
+        const activeFrame = frame;
+
         const resolvedReferenceImagePaths = await Promise.all(
-          frame.matchedReferenceImagePaths.map((referenceImagePath) =>
+          activeFrame.matchedReferenceImagePaths.map((referenceImagePath) =>
             path.isAbsolute(referenceImagePath)
               ? referenceImagePath
               : dependencies.shotImageStorage.resolveProjectAssetPath({
-                  projectStorageDir: project.storageDir,
+                  projectStorageDir: activeProject.storageDir,
                   assetRelPath: referenceImagePath,
               }),
           ),
         );
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `requesting shot image provider for frame ${frame.id} with ${resolvedReferenceImagePaths.length} reference image(s)`,
+          message: `requesting shot image provider for frame ${activeFrame.id} with ${resolvedReferenceImagePaths.length} reference image(s)`,
         });
         const imageResult = await dependencies.shotImageProvider.generateShotImage({
-          projectId: project.id,
-          frameId: frame.id,
-          promptText: frame.promptTextCurrent,
-          negativePromptText: frame.negativePromptTextCurrent,
+          projectId: activeProject.id,
+          frameId: activeFrame.id,
+          promptText: activeFrame.promptTextCurrent,
+          negativePromptText: activeFrame.negativePromptTextCurrent,
           referenceImagePaths: resolvedReferenceImagePaths,
         });
         const finishedAt = dependencies.clock.now();
         const updatedFrame = {
-          ...frame,
+          ...activeFrame,
           imageStatus: "in_review" as const,
-          imageAssetPath: frame.currentImageRelPath,
+          imageAssetPath: activeFrame.currentImageRelPath,
           imageWidth: imageResult.width,
           imageHeight: imageResult.height,
           provider: imageResult.provider,
@@ -122,7 +134,7 @@ export function createProcessFrameImageGenerateTaskUseCase(
         });
         await dependencies.shotImageRepository.updateFrame(updatedFrame);
         await dependencies.projectRepository.updateStatus({
-          projectId: project.id,
+          projectId: activeProject.id,
           status: "images_in_review",
           updatedAt: finishedAt,
         });
@@ -152,6 +164,24 @@ export function createProcessFrameImageGenerateTaskUseCase(
           task,
           message: `frame image generation failed: ${errorMessage}`,
         });
+
+        if (project && frame) {
+          const restoredFrame = {
+            ...frame,
+            imageStatus: frame.imageAssetPath ? ("in_review" as const) : ("failed" as const),
+            updatedAt: finishedAt,
+          };
+
+          await dependencies.shotImageRepository.updateFrame(restoredFrame);
+
+          const frames = await dependencies.shotImageRepository.listFramesByBatchId(frame.batchId);
+          await dependencies.projectRepository.updateStatus({
+            projectId: project.id,
+            status: deriveProjectImageStatus(frames, restoredFrame),
+            updatedAt: finishedAt,
+          });
+        }
+
         await dependencies.taskRepository.markFailed({
           taskId: task.id,
           errorMessage,
@@ -162,6 +192,25 @@ export function createProcessFrameImageGenerateTaskUseCase(
       }
     },
   };
+}
+
+function deriveProjectImageStatus(
+  frames: Array<{ id: string; imageStatus: string }>,
+  updatedFrame: { id: string; imageStatus: string },
+): ProjectStatus {
+  const nextFrames = frames.some((frame) => frame.id === updatedFrame.id)
+    ? frames.map((frame) => (frame.id === updatedFrame.id ? updatedFrame : frame))
+    : [...frames, updatedFrame];
+
+  if (nextFrames.some((frame) => frame.imageStatus === "generating")) {
+    return "images_generating";
+  }
+
+  if (nextFrames.every((frame) => frame.imageStatus === "approved")) {
+    return "images_approved";
+  }
+
+  return "images_in_review";
 }
 
 function assertFrameImageTaskInput(input: {

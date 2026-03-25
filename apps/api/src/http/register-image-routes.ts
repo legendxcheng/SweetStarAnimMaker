@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+
 import type { FastifyInstance } from "fastify";
 
 import {
@@ -68,6 +70,18 @@ export function registerImageRoutes(
       projectId: params.projectId,
       frameId: params.frameId,
     });
+  });
+
+  app.get("/projects/:projectId/images/frames/:frameId/content", async (request, reply) => {
+    const params = request.params as { projectId: string; frameId: string };
+    const content = await services.getImageFrameContent.execute({
+      projectId: params.projectId,
+      frameId: params.frameId,
+    });
+
+    return reply
+      .header("content-type", content.mimeType)
+      .send(await fs.readFile(content.filePath));
   });
 
   app.put("/projects/:projectId/images/frames/:frameId/prompt", async (request) => {

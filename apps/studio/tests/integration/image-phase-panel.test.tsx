@@ -429,6 +429,71 @@ describe("ImagePhasePanel", () => {
     expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
   });
 
+  it("refreshes frame image URLs when a regenerated image keeps the same content path", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce(imageListResponse)
+      .mockResolvedValueOnce({
+        currentBatch: imageListResponse.currentBatch,
+        frames: imageListResponse.frames.map((frame) =>
+          frame.id === "frame-start-1"
+            ? {
+                ...frame,
+                updatedAt: "2024-01-01T00:00:30Z",
+                sourceTaskId: "task-frame-start-2",
+              }
+            : frame,
+        ),
+      });
+    vi.spyOn(apiModule.apiClient, "generateImageFrame").mockResolvedValue({
+      id: "task-frame-image-2",
+      projectId: "proj-1",
+      type: "frame_image_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:30Z",
+      updatedAt: "2024-01-01T00:00:30Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-frame-image-2/input.json",
+        outputPath: "tasks/task-frame-image-2/output.json",
+        logPath: "tasks/task-frame-image-2/log.txt",
+      },
+    });
+
+    render(
+      <ImagePhasePanel
+        project={baseProject}
+        task={null}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={vi.fn()}
+      />,
+    );
+
+    const image = (await screen.findByAltText("起始帧结果图")) as HTMLImageElement;
+    expect(new URL(image.src).searchParams.get("v")).toBe("2024-01-01T00:00:09Z");
+
+    fireEvent.click(screen.getByRole("button", { name: "生成起始帧图片" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.generateImageFrame).toHaveBeenCalledWith(
+        "proj-1",
+        "frame-start-1",
+      );
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
+    });
+
+    expect(new URL(screen.getByAltText("起始帧结果图").getAttribute("src")!, "http://localhost").searchParams.get("v")).toBe(
+      "2024-01-01T00:00:30Z",
+    );
+  });
+
   it("clears visible prompt text while frame prompts are pending", async () => {
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce({

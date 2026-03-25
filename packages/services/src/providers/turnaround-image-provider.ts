@@ -13,6 +13,7 @@ export interface CreateTurnaroundImageProviderOptions {
   baseUrl?: string;
   apiToken?: string;
   model?: string;
+  size?: string;
   timeoutMs?: number;
   referenceImageUploader?: ReferenceImageUploader;
 }
@@ -25,6 +26,8 @@ export function createTurnaroundImageProvider(
 ): CharacterSheetImageProvider & ShotImageProvider {
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
   const model = options.model?.trim() || DEFAULT_MODEL;
+  const size = options.size?.trim() || null;
+  const requestedDimensions = parseRequestedSize(size);
 
   return {
     async generateCharacterSheetImage(
@@ -87,12 +90,17 @@ export function createTurnaroundImageProvider(
         model: string;
         prompt: string;
         response_format: "b64_json";
+        size?: string;
         image?: string[];
       } = {
         model,
         prompt: buildPrompt(input.promptText, input.negativePromptText),
         response_format: "b64_json",
       };
+
+      if (size) {
+        requestBody.size = size;
+      }
 
       if (uploadedReferenceUrls.length > 0) {
         requestBody.image = uploadedReferenceUrls;
@@ -124,6 +132,7 @@ export function createTurnaroundImageProvider(
 
       const rawPayload = await response.json();
       const parsed = parseImagePayload(rawPayload);
+      assertMatchesRequestedSize(parsed, requestedDimensions, size);
 
       return {
         imageBytes: parsed.imageBytes,
@@ -174,20 +183,40 @@ function truncateForError(value: string, maxLength = 500) {
   return `${value.slice(0, maxLength)}...`;
 }
 
+function assertMatchesRequestedSize(
+  parsed: { width: number; height: number },
+  requestedDimensions: { width: number; height: number } | null,
+  requestedSize: string | null,
+) {
+  if (
+    !requestedDimensions ||
+    (parsed.width === requestedDimensions.width && parsed.height === requestedDimensions.height)
+  ) {
+    return;
+  }
+
+  throw new Error(
+    `Turnaround image provider returned ${parsed.width}x${parsed.height}, expected ${requestedDimensions.width}x${requestedDimensions.height} for requested size ${requestedSize}`,
+  );
+}
+
 function parseImagePayload(payload: unknown) {
   const first = (payload as { data?: Array<Record<string, unknown>> })?.data?.[0];
   const b64 = normalizeBase64Payload(first?.b64_json);
-  const dimensions = parseImageDimensions(first);
 
-  if (
-    typeof b64 !== "string" ||
-    !dimensions
-  ) {
+  if (typeof b64 !== "string") {
+    throw new Error("Turnaround image provider returned no usable image");
+  }
+
+  const imageBytes = new Uint8Array(Buffer.from(b64, "base64"));
+  const dimensions = parseImageDimensions(first) ?? parseImageDimensionsFromBytes(imageBytes);
+
+  if (!dimensions) {
     throw new Error("Turnaround image provider returned no usable image");
   }
 
   return {
-    imageBytes: new Uint8Array(Buffer.from(b64, "base64")),
+    imageBytes,
     width: dimensions.width,
     height: dimensions.height,
   };
@@ -239,4 +268,120 @@ function parseImageDimensions(first: Record<string, unknown> | undefined) {
 
 function asPositiveNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function parseRequestedSize(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(/^(\d+)x(\d+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const width = Number.parseInt(match[1]!, 10);
+  const height = Number.parseInt(match[2]!, 10);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width, height };
+}
+
+function parseImageDimensionsFromBytes(bytes: Uint8Array) {
+  return parsePngDimensions(bytes) ?? parseJpegDimensions(bytes);
+}
+
+function parsePngDimensions(bytes: Uint8Array) {
+  const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  if (
+    bytes.length < 24 ||
+    !pngSignature.every((value, index) => bytes[index] === value)
+  ) {
+    return null;
+  }
+
+  const width = readUInt32BE(bytes, 16);
+  const height = readUInt32BE(bytes, 20);
+
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width, height };
+}
+
+function parseJpegDimensions(bytes: Uint8Array) {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    return null;
+  }
+
+  let offset = 2;
+
+  while (offset + 3 < bytes.length) {
+    while (offset < bytes.length && bytes[offset] === 0xff) {
+      offset += 1;
+    }
+
+    if (offset >= bytes.length) {
+      return null;
+    }
+
+    const marker = bytes[offset]!;
+    offset += 1;
+
+    if (marker === 0xd9 || marker === 0xda) {
+      return null;
+    }
+
+    if (offset + 1 >= bytes.length) {
+      return null;
+    }
+
+    const segmentLength = readUInt16BE(bytes, offset);
+
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) {
+      return null;
+    }
+
+    if (isJpegStartOfFrameMarker(marker)) {
+      if (segmentLength < 7 || offset + 6 >= bytes.length) {
+        return null;
+      }
+
+      const height = readUInt16BE(bytes, offset + 3);
+      const width = readUInt16BE(bytes, offset + 5);
+
+      if (width > 0 && height > 0) {
+        return { width, height };
+      }
+
+      return null;
+    }
+
+    offset += segmentLength;
+  }
+
+  return null;
+}
+
+function isJpegStartOfFrameMarker(marker: number) {
+  return marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+}
+
+function readUInt16BE(bytes: Uint8Array, offset: number) {
+  return (bytes[offset]! << 8) | bytes[offset + 1]!;
+}
+
+function readUInt32BE(bytes: Uint8Array, offset: number) {
+  return (
+    bytes[offset]! * 0x1000000 +
+    (bytes[offset + 1]! << 16) +
+    (bytes[offset + 2]! << 8) +
+    bytes[offset + 3]!
+  );
 }

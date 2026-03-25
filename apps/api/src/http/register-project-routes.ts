@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+
 import type { FastifyInstance } from "fastify";
 
 import { createProjectRequestSchema } from "@sweet-star/shared";
@@ -25,5 +27,17 @@ export function registerProjectRoutes(
     return services.getProjectDetail.execute({
       projectId: params.projectId,
     });
+  });
+
+  app.get("/projects/:projectId/assets/*", async (request, reply) => {
+    const params = request.params as { projectId: string; "*": string };
+    const content = await services.getProjectAssetContent.execute({
+      projectId: params.projectId,
+      assetRelPath: params["*"],
+    });
+
+    return reply
+      .header("content-type", content.mimeType)
+      .send(await fs.readFile(content.filePath));
   });
 }

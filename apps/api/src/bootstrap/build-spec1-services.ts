@@ -20,6 +20,8 @@ import {
   createGetCharacterSheetUseCase,
   createGetCharacterSheetReferenceImageContentUseCase,
   createGetImageFrameUseCase,
+  createGetImageFrameContentUseCase,
+  createGetProjectAssetContentUseCase,
   createGetCurrentShotScriptUseCase,
   createGetCurrentStoryboardUseCase,
   createGetMasterPlotReviewUseCase,
@@ -63,6 +65,7 @@ import {
   createSqliteShotScriptReviewRepository,
   createSqliteTaskRepository,
   createShotScriptStorage,
+  createShotImageStorage,
   createStoryboardStorage,
   createTaskFileStorage,
   initializeSqliteSchema,
@@ -93,6 +96,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const shotImageRepository = createSqliteShotImageRepository({ db });
   const shotScriptReviewRepository = createSqliteShotScriptReviewRepository({ db });
   const characterSheetStorage = createCharacterSheetStorage({ paths });
+  const shotImageStorage = createShotImageStorage({ paths });
   const masterPlotStorage = storyboardStorage;
   const clock = {
     now: () => new Date().toISOString(),
@@ -284,6 +288,15 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     getImageFrame: createGetImageFrameUseCase({
       projectRepository: repository,
       shotImageRepository,
+    }),
+    getImageFrameContent: createGetImageFrameContentUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      shotImageStorage,
+    }),
+    getProjectAssetContent: createGetProjectAssetContentUseCase({
+      projectRepository: repository,
+      shotImageStorage,
     }),
     getMasterPlotReview: createGetMasterPlotReviewUseCase({
       projectRepository: repository,

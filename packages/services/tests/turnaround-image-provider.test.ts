@@ -127,6 +127,39 @@ describe("turnaround image provider", () => {
     expect(result.height).toBe(3200);
   });
 
+  it("derives dimensions from the returned image when VectorEngine omits size metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              b64_json:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aV0AAAAASUVORK5CYII=",
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createTurnaroundImageProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "doubao-seedream-5-0-260128",
+    });
+
+    const result = await provider.generateCharacterSheetImage({
+      projectId: "proj_20260321_ab12cd",
+      characterId: "char_rin_1",
+      promptText: "Create a combined turnaround sheet for Rin.",
+    });
+
+    expect(result.width).toBe(1);
+    expect(result.height).toBe(1);
+    expect(Array.from(result.imageBytes)).not.toHaveLength(0);
+  });
+
   it("rejects responses without image data", async () => {
     vi.stubGlobal(
       "fetch",
@@ -273,8 +306,8 @@ describe("turnaround image provider", () => {
         data: [
           {
             b64_json: "AQID",
-            width: 1920,
-            height: 1080,
+            width: 2848,
+            height: 1600,
           },
         ],
       }),
@@ -287,6 +320,7 @@ describe("turnaround image provider", () => {
     const provider = createTurnaroundImageProvider({
       baseUrl: "https://api.vectorengine.ai",
       apiToken: "test-token",
+      size: "2848x1600",
       referenceImageUploader: uploader,
     });
 
@@ -306,9 +340,44 @@ describe("turnaround image provider", () => {
     expect(request.model).toBe("doubao-seedream-5-0-260128");
     expect(request.prompt).toContain("雨夜市场的开场定格");
     expect(request.prompt).toContain("低清晰度、崩坏手部");
+    expect(request.size).toBe("2848x1600");
     expect(request.image).toEqual(["https://cdn.example/frame-ref.png"]);
     expect(result.provider).toBe("turnaround-image");
-    expect(result.width).toBe(1920);
-    expect(result.height).toBe(1080);
+    expect(result.width).toBe(2848);
+    expect(result.height).toBe(1600);
+  });
+
+  it("rejects responses whose dimensions do not match the requested exact size", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            b64_json: "AQID",
+            width: 2048,
+            height: 2048,
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createTurnaroundImageProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      size: "2848x1600",
+    });
+
+    await expect(
+      provider.generateShotImage({
+        projectId: "proj_20260324_ab12cd",
+        frameId: "frame_start_1",
+        promptText: "雨夜市场的开场定格，林站在水面反光前。",
+        negativePromptText: "低清晰度、崩坏手部",
+        referenceImagePaths: [],
+      }),
+    ).rejects.toThrow(
+      "Turnaround image provider returned 2048x2048, expected 2848x1600 for requested size 2848x1600",
+    );
   });
 });

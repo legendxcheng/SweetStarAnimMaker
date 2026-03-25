@@ -10,4 +10,10 @@ export const config = {
   ) {
     return `${this.apiBaseUrl}/projects/${projectId}/character-sheets/${characterId}/reference-images/${referenceImageId}/content`;
   },
+  imageFrameContentUrl(projectId: string, frameId: string) {
+    return `${this.apiBaseUrl}/projects/${projectId}/images/frames/${frameId}/content`;
+  },
+  projectAssetContentUrl(projectId: string, assetRelPath: string) {
+    return `${this.apiBaseUrl}/projects/${projectId}/assets/${assetRelPath}`;
+  },
 };

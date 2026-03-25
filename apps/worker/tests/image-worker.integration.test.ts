@@ -3,12 +3,17 @@ import {
   framePromptGenerateQueueName,
   imagesGenerateQueueName,
 } from "@sweet-star/core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildSpec2WorkerServices } from "../src/bootstrap/build-spec2-worker-services";
 import { startWorker } from "../src/index";
 
 describe("image worker integration", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
   it("routes queued task ids into the images, frame prompt, and frame image processors", async () => {
     const services = {
       processMasterPlotGenerateTask: { execute: vi.fn() },
@@ -399,6 +404,7 @@ describe("image worker integration", () => {
         saveReferenceImages: vi.fn(),
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
+        getImageContent: vi.fn(),
         getReferenceImageContent: vi.fn(),
       },
       shotImageRepository,
@@ -437,6 +443,198 @@ describe("image worker integration", () => {
         promptText: "雨夜市场入口，林站在霓虹雨幕前。",
       }),
     );
+  });
+
+  it("builds the frame image provider with a 16:9 default size", async () => {
+    vi.stubEnv("VECTORENGINE_API_TOKEN", "test-token");
+    vi.stubEnv("VECTORENGINE_BASE_URL", "https://api.vectorengine.ai");
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            b64_json: "AQID",
+            width: 2848,
+            height: 1600,
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const services = buildSpec2WorkerServices({
+      taskRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "task_frame_image_16_9",
+          projectId: "proj_1",
+          type: "frame_image_generate",
+          status: "pending",
+          queueName: "frame-image-generate",
+          storageDir: "projects/proj_1-my-story/tasks/task_frame_image_16_9",
+          inputRelPath: "tasks/task_frame_image_16_9/input.json",
+          outputRelPath: "tasks/task_frame_image_16_9/output.json",
+          logRelPath: "tasks/task_frame_image_16_9/log.txt",
+          errorMessage: null,
+          createdAt: "2026-03-24T10:00:00.000Z",
+          updatedAt: "2026-03-24T10:00:00.000Z",
+          startedAt: null,
+          finishedAt: null,
+        }),
+        findLatestByProjectId: vi.fn(),
+        delete: vi.fn(),
+        markRunning: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_1",
+          name: "My Story",
+          slug: "my-story",
+          storageDir: "projects/proj_1-my-story",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 88,
+          currentMasterPlotId: "mp_1",
+          currentCharacterSheetBatchId: "char_batch_1",
+          currentStoryboardId: "storyboard_1",
+          currentShotScriptId: "shot_script_1",
+          currentImageBatchId: "image_batch_1",
+          status: "images_generating",
+          createdAt: "2026-03-24T10:00:00.000Z",
+          updatedAt: "2026-03-24T10:00:00.000Z",
+          premiseUpdatedAt: "2026-03-24T10:00:00.000Z",
+        }),
+        listAll: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
+        updateStatus: vi.fn(),
+      },
+      taskFileStorage: {
+        createTaskArtifacts: vi.fn(),
+        readTaskInput: vi.fn().mockResolvedValue({
+          taskId: "task_frame_image_16_9",
+          projectId: "proj_1",
+          taskType: "frame_image_generate",
+          batchId: "image_batch_1",
+          frameId: "frame_start_1",
+        }),
+        writeTaskOutput: vi.fn(),
+        appendTaskLog: vi.fn(),
+      },
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
+      },
+      storyboardStorage: {
+        writeRawResponse: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+        writeCurrentStoryboard: vi.fn(),
+        readCurrentStoryboard: vi.fn(),
+      },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
+      characterSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeGeneratedPrompt: vi.fn(),
+        writeImageVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        readCurrentCharacterSheet: vi.fn(),
+        listReferenceImages: vi.fn(),
+        saveReferenceImages: vi.fn(),
+        deleteReferenceImage: vi.fn(),
+        resolveReferenceImagePaths: vi.fn().mockResolvedValue([]),
+        getImageContent: vi.fn(),
+        getReferenceImageContent: vi.fn(),
+      },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listFramesByBatchId: vi.fn(),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn().mockResolvedValue({
+          id: "frame_start_1",
+          batchId: "image_batch_1",
+          projectId: "proj_1",
+          projectStorageDir: "projects/proj_1-my-story",
+          sourceShotScriptId: "shot_script_1",
+          segmentId: "segment_1",
+          sceneId: "scene_1",
+          order: 1,
+          frameType: "start_frame",
+          planStatus: "planned",
+          imageStatus: "generating",
+          selectedCharacterIds: [],
+          matchedReferenceImagePaths: [],
+          unmatchedCharacterIds: [],
+          promptTextSeed: "原始规划 Prompt",
+          promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+          negativePromptTextCurrent: "低清晰度、崩坏手部",
+          promptUpdatedAt: "2026-03-24T10:00:00.000Z",
+          imageAssetPath: null,
+          imageWidth: null,
+          imageHeight: null,
+          provider: null,
+          model: null,
+          approvedAt: null,
+          updatedAt: "2026-03-24T10:00:00.000Z",
+          sourceTaskId: "task_frame_image_16_9",
+          storageDir: "projects/proj_1-my-story/images/batches/image_batch_1/segments/segment_1/start-frame",
+          planningRelPath: "images/batches/image_batch_1/segments/segment_1/start-frame/planning.json",
+          promptSeedRelPath: "images/batches/image_batch_1/segments/segment_1/start-frame/prompt.seed.txt",
+          promptCurrentRelPath: "images/batches/image_batch_1/segments/segment_1/start-frame/prompt.current.txt",
+          currentImageRelPath: "images/batches/image_batch_1/segments/segment_1/start-frame/current.png",
+          currentMetadataRelPath: "images/batches/image_batch_1/segments/segment_1/start-frame/current.json",
+          promptVersionsStorageDir: "images/batches/image_batch_1/segments/segment_1/start-frame/prompt.versions",
+          versionsStorageDir: "images/batches/image_batch_1/segments/segment_1/start-frame/versions",
+        }),
+        updateFrame: vi.fn(),
+      },
+      shotImageStorage: {
+        writeBatchManifest: vi.fn(),
+        writeFramePlanning: vi.fn(),
+        writeFramePromptFiles: vi.fn(),
+        writeFramePromptVersion: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        writeImageVersion: vi.fn(),
+        readCurrentFrame: vi.fn(),
+        resolveProjectAssetPath: vi.fn(),
+      },
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T10:01:00.000Z")
+          .mockReturnValueOnce("2026-03-24T10:02:00.000Z"),
+      },
+    });
+
+    await services.processFrameImageGenerateTask.execute({
+      taskId: "task_frame_image_16_9",
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.size).toBe("2848x1600");
   });
 });
 

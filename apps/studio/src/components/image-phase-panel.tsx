@@ -7,6 +7,7 @@ import type {
 } from "@sweet-star/shared";
 
 import { apiClient } from "../services/api-client";
+import { config } from "../services/config";
 import { ErrorState } from "./error-state";
 import { getButtonClassName } from "../styles/button-styles";
 
@@ -562,6 +563,7 @@ export function ImagePhasePanel({
 
           <div className="grid gap-4 xl:grid-cols-2">
             <FrameEditorCard
+              projectId={project.id}
               frame={segment.startFrame}
               metaLabelClass={metaLabelClass}
               metaValueClass={metaValueClass}
@@ -579,6 +581,7 @@ export function ImagePhasePanel({
               onApproveFrame={handleApproveFrame}
             />
             <FrameEditorCard
+              projectId={project.id}
               frame={segment.endFrame}
               metaLabelClass={metaLabelClass}
               metaValueClass={metaValueClass}
@@ -603,6 +606,7 @@ export function ImagePhasePanel({
 }
 
 interface FrameEditorCardProps {
+  projectId: string;
   frame: SegmentFrameRecord | null;
   draft: FrameDraftState | undefined;
   actionBusy:
@@ -627,6 +631,7 @@ interface FrameEditorCardProps {
 }
 
 function FrameEditorCard({
+  projectId,
   frame,
   draft,
   actionBusy,
@@ -646,7 +651,10 @@ function FrameEditorCard({
     );
   }
 
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+
   const frameLabel = frame.frameType === "start_frame" ? "起始帧" : "结束帧";
+  const frameImageUrl = getFrameImageUrl(projectId, frame);
   const isPromptPending = frame.planStatus === "pending";
   const visiblePromptText = isPromptPending ? "" : draft.promptTextCurrent;
   const visibleNegativePromptText = isPromptPending ? "" : draft.negativePromptTextCurrent;
@@ -682,9 +690,43 @@ function FrameEditorCard({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 mb-4">
-        <div>
-          <p className={metaLabelClass}>图像资源</p>
-          <p className={`${metaValueClass} break-all`}>{frame.imageAssetPath ?? "尚未生成"}</p>
+        <div className="sm:col-span-2">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className={metaLabelClass}>图像资源</p>
+              <p className="text-sm text-(--color-text-muted)">
+                点击缩略图或按钮查看大图。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setImagePreviewOpen(true)}
+              disabled={!frame.imageAssetPath}
+              className={getButtonClassName({
+                variant: "secondary",
+                size: "compact",
+              })}
+            >
+              查看大图
+            </button>
+          </div>
+          {frame.imageAssetPath ? (
+            <button
+              type="button"
+              onClick={() => setImagePreviewOpen(true)}
+              className="block w-full overflow-hidden rounded-xl border border-(--color-border) bg-(--color-bg-surface)"
+            >
+              <img
+                src={frameImageUrl}
+                alt={`${frameLabel}结果图`}
+                className="h-48 w-full object-contain bg-(--color-bg-elevated)"
+              />
+            </button>
+          ) : (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-(--color-border-muted) bg-(--color-bg-surface) text-sm text-(--color-text-muted)">
+              尚未生成{frameLabel}图片
+            </div>
+          )}
         </div>
         <div>
           <p className={metaLabelClass}>模型</p>
@@ -732,11 +774,18 @@ function FrameEditorCard({
           <div>
             <p className={metaLabelClass}>已匹配参考图</p>
             {frame.matchedReferenceImagePaths.length > 0 ? (
-              <div className="grid gap-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {frame.matchedReferenceImagePaths.map((imagePath) => (
-                  <p key={imagePath} className={`${metaValueClass} break-all`}>
-                    {imagePath}
-                  </p>
+                  <div key={imagePath} className="rounded-xl border border-(--color-border) bg-(--color-bg-base) p-2 text-center">
+                    <img
+                      src={config.projectAssetContentUrl(projectId, imagePath)}
+                      alt="参考图"
+                      className="h-24 mx-auto mb-2 rounded object-cover"
+                    />
+                    <p className={`${metaValueClass} break-all text-xs line-clamp-2`} title={imagePath}>
+                      {imagePath.split('/').pop()}
+                    </p>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -803,6 +852,52 @@ function FrameEditorCard({
           </p>
         )}
       </div>
+
+      {frame.imageAssetPath && imagePreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          onClick={() => setImagePreviewOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${frameLabel}结果图大图`}
+            className="relative max-h-full w-full max-w-6xl rounded-2xl border border-white/10 bg-(--color-bg-surface) p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-(--color-text-primary)">
+                  {frameLabel}结果图预览
+                </p>
+                <p className="text-sm text-(--color-text-muted)">
+                  {frame.imageWidth && frame.imageHeight
+                    ? `${frame.imageWidth} × ${frame.imageHeight}`
+                    : "原始尺寸"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImagePreviewOpen(false)}
+                className={getButtonClassName({
+                  variant: "secondary",
+                  size: "compact",
+                })}
+              >
+                关闭大图预览
+              </button>
+            </div>
+
+            <div className="max-h-[80vh] overflow-auto rounded-xl bg-black/20">
+              <img
+                src={frameImageUrl}
+                alt={`${frameLabel}结果图大图`}
+                className="mx-auto block h-auto max-w-full rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -817,4 +912,10 @@ function createFrameDraft(frame: SegmentFrameRecord): FrameDraftState {
 function normalizeOptionalText(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function getFrameImageUrl(projectId: string, frame: Pick<SegmentFrameRecord, "id" | "updatedAt">) {
+  const url = new URL(config.imageFrameContentUrl(projectId, frame.id));
+  url.searchParams.set("v", frame.updatedAt);
+  return url.toString();
 }

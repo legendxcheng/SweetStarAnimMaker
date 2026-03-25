@@ -11,7 +11,7 @@
 - `start_frame`
 - `end_frame`
 
-这两张图是当前 segment 的边界帧资产，供后续视频阶段或 `final_cut` 继续消费。
+这两张图是当前 segment 的边界帧资产，供后续 `videos` 阶段继续消费。
 
 当前阶段的目标不是直接生成视频片段，也不是直接导出成片，而是先产出一批按 `segment` 管理的稳定帧图。
 
@@ -271,7 +271,7 @@ type SegmentFrameImageRecord = {
 
 - 每个 `segment` 必须恰好对应两条当前记录
 - 这两条记录必须分别是 `start_frame` 和 `end_frame`
-- 输出结构必须稳定，后续视频阶段或 `final_cut` 可直接引用
+- 输出结构必须稳定，后续 `videos` 阶段可直接引用
 - 当前阶段不再输出旧的“按 shot 平铺的 image 列表”语义
 
 ## 存储与审核点
@@ -343,7 +343,7 @@ type SegmentFrameImageRecord = {
 
 只有当所有 `segment` 的当前两张图都被审核通过后，项目才允许进入下一个阶段：
 
-- `images -> final_cut`
+- `images -> videos`
 
 ## 本阶段暂不处理的内容
 
@@ -356,4 +356,4 @@ type SegmentFrameImageRecord = {
 - 自动时间轴拼接
 - 转场、字幕、音乐、配音
 
-这篇文档只用于先把 `shot_script -> images` 这个按 `segment` 生成首帧/尾帧的正式图片阶段锁定住，并为后续视频阶段或 `final_cut` 提供稳定输入。
+这篇文档只用于先把 `shot_script -> images` 这个按 `segment` 生成首帧/尾帧的正式图片阶段锁定住，并为后续 `videos` 阶段提供稳定输入。

@@ -14,7 +14,7 @@
 
 ## 当前仓库对齐说明
 
-截至当前仓库实现，业务主链路已经不是最初设想的细粒度流水线，而是一条先跑通并已落地到 `shot_script` 的简化流水线。
+截至当前仓库实现，业务主链路已经不是最初设想的细粒度流水线，而是一条先跑通并已落地到 `images` 的简化流水线。
 
 当前代码已经实现到：
 
@@ -23,6 +23,7 @@
 3. 角色设定/角色图生成
 4. 分镜文案生成
 5. 镜头脚本生成与审核
+6. 出图生成与审核
 
 其中第 5 步当前已经按新的 segment-first 语义落地：
 
@@ -35,14 +36,14 @@
 
 当前代码尚未实现的后续阶段有：
 
-1. 出图
+1. 视频片段
 2. 成片/导出
 
 说明：
 
-- `image` 阶段的设计文档已经存在，但当前主代码链路尚未接入
-- 当前项目详情页主导航中已经不再暴露单独的 `image` 阶段入口
-- `final_cut` 仍只处于预留状态，尚无正式实现
+- `images` 阶段已经有主链路实现与工作区入口
+- 当前 `images` 阶段仍需要继续按 `segment-first` 语义维护文档与实现
+- `videos` 与 `final_cut` 仍只处于设计/预留阶段，尚无正式实现
 
 最初规划中的这些细粒度阶段，目前仍没有作为独立阶段落地到代码主链路中：
 
@@ -74,10 +75,15 @@
   - 然后对每个 `storyboard segment` 单独发起一次生成任务
   - 支持查看当前镜头脚本、按段人工修改、按段重生成、按段审核通过、全部通过
 - `出图`
+  - 基于已审核的 `shot_script` 生成项目级 `images batch`
+  - 当前采用 `segment-first` 结构，每个 `segment` 生成 `start_frame` 与 `end_frame`
+  - 支持查看当前画面、按段重生成、按段审核通过、全部通过
+- `视频片段`
   - 当前仓库未实现
-  - `05-Shot-Script-To-Images-Guide.md` 目前描述的是下一阶段设计目标，不代表代码已接入
+  - 设计目标是基于每个 `segment` 的已审核首帧/尾帧生成一个可审核视频片段
+  - 当前建议使用 `视频 API`，最小实现优先接 `VectorEngine + sora-2-all`
 - `成片/导出`
-  - 当前仓库未实现，仅保留最终阶段占位
+  - 当前仓库未实现，仅保留真正项目级拼接/导出阶段占位
 
 ## 关键业务规则
 
@@ -125,7 +131,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 ### 6. 后续视频阶段仍按一个 segment 对应一个片段预留
 
-虽然当前仓库还没实现视频阶段，但后续阶段默认预留为：
+虽然当前仓库还没实现 `videos` 阶段，但后续阶段默认预留为：
 
 `一个 segment = 一组 shots = 一张首帧 + 一张尾帧 + 一个视频片段`
 
@@ -153,7 +159,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `图片 API`
   - 用于角色图，以及后续分镜首帧、分镜尾帧
 - `视频 API`
-  - 用于后续分镜视频片段
+  - 用于后续 `videos` 阶段的视频片段生成
 
 当前先按这三类固定提供方设计，不做可插拔抽象层。
 
@@ -175,7 +181,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 ## 当前代码中的阶段门禁
 
-当前仓库实际采用的门禁顺序如下：
+当前仓库已实现部分采用的门禁顺序如下：
 
 - `premise_ready`
   - 允许创建 `master_plot_generate`
@@ -185,6 +191,13 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
   - 允许创建 `storyboard_generate`
 - `storyboard_approved`
   - 允许创建 `shot_script_generate`
+- `shot_script_approved`
+  - 允许创建 `images_generate`
+
+下一阶段设计追加的门禁顺序为：
+
+- `images_approved`
+  - 允许创建 `videos_generate`
 
 各阶段运行和审核中的状态包括：
 
@@ -198,6 +211,9 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `shot_script_generating`
 - `shot_script_in_review`
 - `shot_script_approved`
+- `images_generating`
+- `images_in_review`
+- `images_approved`
 
 当前代码中已经存在的任务类型包括：
 
@@ -207,8 +223,11 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `storyboard_generate`
 - `shot_script_generate`
 - `shot_script_segment_generate`
+- `images_generate`
+- `frame_prompt_generate`
+- `frame_image_generate`
 
-当前代码中还不存在 `images_generate`、`segment_frames_generate` 等后续阶段任务类型。
+当前代码中还不存在 `videos_generate`、`segment_video_generate` 等后续阶段任务类型。
 
 ## 当前文档补齐顺序
 
@@ -224,10 +243,10 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 - `01` 对应已实现阶段
 - `04` 需要继续按当前 segment-first 实现语义维护，旧的“一个 segment = 一个 shot”表述已经不再准确
-- `05` 对应下一阶段设计目标，当前尚未落地到主代码链路
+- `05` 已经对应当前仓库中的正式 `images` 阶段语义，需要继续按 segment-first 实现维护
 
 建议下一步补齐或更新：
 
 - `02-Master-Plot-To-Character-Sheets-Guide.md`
 - `03-Character-Sheets-To-Storyboard-Guide.md`
-- `06-Images-To-Final-Cut-Guide.md`
+- `06-Images-To-Videos-Guide.md`

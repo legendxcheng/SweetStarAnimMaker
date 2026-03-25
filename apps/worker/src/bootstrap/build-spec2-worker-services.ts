@@ -64,6 +64,8 @@ import {
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
+const DEFAULT_FRAME_IMAGE_SIZE = "2848x1600";
+
 export interface BuildSpec2WorkerServicesOptions {
   workspaceRoot?: string;
   projectRepository?: ProjectRepository;
@@ -205,6 +207,7 @@ export function buildSpec2WorkerServices(
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.FRAME_IMAGE_MODEL,
+      size: process.env.FRAME_IMAGE_SIZE?.trim() || DEFAULT_FRAME_IMAGE_SIZE,
       referenceImageUploader,
     });
   const taskIdGenerator =

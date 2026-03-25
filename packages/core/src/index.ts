@@ -420,6 +420,18 @@ export {
   type GetImageFrameUseCaseDependencies,
 } from "./use-cases/get-image-frame";
 export {
+  createGetImageFrameContentUseCase,
+  type GetImageFrameContentInput,
+  type GetImageFrameContentUseCase,
+  type GetImageFrameContentUseCaseDependencies,
+} from "./use-cases/get-image-frame-content";
+export {
+  createGetProjectAssetContentUseCase,
+  type GetProjectAssetContentInput,
+  type GetProjectAssetContentUseCase,
+  type GetProjectAssetContentUseCaseDependencies,
+} from "./use-cases/get-project-asset-content";
+export {
   createGetCurrentStoryboardUseCase,
   type GetCurrentStoryboardInput,
   type GetCurrentStoryboardUseCase,
