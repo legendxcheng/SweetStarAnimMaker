@@ -69,9 +69,11 @@ export interface CreateSoraStageVideoProviderOptions extends CreateSoraVideoProv
 
 const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
 const DEFAULT_MODEL_NAME = "sora-2-all";
-const DEFAULT_ORIENTATION = "portrait";
+const DEFAULT_ORIENTATION = "landscape";
 const DEFAULT_SIZE = "large";
 const DEFAULT_DURATION_SECONDS = 15;
+const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+const DEFAULT_POLL_TIMEOUT_MS = 7_200_000;
 const SUCCESS_STATUSES = new Set(["succeed", "succeeded", "success", "completed", "done"]);
 const FAILURE_STATUSES = new Set(["failed", "fail", "error", "canceled", "cancelled", "rejected"]);
 
@@ -85,6 +87,7 @@ export function createSoraVideoProvider(
   const defaultDurationSeconds = isPositiveNumber(options.durationSeconds)
     ? options.durationSeconds
     : DEFAULT_DURATION_SECONDS;
+  const requestTimeoutMs = options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const fetchFn = options.fetchFn ?? fetch;
 
   return {
@@ -121,7 +124,7 @@ export function createSoraVideoProvider(
         apiToken,
         baseUrl,
         fetchFn,
-        timeoutMs: options.timeoutMs,
+        timeoutMs: requestTimeoutMs,
         method: "POST",
         path: "/v1/video/create",
         body: requestBody,
@@ -147,7 +150,7 @@ export function createSoraVideoProvider(
         apiToken,
         baseUrl,
         fetchFn,
-        timeoutMs: options.timeoutMs,
+        timeoutMs: requestTimeoutMs,
         method: "GET",
         path: `/v1/video/query?id=${encodeURIComponent(input.taskId)}`,
       });
@@ -171,7 +174,7 @@ export function createSoraVideoProvider(
 
     async waitForImageToVideoTask(input) {
       const startedAt = Date.now();
-      const timeoutMs = input.timeoutMs ?? 300_000;
+      const timeoutMs = input.timeoutMs ?? DEFAULT_POLL_TIMEOUT_MS;
       const pollIntervalMs = input.pollIntervalMs ?? 5_000;
 
       while (true) {

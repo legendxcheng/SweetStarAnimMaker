@@ -44,8 +44,25 @@ export function createListVideosUseCase(
 
       return {
         currentBatch: toCurrentVideoBatchSummary(batch, segments),
-        segments,
+        segments: segments.map(toVisibleSegmentVideoRecord),
       };
     },
   };
+}
+
+function toVisibleSegmentVideoRecord<T extends {
+  status: string;
+  sourceTaskId: string | null;
+  videoAssetPath: string | null;
+  thumbnailAssetPath: string | null;
+}>(segment: T): T {
+  if (segment.status === "generating" && segment.sourceTaskId === null) {
+    return {
+      ...segment,
+      videoAssetPath: null,
+      thumbnailAssetPath: null,
+    };
+  }
+
+  return segment;
 }

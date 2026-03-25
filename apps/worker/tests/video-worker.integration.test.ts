@@ -60,7 +60,16 @@ describe("video worker integration", () => {
       expect.objectContaining({ queueName: videosGenerateQueueName }),
     );
     expect(workerFactory).toHaveBeenCalledWith(
-      expect.objectContaining({ queueName: segmentVideoGenerateQueueName }),
+      expect.objectContaining({
+        queueName: segmentVideoGenerateQueueName,
+        concurrency: 10,
+      }),
+    );
+    expect(workerFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queueName: videosGenerateQueueName,
+        concurrency: 1,
+      }),
     );
     expect(processVideosGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_videos_batch_1",

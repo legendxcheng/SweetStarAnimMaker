@@ -369,9 +369,9 @@ export const apiClient = {
       },
     ),
 
-  getVideo: (projectId: string, segmentId: string) =>
+  getVideo: (projectId: string, videoId: string) =>
     request<SegmentVideoRecord>(
-      `/projects/${projectId}/videos/segments/${segmentId}`,
+      `/projects/${projectId}/videos/segments/${videoId}`,
       segmentVideoResponseSchema,
       {
         method: "GET",
@@ -448,11 +448,11 @@ export const apiClient = {
 
   regenerateVideoSegment: (
     projectId: string,
-    segmentId: string,
+    videoId: string,
     data: Record<string, never> = {},
   ) =>
     request<TaskDetail>(
-      `/projects/${projectId}/videos/segments/${segmentId}/regenerate`,
+      `/projects/${projectId}/videos/segments/${videoId}/regenerate`,
       taskDetailResponseSchema,
       {
         method: "POST",
@@ -462,11 +462,11 @@ export const apiClient = {
 
   approveVideoSegment: (
     projectId: string,
-    segmentId: string,
+    videoId: string,
     data: Record<string, never> = {},
   ) =>
     request<SegmentVideoRecord>(
-      `/projects/${projectId}/videos/segments/${segmentId}/approve`,
+      `/projects/${projectId}/videos/segments/${videoId}/approve`,
       segmentVideoResponseSchema,
       {
         method: "POST",

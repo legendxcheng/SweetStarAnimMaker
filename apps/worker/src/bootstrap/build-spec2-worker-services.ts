@@ -534,6 +534,9 @@ function createUnsupportedVideoRepository(): VideoRepository {
     findCurrentSegmentByProjectIdAndSegmentId() {
       throw new Error("Video repository is not configured");
     },
+    findCurrentSegmentByProjectIdAndSceneIdAndSegmentId() {
+      throw new Error("Video repository is not configured");
+    },
     updateSegment() {
       throw new Error("Video repository is not configured");
     },

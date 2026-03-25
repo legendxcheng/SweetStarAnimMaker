@@ -64,7 +64,7 @@ describe("sora video provider", () => {
     expect(result.modelName).toBe("sora-2-all");
   });
 
-  it("defaults to sora-2-all portrait large 15s when optional settings are omitted", async () => {
+  it("defaults to sora-2-all landscape large 15s when optional settings are omitted", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -86,7 +86,7 @@ describe("sora video provider", () => {
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     expect(request.model).toBe("sora-2-all");
-    expect(request.orientation).toBe("portrait");
+    expect(request.orientation).toBe("landscape");
     expect(request.size).toBe("large");
     expect(request.duration).toBe(15);
     expect(request.watermark).toBeUndefined();
@@ -220,6 +220,36 @@ describe("sora video provider", () => {
     expect(result.thumbnailUrl).toBe("https://cdn.example/output.webp");
   });
 
+  it("uses a 2 hour default polling timeout for long-running video generation tasks", async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "sora-2:task_123",
+        status: "pending",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createSoraVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const resultPromise = provider.waitForImageToVideoTask({
+      taskId: "sora-2:task_123",
+      pollIntervalMs: 600_000,
+    });
+    const expectation = expect(resultPromise).rejects.toThrow(
+      "Sora video provider polling timed out after 7200000ms for task sora-2:task_123",
+    );
+
+    await vi.advanceTimersByTimeAsync(7_200_001);
+
+    await expectation;
+    expect(fetchMock).toHaveBeenCalledTimes(13);
+  });
+
   it("surfaces response body and request id on failed submit requests", async () => {
     vi.stubGlobal(
       "fetch",
@@ -248,5 +278,33 @@ describe("sora video provider", () => {
     ).rejects.toThrow(
       'Sora video provider request failed with status 400; requestId=req_sora_400; body={"message":"bad images"}',
     );
+  });
+
+  it("aborts hung requests with the default timeout even when timeoutMs is omitted", async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn().mockImplementation((_url, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        });
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createSoraVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const resultPromise = provider.getImageToVideoTask({
+      taskId: "sora-2:task_hung",
+    });
+    const expectation = expect(resultPromise).rejects.toThrow(
+      "Sora video provider request timed out",
+    );
+
+    await vi.advanceTimersByTimeAsync(60_001);
+
+    await expectation;
   });
 });

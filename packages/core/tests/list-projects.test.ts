@@ -181,6 +181,7 @@ describe("list projects use case", () => {
       insertSegment: vi.fn(),
       findSegmentById: vi.fn(),
       findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+      findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
       updateSegment: vi.fn(),
     };
     const useCase = createListProjectsUseCase({

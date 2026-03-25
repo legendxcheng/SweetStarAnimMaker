@@ -17,5 +17,10 @@ export interface VideoRepository {
     projectId: string,
     segmentId: string,
   ): Promise<SegmentVideoRecordEntity | null> | SegmentVideoRecordEntity | null;
+  findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
+    projectId: string,
+    sceneId: string,
+    segmentId: string,
+  ): Promise<SegmentVideoRecordEntity | null> | SegmentVideoRecordEntity | null;
   updateSegment(segment: SegmentVideoRecordEntity): Promise<void> | void;
 }

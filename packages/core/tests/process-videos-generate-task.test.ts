@@ -157,6 +157,7 @@ describe("process videos generate task use case", () => {
       insertSegment: vi.fn(),
       findSegmentById: vi.fn(),
       findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+      findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
       updateSegment: vi.fn(),
     };
     const videoStorage = {
@@ -201,6 +202,8 @@ describe("process videos generate task use case", () => {
       expect.objectContaining({
         segmentId: "segment_1",
         status: "generating",
+        videoAssetPath: null,
+        thumbnailAssetPath: null,
       }),
     );
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith({

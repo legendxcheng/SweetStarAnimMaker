@@ -8,7 +8,7 @@ import type { VideoRepository } from "../ports/video-repository";
 
 export interface ApproveVideoSegmentInput {
   projectId: string;
-  segmentId: string;
+  videoId: string;
 }
 
 export interface ApproveVideoSegmentUseCase {
@@ -32,13 +32,10 @@ export function createApproveVideoSegmentUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const segment = await dependencies.videoRepository.findCurrentSegmentByProjectIdAndSegmentId(
-        project.id,
-        input.segmentId,
-      );
+      const segment = await dependencies.videoRepository.findSegmentById(input.videoId);
 
-      if (!segment) {
-        throw new SegmentVideoNotFoundError(input.segmentId);
+      if (!segment || segment.projectId !== project.id || segment.batchId !== project.currentVideoBatchId) {
+        throw new SegmentVideoNotFoundError(input.videoId);
       }
 
       const timestamp = dependencies.clock.now();

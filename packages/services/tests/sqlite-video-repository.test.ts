@@ -138,6 +138,74 @@ describe("sqlite video repository", () => {
 
     expect(repository.findSegmentById(segment.id)).toEqual(updatedSegment);
   });
+
+  it("finds the current segment by scene id and segment id when segment ids repeat across scenes", async () => {
+    const { projectRepository, repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_video_3",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-25T00:00:00.000Z",
+      updatedAt: "2026-03-25T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-25T00:00:00.000Z",
+      premiseBytes: 7,
+    });
+    const batch = createVideoBatchRecord({
+      id: "video_batch_3",
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: "image_batch_3",
+      sourceShotScriptId: "shot_script_3",
+      segmentCount: 2,
+      createdAt: "2026-03-25T01:00:00.000Z",
+      updatedAt: "2026-03-25T01:00:00.000Z",
+    });
+    const firstSceneSegment = createSegmentVideoRecord({
+      id: "video_segment_scene_1",
+      batchId: batch.id,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: batch.sourceImageBatchId,
+      sourceShotScriptId: batch.sourceShotScriptId,
+      segmentId: "segment_1",
+      sceneId: "scene_1",
+      order: 1,
+      status: "in_review",
+      updatedAt: "2026-03-25T01:05:00.000Z",
+      sourceTaskId: "task_segment_scene_1",
+    });
+    const secondSceneSegment = createSegmentVideoRecord({
+      id: "video_segment_scene_2",
+      batchId: batch.id,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: batch.sourceImageBatchId,
+      sourceShotScriptId: batch.sourceShotScriptId,
+      segmentId: "segment_1",
+      sceneId: "scene_2",
+      order: 2,
+      status: "in_review",
+      updatedAt: "2026-03-25T01:06:00.000Z",
+      sourceTaskId: "task_segment_scene_2",
+    });
+
+    projectRepository.insert(project);
+    repository.insertBatch(batch);
+    repository.insertSegment(firstSceneSegment);
+    repository.insertSegment(secondSceneSegment);
+    projectRepository.updateCurrentVideoBatch?.({
+      projectId: project.id,
+      batchId: batch.id,
+    });
+
+    expect(
+      repository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
+        project.id,
+        "scene_2",
+        "segment_1",
+      ),
+    ).toEqual(secondSceneSegment);
+  });
 });
 
 async function createRepositoryContext() {

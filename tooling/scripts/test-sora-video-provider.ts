@@ -249,7 +249,7 @@ function printUsage() {
 Options:
   --prompt <text>                 Default: make animate
   --model <name>                  Default: sora-2-all
-  --orientation <name>            Default: portrait
+  --orientation <name>            Default: landscape
   --size <name>                   Default: large
   --duration <seconds>            Default: 15
   --watermark                     Force watermark=true

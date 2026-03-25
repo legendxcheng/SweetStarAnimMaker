@@ -13,10 +13,14 @@ const currentBatchFileName = "current-batch.json";
 export interface CreateVideoStorageOptions {
   paths: LocalDataPaths;
   fetchFn?: typeof fetch;
+  downloadTimeoutMs?: number;
 }
+
+const DEFAULT_DOWNLOAD_TIMEOUT_MS = 60_000;
 
 export function createVideoStorage(options: CreateVideoStorageOptions): VideoStorage {
   const fetchFn = options.fetchFn ?? fetch;
+  const downloadTimeoutMs = options.downloadTimeoutMs ?? DEFAULT_DOWNLOAD_TIMEOUT_MS;
 
   return {
     async initializePromptTemplate(input) {
@@ -112,12 +116,15 @@ export function createVideoStorage(options: CreateVideoStorageOptions): VideoSto
 
       await ensureParentDirectory(videoPath);
       await ensureParentDirectory(metadataPath);
-      await fs.writeFile(videoPath, await downloadAsset(fetchFn, input.videoSourceUrl));
+      await fs.writeFile(videoPath, await downloadAsset(fetchFn, input.videoSourceUrl, downloadTimeoutMs));
       await fs.writeFile(metadataPath, JSON.stringify(input.metadata, null, 2), "utf8");
 
       if (input.thumbnailSourceUrl) {
         await ensureParentDirectory(thumbnailPath);
-        await fs.writeFile(thumbnailPath, await downloadAsset(fetchFn, input.thumbnailSourceUrl));
+        await fs.writeFile(
+          thumbnailPath,
+          await downloadAsset(fetchFn, input.thumbnailSourceUrl, downloadTimeoutMs),
+        );
       }
     },
     async writeVideoVersion(input) {
@@ -139,14 +146,17 @@ export function createVideoStorage(options: CreateVideoStorageOptions): VideoSto
 
       await ensureParentDirectory(videoVersionPath);
       await ensureParentDirectory(metadataVersionPath);
-      await fs.writeFile(videoVersionPath, await downloadAsset(fetchFn, input.videoSourceUrl));
+      await fs.writeFile(
+        videoVersionPath,
+        await downloadAsset(fetchFn, input.videoSourceUrl, downloadTimeoutMs),
+      );
       await fs.writeFile(metadataVersionPath, JSON.stringify(input.metadata, null, 2), "utf8");
 
       if (input.thumbnailSourceUrl) {
         await ensureParentDirectory(thumbnailVersionPath);
         await fs.writeFile(
           thumbnailVersionPath,
-          await downloadAsset(fetchFn, input.thumbnailSourceUrl),
+          await downloadAsset(fetchFn, input.thumbnailSourceUrl, downloadTimeoutMs),
         );
       }
     },
@@ -172,8 +182,25 @@ function isMissingFileError(error: unknown) {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
-async function downloadAsset(fetchFn: typeof fetch, url: string) {
-  const response = await fetchFn(url);
+async function downloadAsset(fetchFn: typeof fetch, url: string, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+
+  try {
+    response = await fetchFn(url, {
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Video asset download timed out");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error(`Failed to download asset: ${url}`);

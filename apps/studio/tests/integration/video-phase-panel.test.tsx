@@ -144,13 +144,16 @@ describe("VideoPhasePanel", () => {
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateVideoSegment).toHaveBeenCalledWith(
         "proj-1",
-        "segment-1",
+        "video-segment-1",
       );
     });
 
     fireEvent.click(screen.getByRole("button", { name: "审核通过当前片段" }));
     await waitFor(() => {
-      expect(apiModule.apiClient.approveVideoSegment).toHaveBeenCalledWith("proj-1", "segment-1");
+      expect(apiModule.apiClient.approveVideoSegment).toHaveBeenCalledWith(
+        "proj-1",
+        "video-segment-1",
+      );
     });
 
     fireEvent.click(screen.getByRole("button", { name: "全部视频审核通过" }));

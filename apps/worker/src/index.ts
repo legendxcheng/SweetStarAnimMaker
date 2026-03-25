@@ -87,6 +87,7 @@ export interface StartWorkerOptions {
   shotImageProvider?: ShotImageProvider;
   workerFactory?: (input: {
     queueName: string;
+    concurrency: number;
     processor(job: WorkerJob): Promise<void>;
   }) => Promise<WorkerInstance> | WorkerInstance;
 }
@@ -110,10 +111,12 @@ export async function startWorker(
     });
   const processors: Array<{
     queueName: string;
+    concurrency: number;
     processor(job: WorkerJob): Promise<void>;
   }> = [
     {
       queueName: masterPlotGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await services.processMasterPlotGenerateTask.execute({
           taskId: job.data.taskId,
@@ -122,6 +125,7 @@ export async function startWorker(
     },
     {
       queueName: storyboardGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await services.processStoryboardGenerateTask.execute({
           taskId: job.data.taskId,
@@ -130,6 +134,7 @@ export async function startWorker(
     },
     {
       queueName: characterSheetsGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await services.processCharacterSheetsGenerateTask.execute({
           taskId: job.data.taskId,
@@ -138,6 +143,7 @@ export async function startWorker(
     },
     {
       queueName: characterSheetGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await services.processCharacterSheetGenerateTask.execute({
           taskId: job.data.taskId,
@@ -151,6 +157,7 @@ export async function startWorker(
   if (shotScriptTaskProcessor) {
     processors.splice(2, 0, {
       queueName: shotScriptGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await shotScriptTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -163,6 +170,7 @@ export async function startWorker(
   if (shotScriptSegmentTaskProcessor) {
     processors.splice(3, 0, {
       queueName: shotScriptSegmentGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await shotScriptSegmentTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -175,6 +183,7 @@ export async function startWorker(
   if (imagesTaskProcessor) {
     processors.push({
       queueName: imagesGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await imagesTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -187,6 +196,7 @@ export async function startWorker(
   if (framePromptTaskProcessor) {
     processors.push({
       queueName: framePromptGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await framePromptTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -199,6 +209,7 @@ export async function startWorker(
   if (frameImageTaskProcessor) {
     processors.push({
       queueName: frameImageGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await frameImageTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -211,6 +222,7 @@ export async function startWorker(
   if (videosTaskProcessor) {
     processors.push({
       queueName: videosGenerateQueueName,
+      concurrency: 1,
       processor: async (job: WorkerJob) => {
         await videosTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -223,6 +235,7 @@ export async function startWorker(
   if (segmentVideoTaskProcessor) {
     processors.push({
       queueName: segmentVideoGenerateQueueName,
+      concurrency: 10,
       processor: async (job: WorkerJob) => {
         await segmentVideoTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -236,15 +249,17 @@ export async function startWorker(
         maxRetriesPerRequest: null,
       });
   const workers = await Promise.all(
-    processors.map(async ({ queueName, processor }) => {
+    processors.map(async ({ queueName, concurrency, processor }) => {
       return (
         (await options.workerFactory?.({
           queueName,
+          concurrency,
           processor,
         })) ??
         createBullMqWorker({
           connection: redisConnection!,
           queueName,
+          concurrency,
           processor,
         })
       );
@@ -263,10 +278,12 @@ export async function startWorker(
 function createBullMqWorker(input: {
   connection: IORedis;
   queueName: string;
+  concurrency: number;
   processor(job: WorkerJob): Promise<void>;
 }): WorkerInstance {
   const worker = new Worker(input.queueName, input.processor, {
     connection: input.connection,
+    concurrency: input.concurrency,
   });
 
   return {

@@ -24,7 +24,7 @@ const videoRegenerateAllowedStatuses = new Set([
 
 export interface RegenerateVideoSegmentInput {
   projectId: string;
-  segmentId: string;
+  videoId: string;
 }
 
 export interface RegenerateVideoSegmentUseCase {
@@ -58,13 +58,14 @@ export function createRegenerateVideoSegmentUseCase(
         throw new ProjectValidationError("Video regenerate requires images_approved");
       }
 
-      const currentSegment = await dependencies.videoRepository.findCurrentSegmentByProjectIdAndSegmentId(
-        project.id,
-        input.segmentId,
-      );
+      const currentSegment = await dependencies.videoRepository.findSegmentById(input.videoId);
 
-      if (!currentSegment) {
-        throw new SegmentVideoNotFoundError(input.segmentId);
+      if (
+        !currentSegment ||
+        currentSegment.projectId !== project.id ||
+        currentSegment.batchId !== project.currentVideoBatchId
+      ) {
+        throw new SegmentVideoNotFoundError(input.videoId);
       }
 
       const shotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
@@ -75,24 +76,33 @@ export function createRegenerateVideoSegmentUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
-      const segment = shotScript.segments.find((item) => item.segmentId === input.segmentId);
+      const segment = shotScript.segments.find(
+        (item) =>
+          item.segmentId === currentSegment.segmentId && item.sceneId === currentSegment.sceneId,
+      );
 
       if (!segment) {
-        throw new SegmentVideoNotFoundError(input.segmentId);
+        throw new SegmentVideoNotFoundError(input.videoId);
       }
 
       const frames = await dependencies.shotImageRepository.listFramesByBatchId(
         currentSegment.sourceImageBatchId,
       );
       const startFrame = frames.find(
-        (frame) => frame.segmentId === input.segmentId && frame.frameType === "start_frame",
+        (frame) =>
+          frame.sceneId === currentSegment.sceneId &&
+          frame.segmentId === currentSegment.segmentId &&
+          frame.frameType === "start_frame",
       );
       const endFrame = frames.find(
-        (frame) => frame.segmentId === input.segmentId && frame.frameType === "end_frame",
+        (frame) =>
+          frame.sceneId === currentSegment.sceneId &&
+          frame.segmentId === currentSegment.segmentId &&
+          frame.frameType === "end_frame",
       );
 
       if (!startFrame || !endFrame) {
-        throw new Error(`Approved frame pair missing for segment ${input.segmentId}`);
+        throw new Error(`Approved frame pair missing for video ${input.videoId}`);
       }
 
       const timestamp = dependencies.clock.now();

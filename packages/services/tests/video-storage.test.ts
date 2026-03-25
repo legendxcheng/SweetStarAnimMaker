@@ -105,4 +105,56 @@ describe("video storage", () => {
       ),
     ).resolves.toContain('"version": 2');
   });
+
+  it("aborts hung asset downloads instead of hanging forever", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-videos-timeout-"));
+    tempDirs.push(tempDir);
+    const paths = createLocalDataPaths(tempDir);
+    const fetchFn = vi.fn().mockImplementation((_url, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        });
+      });
+    });
+    const storage = createVideoStorage({
+      paths,
+      fetchFn: fetchFn as unknown as typeof fetch,
+      downloadTimeoutMs: 10,
+    });
+    const batch = createVideoBatchRecord({
+      id: "video_batch_timeout",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceImageBatchId: "image_batch_1",
+      sourceShotScriptId: "shot_script_1",
+      segmentCount: 1,
+      createdAt: "2026-03-25T00:00:00.000Z",
+      updatedAt: "2026-03-25T00:00:00.000Z",
+    });
+    const segment = createSegmentVideoRecord({
+      id: "video_segment_timeout",
+      batchId: batch.id,
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceImageBatchId: batch.sourceImageBatchId,
+      sourceShotScriptId: batch.sourceShotScriptId,
+      segmentId: "segment_1",
+      sceneId: "scene_1",
+      order: 1,
+      status: "in_review",
+      updatedAt: "2026-03-25T00:05:00.000Z",
+      sourceTaskId: "task_segment_timeout",
+    });
+
+    const writePromise = storage.writeCurrentVideo({
+      segment,
+      videoSourceUrl: "https://cdn.example/hung-output.mp4",
+      thumbnailSourceUrl: null,
+      metadata: {
+        provider: "vector-engine",
+      },
+    });
+    await expect(writePromise).rejects.toThrow("Video asset download timed out");
+  });
 });

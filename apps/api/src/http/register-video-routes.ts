@@ -30,33 +30,33 @@ export function registerVideoRoutes(
     });
   });
 
-  app.get("/projects/:projectId/videos/segments/:segmentId", async (request) => {
-    const params = request.params as { projectId: string; segmentId: string };
+  app.get("/projects/:projectId/videos/segments/:videoId", async (request) => {
+    const params = request.params as { projectId: string; videoId: string };
 
     return services.getVideo.execute({
       projectId: params.projectId,
-      segmentId: params.segmentId,
+      videoId: params.videoId,
     });
   });
 
-  app.post("/projects/:projectId/videos/segments/:segmentId/regenerate", async (request, reply) => {
-    const params = request.params as { projectId: string; segmentId: string };
+  app.post("/projects/:projectId/videos/segments/:videoId/regenerate", async (request, reply) => {
+    const params = request.params as { projectId: string; videoId: string };
     regenerateVideoSegmentRequestSchema.parse(request.body ?? {});
     const task = await services.regenerateVideoSegment.execute({
       projectId: params.projectId,
-      segmentId: params.segmentId,
+      videoId: params.videoId,
     });
 
     return reply.status(201).send(task);
   });
 
-  app.post("/projects/:projectId/videos/segments/:segmentId/approve", async (request) => {
-    const params = request.params as { projectId: string; segmentId: string };
+  app.post("/projects/:projectId/videos/segments/:videoId/approve", async (request) => {
+    const params = request.params as { projectId: string; videoId: string };
     approveVideoSegmentRequestSchema.parse(request.body ?? {});
 
     return services.approveVideoSegment.execute({
       projectId: params.projectId,
-      segmentId: params.segmentId,
+      videoId: params.videoId,
     });
   });
 

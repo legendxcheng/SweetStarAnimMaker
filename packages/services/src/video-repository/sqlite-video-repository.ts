@@ -104,6 +104,20 @@ export function createSqliteVideoRepository(
 
       return row ? fromSegmentRow(row) : null;
     },
+    findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(projectId, sceneId, segmentId) {
+      const row = options.db
+        .prepare(
+          `
+            SELECT segment.*
+            FROM projects project
+            JOIN segment_videos segment ON segment.batch_id = project.current_video_batch_id
+            WHERE project.id = ? AND segment.scene_id = ? AND segment.segment_id = ?
+          `,
+        )
+        .get(projectId, sceneId, segmentId) as SegmentVideoRow | undefined;
+
+      return row ? fromSegmentRow(row) : null;
+    },
     updateSegment(segment) {
       options.db
         .prepare(

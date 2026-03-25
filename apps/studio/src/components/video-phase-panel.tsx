@@ -146,10 +146,10 @@ export function VideoPhasePanel({
     setListError(null);
   }
 
-  async function handleRegenerate(segmentId: string) {
+  async function handleRegenerate(videoId: string) {
     try {
-      setActionBusy({ kind: "regenerate", segmentId });
-      await apiClient.regenerateVideoSegment(project.id, segmentId);
+      setActionBusy({ kind: "regenerate", segmentId: videoId });
+      await apiClient.regenerateVideoSegment(project.id, videoId);
       await refreshProject();
       await refreshVideos();
       setActionError(null);
@@ -160,10 +160,10 @@ export function VideoPhasePanel({
     }
   }
 
-  async function handleApprove(segmentId: string) {
+  async function handleApprove(videoId: string) {
     try {
-      setActionBusy({ kind: "approve", segmentId });
-      await apiClient.approveVideoSegment(project.id, segmentId);
+      setActionBusy({ kind: "approve", segmentId: videoId });
+      await apiClient.approveVideoSegment(project.id, videoId);
       await refreshProject();
       await refreshVideos();
       setActionError(null);
@@ -309,7 +309,7 @@ export function VideoPhasePanel({
 
       {videos.map((segment) => {
         const isBusy =
-          actionBusy?.kind === "approve-all" || actionBusy?.segmentId === segment.segmentId;
+          actionBusy?.kind === "approve-all" || actionBusy?.segmentId === segment.id;
 
         return (
           <article key={segment.id} className={cardClass}>
@@ -378,7 +378,7 @@ export function VideoPhasePanel({
                   <button
                     type="button"
                     onClick={() => {
-                      void handleRegenerate(segment.segmentId);
+                      void handleRegenerate(segment.id);
                     }}
                     disabled={isBusy}
                     className={getButtonClassName({ variant: "warning" })}
@@ -388,7 +388,7 @@ export function VideoPhasePanel({
                   <button
                     type="button"
                     onClick={() => {
-                      void handleApprove(segment.segmentId);
+                      void handleApprove(segment.id);
                     }}
                     disabled={isBusy || segment.status !== "in_review"}
                     className={getButtonClassName({ variant: "success" })}

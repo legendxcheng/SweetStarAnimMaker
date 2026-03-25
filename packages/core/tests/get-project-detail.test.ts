@@ -201,6 +201,7 @@ describe("get project detail use case", () => {
         insertSegment: vi.fn(),
         findSegmentById: vi.fn(),
         findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+        findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
         updateSegment: vi.fn(),
       },
     });
@@ -307,6 +308,7 @@ describe("get project detail use case", () => {
         insertSegment: vi.fn(),
         findSegmentById: vi.fn(),
         findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+        findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
         updateSegment: vi.fn(),
       },
     });
