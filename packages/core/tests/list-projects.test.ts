@@ -20,6 +20,7 @@ describe("list projects use case", () => {
           currentStoryboardId: null,
           currentShotScriptId: "shot_script_20260322_ab12cd",
           currentImageBatchId: "image_batch_1",
+          currentVideoBatchId: "video_batch_1",
           status: "master_plot_in_review",
           createdAt: "2026-03-20T10:00:00.000Z",
           updatedAt: "2026-03-20T10:30:00.000Z",
@@ -37,6 +38,7 @@ describe("list projects use case", () => {
           currentStoryboardId: null,
           currentShotScriptId: null,
           currentImageBatchId: null,
+          currentVideoBatchId: null,
           status: "premise_ready",
           createdAt: "2026-03-20T11:00:00.000Z",
           updatedAt: "2026-03-20T11:05:00.000Z",
@@ -49,6 +51,7 @@ describe("list projects use case", () => {
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
       updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const masterPlotStorage = {
@@ -162,6 +165,24 @@ describe("list projects use case", () => {
       updateFrame: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
     };
+    const videoRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn().mockResolvedValue({
+        id: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_20260322_ab12cd",
+        segmentCount: 1,
+        updatedAt: "2026-03-25T12:00:00.000Z",
+      }),
+      findCurrentBatchByProjectId: vi.fn(),
+      listSegmentsByBatchId: vi.fn().mockResolvedValue([
+        { id: "video_segment_1", status: "approved" },
+      ]),
+      insertSegment: vi.fn(),
+      findSegmentById: vi.fn(),
+      findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+      updateSegment: vi.fn(),
+    };
     const useCase = createListProjectsUseCase({
       repository,
       masterPlotStorage,
@@ -169,6 +190,7 @@ describe("list projects use case", () => {
       shotScriptStorage,
       characterSheetRepository,
       shotImageRepository,
+      videoRepository,
     });
 
     const result = await useCase.execute();
@@ -182,9 +204,11 @@ describe("list projects use case", () => {
     expect(result[0].currentShotScript?.shotCount).toBe(1);
     expect(result[0].currentImageBatch?.id).toBe("image_batch_1");
     expect(result[0].currentImageBatch?.approvedFrameCount).toBe(1);
+    expect(result[0].currentVideoBatch?.approvedSegmentCount).toBe(1);
     expect(result[1].currentMasterPlot).toBeNull();
     expect(result[1].currentCharacterSheetBatch).toBeNull();
     expect(result[1].currentShotScript).toBeNull();
     expect(result[1].currentImageBatch).toBeNull();
+    expect(result[1].currentVideoBatch).toBeNull();
   });
 });

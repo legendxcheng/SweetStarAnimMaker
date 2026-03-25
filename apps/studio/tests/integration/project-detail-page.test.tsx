@@ -199,6 +199,27 @@ const imagesGeneratingProject = {
   },
 };
 
+const videosInReviewProject = {
+  ...shotScriptApprovedProject,
+  status: "videos_in_review" as const,
+  currentImageBatch: {
+    id: "image-batch-1",
+    sourceShotScriptId: "shot-script-1",
+    segmentCount: 1,
+    totalFrameCount: 2,
+    approvedFrameCount: 2,
+    updatedAt: "2024-01-01T00:00:09Z",
+  },
+  currentVideoBatch: {
+    id: "video-batch-1",
+    sourceImageBatchId: "image-batch-1",
+    sourceShotScriptId: "shot-script-1",
+    segmentCount: 1,
+    approvedSegmentCount: 0,
+    updatedAt: "2024-01-01T00:00:10Z",
+  },
+};
+
 const generatingShotScriptProject = {
   ...storyboardApprovedProject,
   status: "shot_script_generating" as const,
@@ -535,6 +556,46 @@ describe("Project Detail Page", () => {
 
     expect(screen.getByRole("heading", { name: "画面工作区" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重新生成" })).toBeEnabled();
+  });
+
+  it("auto-selects the videos phase when the project already has a current video batch", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(videosInReviewProject);
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: videosInReviewProject.currentVideoBatch,
+      segments: [
+        {
+          id: "video-segment-1",
+          projectId: "proj-1",
+          batchId: "video-batch-1",
+          sourceImageBatchId: "image-batch-1",
+          sourceShotScriptId: "shot-script-1",
+          segmentId: "segment-1",
+          sceneId: "scene-1",
+          order: 1,
+          status: "in_review" as const,
+          videoAssetPath: "videos/batches/video-batch-1/segments/segment-1/current.mp4",
+          thumbnailAssetPath: "videos/batches/video-batch-1/segments/segment-1/thumbnail.webp",
+          durationSec: 6,
+          provider: "vector-engine",
+          model: "sora-2-all",
+          updatedAt: "2024-01-01T00:00:12Z",
+          approvedAt: null,
+          sourceTaskId: "task-video-segment-1",
+        },
+      ],
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "视频" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
+
+    expect(screen.getByRole("heading", { name: "视频工作区" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "成片工作区" })).not.toBeInTheDocument();
   });
 
   it("enables the image phase when the current shot script summary is approved even before project status catches up", async () => {

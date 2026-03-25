@@ -23,6 +23,10 @@ export {
   createShotImageStorage,
   type CreateShotImageStorageOptions,
 } from "./storage/shot-image-storage";
+export {
+  createVideoStorage,
+  type CreateVideoStorageOptions,
+} from "./storage/video-storage";
 export { createLocalDataPaths, type LocalDataPaths } from "./storage/local-data-paths";
 export { createSqliteDb, type CreateSqliteDbOptions, type SqliteDatabase } from "./project-repository/sqlite-db";
 export { createSqliteProjectRepository, type CreateSqliteProjectRepositoryOptions } from "./project-repository/sqlite-project-repository";
@@ -37,6 +41,11 @@ export {
   type CreateSqliteShotImageRepositoryOptions,
 } from "./shot-image-repository/sqlite-shot-image-repository";
 export { initializeSqliteShotImageSchema } from "./shot-image-repository/sqlite-shot-image-schema";
+export {
+  createSqliteVideoRepository,
+  type CreateSqliteVideoRepositoryOptions,
+} from "./video-repository/sqlite-video-repository";
+export { initializeSqliteVideoSchema } from "./video-repository/sqlite-video-schema";
 export {
   createBullMqTaskQueue,
   type CreateBullMqTaskQueueOptions,
@@ -61,7 +70,9 @@ export {
 } from "./providers/kling-video-provider";
 export {
   createSoraVideoProvider,
+  createSoraStageVideoProvider,
   type CreateSoraVideoProviderOptions,
+  type CreateSoraStageVideoProviderOptions,
   type GetSoraImageToVideoTaskInput,
   type GetSoraImageToVideoTaskResult,
   type SoraVideoProvider,

@@ -409,7 +409,7 @@ function assertChineseFirstShots(
       shot.transitionHint,
       shot.continuityNotes,
     ])
-    .filter((value): value is string => typeof value === "string" && value.trim())
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     .join("\n");
 
   assertContainsChinese(reviewText, "shots");

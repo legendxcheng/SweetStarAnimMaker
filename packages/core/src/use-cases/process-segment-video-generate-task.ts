@@ -1,0 +1,198 @@
+import type { SegmentVideoGenerateTaskInput } from "../domain/task";
+
+import { ProjectNotFoundError } from "../errors/project-errors";
+import { TaskNotFoundError } from "../errors/task-errors";
+import { SegmentVideoNotFoundError } from "../errors/video-errors";
+import type { Clock } from "../ports/clock";
+import type { ProjectRepository } from "../ports/project-repository";
+import type { TaskFileStorage } from "../ports/task-file-storage";
+import type { TaskRepository } from "../ports/task-repository";
+import type { VideoProvider } from "../ports/video-provider";
+import type { VideoRepository } from "../ports/video-repository";
+import type { VideoStorage } from "../ports/video-storage";
+
+export interface ProcessSegmentVideoGenerateTaskInput {
+  taskId: string;
+}
+
+export interface ProcessSegmentVideoGenerateTaskUseCase {
+  execute(input: ProcessSegmentVideoGenerateTaskInput): Promise<void>;
+}
+
+export interface ProcessSegmentVideoGenerateTaskUseCaseDependencies {
+  taskRepository: TaskRepository;
+  projectRepository: ProjectRepository;
+  taskFileStorage: TaskFileStorage;
+  videoRepository: VideoRepository;
+  videoStorage: VideoStorage;
+  videoProvider: VideoProvider;
+  clock: Clock;
+}
+
+export function createProcessSegmentVideoGenerateTaskUseCase(
+  dependencies: ProcessSegmentVideoGenerateTaskUseCaseDependencies,
+): ProcessSegmentVideoGenerateTaskUseCase {
+  return {
+    async execute(input) {
+      const task = await dependencies.taskRepository.findById(input.taskId);
+
+      if (!task) {
+        throw new TaskNotFoundError(input.taskId);
+      }
+
+      const startedAt = dependencies.clock.now();
+      await dependencies.taskRepository.markRunning({
+        taskId: task.id,
+        updatedAt: startedAt,
+        startedAt,
+      });
+
+      const taskInput = (await dependencies.taskFileStorage.readTaskInput({
+        task,
+      })) as SegmentVideoGenerateTaskInput;
+      const project = await dependencies.projectRepository.findById(task.projectId);
+
+      if (!project) {
+        throw new ProjectNotFoundError(task.projectId);
+      }
+
+      const currentSegment = await dependencies.videoRepository.findCurrentSegmentByProjectIdAndSegmentId(
+        project.id,
+        taskInput.segmentId,
+      );
+
+      if (!currentSegment) {
+        throw new SegmentVideoNotFoundError(taskInput.segmentId);
+      }
+
+      const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
+        storageDir: project.storageDir,
+        promptTemplateKey: taskInput.promptTemplateKey,
+      });
+      const startFramePath = await dependencies.videoStorage.resolveProjectAssetPath({
+        projectStorageDir: project.storageDir,
+        assetRelPath: taskInput.startFrame.imageAssetPath ?? "",
+      });
+      const endFramePath = await dependencies.videoStorage.resolveProjectAssetPath({
+        projectStorageDir: project.storageDir,
+        assetRelPath: taskInput.endFrame.imageAssetPath ?? "",
+      });
+      const promptVariables = {
+        segment: taskInput.segment,
+        startFrame: {
+          imageAssetPath: taskInput.startFrame.imageAssetPath,
+          width: taskInput.startFrame.imageWidth ?? null,
+          height: taskInput.startFrame.imageHeight ?? null,
+        },
+        endFrame: {
+          imageAssetPath: taskInput.endFrame.imageAssetPath,
+          width: taskInput.endFrame.imageWidth ?? null,
+          height: taskInput.endFrame.imageHeight ?? null,
+        },
+      };
+      const promptText = renderSegmentVideoPrompt(promptTemplate, {
+        startFramePath,
+        endFramePath,
+        segmentSummary: taskInput.segment.summary,
+        shotsSummary: taskInput.segment.shots
+          .map((shot) => `${shot.shotCode}: ${shot.action}`)
+          .join("; "),
+      });
+
+      await dependencies.videoStorage.writePromptSnapshot({
+        taskStorageDir: task.storageDir,
+        promptText,
+        promptVariables,
+      });
+
+      const providerResult = await dependencies.videoProvider.generateSegmentVideo({
+        projectId: project.id,
+        segmentId: taskInput.segmentId,
+        promptText,
+        startFramePath,
+        endFramePath,
+        durationSec: taskInput.segment.durationSec,
+        model: "sora-2-all",
+      });
+
+      await dependencies.videoStorage.writeRawResponse({
+        taskStorageDir: task.storageDir,
+        rawResponse: providerResult.rawResponse,
+      });
+
+      const finishedAt = dependencies.clock.now();
+      const updatedSegment = {
+        ...currentSegment,
+        status: "in_review" as const,
+        videoAssetPath: currentSegment.currentVideoRelPath,
+        thumbnailAssetPath: providerResult.thumbnailUrl ? currentSegment.thumbnailRelPath : null,
+        durationSec: providerResult.durationSec ?? taskInput.segment.durationSec ?? null,
+        provider: providerResult.provider,
+        model: providerResult.model,
+        updatedAt: finishedAt,
+        sourceTaskId: task.id,
+      };
+
+      await dependencies.videoStorage.writeCurrentVideo({
+        segment: updatedSegment,
+        videoSourceUrl: providerResult.videoUrl,
+        thumbnailSourceUrl: providerResult.thumbnailUrl,
+        metadata: {
+          provider: providerResult.provider,
+          model: providerResult.model,
+          rawResponse: providerResult.rawResponse,
+          durationSec: updatedSegment.durationSec,
+        },
+      });
+      await dependencies.videoStorage.writeVideoVersion({
+        segment: updatedSegment,
+        versionTag: task.id,
+        videoSourceUrl: providerResult.videoUrl,
+        thumbnailSourceUrl: providerResult.thumbnailUrl,
+        metadata: {
+          provider: providerResult.provider,
+          model: providerResult.model,
+          rawResponse: providerResult.rawResponse,
+          durationSec: updatedSegment.durationSec,
+        },
+      });
+      await dependencies.videoRepository.updateSegment(updatedSegment);
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: "videos_in_review",
+        updatedAt: finishedAt,
+      });
+      await dependencies.taskFileStorage.writeTaskOutput({
+        task,
+        output: {
+          segmentId: updatedSegment.segmentId,
+          videoAssetPath: updatedSegment.videoAssetPath,
+          thumbnailAssetPath: updatedSegment.thumbnailAssetPath,
+          provider: updatedSegment.provider,
+          model: updatedSegment.model,
+        },
+      });
+      await dependencies.taskRepository.markSucceeded({
+        taskId: task.id,
+        updatedAt: finishedAt,
+        finishedAt,
+      });
+    },
+  };
+}
+
+function renderSegmentVideoPrompt(
+  template: string,
+  vars: {
+    startFramePath: string;
+    endFramePath: string;
+    segmentSummary: string;
+    shotsSummary: string;
+  },
+) {
+  return template
+    .replaceAll("{{start_frame_path}}", vars.startFramePath)
+    .replaceAll("{{end_frame_path}}", vars.endFramePath)
+    .replaceAll("{{segment_summary}}", vars.segmentSummary)
+    .replaceAll("{{shots_summary}}", vars.shotsSummary);
+}

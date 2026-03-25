@@ -4,13 +4,13 @@ import {
   type ParsedShotScriptSegmentSelector,
 } from "@sweet-star/shared";
 
-export function resolveShotScriptSegment(
-  segments: Array<{
-    sceneId: string;
-    segmentId: string;
-  }>,
+export function resolveShotScriptSegment<T extends { sceneId: string; segmentId: string }>(
+  segments: T[],
   selectorText: string,
-) {
+): {
+  selector: ParsedShotScriptSegmentSelector;
+  segment: T;
+} {
   const selector = parseShotScriptSegmentSelector(selectorText);
   const matches = segments.filter((segment) => matchesShotScriptSegmentSelector(segment, selector));
 

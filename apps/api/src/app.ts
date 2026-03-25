@@ -10,6 +10,7 @@ import { registerProjectRoutes } from "./http/register-project-routes";
 import { registerShotScriptRoutes } from "./http/register-shot-script-routes";
 import { registerStoryboardRoutes } from "./http/register-storyboard-routes";
 import { registerTaskRoutes } from "./http/register-task-routes";
+import { registerVideoRoutes } from "./http/register-video-routes";
 import type { TaskIdGenerator, TaskQueue } from "@sweet-star/core";
 
 export interface BuildAppOptions {
@@ -50,6 +51,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   registerProjectRoutes(app, services);
   registerCharacterSheetRoutes(app, services);
   registerImageRoutes(app, services);
+  registerVideoRoutes(app, services);
   registerShotScriptRoutes(app, services);
   registerStoryboardRoutes(app, services);
   registerTaskRoutes(app, services);

@@ -9,6 +9,8 @@ export const shotScriptSegmentGenerateQueueName = "shot-script-segment-generate"
 export const imagesGenerateQueueName = "images-generate";
 export const framePromptGenerateQueueName = "frame-prompt-generate";
 export const frameImageGenerateQueueName = "frame-image-generate";
+export const videosGenerateQueueName = "videos-generate";
+export const segmentVideoGenerateQueueName = "segment-video-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -125,7 +127,7 @@ export interface ShotScriptGenerateTaskInput {
     promptTextCurrent: string;
     imageAssetPath?: string | null;
   }>;
-  promptTemplateKey: "shot_script.segment.generate";
+  promptTemplateKey: "shot_script.generate" | "shot_script.segment.generate";
 }
 
 export interface ShotScriptSegmentSnapshot {
@@ -192,6 +194,55 @@ export interface FrameImageGenerateTaskInput {
   taskType: "frame_image_generate";
   batchId: string;
   frameId: string;
+}
+
+export interface VideosGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "videos_generate";
+  sourceImageBatchId: string;
+  imageBatch: {
+    id: string;
+    sourceShotScriptId: string;
+    segmentCount: number;
+    totalFrameCount: number;
+    approvedFrameCount: number;
+    updatedAt: string;
+  };
+  sourceShotScriptId: string;
+  shotScript: import("@sweet-star/shared").CurrentShotScript;
+  sourceStoryboardId?: string;
+  storyboard?: {
+    id: string;
+    title: string | null;
+    episodeTitle: string | null;
+  };
+  promptTemplateKey: "segment_video.generate";
+}
+
+export interface SegmentVideoGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "segment_video_generate";
+  batchId: string;
+  sourceImageBatchId: string;
+  sourceShotScriptId: string;
+  segmentId: string;
+  sceneId: string;
+  segment: import("@sweet-star/shared").ShotScriptSegment;
+  startFrame: {
+    id: string;
+    imageAssetPath: string | null;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  };
+  endFrame: {
+    id: string;
+    imageAssetPath: string | null;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  };
+  promptTemplateKey: "segment_video.generate";
 }
 
 export interface CreateTaskRecordInput {

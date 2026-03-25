@@ -4,6 +4,7 @@ import type {
   CurrentMasterPlot,
   CurrentShotScriptSummary,
   CurrentStoryboardSummary,
+  CurrentVideoBatchSummary,
   ProjectSummary,
 } from "@sweet-star/shared";
 
@@ -16,6 +17,7 @@ export function toProjectSummaryDto(
   currentStoryboard: CurrentStoryboardSummary | null = null,
   currentShotScript: CurrentShotScriptSummary | null = null,
   currentImageBatch: CurrentImageBatch | null = null,
+  currentVideoBatch: CurrentVideoBatchSummary | null = null,
 ): ProjectSummary {
   return {
     id: project.id,
@@ -30,5 +32,6 @@ export function toProjectSummaryDto(
     currentStoryboard,
     currentShotScript,
     currentImageBatch,
+    currentVideoBatch,
   };
 }

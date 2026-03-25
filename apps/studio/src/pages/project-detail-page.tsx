@@ -11,6 +11,7 @@ import { PremisePhasePanel } from "../components/premise-phase-panel";
 import { ProjectPhaseNav } from "../components/project-phase-nav";
 import { ShotScriptPhasePanel } from "../components/shot-script-phase-panel";
 import { StoryboardPhasePanel } from "../components/storyboard-phase-panel";
+import { VideoPhasePanel } from "../components/video-phase-panel";
 import { useTaskPolling } from "../hooks/use-task-polling";
 import { apiClient } from "../services/api-client";
 import { getButtonClassName } from "../styles/button-styles";
@@ -30,6 +31,7 @@ const PROJECT_PHASES = [
   { key: "storyboard", label: "分镜" },
   { key: "shot_script", label: "镜头脚本" },
   { key: "images", label: "画面" },
+  { key: "videos", label: "视频" },
   { key: "final_cut", label: "成片" },
 ] as const;
 
@@ -38,6 +40,15 @@ type ProjectPhaseKey = (typeof PROJECT_PHASES)[number]["key"];
 function getDefaultProjectPhase(project: ProjectDetail | null): ProjectPhaseKey {
   if (!project) {
     return "premise";
+  }
+
+  if (
+    project.status === "videos_generating" ||
+    project.status === "videos_in_review" ||
+    project.status === "videos_approved" ||
+    project.currentVideoBatch != null
+  ) {
+    return "videos";
   }
 
   if (
@@ -156,12 +167,35 @@ function canRegenerateImages(project: ProjectDetail | null) {
   return hasApprovedShotScript(project);
 }
 
+function hasApprovedImages(project: ProjectDetail | null) {
+  if (!project?.currentImageBatch) {
+    return false;
+  }
+
+  return (
+    project.currentImageBatch.totalFrameCount > 0 &&
+    project.currentImageBatch.approvedFrameCount === project.currentImageBatch.totalFrameCount
+  );
+}
+
 function isImagesPhaseEnabled(project: ProjectDetail | null) {
   if (!project) {
     return false;
   }
 
   return canRegenerateImages(project) || project.currentImageBatch != null;
+}
+
+function canGenerateVideos(project: ProjectDetail | null) {
+  return hasApprovedImages(project) && project?.currentVideoBatch == null;
+}
+
+function isVideosPhaseEnabled(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return hasApprovedImages(project) || project.currentVideoBatch != null;
 }
 
 export function ProjectDetailPage() {
@@ -215,7 +249,8 @@ export function ProjectDetailPage() {
         project.status !== "character_sheets_generating" &&
         project.status !== "storyboard_generating" &&
         project.status !== "shot_script_generating" &&
-        project.status !== "images_generating")
+        project.status !== "images_generating" &&
+        project.status !== "videos_generating")
     ) {
       return;
     }
@@ -318,6 +353,20 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateVideos = async () => {
+    if (!projectId || creatingTask || !canGenerateVideos(project)) return;
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createVideosGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const phaseItems = PROJECT_PHASES.map((phase) => ({
     ...phase,
     enabled:
@@ -326,7 +375,9 @@ export function ProjectDetailPage() {
       (phase.key === "character_sheets" && isCharacterSheetsPhaseEnabled(project)) ||
       (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)) ||
       (phase.key === "shot_script" && isShotScriptPhaseEnabled(project)) ||
-      (phase.key === "images" && isImagesPhaseEnabled(project)),
+      (phase.key === "images" && isImagesPhaseEnabled(project)) ||
+      (phase.key === "videos" && isVideosPhaseEnabled(project)) ||
+      (phase.key === "final_cut" && project?.currentVideoBatch != null),
   }));
 
   return (
@@ -406,7 +457,7 @@ export function ProjectDetailPage() {
                       void handleRegenerateShotScript();
                     }}
                   />
-                ) : (
+                ) : selectedPhase === "images" ? (
                   <ImagePhasePanel
                     project={currentProject}
                     task={task}
@@ -418,6 +469,25 @@ export function ProjectDetailPage() {
                     }}
                     onProjectRefresh={loadProject}
                   />
+                ) : selectedPhase === "videos" ? (
+                  <VideoPhasePanel
+                    project={currentProject}
+                    task={task}
+                    taskError={taskError}
+                    creatingTask={creatingTask}
+                    disableGenerate={creatingTask || !canGenerateVideos(currentProject)}
+                    onGenerate={() => {
+                      void handleGenerateVideos();
+                    }}
+                    onProjectRefresh={loadProject}
+                  />
+                ) : (
+                  <section className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5">
+                    <h3 className="text-lg font-semibold text-(--color-text-primary)">成片工作区</h3>
+                    <p className="text-sm text-(--color-text-muted) mt-2">
+                      `final_cut` 仍是预留阶段，后续会在这里接入时间轴拼接、音频与最终导出。
+                    </p>
+                  </section>
                 )}
               </div>
             </div>

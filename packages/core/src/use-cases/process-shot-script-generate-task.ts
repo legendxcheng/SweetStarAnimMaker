@@ -1,3 +1,5 @@
+import type { CurrentShotScript } from "@sweet-star/shared";
+
 import { createShotScriptShell, toCurrentShotScriptSummary } from "../domain/shot-script";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
@@ -169,12 +171,11 @@ export function createProcessShotScriptGenerateTaskUseCase(
           promptVariables,
         });
 
-        const providerResult = await (dependencies.shotScriptProvider as ShotScriptProvider & {
-          generateShotScript: (input: {
-            promptText: string;
-            variables: Record<string, unknown>;
-          }) => Promise<{ rawResponse: string; shotScript: Record<string, unknown> }>;
-        }).generateShotScript({
+        if (!dependencies.shotScriptProvider.generateShotScript) {
+          throw new Error("Shot script provider does not support batch shot script generation");
+        }
+
+        const providerResult = await dependencies.shotScriptProvider.generateShotScript({
           promptText,
           variables: promptVariables,
         });
@@ -191,16 +192,16 @@ export function createProcessShotScriptGenerateTaskUseCase(
           sourceTaskId: task.id,
           updatedAt: finishedAt,
           approvedAt: null,
-        };
-        const summary = toCurrentShotScriptSummary(shotScript as never);
+        } as CurrentShotScript;
+        const summary = toCurrentShotScriptSummary(shotScript);
 
         await dependencies.shotScriptStorage.writeCurrentShotScript({
           storageDir: project.storageDir,
-          shotScript: shotScript as never,
+          shotScript,
         });
         await dependencies.projectRepository.updateCurrentShotScript({
           projectId: project.id,
-          shotScriptId: shotScript.id as string,
+          shotScriptId: shotScript.id,
         });
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,

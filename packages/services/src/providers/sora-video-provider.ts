@@ -1,3 +1,4 @@
+import type { VideoProvider } from "@sweet-star/core";
 import type { ReferenceImageUploader } from "../image-upload/reference-image-uploader";
 
 export interface CreateSoraVideoProviderOptions {
@@ -63,6 +64,8 @@ export interface SoraVideoProvider {
     input: WaitForSoraImageToVideoTaskInput,
   ): Promise<GetSoraImageToVideoTaskResult> | GetSoraImageToVideoTaskResult;
 }
+
+export interface CreateSoraStageVideoProviderOptions extends CreateSoraVideoProviderOptions {}
 
 const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
 const DEFAULT_MODEL_NAME = "sora-2-all";
@@ -188,6 +191,50 @@ export function createSoraVideoProvider(
 
         await delay(pollIntervalMs);
       }
+    },
+  };
+}
+
+export function createSoraStageVideoProvider(
+  options: CreateSoraStageVideoProviderOptions = {},
+): VideoProvider {
+  const provider = createSoraVideoProvider(options);
+
+  return {
+    async generateSegmentVideo(input) {
+      const submitted = await provider.submitImageToVideo({
+        image: input.startFramePath,
+        imageTail: input.endFramePath,
+        promptText: input.promptText,
+        durationSeconds: input.durationSec ?? undefined,
+      });
+      const completed = await provider.waitForImageToVideoTask({
+        taskId: submitted.taskId,
+      });
+
+      if (completed.failed) {
+        throw new Error(
+          completed.errorMessage
+            ? `Sora video generation failed: ${completed.errorMessage}`
+            : `Sora video generation failed for task ${completed.taskId}`,
+        );
+      }
+
+      if (!completed.videoUrl) {
+        throw new Error(`Sora video generation completed without video url for task ${completed.taskId}`);
+      }
+
+      return {
+        provider: submitted.provider,
+        model: submitted.modelName,
+        videoUrl: completed.videoUrl,
+        thumbnailUrl: completed.thumbnailUrl,
+        rawResponse: JSON.stringify({
+          submit: JSON.parse(submitted.rawResponse),
+          result: JSON.parse(completed.rawResponse),
+        }),
+        durationSec: input.durationSec ?? null,
+      };
     },
   };
 }

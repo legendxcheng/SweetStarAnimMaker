@@ -7,6 +7,7 @@ import {
   framePromptGenerateQueueName,
   imagesGenerateQueueName,
   masterPlotGenerateQueueName,
+  segmentVideoGenerateQueueName,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
   type FramePromptProvider,
@@ -17,6 +18,7 @@ import {
   type ShotScriptProvider,
   storyboardGenerateQueueName,
   type StoryboardProvider,
+  videosGenerateQueueName,
 } from "@sweet-star/core";
 
 import { buildSpec2WorkerServices } from "./bootstrap/build-spec2-worker-services";
@@ -58,6 +60,12 @@ export interface StartWorkerOptions {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processImagesGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processVideosGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processSegmentVideoGenerateTask?: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processFramePromptGenerateTask?: {
@@ -193,6 +201,30 @@ export async function startWorker(
       queueName: frameImageGenerateQueueName,
       processor: async (job: WorkerJob) => {
         await frameImageTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const videosTaskProcessor = services.processVideosGenerateTask;
+
+  if (videosTaskProcessor) {
+    processors.push({
+      queueName: videosGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await videosTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const segmentVideoTaskProcessor = services.processSegmentVideoGenerateTask;
+
+  if (segmentVideoTaskProcessor) {
+    processors.push({
+      queueName: segmentVideoGenerateQueueName,
+      processor: async (job: WorkerJob) => {
+        await segmentVideoTaskProcessor.execute({
           taskId: job.data.taskId,
         });
       },

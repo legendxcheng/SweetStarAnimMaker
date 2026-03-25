@@ -2,9 +2,11 @@ import crypto from "node:crypto";
 
 import {
   createApproveAllImageFramesUseCase,
+  createApproveAllVideoSegmentsUseCase,
   createApproveAllShotScriptSegmentsUseCase,
   createApproveCharacterSheetUseCase,
   createApproveImageFrameUseCase,
+  createApproveVideoSegmentUseCase,
   createApproveMasterPlotUseCase,
   createApproveShotScriptSegmentUseCase,
   createApproveStoryboardUseCase,
@@ -14,6 +16,7 @@ import {
   createCreateShotScriptGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
+  createCreateVideosGenerateTaskUseCase,
   createAddCharacterSheetReferenceImagesUseCase,
   createDeleteCharacterSheetReferenceImageUseCase,
   createGetCharacterSheetImageContentUseCase,
@@ -29,14 +32,17 @@ import {
   createGetShotScriptReviewUseCase,
   createGetStoryboardReviewUseCase,
   createGetTaskDetailUseCase,
+  createGetVideoUseCase,
   createListCharacterSheetsUseCase,
   createListImagesUseCase,
+  createListVideosUseCase,
   createListProjectsUseCase,
   createGenerateFrameImageUseCase,
   createRegenerateAllFramePromptsUseCase,
   createRegenerateCharacterSheetsUseCase,
   createRegenerateShotScriptSegmentUseCase,
   createRegenerateImagesUseCase,
+  createRegenerateVideoSegmentUseCase,
   createRegenerateMasterPlotUseCase,
   createRegenerateCharacterSheetUseCase,
   createRegenerateFramePromptUseCase,
@@ -68,7 +74,9 @@ import {
   createShotImageStorage,
   createStoryboardStorage,
   createTaskFileStorage,
+  createVideoStorage,
   initializeSqliteSchema,
+  createSqliteVideoRepository,
 } from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
@@ -94,9 +102,11 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const shotScriptStorage = createShotScriptStorage({ paths });
   const characterSheetRepository = createSqliteCharacterSheetRepository({ db });
   const shotImageRepository = createSqliteShotImageRepository({ db });
+  const videoRepository = createSqliteVideoRepository({ db });
   const shotScriptReviewRepository = createSqliteShotScriptReviewRepository({ db });
   const characterSheetStorage = createCharacterSheetStorage({ paths });
   const shotImageStorage = createShotImageStorage({ paths });
+  const videoStorage = createVideoStorage({ paths });
   const masterPlotStorage = storyboardStorage;
   const clock = {
     now: () => new Date().toISOString(),
@@ -204,6 +214,19 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     taskIdGenerator,
     clock,
   });
+  const createVideosGenerateTask = createCreateVideosGenerateTaskUseCase({
+    projectRepository: repository,
+    shotImageRepository,
+    shotScriptStorage,
+    storyboardStorage,
+    masterPlotStorage,
+    characterSheetRepository,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: queuedTaskGateway,
+    taskIdGenerator,
+    clock,
+  });
   return {
     db,
     async close() {
@@ -232,6 +255,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       shotScriptStorage,
       characterSheetRepository,
       shotImageRepository,
+      videoRepository,
     }),
     getProjectDetail: createGetProjectDetailUseCase({
       repository,
@@ -241,6 +265,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       shotScriptStorage,
       characterSheetRepository,
       shotImageRepository,
+      videoRepository,
     }),
     listCharacterSheets: createListCharacterSheetsUseCase({
       projectRepository: repository,
@@ -285,9 +310,17 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       projectRepository: repository,
       shotImageRepository,
     }),
+    listVideos: createListVideosUseCase({
+      projectRepository: repository,
+      videoRepository,
+    }),
     getImageFrame: createGetImageFrameUseCase({
       projectRepository: repository,
       shotImageRepository,
+    }),
+    getVideo: createGetVideoUseCase({
+      projectRepository: repository,
+      videoRepository,
     }),
     getImageFrameContent: createGetImageFrameContentUseCase({
       projectRepository: repository,
@@ -393,6 +426,17 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       createImagesGenerateTask,
       clock,
     }),
+    regenerateVideoSegment: createRegenerateVideoSegmentUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      shotImageRepository,
+      videoRepository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
     regenerateShotScriptSegment: createRegenerateShotScriptSegmentUseCase({
       projectRepository: repository,
       storyboardStorage,
@@ -461,9 +505,19 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       shotImageRepository,
       clock,
     }),
+    approveVideoSegment: createApproveVideoSegmentUseCase({
+      projectRepository: repository,
+      videoRepository,
+      clock,
+    }),
     approveAllImageFrames: createApproveAllImageFramesUseCase({
       projectRepository: repository,
       shotImageRepository,
+      clock,
+    }),
+    approveAllVideoSegments: createApproveAllVideoSegmentsUseCase({
+      projectRepository: repository,
+      videoRepository,
       clock,
     }),
     createMasterPlotGenerateTask,
@@ -471,6 +525,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     createStoryboardGenerateTask,
     createShotScriptGenerateTask,
     createImagesGenerateTask,
+    createVideosGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,
     }),

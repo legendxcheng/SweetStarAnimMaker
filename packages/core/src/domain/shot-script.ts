@@ -194,7 +194,7 @@ function readShotScriptSegments(shotScript: CurrentShotScript) {
       name: null,
       summary: "legacy shot script",
       durationSec: null,
-      status: current.approvedAt ? "approved" : "in_review",
+      status: current.approvedAt ? ("approved" as const) : ("in_review" as const),
       lastGeneratedAt: current.updatedAt,
       approvedAt: current.approvedAt,
       shots: current.shots,

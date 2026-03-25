@@ -21,6 +21,7 @@ describe("get project detail use case", () => {
         currentStoryboardId: "storyboard_20260321_ab12cd",
         currentShotScriptId: "shot_script_20260322_ab12cd",
         currentImageBatchId: "image_batch_1",
+        currentVideoBatchId: "video_batch_1",
         status: "master_plot_in_review",
         createdAt: "2026-03-17T00:00:00.000Z",
         updatedAt: "2026-03-17T00:00:00.000Z",
@@ -184,6 +185,24 @@ describe("get project detail use case", () => {
         updateFrame: vi.fn(),
         findCurrentBatchByProjectId: vi.fn(),
       },
+      videoRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "video_batch_1",
+          sourceImageBatchId: "image_batch_1",
+          sourceShotScriptId: "shot_script_20260322_ab12cd",
+          segmentCount: 1,
+          updatedAt: "2026-03-25T12:00:00.000Z",
+        }),
+        findCurrentBatchByProjectId: vi.fn(),
+        listSegmentsByBatchId: vi.fn().mockResolvedValue([
+          { id: "video_segment_1", status: "approved" },
+        ]),
+        insertSegment: vi.fn(),
+        findSegmentById: vi.fn(),
+        findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+        updateSegment: vi.fn(),
+      },
     });
 
     const result = await useCase.execute({
@@ -214,6 +233,7 @@ describe("get project detail use case", () => {
     );
     expect(result.currentImageBatch?.id).toBe("image_batch_1");
     expect(result.currentImageBatch?.approvedFrameCount).toBe(1);
+    expect(result.currentVideoBatch?.approvedSegmentCount).toBe(1);
   });
 
   it("throws when the project does not exist", async () => {
@@ -227,6 +247,7 @@ describe("get project detail use case", () => {
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
       updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const useCase = createGetProjectDetailUseCase({
@@ -277,6 +298,16 @@ describe("get project detail use case", () => {
         findFrameById: vi.fn(),
         updateFrame: vi.fn(),
         findCurrentBatchByProjectId: vi.fn(),
+      },
+      videoRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listSegmentsByBatchId: vi.fn(),
+        insertSegment: vi.fn(),
+        findSegmentById: vi.fn(),
+        findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+        updateSegment: vi.fn(),
       },
     });
 

@@ -126,6 +126,7 @@ describe("process shot script generate task use case", () => {
       readCurrentShotScript: vi.fn(),
     };
     const shotScriptProvider = {
+      generateShotScriptSegment: vi.fn(),
       generateShotScript: vi.fn().mockResolvedValue({
         rawResponse: '{"id":"shot_script_20260322_ab12cd"}',
         shotScript: {
@@ -312,6 +313,7 @@ describe("process shot script generate task use case", () => {
       projectRepository,
       taskFileStorage,
       shotScriptProvider: {
+        generateShotScriptSegment: vi.fn(),
         generateShotScript: async () => {
           throw new Error("boom");
         },
@@ -389,6 +391,7 @@ describe("process shot script generate task use case", () => {
         appendTaskLog: vi.fn(),
       },
       shotScriptProvider: {
+        generateShotScriptSegment: vi.fn(),
         generateShotScript: vi.fn(),
       },
       shotScriptStorage: {
@@ -468,6 +471,7 @@ describe("process shot script generate task use case", () => {
         appendTaskLog: vi.fn(),
       },
       shotScriptProvider: {
+        generateShotScriptSegment: vi.fn(),
         generateShotScript: vi.fn(),
       },
       shotScriptStorage: {

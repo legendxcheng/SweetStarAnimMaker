@@ -207,6 +207,7 @@ describe("storyboard worker integration", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       masterPlotProvider,
       storyboardProvider: {
@@ -398,6 +399,7 @@ describe("storyboard worker integration", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       storyboardProvider,
       characterSheetPromptProvider: {

@@ -5,24 +5,30 @@ import type {
   FramePromptGenerateTaskInput,
   ImagesGenerateTaskInput,
   MasterPlotGenerateTaskInput,
+  SegmentVideoGenerateTaskInput,
   ShotScriptGenerateTaskInput,
   ShotScriptSegmentGenerateTaskInput,
   StoryboardGenerateTaskInput,
   TaskRecord,
+  VideosGenerateTaskInput,
 } from "../domain/task";
+
+export type SupportedTaskInput =
+  | MasterPlotGenerateTaskInput
+  | CharacterSheetsGenerateTaskInput
+  | CharacterSheetGenerateTaskInput
+  | StoryboardGenerateTaskInput
+  | ShotScriptGenerateTaskInput
+  | ShotScriptSegmentGenerateTaskInput
+  | ImagesGenerateTaskInput
+  | FramePromptGenerateTaskInput
+  | FrameImageGenerateTaskInput
+  | VideosGenerateTaskInput
+  | SegmentVideoGenerateTaskInput;
 
 export interface CreateTaskArtifactsInput {
   task: TaskRecord;
-  input:
-    | MasterPlotGenerateTaskInput
-    | CharacterSheetsGenerateTaskInput
-    | CharacterSheetGenerateTaskInput
-    | StoryboardGenerateTaskInput
-    | ShotScriptGenerateTaskInput
-    | ShotScriptSegmentGenerateTaskInput
-    | ImagesGenerateTaskInput
-    | FramePromptGenerateTaskInput
-    | FrameImageGenerateTaskInput;
+  input: SupportedTaskInput;
 }
 
 export interface ReadTaskInputInput {
@@ -41,29 +47,7 @@ export interface AppendTaskLogInput {
 
 export interface TaskFileStorage {
   createTaskArtifacts(input: CreateTaskArtifactsInput): Promise<void> | void;
-  readTaskInput(
-    input: ReadTaskInputInput,
-  ):
-    | Promise<
-        | MasterPlotGenerateTaskInput
-        | CharacterSheetsGenerateTaskInput
-        | CharacterSheetGenerateTaskInput
-        | StoryboardGenerateTaskInput
-        | ShotScriptGenerateTaskInput
-        | ShotScriptSegmentGenerateTaskInput
-        | ImagesGenerateTaskInput
-        | FramePromptGenerateTaskInput
-        | FrameImageGenerateTaskInput
-      >
-    | MasterPlotGenerateTaskInput
-    | CharacterSheetsGenerateTaskInput
-    | CharacterSheetGenerateTaskInput
-    | StoryboardGenerateTaskInput
-    | ShotScriptGenerateTaskInput
-    | ShotScriptSegmentGenerateTaskInput
-    | ImagesGenerateTaskInput
-    | FramePromptGenerateTaskInput
-    | FrameImageGenerateTaskInput;
+  readTaskInput(input: ReadTaskInputInput): Promise<SupportedTaskInput> | SupportedTaskInput;
   writeTaskOutput(input: WriteTaskOutputInput): Promise<void> | void;
   appendTaskLog(input: AppendTaskLogInput): Promise<void> | void;
 }

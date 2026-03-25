@@ -139,7 +139,7 @@ describe("character sheet storage", () => {
     await storage.writeCurrentImage({
       character,
       imageBytes: new Uint8Array([1, 2, 3]),
-      metadata: character,
+      metadata: { ...character },
     });
 
     await expect(

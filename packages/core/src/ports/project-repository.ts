@@ -34,6 +34,11 @@ export interface UpdateCurrentImageBatchInput {
   batchId: string | null;
 }
 
+export interface UpdateCurrentVideoBatchInput {
+  projectId: string;
+  batchId: string | null;
+}
+
 export interface UpdateProjectStatusInput {
   projectId: string;
   status: ProjectStatus;
@@ -61,6 +66,9 @@ export interface ProjectRepository {
   ): Promise<void> | void;
   updateCurrentImageBatch(
     input: UpdateCurrentImageBatchInput,
+  ): Promise<void> | void;
+  updateCurrentVideoBatch?(
+    input: UpdateCurrentVideoBatchInput,
   ): Promise<void> | void;
   updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
 }

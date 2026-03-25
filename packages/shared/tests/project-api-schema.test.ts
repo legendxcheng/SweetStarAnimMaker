@@ -32,6 +32,7 @@ describe("project api schema", () => {
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
+      currentVideoBatch: null,
     });
 
     expect(parsed.currentMasterPlot).toBeNull();
@@ -56,6 +57,9 @@ describe("project api schema", () => {
       "images_generating",
       "images_in_review",
       "images_approved",
+      "videos_generating",
+      "videos_in_review",
+      "videos_approved",
     ]);
   });
 
@@ -73,6 +77,7 @@ describe("project api schema", () => {
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
+      currentVideoBatch: null,
     });
 
     expect(parsed.id).toBe("proj_20260317_ab12cd");
@@ -106,6 +111,7 @@ describe("project api schema", () => {
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
+      currentVideoBatch: null,
     });
 
     expect(parsed.currentMasterPlot).not.toBeNull();
@@ -127,6 +133,7 @@ describe("project api schema", () => {
         currentStoryboard: null,
         currentShotScript: null,
         currentImageBatch: null,
+        currentVideoBatch: null,
       },
       {
         id: "proj_2",
@@ -154,6 +161,7 @@ describe("project api schema", () => {
         currentStoryboard: null,
         currentShotScript: null,
         currentImageBatch: null,
+        currentVideoBatch: null,
       },
     ]);
 
@@ -231,6 +239,14 @@ describe("project api schema", () => {
         approvedFrameCount: 3,
         updatedAt: "2026-03-21T12:50:00.000Z",
       },
+      currentVideoBatch: {
+        id: "video_batch_v1",
+        sourceImageBatchId: "image_batch_v1",
+        sourceShotScriptId: "shot_script_v1",
+        segmentCount: 5,
+        approvedSegmentCount: 2,
+        updatedAt: "2026-03-21T13:00:00.000Z",
+      },
     });
 
     expect(parsed.currentStoryboard).not.toBeNull();
@@ -239,5 +255,6 @@ describe("project api schema", () => {
     expect(parsed.currentShotScript?.segmentCount).toBe(5);
     expect(parsed.currentShotScript?.shotCount).toBe(5);
     expect(parsed.currentImageBatch?.totalFrameCount).toBe(10);
+    expect(parsed.currentVideoBatch?.approvedSegmentCount).toBe(2);
   });
 });

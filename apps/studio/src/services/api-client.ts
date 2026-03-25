@@ -1,6 +1,8 @@
 import {
   approveAllImageFramesRequestSchema,
+  approveAllVideoSegmentsRequestSchema,
   approveImageFrameRequestSchema,
+  approveVideoSegmentRequestSchema,
   characterSheetDetailResponseSchema,
   characterSheetListResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
@@ -14,8 +16,11 @@ import {
   generateImageFrameRequestSchema,
   imageFrameListResponseSchema,
   imageFrameResponseSchema,
+  segmentVideoResponseSchema,
+  videoListResponseSchema,
   regenerateAllImagePromptsResponseSchema,
   regenerateImageFramePromptRequestSchema,
+  regenerateVideoSegmentRequestSchema,
   updateCharacterSheetPromptRequestSchema,
   updateImageFramePromptRequestSchema,
   masterPlotReviewWorkspaceResponseSchema,
@@ -45,12 +50,14 @@ import {
   type SaveShotScriptSegmentRequest,
   type SaveMasterPlotRequest,
   type SegmentFrameRecord,
+  type SegmentVideoRecord,
   type ShotScriptReviewWorkspace,
   type UpdateCharacterSheetPromptRequest,
   type UpdateImageFramePromptRequest,
   type SaveStoryboardRequest,
   type StoryboardReviewWorkspace,
   type TaskDetail,
+  type VideoListResponse,
 } from "@sweet-star/shared";
 import { config } from "./config";
 
@@ -185,6 +192,16 @@ export const apiClient = {
       taskDetailResponseSchema,
       {
         method: "POST",
+      },
+    ),
+
+  createVideosGenerateTask: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/videos/generate`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateVideoSegmentRequestSchema.parse({})),
       },
     ),
 
@@ -334,10 +351,28 @@ export const apiClient = {
       },
     ),
 
+  listVideos: (projectId: string) =>
+    request<VideoListResponse>(
+      `/projects/${projectId}/videos`,
+      videoListResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
   getImageFrame: (projectId: string, frameId: string) =>
     request<SegmentFrameRecord>(
       `/projects/${projectId}/images/frames/${frameId}`,
       imageFrameResponseSchema,
+      {
+        method: "GET",
+      },
+    ),
+
+  getVideo: (projectId: string, segmentId: string) =>
+    request<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${segmentId}`,
+      segmentVideoResponseSchema,
       {
         method: "GET",
       },
@@ -408,6 +443,44 @@ export const apiClient = {
       {
         method: "POST",
         body: JSON.stringify(approveAllImageFramesRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateVideoSegment: (
+    projectId: string,
+    segmentId: string,
+    data: Record<string, never> = {},
+  ) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/videos/segments/${segmentId}/regenerate`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateVideoSegmentRequestSchema.parse(data)),
+      },
+    ),
+
+  approveVideoSegment: (
+    projectId: string,
+    segmentId: string,
+    data: Record<string, never> = {},
+  ) =>
+    request<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${segmentId}/approve`,
+      segmentVideoResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveVideoSegmentRequestSchema.parse(data)),
+      },
+    ),
+
+  approveAllVideoSegments: (projectId: string, data: Record<string, never> = {}) =>
+    request<VideoListResponse>(
+      `/projects/${projectId}/videos/approve-all`,
+      videoListResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(approveAllVideoSegmentsRequestSchema.parse(data)),
       },
     ),
 

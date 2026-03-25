@@ -85,6 +85,10 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           promptVariables,
         });
 
+        if (!dependencies.shotScriptProvider.generateShotScriptSegment) {
+          throw new Error("Shot script provider does not support segment shot script generation");
+        }
+
         const providerResult = await dependencies.shotScriptProvider.generateShotScriptSegment({
           promptText,
           variables: promptVariables,

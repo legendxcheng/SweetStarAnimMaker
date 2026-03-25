@@ -17,6 +17,7 @@ export type {
   CurrentShotScriptSummary,
   CurrentStoryboard,
   CurrentStoryboardSummary,
+  CurrentVideoBatchSummary,
   ShotScriptReviewSummary,
   ShotScriptReviewWorkspace,
   ShotScriptReviewAvailableActions,
@@ -26,6 +27,7 @@ export type {
   MasterPlotReviewAvailableActions,
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
+  SegmentVideoRecord,
   TaskDetail,
 } from "@sweet-star/shared";
 export {
@@ -121,6 +123,15 @@ export {
   type ShotImageBatchRecord,
 } from "./domain/shot-image";
 export {
+  createSegmentVideoRecord,
+  createVideoBatchRecord,
+  toCurrentVideoBatchSummary,
+  type CreateSegmentVideoRecordInput,
+  type CreateVideoBatchRecordInput,
+  type SegmentVideoRecordEntity,
+  type VideoBatchRecord,
+} from "./domain/video";
+export {
   currentStoryboardDirectoryName,
   currentStoryboardJsonFileName,
   currentStoryboardJsonRelPath,
@@ -157,6 +168,8 @@ export {
   framePromptGenerateQueueName,
   imagesGenerateQueueName,
   masterPlotGenerateQueueName,
+  segmentVideoGenerateQueueName,
+  videosGenerateQueueName,
   shotScriptGenerateQueueName,
   shotScriptSegmentGenerateQueueName,
   storyboardGenerateQueueName,
@@ -175,10 +188,12 @@ export {
   type FramePromptGenerateTaskInput,
   type ImagesGenerateTaskInput,
   type MasterPlotGenerateTaskInput,
+  type SegmentVideoGenerateTaskInput,
   type ShotScriptGenerateTaskInput,
   type ShotScriptSegmentGenerateTaskInput,
   type StoryboardGenerateTaskInput,
   type TaskRecord,
+  type VideosGenerateTaskInput,
 } from "./domain/task";
 export {
   originalScriptFileName,
@@ -209,6 +224,10 @@ export {
   CurrentImageBatchNotFoundError,
   ShotImageNotFoundError,
 } from "./errors/shot-image-errors";
+export {
+  CurrentVideoBatchNotFoundError,
+  SegmentVideoNotFoundError,
+} from "./errors/video-errors";
 export {
   RejectStoryboardReasonRequiredError,
   StoryboardReviewVersionConflictError,
@@ -247,9 +266,27 @@ export type {
   UpdateCurrentMasterPlotInput,
   UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
+  UpdateCurrentVideoBatchInput,
   UpdateProjectStatusInput,
   UpdateProjectPremiseMetadataInput,
 } from "./ports/project-repository";
+export type {
+  GenerateSegmentVideoInput,
+  GenerateSegmentVideoResult,
+  VideoProvider,
+} from "./ports/video-provider";
+export type { VideoRepository } from "./ports/video-repository";
+export type {
+  InitializeVideoPromptTemplateInput,
+  ReadVideoPromptTemplateInput,
+  ResolveProjectAssetPathInput as ResolveVideoProjectAssetPathInput,
+  VideoStorage,
+  WriteCurrentVideoInput,
+  WriteVideoBatchManifestInput,
+  WriteVideoPromptSnapshotInput,
+  WriteVideoRawResponseInput,
+  WriteVideoVersionInput,
+} from "./ports/video-storage";
 export type {
   FramePromptProvider,
   GenerateFramePromptInput,
@@ -360,6 +397,12 @@ export {
   type CreateImagesGenerateTaskUseCaseDependencies,
 } from "./use-cases/create-images-generate-task";
 export {
+  createCreateVideosGenerateTaskUseCase,
+  type CreateVideosGenerateTaskInput,
+  type CreateVideosGenerateTaskUseCase,
+  type CreateVideosGenerateTaskUseCaseDependencies,
+} from "./use-cases/create-videos-generate-task";
+export {
   createCreateShotScriptGenerateTaskUseCase,
   type CreateShotScriptGenerateTaskInput,
   type CreateShotScriptGenerateTaskUseCase,
@@ -468,6 +511,12 @@ export {
   type ListImagesUseCaseDependencies,
 } from "./use-cases/list-images";
 export {
+  createListVideosUseCase,
+  type ListVideosInput,
+  type ListVideosUseCase,
+  type ListVideosUseCaseDependencies,
+} from "./use-cases/list-videos";
+export {
   createListProjectsUseCase,
   type ListProjectsUseCase,
   type ListProjectsUseCaseDependencies,
@@ -485,6 +534,12 @@ export {
   type GetTaskDetailUseCaseDependencies,
 } from "./use-cases/get-task-detail";
 export {
+  createGetVideoUseCase,
+  type GetVideoInput,
+  type GetVideoUseCase,
+  type GetVideoUseCaseDependencies,
+} from "./use-cases/get-video";
+export {
   createProcessMasterPlotGenerateTaskUseCase,
   type ProcessMasterPlotGenerateTaskInput,
   type ProcessMasterPlotGenerateTaskUseCase,
@@ -496,6 +551,18 @@ export {
   type ProcessImagesGenerateTaskUseCase,
   type ProcessImagesGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-images-generate-task";
+export {
+  createProcessVideosGenerateTaskUseCase,
+  type ProcessVideosGenerateTaskInput,
+  type ProcessVideosGenerateTaskUseCase,
+  type ProcessVideosGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-videos-generate-task";
+export {
+  createProcessSegmentVideoGenerateTaskUseCase,
+  type ProcessSegmentVideoGenerateTaskInput,
+  type ProcessSegmentVideoGenerateTaskUseCase,
+  type ProcessSegmentVideoGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-segment-video-generate-task";
 export {
   createProcessFramePromptGenerateTaskUseCase,
   type ProcessFramePromptGenerateTaskInput,
@@ -587,6 +654,12 @@ export {
   type RegenerateImagesUseCaseDependencies,
 } from "./use-cases/regenerate-images";
 export {
+  createRegenerateVideoSegmentUseCase,
+  type RegenerateVideoSegmentInput,
+  type RegenerateVideoSegmentUseCase,
+  type RegenerateVideoSegmentUseCaseDependencies,
+} from "./use-cases/regenerate-video-segment";
+export {
   createRegenerateFramePromptUseCase,
   type RegenerateFramePromptInput,
   type RegenerateFramePromptUseCase,
@@ -630,11 +703,23 @@ export {
   type ApproveImageFrameUseCaseDependencies,
 } from "./use-cases/approve-image-frame";
 export {
+  createApproveVideoSegmentUseCase,
+  type ApproveVideoSegmentInput,
+  type ApproveVideoSegmentUseCase,
+  type ApproveVideoSegmentUseCaseDependencies,
+} from "./use-cases/approve-video-segment";
+export {
   createApproveAllImageFramesUseCase,
   type ApproveAllImageFramesInput,
   type ApproveAllImageFramesUseCase,
   type ApproveAllImageFramesUseCaseDependencies,
 } from "./use-cases/approve-all-image-frames";
+export {
+  createApproveAllVideoSegmentsUseCase,
+  type ApproveAllVideoSegmentsInput,
+  type ApproveAllVideoSegmentsUseCase,
+  type ApproveAllVideoSegmentsUseCaseDependencies,
+} from "./use-cases/approve-all-video-segments";
 export {
   createApproveShotScriptSegmentUseCase,
   type ApproveShotScriptSegmentInput,

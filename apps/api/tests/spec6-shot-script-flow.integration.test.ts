@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { startWorker } from "@sweet-star/worker";
+import type { ShotScriptProvider } from "@sweet-star/core";
 import type { FastifyInstance } from "fastify";
 import { RedisMemoryServer } from "redis-memory-server";
 import { afterEach, describe, expect, it } from "vitest";
@@ -299,7 +300,7 @@ describe("spec6 shot script flow", () => {
         segments: expect.arrayContaining([
           expect.objectContaining({
             segmentId: "segment_1",
-            status: "in_review",
+            status: "in_review" as const,
             name: "重生成开场段落",
             shots: expect.arrayContaining([
               expect.objectContaining({
@@ -376,7 +377,7 @@ async function waitFor(assertion: () => Promise<void>, timeoutMs = 10000) {
   }
 }
 
-function createReviewAwareShotScriptProvider() {
+function createReviewAwareShotScriptProvider(): ShotScriptProvider {
   let callCount = 0;
 
   return {
@@ -428,7 +429,7 @@ function createReviewAwareShotScriptProvider() {
           name: "初版开场段落",
           summary: "Rin 在暴雨驾驶舱里第一次听见不属于雷声的天外长音。",
           durationSec: 6,
-          status: "in_review",
+          status: "in_review" as const,
           lastGeneratedAt: null,
           approvedAt: null,
           shots: [

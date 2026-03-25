@@ -146,6 +146,7 @@ describe("character-sheet worker integration", () => {
         saveReferenceImages: vi.fn(),
         deleteReferenceImage: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
         resolveReferenceImagePaths: vi.fn().mockResolvedValue([]),
       },
       characterSheetPromptProvider: promptProvider,
@@ -333,6 +334,7 @@ describe("character-sheet worker integration", () => {
       saveReferenceImages: vi.fn(),
       deleteReferenceImage: vi.fn(),
       getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
       resolveReferenceImagePaths: vi.fn(),
     };
     const taskFileStorage = {

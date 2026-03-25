@@ -44,8 +44,8 @@ describe("sqlite task repository", () => {
       id: "task_20260323_image",
       projectId: "proj_20260321_ab12cd",
       projectStorageDir: "projects/proj_20260321_ab12cd-my-story",
-      type: "image_generate",
-      queueName: "image-generate",
+      type: "images_generate",
+      queueName: "images-generate",
       createdAt: "2026-03-23T12:00:00.000Z",
     });
 

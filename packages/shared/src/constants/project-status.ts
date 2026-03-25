@@ -15,6 +15,9 @@ export const projectStatuses = [
   "images_generating",
   "images_in_review",
   "images_approved",
+  "videos_generating",
+  "videos_in_review",
+  "videos_approved",
 ] as const;
 
 export type ProjectStatus = (typeof projectStatuses)[number];

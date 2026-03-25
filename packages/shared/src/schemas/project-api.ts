@@ -10,6 +10,7 @@ import {
 } from "./storyboard-api";
 import { currentImageBatchSummaryResponseSchema } from "./image-api";
 import { currentShotScriptSummaryResponseSchema } from "./shot-script-api";
+import { currentVideoBatchSummaryResponseSchema } from "./video-api";
 
 const requiredTextSchema = z.string().trim().min(1);
 const premiseMetadataSchema = z.object({
@@ -37,6 +38,7 @@ export const projectSummaryResponseSchema = z.object({
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
   currentShotScript: currentShotScriptSummaryResponseSchema.nullable(),
   currentImageBatch: currentImageBatchSummaryResponseSchema.nullable().optional().default(null),
+  currentVideoBatch: currentVideoBatchSummaryResponseSchema.nullable().optional().default(null),
 });
 
 export const projectListResponseSchema = z.array(projectSummaryResponseSchema);
@@ -55,4 +57,5 @@ export const projectDetailResponseSchema = z.object({
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
   currentShotScript: currentShotScriptSummaryResponseSchema.nullable(),
   currentImageBatch: currentImageBatchSummaryResponseSchema.nullable().optional().default(null),
+  currentVideoBatch: currentVideoBatchSummaryResponseSchema.nullable().optional().default(null),
 });

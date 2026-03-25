@@ -66,6 +66,7 @@ describe("shot script worker integration", () => {
 
   it("forwards shot script task input into the configured shot script provider", async () => {
     const shotScriptProvider = {
+      generateShotScriptSegment: vi.fn(),
       generateShotScript: vi.fn().mockResolvedValue({
         rawResponse: "{\"title\":\"Generated shot script\"}",
         shotScript: {
@@ -240,6 +241,7 @@ describe("shot script worker integration", () => {
         deleteReferenceImage: vi.fn(),
         resolveReferenceImagePaths: vi.fn(),
         getReferenceImageContent: vi.fn(),
+        getImageContent: vi.fn(),
       },
       storyboardProvider: {
         generateStoryboard: vi.fn(),

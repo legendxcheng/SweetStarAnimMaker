@@ -5,6 +5,8 @@ import {
   createProcessFramePromptGenerateTaskUseCase,
   createProcessImagesGenerateTaskUseCase,
   createProcessMasterPlotGenerateTaskUseCase,
+  createProcessSegmentVideoGenerateTaskUseCase,
+  createProcessVideosGenerateTaskUseCase,
   createProcessCharacterSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
   createProcessShotScriptGenerateTaskUseCase,
@@ -25,12 +27,17 @@ import {
   type ProcessFrameImageGenerateTaskUseCase,
   type ProcessFramePromptGenerateTaskUseCase,
   type ProcessImagesGenerateTaskUseCase,
+  type ProcessSegmentVideoGenerateTaskUseCase,
+  type ProcessVideosGenerateTaskUseCase,
   type ProcessShotScriptGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProjectRepository,
   type ShotImageProvider,
   type ShotImageRepository,
   type ShotImageStorage,
+  type VideoProvider,
+  type VideoRepository,
+  type VideoStorage,
   type StoryboardProvider,
   type StoryboardStorage,
   type ShotScriptProvider,
@@ -56,10 +63,13 @@ import {
   createSqliteTaskRepository,
   createShotImageStorage,
   createShotScriptStorage,
+  createSoraStageVideoProvider,
   createStoryboardStorage,
   createTaskFileStorage,
   createTurnaroundImageProvider,
+  createVideoStorage,
   initializeSqliteSchema,
+  createSqliteVideoRepository,
 } from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
@@ -78,6 +88,8 @@ export interface BuildSpec2WorkerServicesOptions {
   characterSheetStorage?: CharacterSheetStorage;
   shotImageRepository?: ShotImageRepository;
   shotImageStorage?: ShotImageStorage;
+  videoRepository?: VideoRepository;
+  videoStorage?: VideoStorage;
   masterPlotProvider?: MasterPlotProvider;
   storyboardProvider?: StoryboardProvider;
   shotScriptProvider?: ShotScriptProvider;
@@ -85,6 +97,7 @@ export interface BuildSpec2WorkerServicesOptions {
   characterSheetImageProvider?: CharacterSheetImageProvider;
   framePromptProvider?: FramePromptProvider;
   shotImageProvider?: ShotImageProvider;
+  videoProvider?: VideoProvider;
   taskQueue?: TaskQueue;
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
@@ -99,6 +112,8 @@ export interface Spec2WorkerServices {
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
   processImagesGenerateTask: ProcessImagesGenerateTaskUseCase;
+  processVideosGenerateTask: ProcessVideosGenerateTaskUseCase;
+  processSegmentVideoGenerateTask: ProcessSegmentVideoGenerateTaskUseCase;
   processFramePromptGenerateTask: ProcessFramePromptGenerateTaskUseCase;
   processFrameImageGenerateTask: ProcessFrameImageGenerateTaskUseCase;
   close(): Promise<void>;
@@ -113,6 +128,7 @@ export function buildSpec2WorkerServices(
   const defaultShotScriptStorage = paths ? createShotScriptStorage({ paths }) : null;
   const defaultCharacterSheetStorage = paths ? createCharacterSheetStorage({ paths }) : null;
   const defaultShotImageStorage = paths ? createShotImageStorage({ paths }) : null;
+  const defaultVideoStorage = paths ? createVideoStorage({ paths }) : null;
 
   if (db) {
     initializeSqliteSchema(db);
@@ -134,8 +150,12 @@ export function buildSpec2WorkerServices(
   const shotImageRepository =
     options.shotImageRepository ??
     (db ? createSqliteShotImageRepository({ db }) : createUnsupportedShotImageRepository());
+  const videoRepository =
+    options.videoRepository ??
+    (db ? createSqliteVideoRepository({ db }) : createUnsupportedVideoRepository());
   const shotImageStorage =
     options.shotImageStorage ?? defaultShotImageStorage ?? createUnsupportedShotImageStorage();
+  const videoStorage = options.videoStorage ?? defaultVideoStorage ?? createUnsupportedVideoStorage();
   const storyboardProvider =
     options.storyboardProvider ??
     (process.env.VECTORENGINE_API_TOKEN?.trim()
@@ -208,6 +228,14 @@ export function buildSpec2WorkerServices(
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.FRAME_IMAGE_MODEL,
       size: process.env.FRAME_IMAGE_SIZE?.trim() || DEFAULT_FRAME_IMAGE_SIZE,
+      referenceImageUploader,
+    });
+  const videoProvider =
+    options.videoProvider ??
+    createSoraStageVideoProvider({
+      baseUrl: process.env.VECTORENGINE_BASE_URL,
+      apiToken: process.env.VECTORENGINE_API_TOKEN,
+      modelName: process.env.VIDEO_MODEL,
       referenceImageUploader,
     });
   const taskIdGenerator =
@@ -298,8 +326,6 @@ export function buildSpec2WorkerServices(
       taskFileStorage,
       shotScriptProvider,
       shotScriptStorage,
-      shotImageRepository,
-      shotImageStorage,
       taskQueue,
       taskIdGenerator,
       clock: options.clock ?? {
@@ -350,6 +376,30 @@ export function buildSpec2WorkerServices(
       shotImageStorage,
       taskQueue,
       taskIdGenerator,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processVideosGenerateTask: createProcessVideosGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      videoRepository,
+      videoStorage,
+      taskQueue,
+      taskIdGenerator,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processSegmentVideoGenerateTask: createProcessSegmentVideoGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      videoRepository,
+      videoStorage,
+      videoProvider,
       clock: options.clock ?? {
         now: () => new Date().toISOString(),
       },
@@ -457,6 +507,64 @@ function createUnsupportedShotImageStorage(): ShotImageStorage {
     },
     resolveProjectAssetPath() {
       throw new Error("Shot image storage is not configured");
+    },
+  };
+}
+
+function createUnsupportedVideoRepository(): VideoRepository {
+  return {
+    insertBatch() {
+      throw new Error("Video repository is not configured");
+    },
+    findBatchById() {
+      throw new Error("Video repository is not configured");
+    },
+    findCurrentBatchByProjectId() {
+      throw new Error("Video repository is not configured");
+    },
+    listSegmentsByBatchId() {
+      throw new Error("Video repository is not configured");
+    },
+    insertSegment() {
+      throw new Error("Video repository is not configured");
+    },
+    findSegmentById() {
+      throw new Error("Video repository is not configured");
+    },
+    findCurrentSegmentByProjectIdAndSegmentId() {
+      throw new Error("Video repository is not configured");
+    },
+    updateSegment() {
+      throw new Error("Video repository is not configured");
+    },
+  };
+}
+
+function createUnsupportedVideoStorage(): VideoStorage {
+  return {
+    async initializePromptTemplate() {
+      throw new Error("Video storage is not configured");
+    },
+    async readPromptTemplate() {
+      throw new Error("Video storage is not configured");
+    },
+    async writePromptSnapshot() {
+      throw new Error("Video storage is not configured");
+    },
+    async writeRawResponse() {
+      throw new Error("Video storage is not configured");
+    },
+    async writeBatchManifest() {
+      throw new Error("Video storage is not configured");
+    },
+    async writeCurrentVideo() {
+      throw new Error("Video storage is not configured");
+    },
+    async writeVideoVersion() {
+      throw new Error("Video storage is not configured");
+    },
+    resolveProjectAssetPath() {
+      throw new Error("Video storage is not configured");
     },
   };
 }

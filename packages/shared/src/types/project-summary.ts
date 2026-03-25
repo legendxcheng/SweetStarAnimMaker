@@ -4,6 +4,7 @@ import type { CurrentMasterPlot } from "./master-plot";
 import type { CurrentImageBatch } from "./shot-image";
 import type { CurrentShotScriptSummary } from "./shot-script";
 import type { CurrentStoryboardSummary } from "./storyboard";
+import type { CurrentVideoBatchSummary } from "./video";
 
 export interface ProjectSummary {
   id: string;
@@ -18,4 +19,5 @@ export interface ProjectSummary {
   currentStoryboard: CurrentStoryboardSummary | null;
   currentShotScript: CurrentShotScriptSummary | null;
   currentImageBatch: CurrentImageBatch | null;
+  currentVideoBatch: CurrentVideoBatchSummary | null;
 }

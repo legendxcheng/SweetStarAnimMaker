@@ -35,6 +35,14 @@ export {
   updateImageFramePromptRequestSchema,
 } from "./schemas/image-api";
 export {
+  approveAllVideoSegmentsRequestSchema,
+  approveVideoSegmentRequestSchema,
+  currentVideoBatchSummaryResponseSchema,
+  regenerateVideoSegmentRequestSchema,
+  segmentVideoResponseSchema,
+  videoListResponseSchema,
+} from "./schemas/video-api";
+export {
   approveCharacterSheetRequestSchema,
   characterReferenceImageResponseSchema,
   characterSheetDetailResponseSchema,
@@ -113,6 +121,15 @@ export type {
   SegmentFrameRecord,
   UpdateImageFramePromptRequest,
 } from "./types/shot-image";
+export type {
+  ApproveAllVideoSegmentsRequest,
+  ApproveVideoSegmentRequest,
+  CurrentVideoBatchSummary,
+  RegenerateVideoSegmentRequest,
+  SegmentVideoRecord,
+  SegmentVideoStatus,
+  VideoListResponse,
+} from "./types/video";
 export type {
   CurrentShotScript,
   CurrentShotScriptSummary,

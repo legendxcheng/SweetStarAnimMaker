@@ -14,6 +14,7 @@ describe("create project use case", () => {
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
       updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
@@ -80,6 +81,7 @@ describe("create project use case", () => {
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
+      currentVideoBatch: null,
     });
   });
 
@@ -96,6 +98,7 @@ describe("create project use case", () => {
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
       updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
       updateStatus: vi.fn(),
     };
     const premiseStorage = {
