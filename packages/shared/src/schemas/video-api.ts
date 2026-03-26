@@ -1,27 +1,28 @@
 import { z } from "zod";
 
-const segmentVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
+const shotVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
 const requiredTextSchema = z.string().trim().min(1);
+const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
 
 export const currentVideoBatchSummaryResponseSchema = z.object({
   id: z.string(),
   sourceImageBatchId: z.string(),
   sourceShotScriptId: z.string(),
-  segmentCount: z.number().int().positive(),
-  approvedSegmentCount: z.number().int().nonnegative(),
+  shotCount: z.number().int().positive(),
+  approvedShotCount: z.number().int().nonnegative(),
   updatedAt: z.string(),
 });
 
-export const segmentVideoResponseSchema = z.object({
+const shotVideoRecordSchema = z.object({
   id: z.string(),
   projectId: z.string(),
   batchId: z.string(),
   sourceImageBatchId: z.string(),
   sourceShotScriptId: z.string(),
-  segmentId: z.string(),
-  sceneId: z.string(),
-  order: z.number().int().positive(),
-  status: z.enum(segmentVideoStatuses),
+  shotId: z.string(),
+  shotCode: z.string(),
+  frameDependency: z.enum(shotFrameDependencies),
+  status: z.enum(shotVideoStatuses),
   promptTextSeed: requiredTextSchema,
   promptTextCurrent: requiredTextSchema,
   promptUpdatedAt: z.string(),
@@ -35,9 +36,11 @@ export const segmentVideoResponseSchema = z.object({
   sourceTaskId: z.string().nullable(),
 });
 
+export const segmentVideoResponseSchema = shotVideoRecordSchema;
+
 export const videoListResponseSchema = z.object({
   currentBatch: currentVideoBatchSummaryResponseSchema,
-  segments: z.array(segmentVideoResponseSchema),
+  shots: z.array(shotVideoRecordSchema),
 });
 
 export const approveVideoSegmentRequestSchema = z.object({});

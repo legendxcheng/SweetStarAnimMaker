@@ -1,3 +1,5 @@
+import type { ShotFrameDependency } from "./shot-script";
+
 export type ImageFrameType = "start_frame" | "end_frame";
 
 export type ImageFramePlanStatus = "pending" | "planned" | "plan_failed";
@@ -12,13 +14,15 @@ export type ImageFrameStatus =
 export interface CurrentImageBatch {
   id: string;
   sourceShotScriptId: string;
-  segmentCount: number;
-  totalFrameCount: number;
-  approvedFrameCount: number;
+  shotCount: number;
+  totalRequiredFrameCount: number;
+  approvedShotCount: number;
   updatedAt: string;
 }
 
-export interface SegmentFrameRecord {
+export type ShotReferenceStatus = "pending" | "in_review" | "approved";
+
+export interface ShotReferenceFrame {
   id: string;
   batchId: string;
   projectId: string;
@@ -46,9 +50,23 @@ export interface SegmentFrameRecord {
   sourceTaskId: string | null;
 }
 
+export interface ShotReferenceRecord {
+  id: string;
+  batchId: string;
+  projectId: string;
+  sourceShotScriptId: string;
+  shotId: string;
+  shotCode: string;
+  frameDependency: ShotFrameDependency;
+  referenceStatus: ShotReferenceStatus;
+  startFrame: ShotReferenceFrame;
+  endFrame: ShotReferenceFrame | null;
+  updatedAt: string;
+}
+
 export interface ImageFrameListResponse {
   currentBatch: CurrentImageBatch;
-  frames: SegmentFrameRecord[];
+  shots: ShotReferenceRecord[];
 }
 
 export interface RegenerateAllImagePromptsResponse {

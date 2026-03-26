@@ -11,13 +11,15 @@ const imageFrameStatuses = [
   "approved",
   "failed",
 ] as const;
+const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
+const shotReferenceStatuses = ["pending", "in_review", "approved"] as const;
 
 export const currentImageBatchSummaryResponseSchema = z.object({
   id: z.string(),
   sourceShotScriptId: z.string(),
-  segmentCount: z.number().int().positive(),
-  totalFrameCount: z.number().int().positive(),
-  approvedFrameCount: z.number().int().nonnegative(),
+  shotCount: z.number().int().positive(),
+  totalRequiredFrameCount: z.number().int().positive(),
+  approvedShotCount: z.number().int().nonnegative(),
   updatedAt: z.string(),
 });
 
@@ -85,9 +87,23 @@ export const imageFrameResponseSchema = z
     }
   });
 
+const shotReferenceRecordSchema = z.object({
+  id: z.string(),
+  batchId: z.string(),
+  projectId: z.string(),
+  sourceShotScriptId: z.string(),
+  shotId: z.string(),
+  shotCode: z.string(),
+  frameDependency: z.enum(shotFrameDependencies),
+  referenceStatus: z.enum(shotReferenceStatuses),
+  startFrame: imageFrameResponseSchema,
+  endFrame: imageFrameResponseSchema.nullable(),
+  updatedAt: z.string(),
+});
+
 export const imageFrameListResponseSchema = z.object({
   currentBatch: currentImageBatchSummaryResponseSchema,
-  frames: z.array(imageFrameResponseSchema),
+  shots: z.array(shotReferenceRecordSchema),
 });
 
 export const regenerateAllImagePromptsResponseSchema = z.object({

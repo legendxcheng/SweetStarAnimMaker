@@ -23,14 +23,15 @@ describe("image api schema", () => {
     const parsed = shared.currentImageBatchSummaryResponseSchema.parse({
       id: "image_batch_20260323_ab12cd",
       sourceShotScriptId: "shot_script_20260323_ab12cd",
-      segmentCount: 2,
-      totalFrameCount: 4,
-      approvedFrameCount: 1,
+      shotCount: 2,
+      totalRequiredFrameCount: 3,
+      approvedShotCount: 1,
       updatedAt: "2026-03-23T12:00:00.000Z",
     });
 
-    expect(parsed.totalFrameCount).toBe(4);
-    expect(parsed.approvedFrameCount).toBe(1);
+    expect(parsed.shotCount).toBe(2);
+    expect(parsed.totalRequiredFrameCount).toBe(3);
+    expect(parsed.approvedShotCount).toBe(1);
   });
 
   it("accepts a frame detail payload with prompt and reference-image fields", () => {
@@ -69,48 +70,130 @@ describe("image api schema", () => {
     expect(parsed.unmatchedCharacterIds).toEqual(["char_ivo"]);
   });
 
-  it("accepts a list-images response with flat frame records", () => {
+  it("accepts a list-images response with shot reference records", () => {
     const parsed = shared.imageFrameListResponseSchema.parse({
       currentBatch: {
         id: "image_batch_20260323_ab12cd",
         sourceShotScriptId: "shot_script_20260323_ab12cd",
-        segmentCount: 2,
-        totalFrameCount: 4,
-        approvedFrameCount: 1,
+        shotCount: 2,
+        totalRequiredFrameCount: 3,
+        approvedShotCount: 1,
         updatedAt: "2026-03-23T12:00:00.000Z",
       },
-      frames: [
+      shots: [
         {
-          id: "frame_20260323_start_1",
+          id: "shot_ref_20260323_1",
           batchId: "image_batch_20260323_ab12cd",
           projectId: "proj_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
-          segmentId: "segment_1",
-          sceneId: "scene_1",
-          order: 1,
-          frameType: "start_frame",
-          planStatus: "planned",
-          imageStatus: "approved",
-          selectedCharacterIds: ["char_rin"],
-          matchedReferenceImagePaths: [],
-          unmatchedCharacterIds: [],
-          promptTextSeed: "清晨积水集市入口。",
-          promptTextCurrent: "清晨积水集市入口。",
-          negativePromptTextCurrent: null,
-          promptUpdatedAt: null,
-          imageAssetPath: null,
-          imageWidth: null,
-          imageHeight: null,
-          provider: null,
-          model: null,
-          approvedAt: "2026-03-23T12:10:00.000Z",
+          shotId: "shot_script_20260323_ab12cd_SC01",
+          shotCode: "SC01-SG01-SH01",
+          frameDependency: "start_frame_only",
+          referenceStatus: "approved",
+          startFrame: {
+            id: "frame_20260323_start_1",
+            batchId: "image_batch_20260323_ab12cd",
+            projectId: "proj_20260323_ab12cd",
+            sourceShotScriptId: "shot_script_20260323_ab12cd",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "approved",
+            selectedCharacterIds: ["char_rin"],
+            matchedReferenceImagePaths: [],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "清晨积水集市入口。",
+            promptTextCurrent: "清晨积水集市入口。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: null,
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            approvedAt: "2026-03-23T12:10:00.000Z",
+            updatedAt: "2026-03-23T12:10:00.000Z",
+            sourceTaskId: null,
+          },
+          endFrame: null,
           updatedAt: "2026-03-23T12:10:00.000Z",
-          sourceTaskId: null,
+        },
+        {
+          id: "shot_ref_20260323_2",
+          batchId: "image_batch_20260323_ab12cd",
+          projectId: "proj_20260323_ab12cd",
+          sourceShotScriptId: "shot_script_20260323_ab12cd",
+          shotId: "shot_script_20260323_ab12cd_SC01-SH02",
+          shotCode: "SC01-SG01-SH02",
+          frameDependency: "start_and_end_frame",
+          referenceStatus: "in_review",
+          startFrame: {
+            id: "frame_20260323_start_2",
+            batchId: "image_batch_20260323_ab12cd",
+            projectId: "proj_20260323_ab12cd",
+            sourceShotScriptId: "shot_script_20260323_ab12cd",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 2,
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "in_review",
+            selectedCharacterIds: ["char_rin"],
+            matchedReferenceImagePaths: [],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "黄昏的巷子。",
+            promptTextCurrent: "黄昏的巷子，光线霓虹。",
+            negativePromptTextCurrent: "模糊",
+            promptUpdatedAt: "2026-03-23T12:15:00.000Z",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            approvedAt: null,
+            updatedAt: "2026-03-23T12:16:00.000Z",
+            sourceTaskId: null,
+          },
+          endFrame: {
+            id: "frame_20260323_end_2",
+            batchId: "image_batch_20260323_ab12cd",
+            projectId: "proj_20260323_ab12cd",
+            sourceShotScriptId: "shot_script_20260323_ab12cd",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 2,
+            frameType: "end_frame",
+            planStatus: "planned",
+            imageStatus: "pending",
+            selectedCharacterIds: ["char_rin"],
+            matchedReferenceImagePaths: [],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "黄昏的巷子。2",
+            promptTextCurrent: "黄昏的巷子，光线霓虹。2",
+            negativePromptTextCurrent: "模糊",
+            promptUpdatedAt: null,
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            approvedAt: null,
+            updatedAt: "2026-03-23T12:18:00.000Z",
+            sourceTaskId: null,
+          },
+          updatedAt: "2026-03-23T12:20:00.000Z",
         },
       ],
     });
 
-    expect(parsed.frames[0]?.imageStatus).toBe("approved");
+    expect(parsed.shots[0]?.startFrame.imageStatus).toBe("approved");
+    expect(parsed.currentBatch.shotCount).toBe(2);
+    expect(parsed.currentBatch.totalRequiredFrameCount).toBe(3);
+    expect(parsed.currentBatch.approvedShotCount).toBe(1);
+    expect(parsed.shots[0]?.frameDependency).toBe("start_frame_only");
+    expect(parsed.shots[0]?.endFrame).toBeNull();
   });
 
   it("accepts a batch regenerate-prompts response", () => {
