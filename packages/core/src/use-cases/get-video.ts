@@ -1,4 +1,4 @@
-import type { SegmentVideoRecord } from "@sweet-star/shared";
+import type { ShotVideoRecord } from "@sweet-star/shared";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
@@ -14,7 +14,7 @@ export interface GetVideoInput {
 }
 
 export interface GetVideoUseCase {
-  execute(input: GetVideoInput): Promise<SegmentVideoRecord>;
+  execute(input: GetVideoInput): Promise<ShotVideoRecord>;
 }
 
 export interface GetVideoUseCaseDependencies {

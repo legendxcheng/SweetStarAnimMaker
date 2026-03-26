@@ -334,7 +334,11 @@ describe("kling video provider", () => {
 
     const result = await provider.generateSegmentVideo({
       projectId: "proj_1",
+      sceneId: "scene_1",
       segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      frameDependency: "start_and_end_frame",
       promptText: "保持主体稳定，镜头缓慢推进。",
       startFramePath: "https://cdn.example/start.png",
       endFramePath: "https://cdn.example/end.png",
@@ -361,6 +365,52 @@ describe("kling video provider", () => {
     expect(result.videoUrl).toBe("https://cdn.example/stage-output.mp4");
     expect(result.thumbnailUrl).toBeNull();
     expect(result.durationSec).toBe(10);
+  });
+
+  it("omits image_tail when generating a start-frame-only shot clip", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "kling_task_start_only",
+            task_status: "submitted",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "kling_task_start_only",
+            task_status: "succeed",
+            video_url: "https://cdn.example/start-only-output.mp4",
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createKlingStageVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const result = await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      frameDependency: "start_frame_only",
+      promptText: "保持主体稳定，镜头缓慢推进。",
+      startFramePath: "https://cdn.example/start.png",
+      durationSec: 3,
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.image).toBe("https://cdn.example/start.png");
+    expect(request.image_tail).toBeUndefined();
+    expect(result.videoUrl).toBe("https://cdn.example/start-only-output.mp4");
   });
 
   it("condenses long stage prompts so Kling multi_prompt stays within provider limits", async () => {
@@ -393,7 +443,11 @@ describe("kling video provider", () => {
 
     await provider.generateSegmentVideo({
       projectId: "proj_1",
+      sceneId: "scene_1",
       segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      frameDependency: "start_and_end_frame",
       promptText: `你是一个电影级 image-to-video 提示词编排器。
 
 任务目标：

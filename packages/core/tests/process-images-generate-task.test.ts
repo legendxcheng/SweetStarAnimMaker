@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("process images generate task use case", () => {
-  it("creates two frame records per segment, writes the batch manifest, and enqueues frame prompt tasks", async () => {
+  it("creates one shot record per shot and only enqueues required frame prompt tasks", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -111,6 +111,7 @@ describe("process images generate task use case", () => {
                 visual: "清晨积水集市入口。",
                 subject: "林夏",
                 action: "她停住脚步。",
+                frameDependency: "start_frame_only",
                 dialogue: null,
                 os: "来得比我还快。",
                 audio: "雨声与水声。",
@@ -141,6 +142,7 @@ describe("process images generate task use case", () => {
                 visual: "身后摊棚倒向水线。",
                 subject: "林夏",
                 action: "她猛然回头。",
+                frameDependency: "start_and_end_frame",
                 dialogue: null,
                 os: null,
                 audio: "棚布拍打声。",
@@ -157,9 +159,13 @@ describe("process images generate task use case", () => {
       findBatchById: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
       listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn(),
       insertFrame: vi.fn(),
+      insertShot: vi.fn(),
       findFrameById: vi.fn(),
+      findShotById: vi.fn(),
       updateFrame: vi.fn(),
+      updateShot: vi.fn(),
     };
     const shotImageStorage = {
       writeBatchManifest: vi.fn(),
@@ -186,8 +192,7 @@ describe("process images generate task use case", () => {
           .fn()
           .mockReturnValueOnce("task_frame_prompt_1")
           .mockReturnValueOnce("task_frame_prompt_2")
-          .mockReturnValueOnce("task_frame_prompt_3")
-          .mockReturnValueOnce("task_frame_prompt_4"),
+          .mockReturnValueOnce("task_frame_prompt_3"),
       },
       clock: {
         now: vi
@@ -208,23 +213,42 @@ describe("process images generate task use case", () => {
       expect.objectContaining({
         id: "image_batch_task_20260324_images",
         sourceShotScriptId: "shot_script_v1",
-        segmentCount: 2,
-        totalFrameCount: 4,
+        shotCount: 2,
+        totalRequiredFrameCount: 3,
       }),
     );
-    expect(shotImageRepository.insertFrame).toHaveBeenCalledTimes(4);
+    expect(shotImageRepository.insertShot).toHaveBeenCalledTimes(2);
+    expect(shotImageRepository.insertShot).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        shotId: "shot_1",
+        frameDependency: "start_frame_only",
+        endFrame: null,
+      }),
+    );
+    expect(shotImageRepository.insertShot).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        shotId: "shot_2",
+        frameDependency: "start_and_end_frame",
+        endFrame: expect.objectContaining({
+          frameType: "end_frame",
+        }),
+      }),
+    );
     expect(shotImageStorage.writeBatchManifest).toHaveBeenCalledTimes(1);
     expect(projectRepository.updateCurrentImageBatch).toHaveBeenCalledWith({
       projectId: "proj_20260324_ab12cd",
       batchId: "image_batch_task_20260324_images",
     });
-    expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledTimes(4);
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledTimes(3);
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         input: expect.objectContaining({
           taskType: "frame_prompt_generate",
           segmentId: "segment_1",
+          shotId: "shot_1",
           frameType: "start_frame",
         }),
       }),
@@ -234,17 +258,29 @@ describe("process images generate task use case", () => {
       expect.objectContaining({
         input: expect.objectContaining({
           taskType: "frame_prompt_generate",
-          segmentId: "segment_1",
+          segmentId: "segment_2",
+          shotId: "shot_2",
+          frameType: "start_frame",
+        }),
+      }),
+    );
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          taskType: "frame_prompt_generate",
+          segmentId: "segment_2",
+          shotId: "shot_2",
           frameType: "end_frame",
         }),
       }),
     );
-    expect(taskQueue.enqueue).toHaveBeenCalledTimes(4);
+    expect(taskQueue.enqueue).toHaveBeenCalledTimes(3);
     expect(taskFileStorage.writeTaskOutput).toHaveBeenCalledWith({
       task: expect.objectContaining({ id: "task_20260324_images" }),
       output: {
         batchId: "image_batch_task_20260324_images",
-        frameCount: 4,
+        frameCount: 3,
       },
     });
     expect(taskRepository.markSucceeded).toHaveBeenCalledWith({
@@ -322,7 +358,7 @@ describe("process images generate task use case", () => {
     );
   });
 
-  it("creates unique frame ids and storage paths when raw segment ids repeat across scenes", async () => {
+  it("creates unique shot ids and storage paths when raw shot ids repeat across scenes", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -415,7 +451,26 @@ describe("process images generate task use case", () => {
             status: "approved",
             lastGeneratedAt: "2026-03-24T00:09:00.000Z",
             approvedAt: "2026-03-24T00:10:00.000Z",
-            shots: [],
+            shots: [
+              {
+                id: "shot_dup",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 3,
+                purpose: "第一镜头。",
+                visual: "第一场镜头。",
+                subject: "林夏",
+                action: "她看向前方。",
+                frameDependency: "start_frame_only",
+                dialogue: null,
+                os: null,
+                audio: "水声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
           },
           {
             segmentId: "segment_1",
@@ -427,7 +482,26 @@ describe("process images generate task use case", () => {
             status: "approved",
             lastGeneratedAt: "2026-03-24T00:09:00.000Z",
             approvedAt: "2026-03-24T00:10:00.000Z",
-            shots: [],
+            shots: [
+              {
+                id: "shot_dup",
+                sceneId: "scene_2",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S02-SG01-SH01",
+                durationSec: 2,
+                purpose: "第二镜头。",
+                visual: "第二场镜头。",
+                subject: "林夏",
+                action: "她后退一步。",
+                frameDependency: "start_frame_only",
+                dialogue: null,
+                os: null,
+                audio: "风声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
           },
         ],
       }),
@@ -437,9 +511,13 @@ describe("process images generate task use case", () => {
       findBatchById: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
       listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn(),
       insertFrame: vi.fn(),
+      insertShot: vi.fn(),
       findFrameById: vi.fn(),
+      findShotById: vi.fn(),
       updateFrame: vi.fn(),
+      updateShot: vi.fn(),
     };
     const shotImageStorage = {
       writeBatchManifest: vi.fn(),
@@ -465,9 +543,7 @@ describe("process images generate task use case", () => {
         generateTaskId: vi
           .fn()
           .mockReturnValueOnce("task_frame_prompt_dup_1")
-          .mockReturnValueOnce("task_frame_prompt_dup_2")
-          .mockReturnValueOnce("task_frame_prompt_dup_3")
-          .mockReturnValueOnce("task_frame_prompt_dup_4"),
+          .mockReturnValueOnce("task_frame_prompt_dup_2"),
       },
       clock: {
         now: vi
@@ -479,15 +555,15 @@ describe("process images generate task use case", () => {
 
     await useCase.execute({ taskId: "task_20260324_images_dup" });
 
-    const insertedFrames = shotImageRepository.insertFrame.mock.calls.map((call) => call[0]);
-    const frameIds = insertedFrames.map((frame: { id: string }) => frame.id);
-    const storageDirs = insertedFrames.map((frame: { storageDir: string }) => frame.storageDir);
+    const insertedShots = shotImageRepository.insertShot.mock.calls.map((call) => call[0]);
+    const shotIds = insertedShots.map((shot: { id: string }) => shot.id);
+    const storageDirs = insertedShots.map((shot: { storageDir: string }) => shot.storageDir);
 
-    expect(new Set(frameIds).size).toBe(4);
-    expect(new Set(storageDirs).size).toBe(4);
+    expect(new Set(shotIds).size).toBe(2);
+    expect(new Set(storageDirs).size).toBe(2);
   });
 
-  it("creates different frame ids for the same segment across separate image batches", async () => {
+  it("creates different shot record ids for the same raw shot across separate image batches", async () => {
     const tasksById = new Map([
       [
         "task_20260324_images_first",
@@ -615,7 +691,26 @@ describe("process images generate task use case", () => {
             status: "approved",
             lastGeneratedAt: "2026-03-24T00:09:00.000Z",
             approvedAt: "2026-03-24T00:10:00.000Z",
-            shots: [],
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 6,
+                purpose: "第一镜头。",
+                visual: "第一场。",
+                subject: "林夏",
+                action: "她转身。",
+                frameDependency: "start_frame_only",
+                dialogue: null,
+                os: null,
+                audio: "雨声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
           },
         ],
       }),
@@ -625,9 +720,13 @@ describe("process images generate task use case", () => {
       findBatchById: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
       listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn(),
       insertFrame: vi.fn(),
+      insertShot: vi.fn(),
       findFrameById: vi.fn(),
+      findShotById: vi.fn(),
       updateFrame: vi.fn(),
+      updateShot: vi.fn(),
     };
     const shotImageStorage = {
       writeBatchManifest: vi.fn(),
@@ -653,9 +752,7 @@ describe("process images generate task use case", () => {
         generateTaskId: vi
           .fn()
           .mockReturnValueOnce("task_frame_prompt_1")
-          .mockReturnValueOnce("task_frame_prompt_2")
-          .mockReturnValueOnce("task_frame_prompt_3")
-          .mockReturnValueOnce("task_frame_prompt_4"),
+          .mockReturnValueOnce("task_frame_prompt_2"),
       },
       clock: {
         now: vi
@@ -670,16 +767,14 @@ describe("process images generate task use case", () => {
     await useCase.execute({ taskId: "task_20260324_images_first" });
     await useCase.execute({ taskId: "task_20260324_images_second" });
 
-    const insertedFrames = shotImageRepository.insertFrame.mock.calls.map((call) => call[0]);
-    const firstBatchFrameIds = insertedFrames.slice(0, 2).map((frame: { id: string }) => frame.id);
-    const secondBatchFrameIds = insertedFrames
-      .slice(2, 4)
-      .map((frame: { id: string }) => frame.id);
+    const insertedShots = shotImageRepository.insertShot.mock.calls.map((call) => call[0]);
+    const firstBatchShotIds = insertedShots.slice(0, 1).map((shot: { id: string }) => shot.id);
+    const secondBatchShotIds = insertedShots.slice(1, 2).map((shot: { id: string }) => shot.id);
 
-    expect(firstBatchFrameIds).not.toEqual(secondBatchFrameIds);
+    expect(firstBatchShotIds).not.toEqual(secondBatchShotIds);
   });
 
-  it("does not switch the current image batch when frame creation fails", async () => {
+  it("does not switch the current image batch when shot record creation fails", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -772,7 +867,26 @@ describe("process images generate task use case", () => {
             status: "approved",
             lastGeneratedAt: "2026-03-24T00:09:00.000Z",
             approvedAt: "2026-03-24T00:10:00.000Z",
-            shots: [],
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 6,
+                purpose: "第一镜头。",
+                visual: "第一场。",
+                subject: "林夏",
+                action: "她抬头。",
+                frameDependency: "start_frame_only",
+                dialogue: null,
+                os: null,
+                audio: "雨声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
           },
         ],
       }),
@@ -782,11 +896,15 @@ describe("process images generate task use case", () => {
       findBatchById: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
       listFramesByBatchId: vi.fn(),
-      insertFrame: vi.fn().mockImplementation(() => {
-        throw new Error("frame insert failed");
+      listShotsByBatchId: vi.fn(),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn().mockImplementation(() => {
+        throw new Error("shot insert failed");
       }),
       findFrameById: vi.fn(),
+      findShotById: vi.fn(),
       updateFrame: vi.fn(),
+      updateShot: vi.fn(),
     };
     const shotImageStorage = {
       writeBatchManifest: vi.fn(),
@@ -820,7 +938,7 @@ describe("process images generate task use case", () => {
     });
 
     await expect(useCase.execute({ taskId: "task_20260324_images_fail" })).rejects.toThrow(
-      "frame insert failed",
+      "shot insert failed",
     );
 
     expect(projectRepository.updateCurrentImageBatch).not.toHaveBeenCalled();

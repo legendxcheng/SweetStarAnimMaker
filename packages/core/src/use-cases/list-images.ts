@@ -40,11 +40,15 @@ export function createListImagesUseCase(
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
-      const frames = await dependencies.shotImageRepository.listFramesByBatchId(batch.id);
+      if (!dependencies.shotImageRepository.listShotsByBatchId) {
+        throw new CurrentImageBatchNotFoundError(project.id);
+      }
+
+      const shots = await dependencies.shotImageRepository.listShotsByBatchId(batch.id);
 
       return {
-        currentBatch: toCurrentImageBatch(batch, frames),
-        frames,
+        currentBatch: toCurrentImageBatch(batch, shots),
+        shots,
       };
     },
   };

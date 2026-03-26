@@ -1,9 +1,13 @@
 export interface GenerateSegmentVideoInput {
   projectId: string;
+  sceneId: string;
   segmentId: string;
+  shotId: string;
+  shotCode: string;
+  frameDependency: "start_frame_only" | "start_and_end_frame";
   promptText: string;
   startFramePath: string;
-  endFramePath: string;
+  endFramePath?: string;
   durationSec?: number | null;
   model?: string | null;
 }

@@ -4,8 +4,8 @@ import path from "node:path";
 
 import {
   createProjectRecord,
-  createSegmentFrameRecord,
-  createShotImageBatchRecord,
+  createShotReferenceBatchRecord,
+  createShotReferenceRecord,
 } from "@sweet-star/core";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -31,7 +31,7 @@ describe("sqlite shot image repository", () => {
     tempDirs.length = 0;
   });
 
-  it("stores batches and frame records", async () => {
+  it("stores batches and shot records", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     projectRepository.insert(
       createProjectRecord({
@@ -43,54 +43,61 @@ describe("sqlite shot image repository", () => {
         premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
       }),
     );
-    const batch = createShotImageBatchRecord({
+    const batch = createShotReferenceBatchRecord({
       id: "image_batch_1",
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceShotScriptId: "shot_script_1",
-      segmentCount: 1,
+      shotCount: 2,
+      totalRequiredFrameCount: 3,
       createdAt: "2026-03-24T00:00:00.000Z",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
-    const startFrame = createSegmentFrameRecord({
-      id: "frame_start_1",
+    const firstShot = createShotReferenceRecord({
+      id: "shot_ref_image_batch_1_scene_1_segment_1_shot_1",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceShotScriptId: "shot_script_1",
-      segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
-      frameType: "start_frame",
-      promptTextSeed: "起始画面提示词",
-      promptTextCurrent: "起始画面提示词",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 3,
+      frameDependency: "start_and_end_frame",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
-    const endFrame = createSegmentFrameRecord({
-      id: "frame_end_1",
+    const secondShot = createShotReferenceRecord({
+      id: "shot_ref_image_batch_1_scene_1_segment_1_shot_2",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceShotScriptId: "shot_script_1",
-      segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
-      frameType: "end_frame",
-      promptTextSeed: "结束画面提示词",
-      promptTextCurrent: "结束画面提示词",
+      segmentId: "segment_1",
+      shotId: "shot_2",
+      shotCode: "S01-SG01-SH02",
+      segmentOrder: 1,
+      shotOrder: 2,
+      durationSec: 2,
+      frameDependency: "start_frame_only",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
 
     repository.insertBatch(batch);
-    repository.insertFrame(startFrame);
-    repository.insertFrame(endFrame);
+    repository.insertShot?.(firstShot);
+    repository.insertShot?.(secondShot);
 
     expect(repository.findBatchById(batch.id)).toEqual(batch);
-    expect(repository.findFrameById(startFrame.id)).toEqual(startFrame);
-    expect(repository.listFramesByBatchId(batch.id)).toEqual([endFrame, startFrame]);
+    expect(repository.findShotById?.(firstShot.id)).toEqual(firstShot);
+    expect(repository.listShotsByBatchId?.(batch.id)).toEqual([firstShot, secondShot]);
+    const persistedSecondShot = await repository.findShotById?.(secondShot.id);
+    expect(persistedSecondShot?.endFrame).toBeNull();
   });
 
-  it("updates one frame independently and resolves the project's current image batch", async () => {
+  it("updates one shot independently and resolves the project's current image batch", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_1",
@@ -101,74 +108,90 @@ describe("sqlite shot image repository", () => {
       premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
     });
     projectRepository.insert(project);
-    const batch = createShotImageBatchRecord({
+    const batch = createShotReferenceBatchRecord({
       id: "image_batch_1",
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceShotScriptId: "shot_script_1",
-      segmentCount: 1,
+      shotCount: 2,
+      totalRequiredFrameCount: 3,
       createdAt: "2026-03-24T00:00:00.000Z",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
-    const startFrame = createSegmentFrameRecord({
-      id: "frame_start_1",
+    const firstShot = createShotReferenceRecord({
+      id: "shot_ref_image_batch_1_scene_1_segment_1_shot_1",
       batchId: batch.id,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceShotScriptId: "shot_script_1",
-      segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
-      frameType: "start_frame",
-      promptTextSeed: "起始画面提示词",
-      promptTextCurrent: "起始画面提示词",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 3,
+      frameDependency: "start_and_end_frame",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
-    const endFrame = createSegmentFrameRecord({
-      id: "frame_end_1",
+    const secondShot = createShotReferenceRecord({
+      id: "shot_ref_image_batch_1_scene_1_segment_1_shot_2",
       batchId: batch.id,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceShotScriptId: "shot_script_1",
-      segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
-      frameType: "end_frame",
-      promptTextSeed: "结束画面提示词",
-      promptTextCurrent: "结束画面提示词",
+      segmentId: "segment_1",
+      shotId: "shot_2",
+      shotCode: "S01-SG01-SH02",
+      segmentOrder: 1,
+      shotOrder: 2,
+      durationSec: 2,
+      frameDependency: "start_frame_only",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
 
     repository.insertBatch(batch);
-    repository.insertFrame(startFrame);
-    repository.insertFrame(endFrame);
+    repository.insertShot?.(firstShot);
+    repository.insertShot?.(secondShot);
     projectRepository.updateCurrentImageBatch({
       projectId: project.id,
       batchId: batch.id,
     });
-    repository.updateFrame({
-      ...startFrame,
-      imageStatus: "approved",
-      approvedAt: "2026-03-24T00:10:00.000Z",
-      imageWidth: 1920,
-      imageHeight: 1080,
-      provider: "turnaround-image",
-      model: "doubao-seedream-5-0-260128",
+    repository.updateShot?.({
+      ...firstShot,
+      referenceStatus: "in_review",
+      startFrame: {
+        ...firstShot.startFrame,
+        imageStatus: "approved",
+        approvedAt: "2026-03-24T00:10:00.000Z",
+        imageWidth: 1920,
+        imageHeight: 1080,
+        provider: "turnaround-image",
+        model: "doubao-seedream-5-0-260128",
+        updatedAt: "2026-03-24T00:10:00.000Z",
+      },
       updatedAt: "2026-03-24T00:10:00.000Z",
     });
 
     expect(repository.findCurrentBatchByProjectId(project.id)).toEqual(batch);
-    expect(repository.findFrameById(startFrame.id)).toEqual(
+    expect(repository.findShotById?.(firstShot.id)).toEqual(
       expect.objectContaining({
-        imageStatus: "approved",
-        approvedAt: "2026-03-24T00:10:00.000Z",
-        imageWidth: 1920,
+        referenceStatus: "in_review",
+        startFrame: expect.objectContaining({
+          imageStatus: "approved",
+          approvedAt: "2026-03-24T00:10:00.000Z",
+          imageWidth: 1920,
+        }),
       }),
     );
-    expect(repository.findFrameById(endFrame.id)).toEqual(
+    expect(repository.findShotById?.(secondShot.id)).toEqual(
       expect.objectContaining({
-        imageStatus: "pending",
-        approvedAt: null,
+        referenceStatus: "pending",
+        startFrame: expect.objectContaining({
+          imageStatus: "pending",
+          approvedAt: null,
+        }),
       }),
     );
   });

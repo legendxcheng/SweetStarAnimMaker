@@ -44,6 +44,7 @@ export {
   regenerateVideoSegmentRequestSchema,
   saveVideoPromptRequestSchema,
   segmentVideoResponseSchema,
+  shotVideoResponseSchema,
   videoListResponseSchema,
 } from "./schemas/video-api";
 export {
@@ -122,6 +123,7 @@ export type {
   ImageFrameType,
   RegenerateAllImagePromptsResponse,
   RegenerateImageFramePromptRequest,
+  SegmentFrameRecord,
   ShotReferenceFrame,
   ShotReferenceRecord,
   ShotReferenceStatus,
@@ -135,6 +137,7 @@ export type {
   RegenerateVideoPromptRequest,
   RegenerateVideoSegmentRequest,
   SaveVideoPromptRequest,
+  SegmentVideoRecord,
   ShotVideoRecord,
   ShotVideoStatus,
   VideoListResponse,

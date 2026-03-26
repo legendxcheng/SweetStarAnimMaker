@@ -11,8 +11,7 @@ const imageFrameStatuses = [
   "approved",
   "failed",
 ] as const;
-const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
-const shotReferenceStatuses = ["pending", "in_review", "approved"] as const;
+const shotReferenceStatuses = ["pending", "in_review", "approved", "failed"] as const;
 
 export const currentImageBatchSummaryResponseSchema = z.object({
   id: z.string(),
@@ -87,20 +86,28 @@ export const imageFrameResponseSchema = z
     }
   });
 
-const shotReferenceRecordSchema = z.object({
+const shotReferenceRecordBaseSchema = z.object({
   id: z.string(),
   batchId: z.string(),
   projectId: z.string(),
   sourceShotScriptId: z.string(),
   shotId: z.string(),
   shotCode: z.string(),
-  frameDependency: z.enum(shotFrameDependencies),
   referenceStatus: z.enum(shotReferenceStatuses),
   startFrame: imageFrameResponseSchema,
-  endFrame: imageFrameResponseSchema.nullable(),
   updatedAt: z.string(),
 });
 
+const shotReferenceRecordSchema = z.discriminatedUnion("frameDependency", [
+  shotReferenceRecordBaseSchema.extend({
+    frameDependency: z.literal("start_frame_only"),
+    endFrame: z.null(),
+  }),
+  shotReferenceRecordBaseSchema.extend({
+    frameDependency: z.literal("start_and_end_frame"),
+    endFrame: imageFrameResponseSchema,
+  }),
+]);
 export const imageFrameListResponseSchema = z.object({
   currentBatch: currentImageBatchSummaryResponseSchema,
   shots: z.array(shotReferenceRecordSchema),

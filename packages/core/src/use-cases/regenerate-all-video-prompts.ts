@@ -61,11 +61,11 @@ export function createRegenerateAllVideoPromptsUseCase(
         promptTemplateKey: "segment_video.generate",
       });
       const timestamp = dependencies.clock.now();
-      const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-      const updatedSegments = segments.map((currentSegment) => {
+      const shots = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
+      const updatedShots = shots.map((currentShot) => {
         const scriptSegment = shotScript.segments.find(
           (item) =>
-            item.segmentId === currentSegment.segmentId && item.sceneId === currentSegment.sceneId,
+            item.segmentId === currentShot.segmentId && item.sceneId === currentShot.sceneId,
         );
 
         if (!scriptSegment) {
@@ -80,20 +80,20 @@ export function createRegenerateAllVideoPromptsUseCase(
         });
 
         return {
-          ...currentSegment,
+          ...currentShot,
           promptTextCurrent,
           promptUpdatedAt: timestamp,
           updatedAt: timestamp,
         };
       });
 
-      for (const segment of updatedSegments) {
-        await dependencies.videoRepository.updateSegment(segment);
+      for (const shot of updatedShots) {
+        await dependencies.videoRepository.updateSegment(shot);
       }
 
       return {
-        currentBatch: toCurrentVideoBatchSummary(batch, updatedSegments),
-        segments: updatedSegments,
+        currentBatch: toCurrentVideoBatchSummary(batch, updatedShots),
+        shots: updatedShots,
       };
     },
   };

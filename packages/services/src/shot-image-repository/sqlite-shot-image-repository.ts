@@ -1,5 +1,7 @@
 import type {
   SegmentFrameRecordEntity,
+  ShotReferenceFrameEntity,
+  ShotReferenceRecordEntity,
   ShotImageBatchRecord,
   ShotImageRepository,
 } from "@sweet-star/core";
@@ -24,7 +26,9 @@ export function createSqliteShotImageRepository(
               project_storage_dir,
               source_shot_script_id,
               segment_count,
+              shot_count,
               total_frame_count,
+              total_required_frame_count,
               storage_dir,
               manifest_rel_path,
               created_at,
@@ -35,7 +39,9 @@ export function createSqliteShotImageRepository(
               @project_storage_dir,
               @source_shot_script_id,
               @segment_count,
+              @shot_count,
               @total_frame_count,
+              @total_required_frame_count,
               @storage_dir,
               @manifest_rel_path,
               @created_at,
@@ -67,6 +73,23 @@ export function createSqliteShotImageRepository(
       return row ? fromBatchRow(row) : null;
     },
     listFramesByBatchId(batchId) {
+      const shotRows = options.db
+        .prepare(
+          `
+            SELECT *
+            FROM shot_image_shots
+            WHERE batch_id = ?
+            ORDER BY segment_order ASC, shot_order ASC
+          `,
+        )
+        .all(batchId) as ShotImageShotRow[];
+
+      if (shotRows.length > 0) {
+        return shotRows
+          .map(fromShotRow)
+          .flatMap((shot) => [shot.startFrame, ...(shot.endFrame ? [shot.endFrame] : [])]);
+      }
+
       const rows = options.db
         .prepare(
           `
@@ -79,6 +102,20 @@ export function createSqliteShotImageRepository(
         .all(batchId) as ShotImageFrameRow[];
 
       return rows.map(fromFrameRow);
+    },
+    listShotsByBatchId(batchId) {
+      const rows = options.db
+        .prepare(
+          `
+            SELECT *
+            FROM shot_image_shots
+            WHERE batch_id = ?
+            ORDER BY segment_order ASC, shot_order ASC
+          `,
+        )
+        .all(batchId) as ShotImageShotRow[];
+
+      return rows.map(fromShotRow);
     },
     insertFrame(frame) {
       options.db
@@ -159,14 +196,121 @@ export function createSqliteShotImageRepository(
         )
         .run(toFrameRow(frame));
     },
+    insertShot(shot) {
+      options.db
+        .prepare(
+          `
+            INSERT INTO shot_image_shots (
+              id,
+              batch_id,
+              project_id,
+              project_storage_dir,
+              source_shot_script_id,
+              scene_id,
+              segment_id,
+              shot_id,
+              shot_code,
+              segment_order,
+              shot_order,
+              duration_sec,
+              frame_dependency,
+              reference_status,
+              updated_at,
+              storage_dir,
+              manifest_rel_path,
+              start_frame_json,
+              end_frame_json
+            ) VALUES (
+              @id,
+              @batch_id,
+              @project_id,
+              @project_storage_dir,
+              @source_shot_script_id,
+              @scene_id,
+              @segment_id,
+              @shot_id,
+              @shot_code,
+              @segment_order,
+              @shot_order,
+              @duration_sec,
+              @frame_dependency,
+              @reference_status,
+              @updated_at,
+              @storage_dir,
+              @manifest_rel_path,
+              @start_frame_json,
+              @end_frame_json
+            )
+          `,
+        )
+        .run(toShotRow(shot));
+    },
     findFrameById(frameId) {
+      const shotRow = options.db
+        .prepare(
+          `
+            SELECT *
+            FROM shot_image_shots
+            WHERE json_extract(start_frame_json, '$.id') = ?
+               OR json_extract(end_frame_json, '$.id') = ?
+            LIMIT 1
+          `,
+        )
+        .get(frameId, frameId) as ShotImageShotRow | undefined;
+
+      if (shotRow) {
+        const shot = fromShotRow(shotRow);
+        return shot.startFrame.id === frameId ? shot.startFrame : (shot.endFrame ?? null);
+      }
+
       const row = options.db
         .prepare("SELECT * FROM shot_image_frames WHERE id = ?")
         .get(frameId) as ShotImageFrameRow | undefined;
 
       return row ? fromFrameRow(row) : null;
     },
+    findShotById(shotId) {
+      const row = options.db
+        .prepare("SELECT * FROM shot_image_shots WHERE id = ?")
+        .get(shotId) as ShotImageShotRow | undefined;
+
+      return row ? fromShotRow(row) : null;
+    },
     updateFrame(frame) {
+      const shotRow = options.db
+        .prepare(
+          `
+            SELECT *
+            FROM shot_image_shots
+            WHERE json_extract(start_frame_json, '$.id') = ?
+               OR json_extract(end_frame_json, '$.id') = ?
+            LIMIT 1
+          `,
+        )
+        .get(frame.id, frame.id) as ShotImageShotRow | undefined;
+
+      if (shotRow) {
+        const shot = fromShotRow(shotRow);
+        const startFrame = shot.startFrame.id === frame.id ? frame : shot.startFrame;
+        const updatedShot: ShotReferenceRecordEntity =
+          shot.frameDependency === "start_and_end_frame"
+            ? {
+                ...shot,
+                startFrame,
+                endFrame: shot.endFrame.id === frame.id ? frame : shot.endFrame,
+                updatedAt: frame.updatedAt,
+              }
+            : {
+                ...shot,
+                startFrame,
+                endFrame: null,
+                updatedAt: frame.updatedAt,
+              };
+
+        this.updateShot?.(updatedShot);
+        return;
+      }
+
       options.db
         .prepare(
           `
@@ -202,6 +346,34 @@ export function createSqliteShotImageRepository(
         )
         .run(toFrameRow(frame));
     },
+    updateShot(shot) {
+      options.db
+        .prepare(
+          `
+            UPDATE shot_image_shots
+            SET
+              project_id = @project_id,
+              project_storage_dir = @project_storage_dir,
+              source_shot_script_id = @source_shot_script_id,
+              scene_id = @scene_id,
+              segment_id = @segment_id,
+              shot_id = @shot_id,
+              shot_code = @shot_code,
+              segment_order = @segment_order,
+              shot_order = @shot_order,
+              duration_sec = @duration_sec,
+              frame_dependency = @frame_dependency,
+              reference_status = @reference_status,
+              updated_at = @updated_at,
+              storage_dir = @storage_dir,
+              manifest_rel_path = @manifest_rel_path,
+              start_frame_json = @start_frame_json,
+              end_frame_json = @end_frame_json
+            WHERE id = @id
+          `,
+        )
+        .run(toShotRow(shot));
+    },
   };
 }
 
@@ -211,11 +383,35 @@ interface ShotImageBatchRow {
   project_storage_dir: string;
   source_shot_script_id: string;
   segment_count: number;
+  shot_count: number;
   total_frame_count: number;
+  total_required_frame_count: number;
   storage_dir: string;
   manifest_rel_path: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ShotImageShotRow {
+  id: string;
+  batch_id: string;
+  project_id: string;
+  project_storage_dir: string;
+  source_shot_script_id: string;
+  scene_id: string;
+  segment_id: string;
+  shot_id: string;
+  shot_code: string;
+  segment_order: number;
+  shot_order: number;
+  duration_sec: number | null;
+  frame_dependency: ShotReferenceRecordEntity["frameDependency"];
+  reference_status: ShotReferenceRecordEntity["referenceStatus"];
+  updated_at: string;
+  storage_dir: string;
+  manifest_rel_path: string;
+  start_frame_json: string;
+  end_frame_json: string | null;
 }
 
 interface ShotImageFrameRow {
@@ -262,7 +458,9 @@ function toBatchRow(batch: ShotImageBatchRecord): ShotImageBatchRow {
     project_storage_dir: batch.projectStorageDir,
     source_shot_script_id: batch.sourceShotScriptId,
     segment_count: batch.segmentCount,
+    shot_count: batch.shotCount,
     total_frame_count: batch.totalFrameCount,
+    total_required_frame_count: batch.totalRequiredFrameCount,
     storage_dir: batch.storageDir,
     manifest_rel_path: batch.manifestRelPath,
     created_at: batch.createdAt,
@@ -277,7 +475,9 @@ function fromBatchRow(row: ShotImageBatchRow): ShotImageBatchRecord {
     projectStorageDir: row.project_storage_dir,
     sourceShotScriptId: row.source_shot_script_id,
     segmentCount: row.segment_count,
+    shotCount: row.shot_count,
     totalFrameCount: row.total_frame_count,
+    totalRequiredFrameCount: row.total_required_frame_count,
     storageDir: row.storage_dir,
     manifestRelPath: row.manifest_rel_path,
     createdAt: row.created_at,
@@ -360,5 +560,66 @@ function fromFrameRow(row: ShotImageFrameRow): SegmentFrameRecordEntity {
     currentMetadataRelPath: row.current_metadata_rel_path,
     promptVersionsStorageDir: row.prompt_versions_storage_dir,
     versionsStorageDir: row.versions_storage_dir,
+  };
+}
+
+function toShotRow(shot: ShotReferenceRecordEntity): ShotImageShotRow {
+  return {
+    id: shot.id,
+    batch_id: shot.batchId,
+    project_id: shot.projectId,
+    project_storage_dir: shot.projectStorageDir,
+    source_shot_script_id: shot.sourceShotScriptId,
+    scene_id: shot.sceneId,
+    segment_id: shot.segmentId,
+    shot_id: shot.shotId,
+    shot_code: shot.shotCode,
+    segment_order: shot.segmentOrder,
+    shot_order: shot.shotOrder,
+    duration_sec: shot.durationSec,
+    frame_dependency: shot.frameDependency,
+    reference_status: shot.referenceStatus,
+    updated_at: shot.updatedAt,
+    storage_dir: shot.storageDir,
+    manifest_rel_path: shot.manifestRelPath,
+    start_frame_json: JSON.stringify(shot.startFrame),
+    end_frame_json: shot.endFrame ? JSON.stringify(shot.endFrame) : null,
+  };
+}
+
+function fromShotRow(row: ShotImageShotRow): ShotReferenceRecordEntity {
+  const baseShot = {
+    id: row.id,
+    batchId: row.batch_id,
+    projectId: row.project_id,
+    projectStorageDir: row.project_storage_dir,
+    sourceShotScriptId: row.source_shot_script_id,
+    sceneId: row.scene_id,
+    segmentId: row.segment_id,
+    shotId: row.shot_id,
+    shotCode: row.shot_code,
+    segmentOrder: row.segment_order,
+    shotOrder: row.shot_order,
+    durationSec: row.duration_sec,
+    frameDependency: row.frame_dependency,
+    referenceStatus: row.reference_status,
+    updatedAt: row.updated_at,
+    storageDir: row.storage_dir,
+    manifestRelPath: row.manifest_rel_path,
+    startFrame: JSON.parse(row.start_frame_json) as ShotReferenceFrameEntity,
+  };
+
+  if (row.frame_dependency === "start_and_end_frame") {
+    return {
+      ...baseShot,
+      frameDependency: "start_and_end_frame",
+      endFrame: JSON.parse(row.end_frame_json ?? "null") as ShotReferenceFrameEntity,
+    };
+  }
+
+  return {
+    ...baseShot,
+    frameDependency: "start_frame_only",
+    endFrame: null,
   };
 }

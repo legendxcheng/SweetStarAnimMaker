@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createProcessFrameImageGenerateTaskUseCase,
+  createShotReferenceRecord,
 } from "../src/index";
 
 describe("process frame image generate task use case", () => {
@@ -386,5 +387,150 @@ describe("process frame image generate task use case", () => {
       updatedAt: "2026-03-24T00:18:00.000Z",
       finishedAt: "2026-03-24T00:18:00.000Z",
     });
+  });
+
+  it("updates the owning shot slot and keeps project status generating while sibling frames are still running", async () => {
+    const shot = createShotReferenceRecord({
+      id: "shot_ref_image_batch_1_scene_1_segment_1_shot_1",
+      batchId: "image_batch_1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceShotScriptId: "shot_script_v1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_and_end_frame",
+      updatedAt: "2026-03-24T00:15:00.000Z",
+      endFrame: {
+        imageStatus: "generating",
+      },
+    });
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_frame_image_3",
+        projectId: "proj_1",
+        type: "frame_image_generate",
+        status: "pending",
+        queueName: "frame-image-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_frame_image_3",
+        inputRelPath: "tasks/task_frame_image_3/input.json",
+        outputRelPath: "tasks/task_frame_image_3/output.json",
+        logRelPath: "tasks/task_frame_image_3/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:16:00.000Z",
+        updatedAt: "2026-03-24T00:16:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        visualStyleText: "",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_frame_image_3",
+        projectId: "proj_1",
+        taskType: "frame_image_generate",
+        batchId: "image_batch_1",
+        frameId: shot.startFrame.id,
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn().mockResolvedValue([shot]),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn(),
+      findFrameById: vi.fn().mockResolvedValue(null),
+      findShotById: vi.fn(),
+      updateFrame: vi.fn(),
+      updateShot: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
+    };
+    const shotImageProvider = {
+      generateShotImage: vi.fn().mockResolvedValue({
+        imageBytes: new Uint8Array([1, 2, 3]),
+        rawResponse: '{"ok":true}',
+        provider: "vector-engine",
+        model: "doubao-seedream-5-0-260128",
+        width: 1024,
+        height: 1024,
+      }),
+    };
+
+    const useCase = createProcessFrameImageGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotImageProvider,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:17:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:18:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_frame_image_3" });
+
+    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: shot.id,
+        referenceStatus: "pending",
+        startFrame: expect.objectContaining({
+          id: shot.startFrame.id,
+          imageStatus: "in_review",
+        }),
+        endFrame: expect.objectContaining({
+          id: shot.endFrame?.id,
+          imageStatus: "generating",
+        }),
+      }),
+    );
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_1",
+      status: "images_generating",
+      updatedAt: "2026-03-24T00:18:00.000Z",
+    });
+    expect(shotImageRepository.updateFrame).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ImageFrameListResponse, SegmentFrameRecord } from "@sweet-star/shared";
+import type { ImageFrameListResponse, ShotReferenceFrame, ShotReferenceRecord } from "@sweet-star/shared";
 
 import { apiClient } from "../services/api-client";
 import { getButtonClassName } from "../styles/button-styles";
@@ -10,8 +10,15 @@ import type {
   FrameDraftState,
   ImagePhaseActionBusy,
   ImagePhasePanelProps,
+  SegmentShotGroup,
 } from "./image-phase-panel/types";
-import { createFrameDraft, normalizeOptionalText } from "./image-phase-panel/utils";
+import {
+  createFrameDraft,
+  getRequiredFrames,
+  isShotReadyForApproval,
+  normalizeOptionalText,
+  replaceFrameOnShot,
+} from "./image-phase-panel/utils";
 
 export function ImagePhasePanel({
   project,
@@ -22,7 +29,7 @@ export function ImagePhasePanel({
   onGenerate,
   onProjectRefresh,
 }: ImagePhasePanelProps) {
-  const [frames, setFrames] = useState<SegmentFrameRecord[]>([]);
+  const [shots, setShots] = useState<ShotReferenceRecord[]>([]);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<Error | null>(null);
@@ -34,11 +41,16 @@ export function ImagePhasePanel({
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
   const batchSummary = project.currentImageBatch;
+
+  const frames = useMemo(
+    () => shots.flatMap((shot) => getRequiredFrames(shot)),
+    [shots],
+  );
   const hasPendingFramePlans = frames.some((frame) => frame.planStatus === "pending");
 
   useEffect(() => {
     if (!batchSummary) {
-      setFrames([]);
+      setShots([]);
       setDrafts({});
       setListError(null);
       setListLoading(false);
@@ -47,7 +59,7 @@ export function ImagePhasePanel({
 
     let cancelled = false;
 
-    async function loadFrames() {
+    async function loadShots() {
       setListLoading(true);
 
       try {
@@ -70,7 +82,7 @@ export function ImagePhasePanel({
       }
     }
 
-    void loadFrames();
+    void loadShots();
 
     return () => {
       cancelled = true;
@@ -115,43 +127,31 @@ export function ImagePhasePanel({
     };
   }, [batchSummary?.id, hasPendingFramePlans, project.id, project.status]);
 
-  const segmentGroups = useMemo(() => {
-    const groups = new Map<
-      string,
-      {
-        segmentId: string;
-        sceneId: string;
-        order: number;
-        frames: SegmentFrameRecord[];
-      }
-    >();
+  const segmentGroups = useMemo<SegmentShotGroup[]>(() => {
+    const groups = new Map<string, SegmentShotGroup>();
 
-    for (const frame of frames) {
-      const key = `${frame.sceneId}:${frame.segmentId}:${frame.order}`;
+    for (const shot of shots) {
+      const sceneId = shot.startFrame.sceneId;
+      const segmentId = shot.startFrame.segmentId;
+      const order = shot.startFrame.order;
+      const key = `${sceneId}:${segmentId}:${order}`;
       const group = groups.get(key);
 
       if (group) {
-        group.frames.push(frame);
+        group.shots.push(shot);
         continue;
       }
 
       groups.set(key, {
-        segmentId: frame.segmentId,
-        sceneId: frame.sceneId,
-        order: frame.order,
-        frames: [frame],
+        segmentId,
+        sceneId,
+        order,
+        shots: [shot],
       });
     }
 
-    return Array.from(groups.values())
-      .sort((left, right) => left.order - right.order)
-      .map((group) => ({
-        ...group,
-        startFrame:
-          group.frames.find((frame) => frame.frameType === "start_frame") ?? null,
-        endFrame: group.frames.find((frame) => frame.frameType === "end_frame") ?? null,
-      }));
-  }, [frames]);
+    return Array.from(groups.values()).sort((left, right) => left.order - right.order);
+  }, [shots]);
 
   const sceneIds = useMemo(() => {
     const seen = new Set<string>();
@@ -194,16 +194,19 @@ export function ImagePhasePanel({
 
   const activeSegmentGroups = useMemo(
     () => segmentGroups.filter((group) => group.sceneId === activeSceneId),
-    [segmentGroups, activeSceneId],
+    [activeSceneId, segmentGroups],
   );
 
   function applyImageListResponse(response: ImageFrameListResponse) {
-    setFrames(response.frames);
+    const nextShots = response.shots;
+    const nextFrames = nextShots.flatMap((shot) => getRequiredFrames(shot));
+
+    setShots(nextShots);
     setDrafts((currentDrafts) => {
       const nextDrafts: Record<string, FrameDraftState> = {};
       const previousFramesById = new Map(frames.map((frame) => [frame.id, frame]));
 
-      for (const frame of response.frames) {
+      for (const frame of nextFrames) {
         const currentDraft = currentDrafts[frame.id];
         const previousFrame = previousFramesById.get(frame.id);
         const shouldSyncWithServer =
@@ -222,10 +225,8 @@ export function ImagePhasePanel({
     });
   }
 
-  function updateFrame(nextFrame: SegmentFrameRecord) {
-    setFrames((currentFrames) =>
-      currentFrames.map((frame) => (frame.id === nextFrame.id ? nextFrame : frame)),
-    );
+  function updateFrame(nextFrame: ShotReferenceFrame) {
+    setShots((currentShots) => currentShots.map((shot) => replaceFrameOnShot(shot, nextFrame)));
     setDrafts((currentDrafts) => ({
       ...currentDrafts,
       [nextFrame.id]: createFrameDraft(nextFrame),
@@ -236,14 +237,14 @@ export function ImagePhasePanel({
     await onProjectRefresh?.();
   }
 
-  async function refreshFrames() {
+  async function refreshShots() {
     const response = await apiClient.listImages(project.id);
 
     applyImageListResponse(response);
     setListError(null);
   }
 
-  async function handleSavePrompt(frame: SegmentFrameRecord) {
+  async function handleSavePrompt(frame: ShotReferenceFrame) {
     const draft = drafts[frame.id];
 
     if (!draft) {
@@ -266,11 +267,11 @@ export function ImagePhasePanel({
     }
   }
 
-  async function handleRegeneratePrompt(frame: SegmentFrameRecord) {
+  async function handleRegeneratePrompt(frame: ShotReferenceFrame) {
     try {
       setActionBusy({ kind: "regenerate", frameId: frame.id });
       await apiClient.regenerateImageFramePrompt(project.id, frame.id);
-      await refreshFrames();
+      await refreshShots();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -279,12 +280,12 @@ export function ImagePhasePanel({
     }
   }
 
-  async function handleGenerateFrame(frame: SegmentFrameRecord) {
+  async function handleGenerateFrame(frame: ShotReferenceFrame) {
     try {
       setActionBusy({ kind: "generate", frameId: frame.id });
       await apiClient.generateImageFrame(project.id, frame.id);
       await refreshProject();
-      await refreshFrames();
+      await refreshShots();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -293,12 +294,11 @@ export function ImagePhasePanel({
     }
   }
 
-  async function handleApproveFrame(frame: SegmentFrameRecord) {
+  async function handleApproveShot(shot: ShotReferenceRecord) {
     try {
-      setActionBusy({ kind: "approve", frameId: frame.id });
-      const approvedFrame = await apiClient.approveImageFrame(project.id, frame.id);
-
-      updateFrame(approvedFrame);
+      setActionBusy({ kind: "approve", shotId: shot.id });
+      await apiClient.approveImageFrame(project.id, shot.startFrame.id);
+      await refreshShots();
       setActionError(null);
       await refreshProject();
     } catch (error) {
@@ -335,7 +335,7 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "regenerate-all-prompts" });
       await apiClient.regenerateAllImagePrompts(project.id);
-      await refreshFrames();
+      await refreshShots();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -357,7 +357,7 @@ export function ImagePhasePanel({
       }
 
       await refreshProject();
-      await refreshFrames();
+      await refreshShots();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -373,7 +373,7 @@ export function ImagePhasePanel({
           <div>
             <h3 className="text-lg font-semibold text-(--color-text-primary)">画面工作区</h3>
             <p className="text-sm text-(--color-text-muted) mt-1">
-              每个 Segment 维护起始帧与结束帧两张关键图，支持逐帧编辑 Prompt、出图与审核。
+              每个 Shot 根据镜头依赖维护一组关键参考帧，支持逐帧编辑 Prompt、出图，并按镜头完成审核。
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-3">
@@ -427,13 +427,13 @@ export function ImagePhasePanel({
         {batchSummary ? (
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <p className={metaLabelClass}>Segment 数量</p>
-              <p className={metaValueClass}>{batchSummary.segmentCount}</p>
+              <p className={metaLabelClass}>Shot 数量</p>
+              <p className={metaValueClass}>{batchSummary.shotCount}</p>
             </div>
             <div>
-              <p className={metaLabelClass}>已通过帧数</p>
+              <p className={metaLabelClass}>已通过镜头</p>
               <p className={metaValueClass}>
-                {batchSummary.approvedFrameCount}/{batchSummary.totalFrameCount}
+                {batchSummary.approvedShotCount}/{batchSummary.shotCount}
               </p>
             </div>
             <div>
@@ -445,7 +445,7 @@ export function ImagePhasePanel({
           </div>
         ) : (
           <p className="text-sm text-(--color-text-muted)">
-            镜头脚本通过后，可以在这里为每个 Segment 生成起始帧和结束帧。
+            镜头脚本通过后，可以在这里为每个 Shot 生成关键参考帧。
           </p>
         )}
       </div>
@@ -499,7 +499,7 @@ export function ImagePhasePanel({
 
       {batchSummary && !listLoading && segmentGroups.length === 0 && !listError && (
         <div className={cardClass}>
-          <p className="text-sm text-(--color-text-muted)">当前批次还没有可编辑的 Segment 帧。</p>
+          <p className="text-sm text-(--color-text-muted)">当前批次还没有可编辑的 Shot 参考图。</p>
         </div>
       )}
 
@@ -549,47 +549,109 @@ export function ImagePhasePanel({
             </p>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <FrameEditorCard
-              projectId={project.id}
-              frame={segment.startFrame}
-              metaLabelClass={metaLabelClass}
-              metaValueClass={metaValueClass}
-              actionBusy={actionBusy}
-              draft={segment.startFrame ? drafts[segment.startFrame.id] : undefined}
-              onDraftChange={(frameId, nextDraft) => {
-                setDrafts((currentDrafts) => ({
-                  ...currentDrafts,
-                  [frameId]: nextDraft,
-                }));
-              }}
-              onSavePrompt={handleSavePrompt}
-              onRegeneratePrompt={handleRegeneratePrompt}
-              onGenerateFrame={handleGenerateFrame}
-              onApproveFrame={handleApproveFrame}
-            />
-            <FrameEditorCard
-              projectId={project.id}
-              frame={segment.endFrame}
-              metaLabelClass={metaLabelClass}
-              metaValueClass={metaValueClass}
-              actionBusy={actionBusy}
-              draft={segment.endFrame ? drafts[segment.endFrame.id] : undefined}
-              onDraftChange={(frameId, nextDraft) => {
-                setDrafts((currentDrafts) => ({
-                  ...currentDrafts,
-                  [frameId]: nextDraft,
-                }));
-              }}
-              onSavePrompt={handleSavePrompt}
-              onRegeneratePrompt={handleRegeneratePrompt}
-              onGenerateFrame={handleGenerateFrame}
-              onApproveFrame={handleApproveFrame}
-            />
+          <div className="grid gap-4">
+            {segment.shots.map((shot) => {
+              const shotBusy =
+                actionBusy?.kind === "approve-all" ||
+                actionBusy?.kind === "regenerate-all-prompts" ||
+                actionBusy?.kind === "generate-all-frames" ||
+                (actionBusy?.kind === "approve" && actionBusy.shotId === shot.id);
+              const canApproveShot =
+                shot.referenceStatus !== "approved" && isShotReadyForApproval(shot);
+
+              return (
+                <section
+                  key={shot.id}
+                  className="rounded-xl border border-(--color-border-muted) bg-(--color-bg-base) p-4"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <h5 className="text-base font-semibold text-(--color-text-primary)">
+                        {shot.shotCode}
+                      </h5>
+                      <p className="text-sm text-(--color-text-muted) mt-1">
+                        Shot ID: {shot.shotId}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={metaLabelClass}>镜头依赖</p>
+                      <p className={metaValueClass}>
+                        {shot.frameDependency === "start_frame_only"
+                          ? "仅起始帧"
+                          : "起始帧 + 结束帧"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <FrameEditorCard
+                      projectId={project.id}
+                      frame={shot.startFrame}
+                      draft={drafts[shot.startFrame.id]}
+                      busy={
+                        shotBusy ||
+                        (actionBusy?.frameId === shot.startFrame.id &&
+                          (actionBusy.kind === "save" ||
+                            actionBusy.kind === "regenerate" ||
+                            actionBusy.kind === "generate"))
+                      }
+                      metaLabelClass={metaLabelClass}
+                      metaValueClass={metaValueClass}
+                      onDraftChange={(frameId, nextDraft) => {
+                        setDrafts((currentDrafts) => ({
+                          ...currentDrafts,
+                          [frameId]: nextDraft,
+                        }));
+                      }}
+                      onSavePrompt={handleSavePrompt}
+                      onRegeneratePrompt={handleRegeneratePrompt}
+                      onGenerateFrame={handleGenerateFrame}
+                    />
+                    {shot.endFrame && (
+                      <FrameEditorCard
+                        projectId={project.id}
+                        frame={shot.endFrame}
+                        draft={drafts[shot.endFrame.id]}
+                        busy={
+                          shotBusy ||
+                          (actionBusy?.frameId === shot.endFrame.id &&
+                            (actionBusy.kind === "save" ||
+                              actionBusy.kind === "regenerate" ||
+                              actionBusy.kind === "generate"))
+                        }
+                        metaLabelClass={metaLabelClass}
+                        metaValueClass={metaValueClass}
+                        onDraftChange={(frameId, nextDraft) => {
+                          setDrafts((currentDrafts) => ({
+                            ...currentDrafts,
+                            [frameId]: nextDraft,
+                          }));
+                        }}
+                        onSavePrompt={handleSavePrompt}
+                        onRegeneratePrompt={handleRegeneratePrompt}
+                        onGenerateFrame={handleGenerateFrame}
+                      />
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleApproveShot(shot);
+                      }}
+                      disabled={shotBusy || !canApproveShot}
+                      className={getButtonClassName({ variant: "success" })}
+                    >
+                      审核通过当前镜头
+                    </button>
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </article>
       ))}
-
     </section>
   );
 }

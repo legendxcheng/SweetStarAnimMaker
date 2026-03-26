@@ -8,7 +8,8 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
       project_storage_dir TEXT NOT NULL,
       source_image_batch_id TEXT NOT NULL,
       source_shot_script_id TEXT NOT NULL,
-      segment_count INTEGER NOT NULL,
+      shot_count INTEGER NOT NULL DEFAULT 0,
+      segment_count INTEGER NOT NULL DEFAULT 0,
       storage_dir TEXT NOT NULL,
       manifest_rel_path TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -25,9 +26,13 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
       project_storage_dir TEXT NOT NULL,
       source_image_batch_id TEXT NOT NULL,
       source_shot_script_id TEXT NOT NULL,
-      segment_id TEXT NOT NULL,
+      shot_id TEXT NOT NULL DEFAULT '',
+      shot_code TEXT NOT NULL DEFAULT '',
       scene_id TEXT NOT NULL,
-      segment_order INTEGER NOT NULL,
+      segment_id TEXT NOT NULL,
+      segment_order INTEGER NOT NULL DEFAULT 0,
+      shot_order INTEGER NOT NULL DEFAULT 0,
+      frame_dependency TEXT NOT NULL DEFAULT 'start_and_end_frame',
       status TEXT NOT NULL,
       prompt_text_seed TEXT NOT NULL DEFAULT '',
       prompt_text_current TEXT NOT NULL DEFAULT '',
@@ -50,9 +55,32 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
     )
   `);
 
+  ensureVideoBatchesColumn(db, "shot_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureVideoBatchesColumn(db, "segment_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureSegmentVideosColumn(db, "shot_id", "TEXT NOT NULL DEFAULT ''");
+  ensureSegmentVideosColumn(db, "shot_code", "TEXT NOT NULL DEFAULT ''");
+  ensureSegmentVideosColumn(db, "segment_order", "INTEGER NOT NULL DEFAULT 0");
+  ensureSegmentVideosColumn(
+    db,
+    "frame_dependency",
+    "TEXT NOT NULL DEFAULT 'start_and_end_frame'",
+  );
+  ensureSegmentVideosColumn(db, "shot_order", "INTEGER NOT NULL DEFAULT 0");
   ensureSegmentVideosColumn(db, "prompt_text_seed", "TEXT NOT NULL DEFAULT ''");
   ensureSegmentVideosColumn(db, "prompt_text_current", "TEXT NOT NULL DEFAULT ''");
   ensureSegmentVideosColumn(db, "prompt_updated_at", "TEXT NOT NULL DEFAULT ''");
+}
+
+function ensureVideoBatchesColumn(
+  db: SqliteDatabase,
+  columnName: string,
+  columnDefinition: string,
+) {
+  const columns = db.prepare("PRAGMA table_info(video_batches)").all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE video_batches ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
 }
 
 function ensureSegmentVideosColumn(

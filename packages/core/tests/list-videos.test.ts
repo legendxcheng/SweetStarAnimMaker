@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createListVideosUseCase } from "../src/index";
 
 describe("list videos use case", () => {
-  it("hides placeholder asset paths for segments that have never produced a video", async () => {
+  it("hides placeholder asset paths for shots that have never produced a video", async () => {
     const useCase = createListVideosUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -47,28 +47,31 @@ describe("list videos use case", () => {
           id: "video_batch_1",
           sourceImageBatchId: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          segmentCount: 2,
+          shotCount: 2,
           updatedAt: "2026-03-25T01:00:00.000Z",
         }),
         findCurrentBatchByProjectId: vi.fn(),
         listSegmentsByBatchId: vi.fn().mockResolvedValue([
           {
-            id: "video_segment_1",
+            id: "video_shot_1",
             projectId: "proj_1",
             batchId: "video_batch_1",
             sourceImageBatchId: "image_batch_1",
             sourceShotScriptId: "shot_script_1",
-            segmentId: "segment_1",
+            shotId: "shot_1",
+            shotCode: "SC01-SG01-SH01",
             sceneId: "scene_1",
-            order: 1,
+            segmentId: "segment_1",
+            shotOrder: 1,
+            frameDependency: "start_frame_only",
             status: "generating",
             promptTextSeed: "seed prompt 1",
             promptTextCurrent: "seed prompt 1",
             promptUpdatedAt: "2026-03-25T01:00:00.000Z",
-            videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+            videoAssetPath: "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_1/current.mp4",
             thumbnailAssetPath:
-              "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
-            durationSec: null,
+              "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_1/thumbnail.webp",
+            durationSec: 3,
             provider: null,
             model: null,
             updatedAt: "2026-03-25T01:00:00.000Z",
@@ -76,22 +79,25 @@ describe("list videos use case", () => {
             sourceTaskId: null,
           },
           {
-            id: "video_segment_2",
+            id: "video_shot_2",
             projectId: "proj_1",
             batchId: "video_batch_1",
             sourceImageBatchId: "image_batch_1",
             sourceShotScriptId: "shot_script_1",
-            segmentId: "segment_2",
+            shotId: "shot_2",
+            shotCode: "SC01-SG01-SH02",
             sceneId: "scene_1",
-            order: 2,
+            segmentId: "segment_1",
+            shotOrder: 2,
+            frameDependency: "start_and_end_frame",
             status: "approved",
             promptTextSeed: "seed prompt 2",
             promptTextCurrent: "current prompt 2",
             promptUpdatedAt: "2026-03-25T01:02:00.000Z",
-            videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_2/current.mp4",
+            videoAssetPath: "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_2/current.mp4",
             thumbnailAssetPath:
-              "videos/batches/video_batch_1/segments/scene_1__segment_2/thumbnail.webp",
-            durationSec: 8,
+              "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_2/thumbnail.webp",
+            durationSec: 5,
             provider: "openai",
             model: "sora-2-all",
             updatedAt: "2026-03-25T01:02:00.000Z",
@@ -109,24 +115,34 @@ describe("list videos use case", () => {
 
     const result = await useCase.execute({ projectId: "proj_1" });
 
-    expect(result.segments[0]).toEqual(
+    expect(result.currentBatch).toEqual(
       expect.objectContaining({
+        shotCount: 2,
+        approvedShotCount: 1,
+      }),
+    );
+    expect(result.shots[0]).toEqual(
+      expect.objectContaining({
+        shotId: "shot_1",
+        shotCode: "SC01-SG01-SH01",
         status: "generating",
         videoAssetPath: null,
         thumbnailAssetPath: null,
       }),
     );
-    expect(result.segments[1]).toEqual(
+    expect(result.shots[1]).toEqual(
       expect.objectContaining({
+        shotId: "shot_2",
+        shotCode: "SC01-SG01-SH02",
         status: "approved",
-        videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_2/current.mp4",
+        videoAssetPath: "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_2/current.mp4",
         thumbnailAssetPath:
-          "videos/batches/video_batch_1/segments/scene_1__segment_2/thumbnail.webp",
+          "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_2/thumbnail.webp",
       }),
     );
   });
 
-  it("keeps the last successful asset visible while a segment is regenerating", async () => {
+  it("keeps the last successful asset visible while a shot is regenerating", async () => {
     const useCase = createListVideosUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -170,28 +186,31 @@ describe("list videos use case", () => {
           id: "video_batch_1",
           sourceImageBatchId: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          segmentCount: 1,
+          shotCount: 1,
           updatedAt: "2026-03-25T01:00:00.000Z",
         }),
         findCurrentBatchByProjectId: vi.fn(),
         listSegmentsByBatchId: vi.fn().mockResolvedValue([
           {
-            id: "video_segment_1",
+            id: "video_shot_1",
             projectId: "proj_1",
             batchId: "video_batch_1",
             sourceImageBatchId: "image_batch_1",
             sourceShotScriptId: "shot_script_1",
-            segmentId: "segment_1",
+            shotId: "shot_1",
+            shotCode: "SC01-SG01-SH01",
             sceneId: "scene_1",
-            order: 1,
+            segmentId: "segment_1",
+            shotOrder: 1,
+            frameDependency: "start_frame_only",
             status: "generating",
             promptTextSeed: "seed prompt 1",
             promptTextCurrent: "current prompt 1",
             promptUpdatedAt: "2026-03-25T01:01:00.000Z",
-            videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+            videoAssetPath: "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_1/current.mp4",
             thumbnailAssetPath:
-              "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
-            durationSec: 8,
+              "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_1/thumbnail.webp",
+            durationSec: 3,
             provider: "openai",
             model: "sora-2-all",
             updatedAt: "2026-03-25T01:01:00.000Z",
@@ -209,34 +228,37 @@ describe("list videos use case", () => {
 
     const result = await useCase.execute({ projectId: "proj_1" });
 
-    expect(result.segments[0]).toEqual(
+    expect(result.shots[0]).toEqual(
       expect.objectContaining({
         status: "generating",
         sourceTaskId: "task_segment_video_1_previous",
-        videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+        videoAssetPath: "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_1/current.mp4",
         thumbnailAssetPath:
-          "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+          "videos/batches/video_batch_1/shots/scene_1__segment_1__shot_1/thumbnail.webp",
       }),
     );
   });
 
-  it("repairs empty video prompts from the current shot script before returning segments", async () => {
-    const repairedSegment = {
-      id: "video_segment_1",
+  it("repairs empty video prompts from the current shot script before returning shots", async () => {
+    const repairedShot = {
+      id: "video_shot_1",
       projectId: "proj_1",
       batchId: "video_batch_1",
       sourceImageBatchId: "image_batch_1",
       sourceShotScriptId: "shot_script_1",
-      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
       sceneId: "scene_1",
-      order: 1,
+      segmentId: "segment_1",
+      shotOrder: 1,
+      frameDependency: "start_frame_only" as const,
       status: "failed" as const,
       promptTextSeed: "",
       promptTextCurrent: "",
       promptUpdatedAt: "",
       videoAssetPath: null,
       thumbnailAssetPath: null,
-      durationSec: null,
+      durationSec: 3,
       provider: null,
       model: null,
       updatedAt: "2026-03-25T01:00:00.000Z",
@@ -255,11 +277,11 @@ describe("list videos use case", () => {
         id: "video_batch_1",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
-        segmentCount: 1,
+        shotCount: 1,
         updatedAt: "2026-03-25T01:00:00.000Z",
       }),
       findCurrentBatchByProjectId: vi.fn(),
-      listSegmentsByBatchId: vi.fn().mockResolvedValue([repairedSegment]),
+      listSegmentsByBatchId: vi.fn().mockResolvedValue([repairedShot]),
       insertSegment: vi.fn(),
       findSegmentById: vi.fn(),
       findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
@@ -300,7 +322,7 @@ describe("list videos use case", () => {
           updatedAt: "2026-03-25T00:17:00.000Z",
           approvedAt: "2026-03-25T00:18:00.000Z",
           segmentCount: 1,
-          shotCount: 1,
+          shotCount: 2,
           totalDurationSec: 8,
           segments: [
             {
@@ -319,12 +341,31 @@ describe("list videos use case", () => {
                   sceneId: "scene_1",
                   segmentId: "segment_1",
                   order: 1,
-                  shotCode: "S01",
-                  durationSec: 8,
+                  shotCode: "SC01-SG01-SH01",
+                  durationSec: 3,
+                  frameDependency: "start_frame_only",
                   purpose: "Arrival",
                   visual: "Rin enters the market.",
                   subject: "Rin",
                   action: "Rin steps into the flooded market and looks ahead.",
+                  dialogue: null,
+                  os: null,
+                  audio: null,
+                  transitionHint: null,
+                  continuityNotes: null,
+                },
+                {
+                  id: "shot_2",
+                  sceneId: "scene_1",
+                  segmentId: "segment_1",
+                  order: 2,
+                  shotCode: "SC01-SG01-SH02",
+                  durationSec: 5,
+                  frameDependency: "start_and_end_frame",
+                  purpose: "Discovery",
+                  visual: "Rin spots the route forward.",
+                  subject: "Rin",
+                  action: "Rin points toward the brighter alley beyond the stalls.",
                   dialogue: null,
                   os: null,
                   audio: null,
@@ -355,19 +396,19 @@ describe("list videos use case", () => {
 
     expect(videoRepository.updateSegment).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "video_segment_1",
+        id: "video_shot_1",
         promptTextSeed:
-          "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
         promptTextCurrent:
-          "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
       }),
     );
-    expect(result.segments[0]).toEqual(
+    expect(result.shots[0]).toEqual(
       expect.objectContaining({
         promptTextSeed:
-          "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
         promptTextCurrent:
-          "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
       }),
     );
   });

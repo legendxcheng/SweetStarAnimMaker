@@ -1,4 +1,4 @@
-import type { SegmentFrameRecord, TaskDetail } from "@sweet-star/shared";
+import type { ShotReferenceFrame, TaskDetail } from "@sweet-star/shared";
 
 export const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -7,7 +7,7 @@ export const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   failed: "失败",
 };
 
-export const FRAME_STATUS_LABELS: Record<SegmentFrameRecord["imageStatus"], string> = {
+export const FRAME_STATUS_LABELS: Record<ShotReferenceFrame["imageStatus"], string> = {
   pending: "待处理",
   generating: "生成中",
   in_review: "待审核",
@@ -15,7 +15,7 @@ export const FRAME_STATUS_LABELS: Record<SegmentFrameRecord["imageStatus"], stri
   failed: "失败",
 };
 
-export const FRAME_PLAN_STATUS_LABELS: Record<SegmentFrameRecord["planStatus"], string> = {
+export const FRAME_PLAN_STATUS_LABELS: Record<ShotReferenceFrame["planStatus"], string> = {
   pending: "Prompt 生成中",
   planned: "Prompt 已就绪",
   plan_failed: "Prompt 生成失败",

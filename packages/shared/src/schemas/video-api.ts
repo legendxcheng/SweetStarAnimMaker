@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-const shotVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
 const requiredTextSchema = z.string().trim().min(1);
 const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
+const shotVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
 
 export const currentVideoBatchSummaryResponseSchema = z.object({
   id: z.string(),
@@ -13,7 +13,7 @@ export const currentVideoBatchSummaryResponseSchema = z.object({
   updatedAt: z.string(),
 });
 
-const shotVideoRecordSchema = z.object({
+export const shotVideoResponseSchema = z.object({
   id: z.string(),
   projectId: z.string(),
   batchId: z.string(),
@@ -21,6 +21,7 @@ const shotVideoRecordSchema = z.object({
   sourceShotScriptId: z.string(),
   shotId: z.string(),
   shotCode: z.string(),
+  sceneId: z.string(),
   frameDependency: z.enum(shotFrameDependencies),
   status: z.enum(shotVideoStatuses),
   promptTextSeed: requiredTextSchema,
@@ -36,11 +37,11 @@ const shotVideoRecordSchema = z.object({
   sourceTaskId: z.string().nullable(),
 });
 
-export const segmentVideoResponseSchema = shotVideoRecordSchema;
+export const segmentVideoResponseSchema = shotVideoResponseSchema;
 
 export const videoListResponseSchema = z.object({
   currentBatch: currentVideoBatchSummaryResponseSchema,
-  shots: z.array(shotVideoRecordSchema),
+  shots: z.array(shotVideoResponseSchema),
 });
 
 export const approveVideoSegmentRequestSchema = z.object({});

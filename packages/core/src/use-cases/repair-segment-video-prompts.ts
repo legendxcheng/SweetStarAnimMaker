@@ -41,8 +41,9 @@ export async function repairSegmentVideoPromptsIfMissing(
     const scriptSegment = shotScript.segments.find(
       (item) => item.segmentId === segment.segmentId && item.sceneId === segment.sceneId,
     );
+    const scriptShot = scriptSegment?.shots.find((item) => item.id === segment.shotId);
 
-    if (!scriptSegment) {
+    if (!scriptSegment || !scriptShot) {
       throw new CurrentShotScriptNotFoundError(project.id);
     }
 
@@ -53,7 +54,7 @@ export async function repairSegmentVideoPromptsIfMissing(
 
     fallbackPrompt = buildSegmentVideoPrompt(promptTemplate, {
       segmentSummary: scriptSegment.summary,
-      shotsSummary: scriptSegment.shots.map((shot) => `${shot.shotCode}: ${shot.action}`).join("; "),
+      shotsSummary: `${scriptShot.shotCode}: ${scriptShot.action}`,
     }).trim();
   }
 
@@ -61,7 +62,7 @@ export async function repairSegmentVideoPromptsIfMissing(
     ...segment,
     promptTextSeed: promptTextSeed || fallbackPrompt,
     promptTextCurrent: promptTextCurrent || fallbackPrompt,
-    promptUpdatedAt: segment.promptUpdatedAt.trim() || segment.updatedAt,
+    promptUpdatedAt: (segment.promptUpdatedAt ?? "").trim() || segment.updatedAt,
   };
 
   await dependencies.videoRepository.updateSegment(repairedSegment);

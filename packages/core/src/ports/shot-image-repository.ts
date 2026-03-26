@@ -1,5 +1,6 @@
 import type {
   SegmentFrameRecordEntity,
+  ShotReferenceRecordEntity,
   ShotImageBatchRecord,
 } from "../domain/shot-image";
 
@@ -14,9 +15,17 @@ export interface ShotImageRepository {
   listFramesByBatchId(
     batchId: string,
   ): Promise<SegmentFrameRecordEntity[]> | SegmentFrameRecordEntity[];
+  listShotsByBatchId?(
+    batchId: string,
+  ): Promise<ShotReferenceRecordEntity[]> | ShotReferenceRecordEntity[];
   insertFrame(frame: SegmentFrameRecordEntity): Promise<void> | void;
+  insertShot?(shot: ShotReferenceRecordEntity): Promise<void> | void;
   findFrameById(
     frameId: string,
   ): Promise<SegmentFrameRecordEntity | null> | SegmentFrameRecordEntity | null;
+  findShotById?(
+    shotId: string,
+  ): Promise<ShotReferenceRecordEntity | null> | ShotReferenceRecordEntity | null;
   updateFrame(frame: SegmentFrameRecordEntity): Promise<void> | void;
+  updateShot?(shot: ShotReferenceRecordEntity): Promise<void> | void;
 }

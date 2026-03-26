@@ -30,7 +30,7 @@ describe("sqlite video repository", () => {
     await Promise.all(tempDirs.splice(0).map((tempDir) => fs.rm(tempDir, { recursive: true, force: true })));
   });
 
-  it("persists batches and current segments for the active project batch", async () => {
+  it("persists batches and current shots for the active project batch", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_video_1",
@@ -47,20 +47,24 @@ describe("sqlite video repository", () => {
       projectStorageDir: project.storageDir,
       sourceImageBatchId: "image_batch_1",
       sourceShotScriptId: "shot_script_1",
-      segmentCount: 1,
+      shotCount: 1,
       createdAt: "2026-03-25T01:00:00.000Z",
       updatedAt: "2026-03-25T01:00:00.000Z",
     });
-    const segment = createSegmentVideoRecord({
-      id: "video_segment_1",
+    const shot = createSegmentVideoRecord({
+      id: "video_shot_1",
       batchId: batch.id,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceImageBatchId: batch.sourceImageBatchId,
       sourceShotScriptId: batch.sourceShotScriptId,
-      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
       sceneId: "scene_1",
-      order: 1,
+      segmentId: "segment_1",
+      shotOrder: 1,
+      frameDependency: "start_frame_only",
+      durationSec: 3,
       status: "in_review",
       promptTextSeed: "seed prompt 1",
       promptTextCurrent: "current prompt 1",
@@ -71,7 +75,7 @@ describe("sqlite video repository", () => {
 
     projectRepository.insert(project);
     repository.insertBatch(batch);
-    repository.insertSegment(segment);
+    repository.insertSegment(shot);
     projectRepository.updateCurrentVideoBatch?.({
       projectId: project.id,
       batchId: batch.id,
@@ -79,13 +83,19 @@ describe("sqlite video repository", () => {
 
     expect(repository.findBatchById(batch.id)).toEqual(batch);
     expect(repository.findCurrentBatchByProjectId(project.id)).toEqual(batch);
-    expect(repository.listSegmentsByBatchId(batch.id)).toEqual([segment]);
-    expect(repository.findCurrentSegmentByProjectIdAndSegmentId(project.id, "segment_1")).toEqual(
-      segment,
-    );
+    expect(repository.listSegmentsByBatchId(batch.id)).toEqual([shot]);
+    expect(repository.findSegmentById(shot.id)).toEqual(shot);
+    expect(
+      repository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentIdAndShotId?.(
+        project.id,
+        "scene_1",
+        "segment_1",
+        "shot_1",
+      ),
+    ).toEqual(shot);
   });
 
-  it("updates persisted segment metadata", async () => {
+  it("updates persisted shot metadata and keeps shot storage paths", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_video_2",
@@ -102,20 +112,24 @@ describe("sqlite video repository", () => {
       projectStorageDir: project.storageDir,
       sourceImageBatchId: "image_batch_2",
       sourceShotScriptId: "shot_script_2",
-      segmentCount: 1,
+      shotCount: 1,
       createdAt: "2026-03-25T01:00:00.000Z",
       updatedAt: "2026-03-25T01:00:00.000Z",
     });
-    const segment = createSegmentVideoRecord({
-      id: "video_segment_2",
+    const shot = createSegmentVideoRecord({
+      id: "video_shot_2",
       batchId: batch.id,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceImageBatchId: batch.sourceImageBatchId,
       sourceShotScriptId: batch.sourceShotScriptId,
-      segmentId: "segment_2",
+      shotId: "shot_2",
+      shotCode: "SC01-SG01-SH02",
       sceneId: "scene_1",
-      order: 1,
+      segmentId: "segment_1",
+      shotOrder: 2,
+      frameDependency: "start_and_end_frame",
+      durationSec: 5,
       status: "generating",
       promptTextSeed: "seed prompt 2",
       promptTextCurrent: "current prompt 2",
@@ -125,32 +139,38 @@ describe("sqlite video repository", () => {
 
     projectRepository.insert(project);
     repository.insertBatch(batch);
-    repository.insertSegment(segment);
+    repository.insertSegment(shot);
 
-    const updatedSegment = {
-      ...segment,
+    const updatedShot = {
+      ...shot,
       status: "approved" as const,
       promptTextCurrent: "updated prompt 2",
       promptUpdatedAt: "2026-03-25T01:09:00.000Z",
-      videoAssetPath: "videos/batches/video_batch_2/segments/scene_1-segment_2/current.mp4",
-      thumbnailAssetPath: "videos/batches/video_batch_2/segments/scene_1-segment_2/thumbnail.webp",
-      durationSec: 8,
+      videoAssetPath: "videos/batches/video_batch_2/shots/scene_1__segment_1__shot_2/current.mp4",
+      thumbnailAssetPath:
+        "videos/batches/video_batch_2/shots/scene_1__segment_1__shot_2/thumbnail.webp",
+      durationSec: 5,
       provider: "vector-engine",
-      model: "sora-2-all",
+      model: "kling-v3",
       approvedAt: "2026-03-25T01:10:00.000Z",
       updatedAt: "2026-03-25T01:10:00.000Z",
-      sourceTaskId: "task_segment_2",
+      sourceTaskId: "task_shot_2",
     };
 
-    repository.updateSegment(updatedSegment);
+    repository.updateSegment(updatedShot);
 
-    expect(repository.findSegmentById(segment.id)).toEqual(updatedSegment);
-    expect(repository.findSegmentById(segment.id)?.promptTextSeed).toBe("seed prompt 2");
-    expect(repository.findSegmentById(segment.id)?.promptTextCurrent).toBe("updated prompt 2");
-    expect(repository.findSegmentById(segment.id)?.promptUpdatedAt).toBe("2026-03-25T01:09:00.000Z");
+    const persistedShot = await repository.findSegmentById(shot.id);
+
+    expect(persistedShot).toEqual(updatedShot);
+    expect(persistedShot?.promptTextSeed).toBe("seed prompt 2");
+    expect(persistedShot?.promptTextCurrent).toBe("updated prompt 2");
+    expect(persistedShot?.promptUpdatedAt).toBe("2026-03-25T01:09:00.000Z");
+    expect(persistedShot?.shotCode).toBe("SC01-SG01-SH02");
+    expect(persistedShot?.frameDependency).toBe("start_and_end_frame");
+    expect(persistedShot?.currentVideoRelPath).toContain("/shots/");
   });
 
-  it("finds the current segment by scene id and segment id when segment ids repeat across scenes", async () => {
+  it("finds the current shot by scene id, segment id, and shot id when ids repeat across shots", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_video_3",
@@ -167,20 +187,24 @@ describe("sqlite video repository", () => {
       projectStorageDir: project.storageDir,
       sourceImageBatchId: "image_batch_3",
       sourceShotScriptId: "shot_script_3",
-      segmentCount: 2,
+      shotCount: 2,
       createdAt: "2026-03-25T01:00:00.000Z",
       updatedAt: "2026-03-25T01:00:00.000Z",
     });
-    const firstSceneSegment = createSegmentVideoRecord({
-      id: "video_segment_scene_1",
+    const firstShot = createSegmentVideoRecord({
+      id: "video_shot_scene_1",
       batchId: batch.id,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceImageBatchId: batch.sourceImageBatchId,
       sourceShotScriptId: batch.sourceShotScriptId,
-      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
       sceneId: "scene_1",
-      order: 1,
+      segmentId: "segment_1",
+      shotOrder: 1,
+      frameDependency: "start_frame_only",
+      durationSec: 3,
       status: "in_review",
       promptTextSeed: "seed prompt scene 1",
       promptTextCurrent: "current prompt scene 1",
@@ -188,16 +212,20 @@ describe("sqlite video repository", () => {
       updatedAt: "2026-03-25T01:05:00.000Z",
       sourceTaskId: "task_segment_scene_1",
     });
-    const secondSceneSegment = createSegmentVideoRecord({
-      id: "video_segment_scene_2",
+    const secondShot = createSegmentVideoRecord({
+      id: "video_shot_scene_2",
       batchId: batch.id,
       projectId: project.id,
       projectStorageDir: project.storageDir,
       sourceImageBatchId: batch.sourceImageBatchId,
       sourceShotScriptId: batch.sourceShotScriptId,
-      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC02-SG01-SH01",
       sceneId: "scene_2",
-      order: 2,
+      segmentId: "segment_1",
+      shotOrder: 1,
+      frameDependency: "start_and_end_frame",
+      durationSec: 5,
       status: "in_review",
       promptTextSeed: "seed prompt scene 2",
       promptTextCurrent: "current prompt scene 2",
@@ -208,20 +236,21 @@ describe("sqlite video repository", () => {
 
     projectRepository.insert(project);
     repository.insertBatch(batch);
-    repository.insertSegment(firstSceneSegment);
-    repository.insertSegment(secondSceneSegment);
+    repository.insertSegment(firstShot);
+    repository.insertSegment(secondShot);
     projectRepository.updateCurrentVideoBatch?.({
       projectId: project.id,
       batchId: batch.id,
     });
 
     expect(
-      repository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
+      repository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentIdAndShotId?.(
         project.id,
         "scene_2",
         "segment_1",
+        "shot_1",
       ),
-    ).toEqual(secondSceneSegment);
+    ).toEqual(secondShot);
   });
 });
 

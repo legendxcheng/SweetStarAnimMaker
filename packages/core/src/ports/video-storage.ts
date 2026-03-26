@@ -1,4 +1,4 @@
-import type { SegmentVideoRecordEntity, VideoBatchRecord } from "../domain/video";
+import type { ShotVideoRecordEntity, VideoBatchRecord } from "../domain/video";
 
 export interface InitializeVideoPromptTemplateInput {
   storageDir: string;
@@ -26,7 +26,7 @@ export interface WriteVideoBatchManifestInput {
 }
 
 export interface WriteCurrentVideoInput {
-  segment: SegmentVideoRecordEntity;
+  segment: ShotVideoRecordEntity;
   videoSourceUrl: string;
   thumbnailSourceUrl: string | null;
   metadata: Record<string, unknown>;

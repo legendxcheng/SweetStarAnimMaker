@@ -1,4 +1,4 @@
-import type { SegmentVideoRecordEntity, VideoBatchRecord } from "../domain/video";
+import type { ShotVideoRecordEntity, VideoBatchRecord } from "../domain/video";
 
 export interface VideoRepository {
   insertBatch(batch: VideoBatchRecord): Promise<void> | void;
@@ -8,19 +8,25 @@ export interface VideoRepository {
   ): Promise<VideoBatchRecord | null> | VideoBatchRecord | null;
   listSegmentsByBatchId(
     batchId: string,
-  ): Promise<SegmentVideoRecordEntity[]> | SegmentVideoRecordEntity[];
-  insertSegment(segment: SegmentVideoRecordEntity): Promise<void> | void;
+  ): Promise<ShotVideoRecordEntity[]> | ShotVideoRecordEntity[];
+  insertSegment(segment: ShotVideoRecordEntity): Promise<void> | void;
   findSegmentById(
     segmentId: string,
-  ): Promise<SegmentVideoRecordEntity | null> | SegmentVideoRecordEntity | null;
+  ): Promise<ShotVideoRecordEntity | null> | ShotVideoRecordEntity | null;
   findCurrentSegmentByProjectIdAndSegmentId(
     projectId: string,
     segmentId: string,
-  ): Promise<SegmentVideoRecordEntity | null> | SegmentVideoRecordEntity | null;
+  ): Promise<ShotVideoRecordEntity | null> | ShotVideoRecordEntity | null;
   findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
     projectId: string,
     sceneId: string,
     segmentId: string,
-  ): Promise<SegmentVideoRecordEntity | null> | SegmentVideoRecordEntity | null;
-  updateSegment(segment: SegmentVideoRecordEntity): Promise<void> | void;
+  ): Promise<ShotVideoRecordEntity | null> | ShotVideoRecordEntity | null;
+  findCurrentSegmentByProjectIdAndSceneIdAndSegmentIdAndShotId?(
+    projectId: string,
+    sceneId: string,
+    segmentId: string,
+    shotId: string,
+  ): Promise<ShotVideoRecordEntity | null> | ShotVideoRecordEntity | null;
+  updateSegment(segment: ShotVideoRecordEntity): Promise<void> | void;
 }

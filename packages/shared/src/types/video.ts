@@ -19,6 +19,7 @@ export interface ShotVideoRecord {
   sourceShotScriptId: string;
   shotId: string;
   shotCode: string;
+  sceneId: string;
   frameDependency: ShotFrameDependency;
   status: ShotVideoStatus;
   promptTextSeed: string;
@@ -33,6 +34,8 @@ export interface ShotVideoRecord {
   approvedAt: string | null;
   sourceTaskId: string | null;
 }
+
+export type SegmentVideoRecord = ShotVideoRecord;
 
 export interface VideoListResponse {
   currentBatch: CurrentVideoBatchSummary;

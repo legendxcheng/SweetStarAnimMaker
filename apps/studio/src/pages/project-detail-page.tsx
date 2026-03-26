@@ -173,8 +173,8 @@ function hasApprovedImages(project: ProjectDetail | null) {
   }
 
   return (
-    project.currentImageBatch.totalFrameCount > 0 &&
-    project.currentImageBatch.approvedFrameCount === project.currentImageBatch.totalFrameCount
+    project.currentImageBatch.shotCount > 0 &&
+    project.currentImageBatch.approvedShotCount === project.currentImageBatch.shotCount
   );
 }
 

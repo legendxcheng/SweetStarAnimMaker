@@ -13,6 +13,10 @@ import type { ShotImageStorage } from "../ports/shot-image-storage";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import {
+  replaceFrameOnShot,
+  resolveShotFrameRecord,
+} from "./shot-reference-frame-helpers";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessFramePromptGenerateTaskInput {
@@ -46,6 +50,16 @@ export function createProcessFramePromptGenerateTaskUseCase(
         | Awaited<ReturnType<ProcessFramePromptGenerateTaskUseCaseDependencies["shotImageRepository"]["findFrameById"]>>
         | null
         | undefined;
+      let shot =
+        null as
+          | Awaited<
+              ReturnType<
+                NonNullable<
+                  ProcessFramePromptGenerateTaskUseCaseDependencies["shotImageRepository"]["findShotById"]
+                >
+              >
+            >
+          | null;
 
       if (!task) {
         throw new TaskNotFoundError(input.taskId);
@@ -68,7 +82,16 @@ export function createProcessFramePromptGenerateTaskUseCase(
           throw new ProjectNotFoundError(task.projectId);
         }
 
-        frame = await dependencies.shotImageRepository.findFrameById(taskInput.frameId);
+        const resolvedShotFrame = await resolveShotFrameRecord({
+          repository: dependencies.shotImageRepository,
+          batchId: taskInput.batchId,
+          shotId: taskInput.shotId,
+          frameId: taskInput.frameId,
+        });
+        shot = resolvedShotFrame?.shot ?? null;
+        frame =
+          resolvedShotFrame?.frame ??
+          (await dependencies.shotImageRepository.findFrameById(taskInput.frameId));
 
         if (!frame || frame.projectId !== project.id) {
           throw new Error(`Frame not found for prompt generation: ${taskInput.frameId}`);
@@ -155,7 +178,12 @@ export function createProcessFramePromptGenerateTaskUseCase(
           sourceTaskId: task.id,
         };
 
-        await dependencies.shotImageRepository.updateFrame(updatedFrame);
+        if (shot && dependencies.shotImageRepository.updateShot) {
+          shot = replaceFrameOnShot(shot, updatedFrame);
+          await dependencies.shotImageRepository.updateShot(shot);
+        } else {
+          await dependencies.shotImageRepository.updateFrame(updatedFrame);
+        }
         await dependencies.shotImageStorage.writeFramePlanning({
           frame: updatedFrame,
           planning: {
@@ -198,12 +226,20 @@ export function createProcessFramePromptGenerateTaskUseCase(
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 
         if (frame) {
-          await dependencies.shotImageRepository.updateFrame({
+          const failedFrame = {
             ...frame,
-            planStatus: "plan_failed",
+            planStatus: "plan_failed" as const,
             updatedAt: finishedAt,
             sourceTaskId: task.id,
-          });
+          };
+
+          if (shot && dependencies.shotImageRepository.updateShot) {
+            await dependencies.shotImageRepository.updateShot(
+              replaceFrameOnShot(shot, failedFrame),
+            );
+          } else {
+            await dependencies.shotImageRepository.updateFrame(failedFrame);
+          }
         }
 
         await dependencies.taskFileStorage.appendTaskLog({

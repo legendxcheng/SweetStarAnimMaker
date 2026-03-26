@@ -13,6 +13,13 @@ import type { ShotImageStorage } from "../ports/shot-image-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
 import { appendVisualStyleToPrompt } from "./append-visual-style-to-prompt";
+import {
+  deriveProjectImageStatusFromFrames,
+  deriveProjectImageStatusFromShots,
+  replaceFrameOnShot,
+  replaceShotInCollection,
+  resolveShotFrameRecord,
+} from "./shot-reference-frame-helpers";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessFrameImageGenerateTaskInput {
@@ -58,6 +65,9 @@ export function createProcessFrameImageGenerateTaskUseCase(
       let frame:
         | Awaited<ReturnType<ShotImageRepository["findFrameById"]>>
         | null = null;
+      let shot:
+        | Awaited<ReturnType<NonNullable<ShotImageRepository["findShotById"]>>>
+        | null = null;
 
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
@@ -68,7 +78,15 @@ export function createProcessFrameImageGenerateTaskUseCase(
           throw new ProjectNotFoundError(task.projectId);
         }
 
-        frame = await dependencies.shotImageRepository.findFrameById(taskInput.frameId);
+        const resolvedShotFrame = await resolveShotFrameRecord({
+          repository: dependencies.shotImageRepository,
+          batchId: taskInput.batchId,
+          frameId: taskInput.frameId,
+        });
+        shot = resolvedShotFrame?.shot ?? null;
+        frame =
+          resolvedShotFrame?.frame ??
+          (await dependencies.shotImageRepository.findFrameById(taskInput.frameId));
 
         if (!frame || frame.projectId !== project.id) {
           throw new ShotImageNotFoundError(taskInput.frameId);
@@ -96,7 +114,7 @@ export function createProcessFrameImageGenerateTaskUseCase(
           frameId: activeFrame.id,
           promptText: appendVisualStyleToPrompt(
             activeFrame.promptTextCurrent,
-            activeProject.visualStyleText,
+            activeProject.visualStyleText ?? "",
           ),
           negativePromptText: activeFrame.negativePromptTextCurrent,
           referenceImagePaths: resolvedReferenceImagePaths,
@@ -142,10 +160,27 @@ export function createProcessFrameImageGenerateTaskUseCase(
             height: imageResult.height,
           },
         });
-        await dependencies.shotImageRepository.updateFrame(updatedFrame);
+        let nextProjectStatus: ProjectStatus = "images_in_review";
+
+        if (shot && dependencies.shotImageRepository.updateShot) {
+          const updatedShot = replaceFrameOnShot(shot, updatedFrame);
+          await dependencies.shotImageRepository.updateShot(updatedShot);
+
+          if (dependencies.shotImageRepository.listShotsByBatchId) {
+            const shots = await dependencies.shotImageRepository.listShotsByBatchId(
+              updatedShot.batchId,
+            );
+            nextProjectStatus = deriveProjectImageStatusFromShots(
+              replaceShotInCollection(shots, updatedShot),
+            );
+          }
+        } else {
+          await dependencies.shotImageRepository.updateFrame(updatedFrame);
+        }
+
         await dependencies.projectRepository.updateStatus({
           projectId: activeProject.id,
-          status: "images_in_review",
+          status: nextProjectStatus,
           updatedAt: finishedAt,
         });
         await dependencies.taskFileStorage.writeTaskOutput({
@@ -186,12 +221,32 @@ export function createProcessFrameImageGenerateTaskUseCase(
             updatedAt: finishedAt,
           };
 
-          await dependencies.shotImageRepository.updateFrame(restoredFrame);
+          let nextProjectStatus: ProjectStatus = "images_in_review";
 
-          const frames = await dependencies.shotImageRepository.listFramesByBatchId(frame.batchId);
+          if (shot && dependencies.shotImageRepository.updateShot) {
+            const restoredShot = replaceFrameOnShot(shot, restoredFrame);
+            await dependencies.shotImageRepository.updateShot(restoredShot);
+
+            if (dependencies.shotImageRepository.listShotsByBatchId) {
+              const shots = await dependencies.shotImageRepository.listShotsByBatchId(
+                restoredShot.batchId,
+              );
+              nextProjectStatus = deriveProjectImageStatusFromShots(
+                replaceShotInCollection(shots, restoredShot),
+              );
+            }
+          } else {
+            await dependencies.shotImageRepository.updateFrame(restoredFrame);
+
+            const frames = await dependencies.shotImageRepository.listFramesByBatchId(
+              frame.batchId,
+            );
+            nextProjectStatus = deriveProjectImageStatusFromFrames(frames, restoredFrame);
+          }
+
           await dependencies.projectRepository.updateStatus({
             projectId: project.id,
-            status: deriveProjectImageStatus(frames, restoredFrame),
+            status: nextProjectStatus,
             updatedAt: finishedAt,
           });
         }
@@ -206,25 +261,6 @@ export function createProcessFrameImageGenerateTaskUseCase(
       }
     },
   };
-}
-
-function deriveProjectImageStatus(
-  frames: Array<{ id: string; imageStatus: string }>,
-  updatedFrame: { id: string; imageStatus: string },
-): ProjectStatus {
-  const nextFrames = frames.some((frame) => frame.id === updatedFrame.id)
-    ? frames.map((frame) => (frame.id === updatedFrame.id ? updatedFrame : frame))
-    : [...frames, updatedFrame];
-
-  if (nextFrames.some((frame) => frame.imageStatus === "generating")) {
-    return "images_generating";
-  }
-
-  if (nextFrames.every((frame) => frame.imageStatus === "approved")) {
-    return "images_approved";
-  }
-
-  return "images_in_review";
 }
 
 function assertFrameImageTaskInput(input: {

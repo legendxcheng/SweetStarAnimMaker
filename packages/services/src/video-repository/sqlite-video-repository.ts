@@ -20,10 +20,10 @@ export function createSqliteVideoRepository(
           `
             INSERT INTO video_batches (
               id, project_id, project_storage_dir, source_image_batch_id, source_shot_script_id,
-              segment_count, storage_dir, manifest_rel_path, created_at, updated_at
+              shot_count, segment_count, storage_dir, manifest_rel_path, created_at, updated_at
             ) VALUES (
               @id, @project_id, @project_storage_dir, @source_image_batch_id, @source_shot_script_id,
-              @segment_count, @storage_dir, @manifest_rel_path, @created_at, @updated_at
+              @shot_count, @segment_count, @storage_dir, @manifest_rel_path, @created_at, @updated_at
             )
           `,
         )
@@ -57,7 +57,7 @@ export function createSqliteVideoRepository(
             SELECT *
             FROM segment_videos
             WHERE batch_id = ?
-            ORDER BY segment_order ASC
+            ORDER BY shot_order ASC, updated_at ASC
           `,
         )
         .all(batchId) as SegmentVideoRow[];
@@ -70,16 +70,18 @@ export function createSqliteVideoRepository(
           `
             INSERT INTO segment_videos (
               id, batch_id, project_id, project_storage_dir, source_image_batch_id, source_shot_script_id,
-              segment_id, scene_id, segment_order, status, prompt_text_seed, prompt_text_current,
-              prompt_updated_at, video_asset_path, thumbnail_asset_path,
-              duration_sec, provider, model, updated_at, approved_at, source_task_id, storage_dir,
-              current_video_rel_path, current_metadata_rel_path, thumbnail_rel_path, versions_storage_dir
+              shot_id, shot_code, scene_id, segment_id, shot_order, frame_dependency, status,
+              prompt_text_seed, prompt_text_current, prompt_updated_at, video_asset_path,
+              thumbnail_asset_path, duration_sec, provider, model, updated_at, approved_at,
+              source_task_id, storage_dir, current_video_rel_path, current_metadata_rel_path,
+              thumbnail_rel_path, versions_storage_dir
             ) VALUES (
               @id, @batch_id, @project_id, @project_storage_dir, @source_image_batch_id, @source_shot_script_id,
-              @segment_id, @scene_id, @segment_order, @status, @prompt_text_seed, @prompt_text_current,
-              @prompt_updated_at, @video_asset_path, @thumbnail_asset_path,
-              @duration_sec, @provider, @model, @updated_at, @approved_at, @source_task_id, @storage_dir,
-              @current_video_rel_path, @current_metadata_rel_path, @thumbnail_rel_path, @versions_storage_dir
+              @shot_id, @shot_code, @scene_id, @segment_id, @shot_order, @frame_dependency, @status,
+              @prompt_text_seed, @prompt_text_current, @prompt_updated_at, @video_asset_path,
+              @thumbnail_asset_path, @duration_sec, @provider, @model, @updated_at, @approved_at,
+              @source_task_id, @storage_dir, @current_video_rel_path, @current_metadata_rel_path,
+              @thumbnail_rel_path, @versions_storage_dir
             )
           `,
         )
@@ -100,6 +102,8 @@ export function createSqliteVideoRepository(
             FROM projects project
             JOIN segment_videos segment ON segment.batch_id = project.current_video_batch_id
             WHERE project.id = ? AND segment.segment_id = ?
+            ORDER BY segment.shot_order ASC
+            LIMIT 1
           `,
         )
         .get(projectId, segmentId) as SegmentVideoRow | undefined;
@@ -114,9 +118,31 @@ export function createSqliteVideoRepository(
             FROM projects project
             JOIN segment_videos segment ON segment.batch_id = project.current_video_batch_id
             WHERE project.id = ? AND segment.scene_id = ? AND segment.segment_id = ?
+            ORDER BY segment.shot_order ASC
+            LIMIT 1
           `,
         )
         .get(projectId, sceneId, segmentId) as SegmentVideoRow | undefined;
+
+      return row ? fromSegmentRow(row) : null;
+    },
+    findCurrentSegmentByProjectIdAndSceneIdAndSegmentIdAndShotId(
+      projectId,
+      sceneId,
+      segmentId,
+      shotId,
+    ) {
+      const row = options.db
+        .prepare(
+          `
+            SELECT segment.*
+            FROM projects project
+            JOIN segment_videos segment ON segment.batch_id = project.current_video_batch_id
+            WHERE project.id = ? AND segment.scene_id = ? AND segment.segment_id = ? AND segment.shot_id = ?
+            LIMIT 1
+          `,
+        )
+        .get(projectId, sceneId, segmentId, shotId) as SegmentVideoRow | undefined;
 
       return row ? fromSegmentRow(row) : null;
     },
@@ -126,6 +152,12 @@ export function createSqliteVideoRepository(
           `
             UPDATE segment_videos
             SET
+              shot_id = @shot_id,
+              shot_code = @shot_code,
+              scene_id = @scene_id,
+              segment_id = @segment_id,
+              shot_order = @shot_order,
+              frame_dependency = @frame_dependency,
               status = @status,
               prompt_text_seed = @prompt_text_seed,
               prompt_text_current = @prompt_text_current,
@@ -157,7 +189,8 @@ interface VideoBatchRow {
   project_storage_dir: string;
   source_image_batch_id: string;
   source_shot_script_id: string;
-  segment_count: number;
+  shot_count: number | null;
+  segment_count?: number | null;
   storage_dir: string;
   manifest_rel_path: string;
   created_at: string;
@@ -171,9 +204,12 @@ interface SegmentVideoRow {
   project_storage_dir: string;
   source_image_batch_id: string;
   source_shot_script_id: string;
-  segment_id: string;
+  shot_id: string;
+  shot_code: string;
   scene_id: string;
-  segment_order: number;
+  segment_id: string;
+  shot_order: number;
+  frame_dependency: SegmentVideoRecordEntity["frameDependency"];
   status: SegmentVideoRecordEntity["status"];
   prompt_text_seed: string;
   prompt_text_current: string;
@@ -200,7 +236,8 @@ function toBatchRow(batch: VideoBatchRecord): VideoBatchRow {
     project_storage_dir: batch.projectStorageDir,
     source_image_batch_id: batch.sourceImageBatchId,
     source_shot_script_id: batch.sourceShotScriptId,
-    segment_count: batch.segmentCount,
+    shot_count: batch.shotCount ?? batch.segmentCount,
+    segment_count: batch.segmentCount ?? batch.shotCount,
     storage_dir: batch.storageDir,
     manifest_rel_path: batch.manifestRelPath,
     created_at: batch.createdAt,
@@ -209,13 +246,16 @@ function toBatchRow(batch: VideoBatchRecord): VideoBatchRow {
 }
 
 function fromBatchRow(row: VideoBatchRow): VideoBatchRecord {
+  const shotCount = row.shot_count ?? row.segment_count ?? 0;
+
   return {
     id: row.id,
     projectId: row.project_id,
     projectStorageDir: row.project_storage_dir,
     sourceImageBatchId: row.source_image_batch_id,
     sourceShotScriptId: row.source_shot_script_id,
-    segmentCount: row.segment_count,
+    shotCount,
+    segmentCount: shotCount,
     storageDir: row.storage_dir,
     manifestRelPath: row.manifest_rel_path,
     createdAt: row.created_at,
@@ -231,9 +271,12 @@ function toSegmentRow(segment: SegmentVideoRecordEntity): SegmentVideoRow {
     project_storage_dir: segment.projectStorageDir,
     source_image_batch_id: segment.sourceImageBatchId,
     source_shot_script_id: segment.sourceShotScriptId,
-    segment_id: segment.segmentId,
+    shot_id: segment.shotId,
+    shot_code: segment.shotCode,
     scene_id: segment.sceneId,
-    segment_order: segment.order,
+    segment_id: segment.segmentId,
+    shot_order: segment.shotOrder,
+    frame_dependency: segment.frameDependency,
     status: segment.status,
     prompt_text_seed: segment.promptTextSeed,
     prompt_text_current: segment.promptTextCurrent,
@@ -262,9 +305,12 @@ function fromSegmentRow(row: SegmentVideoRow): SegmentVideoRecordEntity {
     projectStorageDir: row.project_storage_dir,
     sourceImageBatchId: row.source_image_batch_id,
     sourceShotScriptId: row.source_shot_script_id,
-    segmentId: row.segment_id,
+    shotId: row.shot_id,
+    shotCode: row.shot_code,
     sceneId: row.scene_id,
-    order: row.segment_order,
+    segmentId: row.segment_id,
+    shotOrder: row.shot_order,
+    frameDependency: row.frame_dependency,
     status: row.status,
     promptTextSeed: row.prompt_text_seed,
     promptTextCurrent: row.prompt_text_current,

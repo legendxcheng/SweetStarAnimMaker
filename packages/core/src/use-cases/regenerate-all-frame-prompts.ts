@@ -12,6 +12,7 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import { replaceFrameOnShot } from "./shot-reference-frame-helpers";
 
 export interface RegenerateAllFramePromptsInput {
   projectId: string;
@@ -52,18 +53,32 @@ export function createRegenerateAllFramePromptsUseCase(
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
-      const frames = await dependencies.shotImageRepository.listFramesByBatchId(
-        project.currentImageBatchId,
-      );
+      const shots = dependencies.shotImageRepository.listShotsByBatchId
+        ? await dependencies.shotImageRepository.listShotsByBatchId(project.currentImageBatchId)
+        : null;
+      const frames =
+        shots?.flatMap((shot) => [shot.startFrame, ...(shot.endFrame ? [shot.endFrame] : [])]) ??
+        (await dependencies.shotImageRepository.listFramesByBatchId(project.currentImageBatchId));
       const timestamp = dependencies.clock.now();
       const taskIds: string[] = [];
 
       for (const frame of frames) {
-        await dependencies.shotImageRepository.updateFrame({
+        const updatedFrame = {
           ...frame,
-          planStatus: "pending",
+          planStatus: "pending" as const,
           updatedAt: timestamp,
-        });
+        };
+        const owningShot = shots?.find(
+          (shot) => shot.startFrame.id === frame.id || shot.endFrame?.id === frame.id,
+        );
+
+        if (owningShot && dependencies.shotImageRepository.updateShot) {
+          await dependencies.shotImageRepository.updateShot(
+            replaceFrameOnShot(owningShot, updatedFrame),
+          );
+        } else {
+          await dependencies.shotImageRepository.updateFrame(updatedFrame);
+        }
         const task = createTaskRecord({
           id: dependencies.taskIdGenerator.generateTaskId(),
           projectId: project.id,
@@ -77,10 +92,11 @@ export function createRegenerateAllFramePromptsUseCase(
           projectId: project.id,
           taskType: "frame_prompt_generate",
           batchId: frame.batchId,
+          shotId: owningShot?.shotId,
           frameId: frame.id,
           sourceShotScriptId: frame.sourceShotScriptId,
-          segmentId: frame.segmentId,
-          sceneId: frame.sceneId,
+          segmentId: owningShot?.segmentId ?? frame.segmentId,
+          sceneId: owningShot?.sceneId ?? frame.sceneId,
           frameType: frame.frameType,
         };
 

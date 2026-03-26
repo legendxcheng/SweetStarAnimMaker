@@ -181,9 +181,9 @@ const imagesInReviewProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    segmentCount: 1,
-    totalFrameCount: 2,
-    approvedFrameCount: 0,
+    shotCount: 1,
+    totalRequiredFrameCount: 2,
+    approvedShotCount: 0,
     updatedAt: "2024-01-01T00:00:09Z",
   },
 };
@@ -194,11 +194,25 @@ const imagesGeneratingProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    segmentCount: 1,
-    totalFrameCount: 2,
-    approvedFrameCount: 0,
+    shotCount: 1,
+    totalRequiredFrameCount: 2,
+    approvedShotCount: 0,
     updatedAt: "2024-01-01T00:00:09Z",
   },
+};
+
+const imagesApprovedSummaryProject = {
+  ...shotScriptApprovedProject,
+  status: "images_in_review" as const,
+  currentImageBatch: {
+    id: "image-batch-1",
+    sourceShotScriptId: "shot-script-1",
+    shotCount: 2,
+    totalRequiredFrameCount: 3,
+    approvedShotCount: 2,
+    updatedAt: "2024-01-01T00:00:09Z",
+  },
+  currentVideoBatch: null,
 };
 
 const videosInReviewProject = {
@@ -207,17 +221,17 @@ const videosInReviewProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    segmentCount: 1,
-    totalFrameCount: 2,
-    approvedFrameCount: 2,
+    shotCount: 1,
+    totalRequiredFrameCount: 2,
+    approvedShotCount: 1,
     updatedAt: "2024-01-01T00:00:09Z",
   },
   currentVideoBatch: {
     id: "video-batch-1",
     sourceImageBatchId: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    segmentCount: 1,
-    approvedSegmentCount: 0,
+    shotCount: 1,
+    approvedShotCount: 0,
     updatedAt: "2024-01-01T00:00:10Z",
   },
 };
@@ -521,60 +535,71 @@ describe("Project Detail Page", () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(imagesInReviewProject);
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: imagesInReviewProject.currentImageBatch,
-      frames: [
+      shots: [
         {
-          id: "frame-start-1",
+          id: "shot-ref-1",
           batchId: "image-batch-1",
           projectId: "proj-1",
           sourceShotScriptId: "shot-script-1",
-          segmentId: "segment-1",
-          sceneId: "scene-1",
-          order: 1,
-          frameType: "start_frame" as const,
-          planStatus: "planned" as const,
-          imageStatus: "in_review" as const,
-          selectedCharacterIds: ["char-rin"],
-          matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
-          unmatchedCharacterIds: [],
-          promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
-          promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
-          negativePromptTextCurrent: null,
-          promptUpdatedAt: "2024-01-01T00:00:09Z",
-          imageAssetPath: "images/frame-start-1/current.png",
-          imageWidth: 1536,
-          imageHeight: 1024,
-          provider: "turnaround-image",
-          model: "doubao-seedream-5-0-260128",
-          approvedAt: null,
+          shotId: "shot-1",
+          shotCode: "S01-SG01-SH01",
+          frameDependency: "start_and_end_frame" as const,
+          referenceStatus: "in_review" as const,
+          startFrame: {
+            id: "frame-start-1",
+            batchId: "image-batch-1",
+            projectId: "proj-1",
+            sourceShotScriptId: "shot-script-1",
+            segmentId: "segment-1",
+            sceneId: "scene-1",
+            order: 1,
+            frameType: "start_frame" as const,
+            planStatus: "planned" as const,
+            imageStatus: "in_review" as const,
+            selectedCharacterIds: ["char-rin"],
+            matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+            promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: "2024-01-01T00:00:09Z",
+            imageAssetPath: "images/frame-start-1/current.png",
+            imageWidth: 1536,
+            imageHeight: 1024,
+            provider: "turnaround-image",
+            model: "doubao-seedream-5-0-260128",
+            approvedAt: null,
+            updatedAt: "2024-01-01T00:00:09Z",
+            sourceTaskId: "task-frame-start-1",
+          },
+          endFrame: {
+            id: "frame-end-1",
+            batchId: "image-batch-1",
+            projectId: "proj-1",
+            sourceShotScriptId: "shot-script-1",
+            segmentId: "segment-1",
+            sceneId: "scene-1",
+            order: 1,
+            frameType: "end_frame" as const,
+            planStatus: "planned" as const,
+            imageStatus: "in_review" as const,
+            selectedCharacterIds: ["char-rin"],
+            matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
+            promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: "2024-01-01T00:00:09Z",
+            imageAssetPath: "images/frame-end-1/current.png",
+            imageWidth: 1536,
+            imageHeight: 1024,
+            provider: "turnaround-image",
+            model: "doubao-seedream-5-0-260128",
+            approvedAt: null,
+            updatedAt: "2024-01-01T00:00:09Z",
+            sourceTaskId: "task-frame-end-1",
+          },
           updatedAt: "2024-01-01T00:00:09Z",
-          sourceTaskId: "task-frame-start-1",
-        },
-        {
-          id: "frame-end-1",
-          batchId: "image-batch-1",
-          projectId: "proj-1",
-          sourceShotScriptId: "shot-script-1",
-          segmentId: "segment-1",
-          sceneId: "scene-1",
-          order: 1,
-          frameType: "end_frame" as const,
-          planStatus: "planned" as const,
-          imageStatus: "in_review" as const,
-          selectedCharacterIds: ["char-rin"],
-          matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
-          unmatchedCharacterIds: [],
-          promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
-          promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
-          negativePromptTextCurrent: null,
-          promptUpdatedAt: "2024-01-01T00:00:09Z",
-          imageAssetPath: "images/frame-end-1/current.png",
-          imageWidth: 1536,
-          imageHeight: 1024,
-          provider: "turnaround-image",
-          model: "doubao-seedream-5-0-260128",
-          approvedAt: null,
-          updatedAt: "2024-01-01T00:00:09Z",
-          sourceTaskId: "task-frame-end-1",
         },
       ],
     });
@@ -592,7 +617,7 @@ describe("Project Detail Page", () => {
     });
 
     expect(screen.getByRole("heading", { name: "画面工作区" })).toBeInTheDocument();
-    expect(screen.getByText("Segment 1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Segment 1/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
   });
@@ -601,7 +626,7 @@ describe("Project Detail Page", () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(imagesGeneratingProject);
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: imagesGeneratingProject.currentImageBatch,
-      frames: [],
+      shots: [],
     });
 
     renderPage();
@@ -617,20 +642,37 @@ describe("Project Detail Page", () => {
     expect(screen.getByRole("button", { name: "重新生成" })).toBeEnabled();
   });
 
+  it("enables the videos phase when the current image batch summary is approved by shot count", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(imagesApprovedSummaryProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "视频" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "视频" }));
+
+    expect(screen.getByRole("heading", { name: "视频工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "开始生成视频" })).toBeInTheDocument();
+    expect(screen.getByText(/为每个 Shot 生成一个可审核视频片段/i)).toBeInTheDocument();
+  });
+
   it("auto-selects the videos phase when the project already has a current video batch", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(videosInReviewProject);
     vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
       currentBatch: videosInReviewProject.currentVideoBatch,
-      segments: [
+      shots: [
         {
           id: "video-segment-1",
           projectId: "proj-1",
           batchId: "video-batch-1",
           sourceImageBatchId: "image-batch-1",
           sourceShotScriptId: "shot-script-1",
-          segmentId: "segment-1",
+          shotId: "shot-1",
+          shotCode: "S01-SG01-SH01",
           sceneId: "scene-1",
-          order: 1,
+          frameDependency: "start_and_end_frame" as const,
           status: "in_review" as const,
           promptTextSeed: "seed video prompt",
           promptTextCurrent: "current video prompt",
