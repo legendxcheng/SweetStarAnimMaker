@@ -19,7 +19,7 @@ export interface KlingMultiPromptItem {
 
 export interface SubmitImageToVideoInput {
   image: string;
-  imageTail: string;
+  imageTail?: string | null;
   promptText?: string;
   negativePromptText?: string | null;
   durationSeconds?: number | null;
@@ -106,9 +106,12 @@ export function createKlingVideoProvider(
         model_name: modelName,
         mode,
         image,
-        image_tail: imageTail,
         duration: isPositiveNumber(input.durationSeconds) ? input.durationSeconds : 5,
       };
+
+      if (imageTail) {
+        requestBody.image_tail = imageTail;
+      }
 
       const promptText = input.promptText?.trim();
       if (promptText) {
@@ -283,10 +286,10 @@ export function createKlingStageVideoProvider(
       ];
       const submitted = await provider.submitImageToVideo({
         image: input.startFramePath,
-        imageTail: input.endFramePath,
+        ...(input.endFramePath ? { imageTail: input.endFramePath } : {}),
         durationSeconds,
         sound,
-        multiShot,
+        multiShot: input.frameDependency === "start_and_end_frame" ? multiShot : false,
         multiPrompt,
       });
       const completed = await provider.waitForImageToVideoTask({
@@ -364,10 +367,18 @@ function readApiToken(apiToken: string | undefined) {
 }
 
 async function resolveAssetUrl(
-  value: string,
+  value: string | null | undefined,
   referenceImageUploader: ReferenceImageUploader | undefined,
 ) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
   const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
 
   if (isRemoteUrl(trimmedValue)) {
     return trimmedValue;
@@ -529,9 +540,9 @@ function escapeForRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
-function shouldSendMultiShot(imageTail: string) {
+function shouldSendMultiShot(imageTail: string | null | undefined) {
   // VectorEngine currently rejects multi_shot when a tail image is present.
-  return imageTail.trim().length === 0;
+  return typeof imageTail !== "string" || imageTail.trim().length === 0;
 }
 
 function readPath(value: unknown, path: string[]) {

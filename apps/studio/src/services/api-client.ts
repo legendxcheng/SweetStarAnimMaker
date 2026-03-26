@@ -17,7 +17,7 @@ import {
   generateImageFrameRequestSchema,
   imageFrameListResponseSchema,
   imageFrameResponseSchema,
-  segmentVideoResponseSchema,
+  shotVideoResponseSchema,
   videoListResponseSchema,
   regenerateAllImagePromptsResponseSchema,
   regenerateAllVideoPromptsRequestSchema,
@@ -53,8 +53,8 @@ import {
   type RegenerateAllImagePromptsResponse,
   type SaveShotScriptSegmentRequest,
   type SaveMasterPlotRequest,
-  type SegmentFrameRecord,
-  type SegmentVideoRecord,
+  type ShotReferenceFrame,
+  type ShotVideoRecord,
   type ShotScriptReviewWorkspace,
   type UpdateCharacterSheetPromptRequest,
   type UpdateImageFramePromptRequest,
@@ -374,7 +374,7 @@ export const apiClient = {
     ),
 
   getImageFrame: (projectId: string, frameId: string) =>
-    request<SegmentFrameRecord>(
+    request<ShotReferenceFrame>(
       `/projects/${projectId}/images/frames/${frameId}`,
       imageFrameResponseSchema,
       {
@@ -383,9 +383,9 @@ export const apiClient = {
     ),
 
   getVideo: (projectId: string, videoId: string) =>
-    request<SegmentVideoRecord>(
+    request<ShotVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}`,
-      segmentVideoResponseSchema,
+      shotVideoResponseSchema,
       {
         method: "GET",
       },
@@ -396,7 +396,7 @@ export const apiClient = {
     frameId: string,
     data: UpdateImageFramePromptRequest,
   ) =>
-    request<SegmentFrameRecord>(
+    request<ShotReferenceFrame>(
       `/projects/${projectId}/images/frames/${frameId}/prompt`,
       imageFrameResponseSchema,
       {
@@ -434,9 +434,9 @@ export const apiClient = {
     videoId: string,
     data: { promptTextCurrent: string },
   ) =>
-    request<SegmentVideoRecord>(
+    request<ShotVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}/prompt`,
-      segmentVideoResponseSchema,
+      shotVideoResponseSchema,
       {
         method: "PUT",
         body: JSON.stringify(saveVideoPromptRequestSchema.parse(data)),
@@ -448,9 +448,9 @@ export const apiClient = {
     videoId: string,
     data: Record<string, never> = {},
   ) =>
-    request<SegmentVideoRecord>(
+    request<ShotVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}/regenerate-prompt`,
-      segmentVideoResponseSchema,
+      shotVideoResponseSchema,
       {
         method: "POST",
         body: JSON.stringify(regenerateVideoPromptRequestSchema.parse(data)),
@@ -478,7 +478,7 @@ export const apiClient = {
     ),
 
   approveImageFrame: (projectId: string, frameId: string, data: Record<string, never> = {}) =>
-    request<SegmentFrameRecord>(
+    request<ShotReferenceFrame>(
       `/projects/${projectId}/images/frames/${frameId}/approve`,
       imageFrameResponseSchema,
       {
@@ -516,9 +516,9 @@ export const apiClient = {
     videoId: string,
     data: Record<string, never> = {},
   ) =>
-    request<SegmentVideoRecord>(
+    request<ShotVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}/approve`,
-      segmentVideoResponseSchema,
+      shotVideoResponseSchema,
       {
         method: "POST",
         body: JSON.stringify(approveVideoSegmentRequestSchema.parse(data)),

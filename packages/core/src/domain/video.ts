@@ -1,12 +1,13 @@
 import type {
   CurrentVideoBatchSummary,
-  SegmentVideoRecord,
-  SegmentVideoStatus,
+  ShotFrameDependency,
+  ShotVideoRecord,
+  ShotVideoStatus,
 } from "@sweet-star/shared";
-import { toShotScriptSegmentStorageKey } from "@sweet-star/shared";
 
 export const videosDirectoryName = "videos";
 export const videoBatchesDirectoryName = "batches";
+export const videoShotsDirectoryName = "shots";
 export const videoSegmentsDirectoryName = "segments";
 export const videoCurrentBatchFileName = "current-batch.json";
 export const videoManifestFileName = "manifest.json";
@@ -21,14 +22,18 @@ export interface VideoBatchRecord {
   projectStorageDir: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  segmentCount: number;
+  shotCount: number;
   storageDir: string;
   manifestRelPath: string;
   createdAt: string;
   updatedAt: string;
+  // Temporary alias while segment-first callers are still being migrated.
+  segmentCount: number;
 }
 
-export interface SegmentVideoRecordEntity extends SegmentVideoRecord {
+export interface ShotVideoRecordEntity extends ShotVideoRecord {
+  segmentId: string;
+  shotOrder: number;
   projectStorageDir: string;
   storageDir: string;
   currentVideoRelPath: string;
@@ -37,28 +42,34 @@ export interface SegmentVideoRecordEntity extends SegmentVideoRecord {
   versionsStorageDir: string;
 }
 
+export type SegmentVideoRecordEntity = ShotVideoRecordEntity;
+
 export interface CreateVideoBatchRecordInput {
   id: string;
   projectId: string;
   projectStorageDir: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  segmentCount: number;
+  shotCount?: number;
+  segmentCount?: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateSegmentVideoRecordInput {
+export interface CreateShotVideoRecordInput {
   id: string;
   batchId: string;
   projectId: string;
   projectStorageDir: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  segmentId: string;
+  shotId: string;
+  shotCode: string;
   sceneId: string;
-  order: number;
-  status?: SegmentVideoStatus;
+  segmentId: string;
+  shotOrder: number;
+  frameDependency: ShotFrameDependency;
+  status?: ShotVideoStatus;
   promptTextSeed?: string;
   promptTextCurrent?: string;
   promptUpdatedAt?: string;
@@ -71,6 +82,8 @@ export interface CreateSegmentVideoRecordInput {
   approvedAt?: string | null;
   sourceTaskId?: string | null;
 }
+
+export type CreateSegmentVideoRecordInput = CreateShotVideoRecordInput;
 
 export function toVideoBatchStorageDir(projectStorageDir: string, batchId: string) {
   return `${projectStorageDir}/${videosDirectoryName}/${videoBatchesDirectoryName}/${batchId}`;
@@ -88,29 +101,49 @@ export function toSegmentVideoStorageDir(batchId: string, segmentStorageKey: str
   return `${videosDirectoryName}/${videoBatchesDirectoryName}/${batchId}/${videoSegmentsDirectoryName}/${segmentStorageKey}`;
 }
 
+export function toShotVideoStorageKey(input: {
+  sceneId: string;
+  segmentId: string;
+  shotId: string;
+}) {
+  return `${input.sceneId}__${input.segmentId}__${input.shotId}`;
+}
+
+export function toShotVideoStorageDir(
+  batchId: string,
+  input: {
+    sceneId: string;
+    segmentId: string;
+    shotId: string;
+  },
+) {
+  return `${videosDirectoryName}/${videoBatchesDirectoryName}/${batchId}/${videoShotsDirectoryName}/${toShotVideoStorageKey(input)}`;
+}
+
 export function createVideoBatchRecord(input: CreateVideoBatchRecordInput): VideoBatchRecord {
+  const shotCount = input.shotCount ?? input.segmentCount ?? 0;
+
   return {
     id: input.id,
     projectId: input.projectId,
     projectStorageDir: input.projectStorageDir,
     sourceImageBatchId: input.sourceImageBatchId,
     sourceShotScriptId: input.sourceShotScriptId,
-    segmentCount: input.segmentCount,
+    shotCount,
     storageDir: toVideoBatchStorageDir(input.projectStorageDir, input.id),
     manifestRelPath: toVideoBatchManifestRelPath(input.id),
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
+    segmentCount: shotCount,
   };
 }
 
-export function createSegmentVideoRecord(
-  input: CreateSegmentVideoRecordInput,
-): SegmentVideoRecordEntity {
-  const segmentStorageKey = toShotScriptSegmentStorageKey({
+export function createShotVideoRecord(input: CreateShotVideoRecordInput): ShotVideoRecordEntity {
+  const storageDir = toShotVideoStorageDir(input.batchId, {
     sceneId: input.sceneId,
     segmentId: input.segmentId,
+    shotId: input.shotId,
   });
-  const storageDir = toSegmentVideoStorageDir(input.batchId, segmentStorageKey);
 
   return {
     id: input.id,
@@ -118,9 +151,12 @@ export function createSegmentVideoRecord(
     batchId: input.batchId,
     sourceImageBatchId: input.sourceImageBatchId,
     sourceShotScriptId: input.sourceShotScriptId,
-    segmentId: input.segmentId,
+    shotId: input.shotId,
+    shotCode: input.shotCode,
     sceneId: input.sceneId,
-    order: input.order,
+    segmentId: input.segmentId,
+    shotOrder: input.shotOrder,
+    frameDependency: input.frameDependency,
     status: input.status ?? "generating",
     promptTextSeed: input.promptTextSeed ?? "",
     promptTextCurrent: input.promptTextCurrent ?? "",
@@ -142,16 +178,24 @@ export function createSegmentVideoRecord(
   };
 }
 
+export function createSegmentVideoRecord(
+  input: CreateSegmentVideoRecordInput,
+): SegmentVideoRecordEntity {
+  return createShotVideoRecord(input);
+}
+
 export function toCurrentVideoBatchSummary(
-  batch: Pick<VideoBatchRecord, "id" | "sourceImageBatchId" | "sourceShotScriptId" | "segmentCount" | "updatedAt">,
-  segments: Pick<SegmentVideoRecord, "status">[],
+  batch: Pick<VideoBatchRecord, "id" | "sourceImageBatchId" | "sourceShotScriptId" | "shotCount" | "updatedAt"> & {
+    segmentCount?: number;
+  },
+  shots: Pick<ShotVideoRecord, "status">[],
 ): CurrentVideoBatchSummary {
   return {
     id: batch.id,
     sourceImageBatchId: batch.sourceImageBatchId,
     sourceShotScriptId: batch.sourceShotScriptId,
-    segmentCount: batch.segmentCount,
-    approvedSegmentCount: segments.filter((segment) => segment.status === "approved").length,
+    shotCount: batch.shotCount ?? batch.segmentCount ?? 0,
+    approvedShotCount: shots.filter((shot) => shot.status === "approved").length,
     updatedAt: batch.updatedAt,
   };
 }

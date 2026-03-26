@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createProcessFramePromptGenerateTaskUseCase,
+  createShotReferenceRecord,
 } from "../src/index";
 
 describe("process frame prompt generate task use case", () => {
@@ -860,5 +861,229 @@ describe("process frame prompt generate task use case", () => {
       updatedAt: "2026-03-24T00:15:00.000Z",
       finishedAt: "2026-03-24T00:15:00.000Z",
     });
+  });
+
+  it("updates the owning shot slot when the repository exposes shot-scoped records", async () => {
+    const shot = createShotReferenceRecord({
+      id: "shot_ref_image_batch_1_scene_1_segment_1_shot_1",
+      batchId: "image_batch_1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceShotScriptId: "shot_script_v1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 3,
+      frameDependency: "start_and_end_frame",
+      updatedAt: "2026-03-24T00:12:00.000Z",
+    });
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_frame_prompt_4",
+        projectId: "proj_1",
+        type: "frame_prompt_generate",
+        status: "pending",
+        queueName: "frame-prompt-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_frame_prompt_4",
+        inputRelPath: "tasks/task_frame_prompt_4/input.json",
+        outputRelPath: "tasks/task_frame_prompt_4/output.json",
+        logRelPath: "tasks/task_frame_prompt_4/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:12:00.000Z",
+        updatedAt: "2026-03-24T00:12:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        currentCharacterSheetBatchId: null,
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_frame_prompt_4",
+        projectId: "proj_1",
+        taskType: "frame_prompt_generate",
+        batchId: "image_batch_1",
+        shotId: "shot_1",
+        frameId: shot.startFrame.id,
+        sourceShotScriptId: "shot_script_v1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        frameType: "start_frame",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn(),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn(),
+      findFrameById: vi.fn().mockResolvedValue(null),
+      findShotById: vi.fn().mockResolvedValue(shot),
+      updateFrame: vi.fn(),
+      updateShot: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
+    };
+    const shotScriptStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeShotScriptVersion: vi.fn(),
+      readShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_v1",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_v1",
+        sourceTaskId: "task_shot_script",
+        updatedAt: "2026-03-24T00:10:00.000Z",
+        approvedAt: "2026-03-24T00:10:00.000Z",
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 3,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "集市压境",
+            summary: "林夏确认对手已经堵住出口。",
+            durationSec: 3,
+            status: "approved",
+            lastGeneratedAt: "2026-03-24T00:09:00.000Z",
+            approvedAt: "2026-03-24T00:10:00.000Z",
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 3,
+                purpose: "交代堵路。",
+                visual: "清晨积水集市入口。",
+                subject: "林夏",
+                action: "她停住脚步。",
+                dialogue: null,
+                os: null,
+                audio: "雨声与水声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
+          },
+        ],
+      }),
+    };
+    const characterSheetRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+      insertCharacter: vi.fn(),
+      findCharacterById: vi.fn(),
+      updateCharacter: vi.fn(),
+    };
+    const characterSheetStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writeBatchManifest: vi.fn(),
+      writeGeneratedPrompt: vi.fn(),
+      writeImageVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      readCurrentCharacterSheet: vi.fn(),
+      listReferenceImages: vi.fn(),
+      saveReferenceImages: vi.fn(),
+      deleteReferenceImage: vi.fn(),
+      getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
+      resolveReferenceImagePaths: vi.fn(),
+    };
+    const framePromptProvider = {
+      generateFramePrompt: vi.fn().mockResolvedValue({
+        frameType: "start_frame",
+        selectedCharacterIds: [],
+        promptText: "新的起始帧提示词。",
+        negativePromptText: null,
+        rationale: "聚焦镜头起始状态。",
+        rawResponse: "{}",
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+      }),
+    };
+
+    const useCase = createProcessFramePromptGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotScriptStorage,
+      characterSheetRepository,
+      characterSheetStorage,
+      framePromptProvider,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:14:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:15:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_frame_prompt_4" });
+
+    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: shot.id,
+        referenceStatus: "pending",
+        startFrame: expect.objectContaining({
+          id: shot.startFrame.id,
+          promptTextCurrent: "新的起始帧提示词。",
+          planStatus: "planned",
+        }),
+        endFrame: expect.objectContaining({
+          id: shot.endFrame?.id,
+          promptTextCurrent: "",
+          planStatus: "pending",
+        }),
+      }),
+    );
+    expect(shotImageRepository.updateFrame).not.toHaveBeenCalled();
   });
 });

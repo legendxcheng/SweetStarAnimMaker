@@ -1,6 +1,7 @@
-import { toShotScriptSegmentStorageKey } from "@sweet-star/shared";
-
-import { createSegmentFrameRecord, createShotImageBatchRecord } from "../domain/shot-image";
+import {
+  createShotReferenceBatchRecord,
+  createShotReferenceRecord,
+} from "../domain/shot-image";
 import {
   createTaskRecord,
   framePromptGenerateQueueName,
@@ -76,12 +77,22 @@ export function createProcessImagesGenerateTaskUseCase(
           throw new CurrentShotScriptNotFoundError(project.id);
         }
 
-        const batch = createShotImageBatchRecord({
+        const shotEntries = currentShotScript.segments.flatMap((segment) =>
+          segment.shots.map((shot) => ({ segment, shot })),
+        );
+        const totalRequiredFrameCount = shotEntries.reduce(
+          (count, { shot }) =>
+            count + (shot.frameDependency === "start_and_end_frame" ? 2 : 1),
+          0,
+        );
+
+        const batch = createShotReferenceBatchRecord({
           id: toShotImageBatchId(task.id),
           projectId: project.id,
           projectStorageDir: project.storageDir,
           sourceShotScriptId: taskInput.sourceShotScriptId,
-          segmentCount: currentShotScript.segments.length,
+          shotCount: shotEntries.length,
+          totalRequiredFrameCount,
           createdAt: startedAt,
           updatedAt: startedAt,
         });
@@ -92,27 +103,47 @@ export function createProcessImagesGenerateTaskUseCase(
 
         await dependencies.shotImageRepository.insertBatch(batch);
         await dependencies.shotImageStorage.writeBatchManifest({ batch });
-        for (const segment of currentShotScript.segments) {
-          for (const frameType of ["start_frame", "end_frame"] as const) {
-            if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
-              return;
-            }
+        const insertShot = dependencies.shotImageRepository.insertShot;
 
-            const frame = createSegmentFrameRecord({
-              id: toSegmentFrameId(batch.id, segment.sceneId, segment.segmentId, frameType),
-              batchId: batch.id,
-              projectId: project.id,
-              projectStorageDir: project.storageDir,
-              sourceShotScriptId: currentShotScript.id,
-              segmentId: segment.segmentId,
-              sceneId: segment.sceneId,
-              order: segment.order,
-              frameType,
-              updatedAt: startedAt,
-            });
+        if (!insertShot) {
+          throw new Error("Shot image repository does not support shot records");
+        }
 
-            await dependencies.shotImageRepository.insertFrame(frame);
+        for (const { segment, shot } of shotEntries) {
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return;
+          }
 
+          const shotRecord = createShotReferenceRecord({
+            id: toShotReferenceId(
+              batch.id,
+              segment.sceneId,
+              segment.segmentId,
+              shot.id,
+            ),
+            batchId: batch.id,
+            projectId: project.id,
+            projectStorageDir: project.storageDir,
+            sourceShotScriptId: currentShotScript.id,
+            sceneId: segment.sceneId,
+            segmentId: segment.segmentId,
+            shotId: shot.id,
+            shotCode: shot.shotCode,
+            segmentOrder: segment.order,
+            shotOrder: shot.order,
+            durationSec: shot.durationSec,
+            frameDependency: shot.frameDependency,
+            updatedAt: startedAt,
+          });
+
+          await insertShot(shotRecord);
+
+          const requiredFrames = [
+            shotRecord.startFrame,
+            ...(shotRecord.endFrame ? [shotRecord.endFrame] : []),
+          ];
+
+          for (const frame of requiredFrames) {
             const framePromptTask = createTaskRecord({
               id: dependencies.taskIdGenerator.generateTaskId(),
               projectId: project.id,
@@ -126,11 +157,12 @@ export function createProcessImagesGenerateTaskUseCase(
               projectId: project.id,
               taskType: "frame_prompt_generate",
               batchId: batch.id,
+              shotId: shot.id,
               frameId: frame.id,
               sourceShotScriptId: currentShotScript.id,
               segmentId: segment.segmentId,
               sceneId: segment.sceneId,
-              frameType,
+              frameType: frame.frameType,
             };
 
             await dependencies.taskRepository.insert(framePromptTask);
@@ -214,12 +246,11 @@ function toShotImageBatchId(taskId: string) {
   return `image_batch_${taskId}`;
 }
 
-function toSegmentFrameId(
+function toShotReferenceId(
   batchId: string,
   sceneId: string,
   segmentId: string,
-  frameType: "start_frame" | "end_frame",
+  shotId: string,
 ) {
-  const token = frameType === "start_frame" ? "start" : "end";
-  return `frame_${batchId}_${toShotScriptSegmentStorageKey({ sceneId, segmentId })}_${token}`;
+  return `shot_ref_${batchId}_${sceneId}_${segmentId}_${shotId}`;
 }

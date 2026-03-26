@@ -1,130 +1,118 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createSegmentFrameRecord,
-  createShotImageBatchRecord,
+  createShotReferenceBatchRecord,
+  createShotReferenceRecord,
   toCurrentImageBatch,
-} from "../src/index";
+  toShotReferenceStorageDir,
+} from "../src/domain/shot-image";
 
 describe("shot image domain", () => {
-  it("builds batch and frame storage paths for start and end frames", () => {
-    const batch = createShotImageBatchRecord({
+  it("builds shot storage paths and omits end frame for start-frame-only references", () => {
+    const batch = createShotReferenceBatchRecord({
       id: "image_batch_v1",
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceShotScriptId: "shot_script_v1",
-      segmentCount: 2,
+      shotCount: 2,
+      totalRequiredFrameCount: 3,
       createdAt: "2026-03-24T00:00:00.000Z",
       updatedAt: "2026-03-24T00:00:00.000Z",
     });
-    const startFrame = createSegmentFrameRecord({
-      id: "frame_scene_1__segment_1_start",
+
+    const record = createShotReferenceRecord({
+      id: "shot_ref_1",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceShotScriptId: "shot_script_v1",
-      segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
-      frameType: "start_frame",
-      updatedAt: "2026-03-24T00:01:00.000Z",
-    });
-    const endFrame = createSegmentFrameRecord({
-      id: "frame_scene_1__segment_1_end",
-      batchId: batch.id,
-      projectId: "proj_1",
-      projectStorageDir: "projects/proj_1-my-story",
-      sourceShotScriptId: "shot_script_v1",
       segmentId: "segment_1",
-      sceneId: "scene_1",
-      order: 1,
-      frameType: "end_frame",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_frame_only",
       updatedAt: "2026-03-24T00:01:00.000Z",
     });
 
-    expect(batch.storageDir).toBe("projects/proj_1-my-story/images/batches/image_batch_v1");
-    expect(batch.manifestRelPath).toBe("images/batches/image_batch_v1/manifest.json");
-    expect(batch.totalFrameCount).toBe(4);
-
-    expect(startFrame.storageDir).toBe(
-      "projects/proj_1-my-story/images/batches/image_batch_v1/segments/scene_1__segment_1/start-frame",
-    );
-    expect(startFrame.planningRelPath).toBe(
-      "images/batches/image_batch_v1/segments/scene_1__segment_1/start-frame/planning.json",
-    );
-    expect(startFrame.promptSeedRelPath).toBe(
-      "images/batches/image_batch_v1/segments/scene_1__segment_1/start-frame/prompt.seed.txt",
-    );
-    expect(endFrame.promptCurrentRelPath).toBe(
-      "images/batches/image_batch_v1/segments/scene_1__segment_1/end-frame/prompt.current.txt",
-    );
-    expect(endFrame.currentImageRelPath).toBe(
-      "images/batches/image_batch_v1/segments/scene_1__segment_1/end-frame/current.png",
-    );
+    expect(record.endFrame).toBeNull();
+    expect(
+      toShotReferenceStorageDir(batch.id, {
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        shotId: "shot_1",
+      }),
+    ).toContain("/shots/");
+    expect(record.startFrame.storageDir).toContain("/shots/");
+    expect(toCurrentImageBatch(batch, [record]).approvedShotCount).toBe(0);
   });
 
-  it("builds a current batch summary with approved frame counts", () => {
-    const batch = createShotImageBatchRecord({
+  it("builds a current batch summary with approved shot counts", () => {
+    const batch = createShotReferenceBatchRecord({
       id: "image_batch_v1",
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceShotScriptId: "shot_script_v1",
-      segmentCount: 2,
+      shotCount: 2,
+      totalRequiredFrameCount: 3,
       createdAt: "2026-03-24T00:00:00.000Z",
       updatedAt: "2026-03-24T00:10:00.000Z",
     });
-    const frames = [
-      createSegmentFrameRecord({
-        id: "frame_1_start",
-        batchId: batch.id,
-        projectId: "proj_1",
-        projectStorageDir: "projects/proj_1-my-story",
-        sourceShotScriptId: "shot_script_v1",
-        segmentId: "segment_1",
-        sceneId: "scene_1",
-        order: 1,
-        frameType: "start_frame",
+
+    const approvedShot = createShotReferenceRecord({
+      id: "shot_ref_approved",
+      batchId: batch.id,
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceShotScriptId: "shot_script_v1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_frame_only",
+      referenceStatus: "approved",
+      startFrame: {
         imageStatus: "approved",
         approvedAt: "2026-03-24T00:08:00.000Z",
-        updatedAt: "2026-03-24T00:08:00.000Z",
-      }),
-      createSegmentFrameRecord({
-        id: "frame_1_end",
-        batchId: batch.id,
-        projectId: "proj_1",
-        projectStorageDir: "projects/proj_1-my-story",
-        sourceShotScriptId: "shot_script_v1",
-        segmentId: "segment_1",
-        sceneId: "scene_1",
-        order: 1,
-        frameType: "end_frame",
-        imageStatus: "in_review",
-        updatedAt: "2026-03-24T00:09:00.000Z",
-      }),
-      createSegmentFrameRecord({
-        id: "frame_2_start",
-        batchId: batch.id,
-        projectId: "proj_1",
-        projectStorageDir: "projects/proj_1-my-story",
-        sourceShotScriptId: "shot_script_v1",
-        segmentId: "segment_2",
-        sceneId: "scene_2",
-        order: 2,
-        frameType: "start_frame",
+      },
+      updatedAt: "2026-03-24T00:08:00.000Z",
+    });
+    const inReviewShot = createShotReferenceRecord({
+      id: "shot_ref_review",
+      batchId: batch.id,
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceShotScriptId: "shot_script_v1",
+      sceneId: "scene_2",
+      segmentId: "segment_2",
+      shotId: "shot_2",
+      shotCode: "SC01-SG01-SH02",
+      segmentOrder: 2,
+      shotOrder: 1,
+      durationSec: 5,
+      frameDependency: "start_and_end_frame",
+      referenceStatus: "in_review",
+      startFrame: {
         imageStatus: "approved",
-        approvedAt: "2026-03-24T00:10:00.000Z",
-        updatedAt: "2026-03-24T00:10:00.000Z",
-      }),
-    ];
+        approvedAt: "2026-03-24T00:09:00.000Z",
+      },
+      endFrame: {
+        imageStatus: "in_review",
+      },
+      updatedAt: "2026-03-24T00:10:00.000Z",
+    });
 
-    const summary = toCurrentImageBatch(batch, frames);
-
-    expect(summary).toEqual({
+    expect(toCurrentImageBatch(batch, [approvedShot, inReviewShot])).toEqual({
       id: "image_batch_v1",
       sourceShotScriptId: "shot_script_v1",
-      segmentCount: 2,
-      totalFrameCount: 4,
-      approvedFrameCount: 2,
+      shotCount: 2,
+      totalRequiredFrameCount: 3,
+      approvedShotCount: 1,
       updatedAt: "2026-03-24T00:10:00.000Z",
     });
   });

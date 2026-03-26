@@ -4,7 +4,7 @@ import path from "node:path";
 
 import {
   createProjectRecord,
-  createSegmentFrameRecord,
+  createShotReferenceRecord,
   createShotImageBatchRecord,
 } from "@sweet-star/core";
 import {
@@ -55,12 +55,17 @@ describe("images api", () => {
       expect.objectContaining({
         currentBatch: expect.objectContaining({
           id: "image_batch_1",
-          totalFrameCount: 2,
-          approvedFrameCount: 0,
+          shotCount: 1,
+          totalRequiredFrameCount: 2,
+          approvedShotCount: 0,
         }),
-        frames: expect.arrayContaining([
-          expect.objectContaining({ id: "frame_start_1", frameType: "start_frame" }),
-          expect.objectContaining({ id: "frame_end_1", frameType: "end_frame" }),
+        shots: expect.arrayContaining([
+          expect.objectContaining({
+            id: "shot_ref_1",
+            frameDependency: "start_and_end_frame",
+            startFrame: expect.objectContaining({ id: "frame_start_1", frameType: "start_frame" }),
+            endFrame: expect.objectContaining({ id: "frame_end_1", frameType: "end_frame" }),
+          }),
         ]),
       }),
     );
@@ -120,8 +125,8 @@ describe("images api", () => {
     expect(endFrameResponse.json()).toEqual(
       expect.objectContaining({
         id: "frame_end_1",
-        imageStatus: "in_review",
-        approvedAt: null,
+        imageStatus: "approved",
+        approvedAt: expect.any(String),
       }),
     );
   });
@@ -319,11 +324,15 @@ describe("images api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         currentBatch: expect.objectContaining({
-          approvedFrameCount: 2,
+          approvedShotCount: 1,
         }),
-        frames: expect.arrayContaining([
-          expect.objectContaining({ id: "frame_start_1", imageStatus: "approved" }),
-          expect.objectContaining({ id: "frame_end_1", imageStatus: "approved" }),
+        shots: expect.arrayContaining([
+          expect.objectContaining({
+            id: "shot_ref_1",
+            referenceStatus: "approved",
+            startFrame: expect.objectContaining({ id: "frame_start_1", imageStatus: "approved" }),
+            endFrame: expect.objectContaining({ id: "frame_end_1", imageStatus: "approved" }),
+          }),
         ]),
       }),
     );
@@ -412,6 +421,7 @@ async function seedApprovedShotScript(input: {
             segmentId: "segment_1",
             order: 1,
             shotCode: "S01-SG01-SH01",
+            frameDependency: "start_and_end_frame",
             durationSec: 6,
             purpose: "建立雨夜市场与人物关系。",
             visual: "雨夜市场，灯牌和水面反光交错。",
@@ -464,60 +474,59 @@ async function seedImageBatch(input: {
     createdAt: "2026-03-24T13:00:00.000Z",
     updatedAt: "2026-03-24T13:00:00.000Z",
   });
-  const startFrame = createSegmentFrameRecord({
-    id: "frame_start_1",
+  const shot = createShotReferenceRecord({
+    id: "shot_ref_1",
     batchId: batch.id,
     projectId: input.projectId,
     projectStorageDir: input.projectStorageDir,
     sourceShotScriptId: "shot_script_1",
-    segmentId: "segment_1",
     sceneId: "scene_1",
-    order: 1,
-    frameType: "start_frame",
-    planStatus: "planned",
-    imageStatus: "in_review",
-    selectedCharacterIds: ["char_rin_1"],
-    matchedReferenceImagePaths: ["character-sheets/characters/char_rin_1/current.png"],
-    unmatchedCharacterIds: [],
-    promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
-    promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
-    negativePromptTextCurrent: null,
-    imageAssetPath: "images/batches/image_batch_1/segments/segment_1/start-frame/current.png",
-    imageWidth: 1536,
-    imageHeight: 1024,
-    provider: "turnaround-image",
-    model: "doubao-seedream-5-0-260128",
-    updatedAt: "2026-03-24T13:00:00.000Z",
-  });
-  const endFrame = createSegmentFrameRecord({
-    id: "frame_end_1",
-    batchId: batch.id,
-    projectId: input.projectId,
-    projectStorageDir: input.projectStorageDir,
-    sourceShotScriptId: "shot_script_1",
     segmentId: "segment_1",
-    sceneId: "scene_1",
-    order: 1,
-    frameType: "end_frame",
-    planStatus: "planned",
-    imageStatus: "in_review",
-    selectedCharacterIds: ["char_rin_1"],
-    matchedReferenceImagePaths: ["character-sheets/characters/char_rin_1/current.png"],
-    unmatchedCharacterIds: [],
-    promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
-    promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
-    negativePromptTextCurrent: null,
-    imageAssetPath: "images/batches/image_batch_1/segments/segment_1/end-frame/current.png",
-    imageWidth: 1536,
-    imageHeight: 1024,
-    provider: "turnaround-image",
-    model: "doubao-seedream-5-0-260128",
+    shotId: "shot_1",
+    shotCode: "S01-SG01-SH01",
+    segmentOrder: 1,
+    shotOrder: 1,
+    durationSec: 6,
+    frameDependency: "start_and_end_frame",
     updatedAt: "2026-03-24T13:00:00.000Z",
+    startFrame: {
+      id: "frame_start_1",
+      planStatus: "planned",
+      imageStatus: "in_review",
+      selectedCharacterIds: ["char_rin_1"],
+      matchedReferenceImagePaths: ["character-sheets/characters/char_rin_1/current.png"],
+      unmatchedCharacterIds: [],
+      promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+      promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+      negativePromptTextCurrent: null,
+      imageAssetPath: "images/batches/image_batch_1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "turnaround-image",
+      model: "doubao-seedream-5-0-260128",
+      updatedAt: "2026-03-24T13:00:00.000Z",
+    },
+    endFrame: {
+      id: "frame_end_1",
+      planStatus: "planned",
+      imageStatus: "in_review",
+      selectedCharacterIds: ["char_rin_1"],
+      matchedReferenceImagePaths: ["character-sheets/characters/char_rin_1/current.png"],
+      unmatchedCharacterIds: [],
+      promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
+      promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
+      negativePromptTextCurrent: null,
+      imageAssetPath: "images/batches/image_batch_1/shots/scene_1__segment_1__shot_1/end-frame/current.png",
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "turnaround-image",
+      model: "doubao-seedream-5-0-260128",
+      updatedAt: "2026-03-24T13:00:00.000Z",
+    },
   });
 
   shotImageRepository.insertBatch(batch);
-  shotImageRepository.insertFrame(startFrame);
-  shotImageRepository.insertFrame(endFrame);
+  shotImageRepository.insertShot?.(shot);
   projectRepository.updateCurrentImageBatch({
     projectId: input.projectId,
     batchId: batch.id,

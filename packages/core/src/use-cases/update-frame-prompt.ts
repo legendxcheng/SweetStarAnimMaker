@@ -1,10 +1,18 @@
-import type { SegmentFrameRecord, UpdateImageFramePromptRequest } from "@sweet-star/shared";
+import type {
+  SegmentFrameRecord,
+  ShotReferenceFrame,
+  UpdateImageFramePromptRequest,
+} from "@sweet-star/shared";
 
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
+import {
+  replaceFrameOnShot,
+  resolveShotFrameRecord,
+} from "./shot-reference-frame-helpers";
 
 export interface UpdateFramePromptInput extends UpdateImageFramePromptRequest {
   projectId: string;
@@ -12,7 +20,7 @@ export interface UpdateFramePromptInput extends UpdateImageFramePromptRequest {
 }
 
 export interface UpdateFramePromptUseCase {
-  execute(input: UpdateFramePromptInput): Promise<SegmentFrameRecord>;
+  execute(input: UpdateFramePromptInput): Promise<SegmentFrameRecord | ShotReferenceFrame>;
 }
 
 export interface UpdateFramePromptUseCaseDependencies {
@@ -38,7 +46,16 @@ export function createUpdateFramePromptUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const frame = await dependencies.shotImageRepository.findFrameById(input.frameId);
+      const resolvedShotFrame = project.currentImageBatchId
+        ? await resolveShotFrameRecord({
+            repository: dependencies.shotImageRepository,
+            batchId: project.currentImageBatchId,
+            frameId: input.frameId,
+          })
+        : null;
+      const frame =
+        resolvedShotFrame?.frame ??
+        (await dependencies.shotImageRepository.findFrameById(input.frameId));
 
       if (!frame || frame.projectId !== project.id) {
         throw new ShotImageNotFoundError(input.frameId);
@@ -53,7 +70,13 @@ export function createUpdateFramePromptUseCase(
         updatedAt: timestamp,
       };
 
-      await dependencies.shotImageRepository.updateFrame(updatedFrame);
+      if (resolvedShotFrame?.shot && dependencies.shotImageRepository.updateShot) {
+        await dependencies.shotImageRepository.updateShot(
+          replaceFrameOnShot(resolvedShotFrame.shot, updatedFrame),
+        );
+      } else {
+        await dependencies.shotImageRepository.updateFrame(updatedFrame);
+      }
 
       return updatedFrame;
     },

@@ -149,8 +149,8 @@ describe("list projects use case", () => {
         projectId: "proj_20260320_ab12cd",
         projectStorageDir: "projects/proj_20260320_ab12cd-sky-choir",
         sourceShotScriptId: "shot_script_20260322_ab12cd",
-        segmentCount: 1,
-        totalFrameCount: 2,
+        shotCount: 1,
+        totalRequiredFrameCount: 2,
         storageDir: "projects/proj_20260320_ab12cd-sky-choir/images/batches/image_batch_1",
         manifestRelPath: "images/batches/image_batch_1/manifest.json",
         createdAt: "2026-03-23T12:00:00.000Z",
@@ -171,7 +171,7 @@ describe("list projects use case", () => {
         id: "video_batch_1",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_20260322_ab12cd",
-        segmentCount: 1,
+        shotCount: 1,
         updatedAt: "2026-03-25T12:00:00.000Z",
       }),
       findCurrentBatchByProjectId: vi.fn(),
@@ -204,8 +204,8 @@ describe("list projects use case", () => {
     expect(result[0].currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result[0].currentShotScript?.shotCount).toBe(1);
     expect(result[0].currentImageBatch?.id).toBe("image_batch_1");
-    expect(result[0].currentImageBatch?.approvedFrameCount).toBe(1);
-    expect(result[0].currentVideoBatch?.approvedSegmentCount).toBe(1);
+    expect(result[0].currentImageBatch?.approvedShotCount).toBe(1);
+    expect(result[0].currentVideoBatch?.id).toBe("video_batch_1");
     expect(result[1].currentMasterPlot).toBeNull();
     expect(result[1].currentCharacterSheetBatch).toBeNull();
     expect(result[1].currentShotScript).toBeNull();

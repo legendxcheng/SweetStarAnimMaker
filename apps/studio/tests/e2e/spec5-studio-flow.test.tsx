@@ -23,6 +23,8 @@ const createdProject = {
     path: "premise/v1.md",
     bytes: 128,
     updatedAt: "2024-01-01T00:00:00Z",
+    text: "A washed-up pilot discovers a singing comet above a drowned city.",
+    visualStyleText: "",
   },
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
@@ -60,6 +62,26 @@ const characterSheetsApprovedProject = {
     approvedCharacterCount: 2,
     updatedAt: "2024-01-01T00:00:03Z",
   },
+};
+
+const rinCharacter = {
+  id: "char-rin",
+  projectId: "proj-1",
+  batchId: "char-batch-1",
+  sourceMasterPlotId: "mp-1",
+  characterName: "Rin",
+  promptTextGenerated: "silver pilot jacket",
+  promptTextCurrent: "silver pilot jacket",
+  referenceImages: [],
+  imageAssetPath: "character-sheets/char-rin/current.png",
+  imageWidth: 1536,
+  imageHeight: 1024,
+  provider: "turnaround-image",
+  model: "imagen-4.0-generate-preview",
+  status: "approved" as const,
+  updatedAt: "2024-01-01T00:00:05Z",
+  approvedAt: "2024-01-01T00:00:06Z",
+  sourceTaskId: "task-char-rin",
 };
 
 const runningTask = {
@@ -198,6 +220,11 @@ describe("Spec5 Studio Flow", () => {
 
     vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
     vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
+      currentBatch: characterSheetsApprovedProject.currentCharacterSheetBatch,
+      characters: [rinCharacter],
+    });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(rinCharacter);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
       .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
@@ -251,6 +278,7 @@ describe("Spec5 Studio Flow", () => {
       expect(apiModule.apiClient.createProject).toHaveBeenCalledWith({
         name: "Flow Project",
         premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "",
       });
     });
 
@@ -314,6 +342,11 @@ describe("Spec5 Studio Flow", () => {
 
     vi.spyOn(apiModule.apiClient, "listProjects").mockResolvedValue([]);
     vi.spyOn(apiModule.apiClient, "createProject").mockResolvedValue(createdProject);
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
+      currentBatch: characterSheetsApprovedProject.currentCharacterSheetBatch,
+      characters: [rinCharacter],
+    });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(rinCharacter);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
       .mockResolvedValueOnce(characterSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)

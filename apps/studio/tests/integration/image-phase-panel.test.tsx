@@ -36,71 +36,129 @@ const baseProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    segmentCount: 1,
-    totalFrameCount: 2,
-    approvedFrameCount: 0,
+    shotCount: 1,
+    totalRequiredFrameCount: 2,
+    approvedShotCount: 0,
     updatedAt: "2024-01-01T00:00:09Z",
   },
 };
 
+function createFrame(
+  overrides: Partial<{
+    id: string;
+    batchId: string;
+    projectId: string;
+    sourceShotScriptId: string;
+    segmentId: string;
+    sceneId: string;
+    order: number;
+    frameType: "start_frame" | "end_frame";
+    planStatus: "pending" | "planned" | "plan_failed";
+    imageStatus: "pending" | "generating" | "in_review" | "approved" | "failed";
+    selectedCharacterIds: string[];
+    matchedReferenceImagePaths: string[];
+    unmatchedCharacterIds: string[];
+    promptTextSeed: string;
+    promptTextCurrent: string;
+    negativePromptTextCurrent: string | null;
+    promptUpdatedAt: string | null;
+    imageAssetPath: string | null;
+    imageWidth: number | null;
+    imageHeight: number | null;
+    provider: string | null;
+    model: string | null;
+    approvedAt: string | null;
+    updatedAt: string;
+    sourceTaskId: string | null;
+  }> = {},
+) {
+  return {
+    id: "frame-start-1",
+    batchId: "image-batch-1",
+    projectId: "proj-1",
+    sourceShotScriptId: "shot-script-1",
+    segmentId: "segment-1",
+    sceneId: "scene-1",
+    order: 1,
+    frameType: "start_frame" as const,
+    planStatus: "planned" as const,
+    imageStatus: "in_review" as const,
+    selectedCharacterIds: ["char-rin"],
+    matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
+    unmatchedCharacterIds: ["char-ivo"],
+    promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
+    promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+    negativePromptTextCurrent: null,
+    promptUpdatedAt: "2024-01-01T00:00:09Z",
+    imageAssetPath: "images/frame-start-1/current.png",
+    imageWidth: 1536,
+    imageHeight: 1024,
+    provider: "turnaround-image",
+    model: "doubao-seedream-5-0-260128",
+    approvedAt: null,
+    updatedAt: "2024-01-01T00:00:09Z",
+    sourceTaskId: "task-frame-start-1",
+    ...overrides,
+  };
+}
+
+function createShot(
+  overrides: Partial<{
+    id: string;
+    batchId: string;
+    projectId: string;
+    sourceShotScriptId: string;
+    shotId: string;
+    shotCode: string;
+    frameDependency: "start_frame_only" | "start_and_end_frame";
+    referenceStatus: "pending" | "in_review" | "approved";
+    startFrame: ReturnType<typeof createFrame>;
+    endFrame: ReturnType<typeof createFrame> | null;
+    updatedAt: string;
+  }> = {},
+) {
+  const startFrame =
+    overrides.startFrame ??
+    createFrame({
+      id: "frame-start-1",
+      frameType: "start_frame",
+    });
+  const frameDependency = overrides.frameDependency ?? "start_and_end_frame";
+  const endFrame =
+    overrides.endFrame !== undefined
+      ? overrides.endFrame
+      : frameDependency === "start_and_end_frame"
+        ? createFrame({
+            id: "frame-end-1",
+            frameType: "end_frame",
+            promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
+            promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
+            negativePromptTextCurrent: "低清晰度",
+            unmatchedCharacterIds: [],
+            imageAssetPath: "images/frame-end-1/current.png",
+            sourceTaskId: "task-frame-end-1",
+          })
+        : null;
+
+  return {
+    id: "shot-ref-1",
+    batchId: "image-batch-1",
+    projectId: "proj-1",
+    sourceShotScriptId: "shot-script-1",
+    shotId: "shot-1",
+    shotCode: "S01-SG01-SH01",
+    frameDependency,
+    referenceStatus: "in_review" as const,
+    startFrame,
+    endFrame,
+    updatedAt: "2024-01-01T00:00:09Z",
+    ...overrides,
+  };
+}
+
 const imageListResponse = {
   currentBatch: baseProject.currentImageBatch,
-  frames: [
-    {
-      id: "frame-start-1",
-      batchId: "image-batch-1",
-      projectId: "proj-1",
-      sourceShotScriptId: "shot-script-1",
-      segmentId: "segment-1",
-      sceneId: "scene-1",
-      order: 1,
-      frameType: "start_frame" as const,
-      planStatus: "planned" as const,
-      imageStatus: "in_review" as const,
-      selectedCharacterIds: ["char-rin"],
-      matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
-      unmatchedCharacterIds: ["char-ivo"],
-      promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
-      promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
-      negativePromptTextCurrent: null,
-      promptUpdatedAt: "2024-01-01T00:00:09Z",
-      imageAssetPath: "images/frame-start-1/current.png",
-      imageWidth: 1536,
-      imageHeight: 1024,
-      provider: "turnaround-image",
-      model: "doubao-seedream-5-0-260128",
-      approvedAt: null,
-      updatedAt: "2024-01-01T00:00:09Z",
-      sourceTaskId: "task-frame-start-1",
-    },
-    {
-      id: "frame-end-1",
-      batchId: "image-batch-1",
-      projectId: "proj-1",
-      sourceShotScriptId: "shot-script-1",
-      segmentId: "segment-1",
-      sceneId: "scene-1",
-      order: 1,
-      frameType: "end_frame" as const,
-      planStatus: "planned" as const,
-      imageStatus: "in_review" as const,
-      selectedCharacterIds: ["char-rin"],
-      matchedReferenceImagePaths: ["character-sheets/char-rin/current.png"],
-      unmatchedCharacterIds: [],
-      promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
-      promptTextCurrent: "尾帧定格在林与天际冷白尾光的对视。",
-      negativePromptTextCurrent: "低清晰度",
-      promptUpdatedAt: "2024-01-01T00:00:09Z",
-      imageAssetPath: "images/frame-end-1/current.png",
-      imageWidth: 1536,
-      imageHeight: 1024,
-      provider: "turnaround-image",
-      model: "doubao-seedream-5-0-260128",
-      approvedAt: null,
-      updatedAt: "2024-01-01T00:00:09Z",
-      sourceTaskId: "task-frame-end-1",
-    },
-  ],
+  shots: [createShot()],
 };
 
 function renderPanel() {
@@ -122,50 +180,51 @@ describe("ImagePhasePanel", () => {
     vi.clearAllMocks();
   });
 
-  it("renders scene tabs and shows only the active scene's segments", async () => {
+  it("renders scene tabs and shows only the active scene's shot cards", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: {
         ...baseProject.currentImageBatch,
-        segmentCount: 2,
-        totalFrameCount: 4,
+        shotCount: 2,
+        totalRequiredFrameCount: 3,
       },
-      frames: [
-        {
-          ...imageListResponse.frames[0],
-          id: "frame-scene-1-start",
-          sceneId: "scene-1",
-          segmentId: "segment-1",
-          order: 1,
-          promptTextCurrent: "scene 1 start",
-          promptTextSeed: "scene 1 start",
-        },
-        {
-          ...imageListResponse.frames[1],
-          id: "frame-scene-1-end",
-          sceneId: "scene-1",
-          segmentId: "segment-1",
-          order: 1,
-          promptTextCurrent: "scene 1 end",
-          promptTextSeed: "scene 1 end",
-        },
-        {
-          ...imageListResponse.frames[0],
-          id: "frame-scene-2-start",
-          sceneId: "scene-2",
-          segmentId: "segment-1",
-          order: 1,
-          promptTextCurrent: "scene 2 start",
-          promptTextSeed: "scene 2 start",
-        },
-        {
-          ...imageListResponse.frames[1],
-          id: "frame-scene-2-end",
-          sceneId: "scene-2",
-          segmentId: "segment-1",
-          order: 1,
-          promptTextCurrent: "scene 2 end",
-          promptTextSeed: "scene 2 end",
-        },
+      shots: [
+        createShot({
+          id: "shot-ref-scene-1",
+          shotId: "shot-scene-1",
+          shotCode: "S01-SG01-SH01",
+          startFrame: createFrame({
+            id: "frame-scene-1-start",
+            sceneId: "scene-1",
+            segmentId: "segment-1",
+            order: 1,
+            promptTextSeed: "scene 1 start",
+            promptTextCurrent: "scene 1 start",
+          }),
+          endFrame: createFrame({
+            id: "frame-scene-1-end",
+            frameType: "end_frame",
+            sceneId: "scene-1",
+            segmentId: "segment-1",
+            order: 1,
+            promptTextSeed: "scene 1 end",
+            promptTextCurrent: "scene 1 end",
+          }),
+        }),
+        createShot({
+          id: "shot-ref-scene-2",
+          shotId: "shot-scene-2",
+          shotCode: "S02-SG01-SH01",
+          frameDependency: "start_frame_only",
+          startFrame: createFrame({
+            id: "frame-scene-2-start",
+            sceneId: "scene-2",
+            segmentId: "segment-1",
+            order: 1,
+            promptTextSeed: "scene 2 start",
+            promptTextCurrent: "scene 2 start",
+          }),
+          endFrame: null,
+        }),
       ],
     });
 
@@ -175,28 +234,25 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
     });
 
-    // Tab 栏应出现两个 Scene 按钮
     const nav = screen.getByRole("navigation", { name: "Scene 导航" });
     expect(nav).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /scene-1/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /scene-2/ })).toBeInTheDocument();
 
-    // 默认选中第一个 Scene，只显示 scene-1 的内容
-    expect(screen.getByText("scene-1 / segment-1")).toBeInTheDocument();
+    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 1 start")).toBeInTheDocument();
-    expect(screen.queryByText("scene-2 / segment-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("S02-SG01-SH01")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("scene 2 start")).not.toBeInTheDocument();
 
-    // 点击 scene-2 Tab 切换
     fireEvent.click(screen.getByRole("button", { name: /scene-2/ }));
 
-    expect(screen.getByText("scene-2 / segment-1")).toBeInTheDocument();
+    expect(screen.getByText("S02-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 2 start")).toBeInTheDocument();
-    expect(screen.queryByText("scene-1 / segment-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("S01-SG01-SH01")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("scene 1 start")).not.toBeInTheDocument();
   });
 
-  it("renders one segment card with independent start and end frame panels", async () => {
+  it("renders shot cards with independent start and end frame panels", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
 
     renderPanel();
@@ -206,19 +262,47 @@ describe("ImagePhasePanel", () => {
     });
 
     expect(screen.getByText("Segment 1")).toBeInTheDocument();
+    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
     expect(screen.getByDisplayValue("尾帧定格在林与天际冷白尾光的对视。")).toBeInTheDocument();
     expect(screen.getByText(/未匹配角色/i)).toBeInTheDocument();
-    expect(screen.getAllByText("character-sheets/char-rin/current.png")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("current.png")[0]).toBeInTheDocument();
   });
 
-  it("saves prompt edits, regenerates prompt, generates image, and approves one frame", async () => {
+  it("renders only the start frame editor for start-frame-only shots", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentImageBatch,
+        shotCount: 1,
+        totalRequiredFrameCount: 1,
+      },
+      shots: [
+        createShot({
+          frameDependency: "start_frame_only",
+          endFrame: null,
+        }),
+      ],
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "结束帧" })).not.toBeInTheDocument();
+    expect(screen.queryByText("当前 Shot 缺少帧记录。")).not.toBeInTheDocument();
+  });
+
+  it("saves prompt edits, regenerates prompt, generates image, and approves one shot", async () => {
     const refreshProject = vi.fn();
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
     vi.spyOn(apiModule.apiClient, "updateImageFramePrompt").mockResolvedValue({
-      ...imageListResponse.frames[0],
+      ...imageListResponse.shots[0].startFrame,
       promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
       negativePromptTextCurrent: "低清晰度、重复人物",
     });
@@ -255,7 +339,7 @@ describe("ImagePhasePanel", () => {
       },
     });
     vi.spyOn(apiModule.apiClient, "approveImageFrame").mockResolvedValue({
-      ...imageListResponse.frames[0],
+      ...imageListResponse.shots[0].startFrame,
       imageStatus: "approved",
       approvedAt: "2024-01-01T00:00:11Z",
     });
@@ -317,7 +401,7 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(3);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "审核通过起始帧" }));
+    fireEvent.click(screen.getByRole("button", { name: "审核通过当前镜头" }));
     await waitFor(() => {
       expect(apiModule.apiClient.approveImageFrame).toHaveBeenCalledWith(
         "proj-1",
@@ -334,9 +418,18 @@ describe("ImagePhasePanel", () => {
       .mockResolvedValueOnce(imageListResponse)
       .mockResolvedValueOnce({
         ...imageListResponse,
-        frames: imageListResponse.frames.map((frame) => ({
-          ...frame,
-          planStatus: "pending" as const,
+        shots: imageListResponse.shots.map((shot) => ({
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus: "pending" as const,
+          },
+          endFrame: shot.endFrame
+            ? {
+                ...shot.endFrame,
+                planStatus: "pending" as const,
+              }
+            : null,
         })),
       });
     vi.spyOn(apiModule.apiClient, "regenerateAllImagePrompts").mockImplementation(
@@ -388,9 +481,18 @@ describe("ImagePhasePanel", () => {
       .mockResolvedValueOnce(imageListResponse)
       .mockResolvedValueOnce({
         ...imageListResponse,
-        frames: imageListResponse.frames.map((frame) => ({
-          ...frame,
-          imageStatus: "generating" as const,
+        shots: imageListResponse.shots.map((shot) => ({
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            imageStatus: "generating" as const,
+          },
+          endFrame: shot.endFrame
+            ? {
+                ...shot.endFrame,
+                imageStatus: "generating" as const,
+              }
+            : null,
         })),
       });
     vi.spyOn(apiModule.apiClient, "generateImageFrame")
@@ -533,18 +635,36 @@ describe("ImagePhasePanel", () => {
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce({
         currentBatch: imageListResponse.currentBatch,
-        frames: imageListResponse.frames.map((frame) => ({
-          ...frame,
-          planStatus: "pending" as const,
-          imageStatus: "pending" as const,
-          promptTextSeed: "",
-          promptTextCurrent: "",
-          imageAssetPath: null,
-          imageWidth: null,
-          imageHeight: null,
-          provider: null,
-          model: null,
-          sourceTaskId: "task-frame-prompt-pending",
+        shots: imageListResponse.shots.map((shot) => ({
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus: "pending" as const,
+            imageStatus: "pending" as const,
+            promptTextSeed: "",
+            promptTextCurrent: "",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            sourceTaskId: "task-frame-prompt-pending",
+          },
+          endFrame: shot.endFrame
+            ? {
+                ...shot.endFrame,
+                planStatus: "pending" as const,
+                imageStatus: "pending" as const,
+                promptTextSeed: "",
+                promptTextCurrent: "",
+                imageAssetPath: null,
+                imageWidth: null,
+                imageHeight: null,
+                provider: null,
+                model: null,
+                sourceTaskId: "task-frame-prompt-pending",
+              }
+            : null,
         })),
       })
       .mockResolvedValueOnce(imageListResponse);
@@ -578,14 +698,17 @@ describe("ImagePhasePanel", () => {
       .mockResolvedValueOnce(imageListResponse)
       .mockResolvedValueOnce({
         currentBatch: imageListResponse.currentBatch,
-        frames: imageListResponse.frames.map((frame) =>
-          frame.id === "frame-start-1"
+        shots: imageListResponse.shots.map((shot) =>
+          shot.id === "shot-ref-1"
             ? {
-                ...frame,
-                updatedAt: "2024-01-01T00:00:30Z",
-                sourceTaskId: "task-frame-start-2",
+                ...shot,
+                startFrame: {
+                  ...shot.startFrame,
+                  updatedAt: "2024-01-01T00:00:30Z",
+                  sourceTaskId: "task-frame-start-2",
+                },
               }
-            : frame,
+            : shot,
         ),
       });
     vi.spyOn(apiModule.apiClient, "generateImageFrame").mockResolvedValue({
@@ -633,20 +756,34 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
     });
 
-    expect(new URL(screen.getByAltText("起始帧结果图").getAttribute("src")!, "http://localhost").searchParams.get("v")).toBe(
-      "2024-01-01T00:00:30Z",
-    );
+    expect(
+      new URL(
+        screen.getByAltText("起始帧结果图").getAttribute("src")!,
+        "http://localhost",
+      ).searchParams.get("v"),
+    ).toBe("2024-01-01T00:00:30Z");
   });
 
   it("clears visible prompt text while frame prompts are pending", async () => {
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce({
         currentBatch: imageListResponse.currentBatch,
-        frames: imageListResponse.frames.map((frame) => ({
-          ...frame,
-          planStatus: "pending" as const,
-          imageStatus: "pending" as const,
-          sourceTaskId: "task-frame-prompt-pending",
+        shots: imageListResponse.shots.map((shot) => ({
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus: "pending" as const,
+            imageStatus: "pending" as const,
+            sourceTaskId: "task-frame-prompt-pending",
+          },
+          endFrame: shot.endFrame
+            ? {
+                ...shot.endFrame,
+                planStatus: "pending" as const,
+                imageStatus: "pending" as const,
+                sourceTaskId: "task-frame-prompt-pending",
+              }
+            : null,
         })),
       })
       .mockResolvedValueOnce(imageListResponse);

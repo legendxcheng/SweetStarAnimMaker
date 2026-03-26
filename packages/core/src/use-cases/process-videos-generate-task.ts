@@ -1,5 +1,5 @@
 import {
-  createSegmentVideoRecord,
+  createShotVideoRecord,
   createVideoBatchRecord,
 } from "../domain/video";
 import {
@@ -69,7 +69,11 @@ export function createProcessVideosGenerateTaskUseCase(
         throw new ProjectNotFoundError(task.projectId);
       }
 
-      const frames = await dependencies.shotImageRepository.listFramesByBatchId(
+      if (!dependencies.shotImageRepository.listShotsByBatchId) {
+        throw new Error("Shot reference records are required before generating videos");
+      }
+
+      const shots = await dependencies.shotImageRepository.listShotsByBatchId(
         taskInput.sourceImageBatchId,
       );
       const batch = createVideoBatchRecord({
@@ -78,7 +82,9 @@ export function createProcessVideosGenerateTaskUseCase(
         projectStorageDir: project.storageDir,
         sourceImageBatchId: taskInput.sourceImageBatchId,
         sourceShotScriptId: taskInput.sourceShotScriptId,
-        segmentCount: taskInput.shotScript.segments.length,
+        shotCount:
+          taskInput.imageBatch.shotCount ??
+          taskInput.shotScript.segments.reduce((total, segment) => total + segment.shots.length, 0),
         createdAt: startedAt,
         updatedAt: startedAt,
       });
@@ -98,105 +104,115 @@ export function createProcessVideosGenerateTaskUseCase(
         batchId: batch.id,
       });
 
+      let triggeredShotCount = 0;
+
       for (const segment of taskInput.shotScript.segments) {
-        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
-          return;
+        for (const shot of segment.shots) {
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return;
+          }
+
+          const shotReference = shots.find(
+            (item) =>
+              item.sceneId === shot.sceneId &&
+              item.segmentId === shot.segmentId &&
+              item.shotId === shot.id,
+          );
+
+          if (!shotReference) {
+            throw new Error(`Approved reference missing for shot ${shot.id}`);
+          }
+
+          const promptText = buildSegmentVideoPrompt(promptTemplate, {
+            segmentSummary: segment.summary,
+            shotsSummary: `${shot.shotCode}: ${shot.action}`,
+          });
+
+          const videoRecord = createShotVideoRecord({
+            id: `video_${batch.id}_${shot.sceneId}_${shot.segmentId}_${shot.id}`,
+            batchId: batch.id,
+            projectId: project.id,
+            projectStorageDir: project.storageDir,
+            sourceImageBatchId: taskInput.sourceImageBatchId,
+            sourceShotScriptId: taskInput.sourceShotScriptId,
+            shotId: shot.id,
+            shotCode: shot.shotCode,
+            sceneId: shot.sceneId,
+            segmentId: shot.segmentId,
+            shotOrder: shot.order,
+            frameDependency: shot.frameDependency,
+            status: "generating",
+            promptTextSeed: promptText,
+            promptTextCurrent: promptText,
+            promptUpdatedAt: startedAt,
+            durationSec: shot.durationSec ?? null,
+            updatedAt: startedAt,
+          });
+          await dependencies.videoRepository.insertSegment(videoRecord);
+
+          const segmentTask = createTaskRecord({
+            id: dependencies.taskIdGenerator.generateTaskId(),
+            projectId: project.id,
+            projectStorageDir: project.storageDir,
+            type: "segment_video_generate",
+            queueName: segmentVideoGenerateQueueName,
+            createdAt: startedAt,
+          });
+          const segmentTaskInput: SegmentVideoGenerateTaskInput = {
+            taskId: segmentTask.id,
+            projectId: project.id,
+            taskType: "segment_video_generate",
+            batchId: batch.id,
+            sourceImageBatchId: taskInput.sourceImageBatchId,
+            sourceShotScriptId: taskInput.sourceShotScriptId,
+            segmentId: shot.segmentId,
+            sceneId: shot.sceneId,
+            shotId: shot.id,
+            shotCode: shot.shotCode,
+            frameDependency: shot.frameDependency,
+            segment,
+            shot,
+            startFrame: {
+              id: shotReference.startFrame.id,
+              imageAssetPath: shotReference.startFrame.imageAssetPath,
+              imageWidth: shotReference.startFrame.imageWidth,
+              imageHeight: shotReference.startFrame.imageHeight,
+            },
+            endFrame: shotReference.endFrame
+              ? {
+                  id: shotReference.endFrame.id,
+                  imageAssetPath: shotReference.endFrame.imageAssetPath,
+                  imageWidth: shotReference.endFrame.imageWidth,
+                  imageHeight: shotReference.endFrame.imageHeight,
+                }
+              : null,
+            promptTemplateKey: "segment_video.generate",
+          };
+
+          await dependencies.taskRepository.insert(segmentTask);
+          await dependencies.taskFileStorage.createTaskArtifacts({
+            task: segmentTask,
+            input: segmentTaskInput,
+          });
+          await dependencies.taskQueue.enqueue({
+            taskId: segmentTask.id,
+            queueName: segmentTask.queueName,
+            taskType: segmentTask.type,
+          });
+          triggeredShotCount += 1;
         }
-
-        const startFrame = frames.find(
-          (frame) =>
-            frame.segmentId === segment.segmentId &&
-            frame.sceneId === segment.sceneId &&
-            frame.frameType === "start_frame",
-        );
-        const endFrame = frames.find(
-          (frame) =>
-            frame.segmentId === segment.segmentId &&
-            frame.sceneId === segment.sceneId &&
-            frame.frameType === "end_frame",
-        );
-
-        if (!startFrame || !endFrame) {
-          throw new Error(`Approved frame pair missing for segment ${segment.segmentId}`);
-        }
-
-        const promptText = buildSegmentVideoPrompt(promptTemplate, {
-          segmentSummary: segment.summary,
-          shotsSummary: segment.shots.map((shot) => `${shot.shotCode}: ${shot.action}`).join("; "),
-        });
-
-        const videoRecord = createSegmentVideoRecord({
-          id: `video_${batch.id}_${segment.sceneId}_${segment.segmentId}`,
-          batchId: batch.id,
-          projectId: project.id,
-          projectStorageDir: project.storageDir,
-          sourceImageBatchId: taskInput.sourceImageBatchId,
-          sourceShotScriptId: taskInput.sourceShotScriptId,
-          segmentId: segment.segmentId,
-          sceneId: segment.sceneId,
-          order: segment.order,
-          status: "generating",
-          promptTextSeed: promptText,
-          promptTextCurrent: promptText,
-          promptUpdatedAt: startedAt,
-          updatedAt: startedAt,
-        });
-        await dependencies.videoRepository.insertSegment(videoRecord);
-
-        const segmentTask = createTaskRecord({
-          id: dependencies.taskIdGenerator.generateTaskId(),
-          projectId: project.id,
-          projectStorageDir: project.storageDir,
-          type: "segment_video_generate",
-          queueName: segmentVideoGenerateQueueName,
-          createdAt: startedAt,
-        });
-        const segmentTaskInput: SegmentVideoGenerateTaskInput = {
-          taskId: segmentTask.id,
-          projectId: project.id,
-          taskType: "segment_video_generate",
-          batchId: batch.id,
-          sourceImageBatchId: taskInput.sourceImageBatchId,
-          sourceShotScriptId: taskInput.sourceShotScriptId,
-          segmentId: segment.segmentId,
-          sceneId: segment.sceneId,
-          segment,
-          startFrame: {
-            id: startFrame.id,
-            imageAssetPath: startFrame.imageAssetPath,
-            imageWidth: startFrame.imageWidth,
-            imageHeight: startFrame.imageHeight,
-          },
-          endFrame: {
-            id: endFrame.id,
-            imageAssetPath: endFrame.imageAssetPath,
-            imageWidth: endFrame.imageWidth,
-            imageHeight: endFrame.imageHeight,
-          },
-          promptTemplateKey: "segment_video.generate",
-        };
-
-        await dependencies.taskRepository.insert(segmentTask);
-        await dependencies.taskFileStorage.createTaskArtifacts({
-          task: segmentTask,
-          input: segmentTaskInput,
-        });
-        await dependencies.taskQueue.enqueue({
-          taskId: segmentTask.id,
-          queueName: segmentTask.queueName,
-          taskType: segmentTask.type,
-        });
       }
 
       if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
         return;
       }
+
       const finishedAt = dependencies.clock.now();
       await dependencies.taskFileStorage.writeTaskOutput({
         task,
         output: {
           batchId: batch.id,
-          segmentCount: batch.segmentCount,
+          shotCount: triggeredShotCount,
         },
       });
       await dependencies.taskRepository.markSucceeded({

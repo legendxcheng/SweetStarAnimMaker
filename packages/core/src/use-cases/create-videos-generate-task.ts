@@ -67,7 +67,10 @@ export function createCreateVideosGenerateTaskUseCase(
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
-      const frames = await dependencies.shotImageRepository.listFramesByBatchId(imageBatch.id);
+      const shots = dependencies.shotImageRepository.listShotsByBatchId
+        ? await dependencies.shotImageRepository.listShotsByBatchId(imageBatch.id)
+        : null;
+      const frames = shots ? [] : await dependencies.shotImageRepository.listFramesByBatchId(imageBatch.id);
       const shotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
         storageDir: project.storageDir,
       });
@@ -100,6 +103,11 @@ export function createCreateVideosGenerateTaskUseCase(
         imageBatch: {
           id: imageBatch.id,
           sourceShotScriptId: imageBatch.sourceShotScriptId,
+          shotCount: imageBatch.shotCount ?? imageBatch.segmentCount,
+          totalRequiredFrameCount: imageBatch.totalRequiredFrameCount ?? imageBatch.totalFrameCount,
+          approvedShotCount: shots
+            ? shots.filter((shot) => shot.referenceStatus === "approved").length
+            : frames.filter((frame) => frame.imageStatus === "approved").length,
           segmentCount: imageBatch.segmentCount,
           totalFrameCount: imageBatch.totalFrameCount,
           approvedFrameCount: frames.filter((frame) => frame.imageStatus === "approved").length,

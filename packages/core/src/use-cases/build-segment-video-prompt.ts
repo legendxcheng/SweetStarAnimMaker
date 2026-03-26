@@ -7,5 +7,6 @@ export function buildSegmentVideoPrompt(
 ) {
   return template
     .replaceAll("{{segment_summary}}", input.segmentSummary)
-    .replaceAll("{{shots_summary}}", input.shotsSummary);
+    .replaceAll("{{shots_summary}}", input.shotsSummary)
+    .replaceAll("{{shot_summary}}", input.shotsSummary);
 }

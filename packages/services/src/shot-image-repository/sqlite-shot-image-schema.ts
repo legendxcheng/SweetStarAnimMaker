@@ -8,12 +8,40 @@ export function initializeSqliteShotImageSchema(db: SqliteDatabase) {
       project_storage_dir TEXT NOT NULL,
       source_shot_script_id TEXT NOT NULL,
       segment_count INTEGER NOT NULL,
+      shot_count INTEGER NOT NULL DEFAULT 0,
       total_frame_count INTEGER NOT NULL,
+      total_required_frame_count INTEGER NOT NULL DEFAULT 0,
       storage_dir TEXT NOT NULL,
       manifest_rel_path TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY(project_id) REFERENCES projects(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shot_image_shots (
+      id TEXT PRIMARY KEY,
+      batch_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      project_storage_dir TEXT NOT NULL,
+      source_shot_script_id TEXT NOT NULL,
+      scene_id TEXT NOT NULL,
+      segment_id TEXT NOT NULL,
+      shot_id TEXT NOT NULL,
+      shot_code TEXT NOT NULL,
+      segment_order INTEGER NOT NULL,
+      shot_order INTEGER NOT NULL,
+      duration_sec INTEGER NULL,
+      frame_dependency TEXT NOT NULL,
+      reference_status TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      storage_dir TEXT NOT NULL,
+      manifest_rel_path TEXT NOT NULL,
+      start_frame_json TEXT NOT NULL,
+      end_frame_json TEXT NULL,
+      FOREIGN KEY(project_id) REFERENCES projects(id),
+      FOREIGN KEY(batch_id) REFERENCES shot_image_batches(id)
     )
   `);
 

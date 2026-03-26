@@ -85,23 +85,25 @@ export function createRegenerateVideoSegmentUseCase(
         throw new SegmentVideoNotFoundError(input.videoId);
       }
 
-      const frames = await dependencies.shotImageRepository.listFramesByBatchId(
-        currentSegment.sourceImageBatchId,
-      );
-      const startFrame = frames.find(
-        (frame) =>
-          frame.sceneId === currentSegment.sceneId &&
-          frame.segmentId === currentSegment.segmentId &&
-          frame.frameType === "start_frame",
-      );
-      const endFrame = frames.find(
-        (frame) =>
-          frame.sceneId === currentSegment.sceneId &&
-          frame.segmentId === currentSegment.segmentId &&
-          frame.frameType === "end_frame",
-      );
+      if (!dependencies.shotImageRepository.listShotsByBatchId) {
+        throw new Error("Shot-based image repository is required for video regeneration");
+      }
 
-      if (!startFrame || !endFrame) {
+      const shotReference = (
+        await dependencies.shotImageRepository.listShotsByBatchId(currentSegment.sourceImageBatchId)
+      ).find((shot) => shot.shotId === currentSegment.shotId);
+
+      const shot = segment.shots.find((item) => item.id === currentSegment.shotId);
+
+      if (!shotReference || !shot) {
+        throw new SegmentVideoNotFoundError(input.videoId);
+      }
+
+      if (
+        !shotReference.startFrame.imageAssetPath ||
+        (shotReference.frameDependency === "start_and_end_frame" &&
+          !shotReference.endFrame?.imageAssetPath)
+      ) {
         throw new Error(`Approved frame pair missing for video ${input.videoId}`);
       }
 
@@ -129,19 +131,26 @@ export function createRegenerateVideoSegmentUseCase(
         sourceShotScriptId: currentSegment.sourceShotScriptId,
         segmentId: currentSegment.segmentId,
         sceneId: currentSegment.sceneId,
+        shotId: currentSegment.shotId,
+        shotCode: currentSegment.shotCode,
+        frameDependency: currentSegment.frameDependency,
         segment,
+        shot,
         startFrame: {
-          id: startFrame.id,
-          imageAssetPath: startFrame.imageAssetPath,
-          imageWidth: startFrame.imageWidth,
-          imageHeight: startFrame.imageHeight,
+          id: shotReference.startFrame.id,
+          imageAssetPath: shotReference.startFrame.imageAssetPath,
+          imageWidth: shotReference.startFrame.imageWidth,
+          imageHeight: shotReference.startFrame.imageHeight,
         },
-        endFrame: {
-          id: endFrame.id,
-          imageAssetPath: endFrame.imageAssetPath,
-          imageWidth: endFrame.imageWidth,
-          imageHeight: endFrame.imageHeight,
-        },
+        endFrame:
+          shotReference.frameDependency === "start_and_end_frame"
+            ? {
+                id: shotReference.endFrame.id,
+                imageAssetPath: shotReference.endFrame.imageAssetPath,
+                imageWidth: shotReference.endFrame.imageWidth,
+                imageHeight: shotReference.endFrame.imageHeight,
+              }
+            : null,
         promptTemplateKey: "segment_video.generate",
       };
 

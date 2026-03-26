@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createGetVideoUseCase } from "../src/index";
 
 describe("get video use case", () => {
-  it("repairs empty prompts before returning a current video segment", async () => {
+  it("repairs empty prompts before returning a current video shot", async () => {
     const videoRepository = {
       insertBatch: vi.fn(),
       findBatchById: vi.fn(),
@@ -11,22 +11,25 @@ describe("get video use case", () => {
       listSegmentsByBatchId: vi.fn(),
       insertSegment: vi.fn(),
       findSegmentById: vi.fn().mockResolvedValue({
-        id: "video_segment_1",
+        id: "video_shot_1",
         batchId: "video_batch_1",
         projectId: "proj_1",
         projectStorageDir: "projects/proj_1-my-story",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
-        segmentId: "segment_1",
+        shotId: "shot_1",
+        shotCode: "SC01-SG01-SH01",
         sceneId: "scene_1",
-        order: 1,
+        segmentId: "segment_1",
+        shotOrder: 1,
+        frameDependency: "start_frame_only",
         status: "failed",
         promptTextSeed: "",
         promptTextCurrent: "",
         promptUpdatedAt: "",
         videoAssetPath: null,
         thumbnailAssetPath: null,
-        durationSec: null,
+        durationSec: 3,
         provider: null,
         model: null,
         approvedAt: null,
@@ -77,7 +80,7 @@ describe("get video use case", () => {
           updatedAt: "2026-03-25T00:17:00.000Z",
           approvedAt: "2026-03-25T00:18:00.000Z",
           segmentCount: 1,
-          shotCount: 1,
+          shotCount: 2,
           totalDurationSec: 8,
           segments: [
             {
@@ -96,12 +99,31 @@ describe("get video use case", () => {
                   sceneId: "scene_1",
                   segmentId: "segment_1",
                   order: 1,
-                  shotCode: "S01",
-                  durationSec: 8,
+                  shotCode: "SC01-SG01-SH01",
+                  durationSec: 3,
+                  frameDependency: "start_frame_only",
                   purpose: "Arrival",
                   visual: "Rin enters the market.",
                   subject: "Rin",
                   action: "Rin steps into the flooded market and looks ahead.",
+                  dialogue: null,
+                  os: null,
+                  audio: null,
+                  transitionHint: null,
+                  continuityNotes: null,
+                },
+                {
+                  id: "shot_2",
+                  sceneId: "scene_1",
+                  segmentId: "segment_1",
+                  order: 2,
+                  shotCode: "SC01-SG01-SH02",
+                  durationSec: 5,
+                  frameDependency: "start_and_end_frame",
+                  purpose: "Discovery",
+                  visual: "Rin spots the route forward.",
+                  subject: "Rin",
+                  action: "Rin points toward the brighter alley beyond the stalls.",
                   dialogue: null,
                   os: null,
                   audio: null,
@@ -130,23 +152,23 @@ describe("get video use case", () => {
 
     const result = await useCase.execute({
       projectId: "proj_1",
-      videoId: "video_segment_1",
+      videoId: "video_shot_1",
     });
 
     expect(videoRepository.updateSegment).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "video_segment_1",
+        id: "video_shot_1",
         promptTextSeed:
-          "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
         promptTextCurrent:
-          "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
       }),
     );
     expect(result.promptTextSeed).toBe(
-      "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+      "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
     );
     expect(result.promptTextCurrent).toBe(
-      "Summary: Rin arrives at the flooded market.\nShots: S01: Rin steps into the flooded market and looks ahead.",
+      "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
     );
   });
 });

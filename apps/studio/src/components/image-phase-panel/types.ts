@@ -1,4 +1,9 @@
-import type { ProjectDetail, SegmentFrameRecord, TaskDetail } from "@sweet-star/shared";
+import type {
+  ProjectDetail,
+  ShotReferenceFrame,
+  ShotReferenceRecord,
+  TaskDetail,
+} from "@sweet-star/shared";
 
 export interface ImagePhasePanelProps {
   project: ProjectDetail;
@@ -27,18 +32,25 @@ export type ImagePhaseActionKind =
 export interface ImagePhaseActionBusy {
   kind: ImagePhaseActionKind;
   frameId?: string;
+  shotId?: string;
 }
 
 export interface FrameEditorCardProps {
   projectId: string;
-  frame: SegmentFrameRecord | null;
+  frame: ShotReferenceFrame | null;
   draft: FrameDraftState | undefined;
-  actionBusy: ImagePhaseActionBusy | null;
+  busy: boolean;
   metaLabelClass: string;
   metaValueClass: string;
   onDraftChange: (frameId: string, nextDraft: FrameDraftState) => void;
-  onSavePrompt: (frame: SegmentFrameRecord) => Promise<void>;
-  onRegeneratePrompt: (frame: SegmentFrameRecord) => Promise<void>;
-  onGenerateFrame: (frame: SegmentFrameRecord) => Promise<void>;
-  onApproveFrame: (frame: SegmentFrameRecord) => Promise<void>;
+  onSavePrompt: (frame: ShotReferenceFrame) => Promise<void>;
+  onRegeneratePrompt: (frame: ShotReferenceFrame) => Promise<void>;
+  onGenerateFrame: (frame: ShotReferenceFrame) => Promise<void>;
+}
+
+export interface SegmentShotGroup {
+  segmentId: string;
+  sceneId: string;
+  order: number;
+  shots: ShotReferenceRecord[];
 }

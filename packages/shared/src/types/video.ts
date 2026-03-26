@@ -35,6 +35,8 @@ export interface ShotVideoRecord {
   sourceTaskId: string | null;
 }
 
+export type SegmentVideoRecord = ShotVideoRecord;
+
 export interface VideoListResponse {
   currentBatch: CurrentVideoBatchSummary;
   shots: ShotVideoRecord[];

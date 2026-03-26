@@ -10,21 +10,20 @@ export function FrameEditorCard({
   projectId,
   frame,
   draft,
-  actionBusy,
+  busy,
   metaLabelClass,
   metaValueClass,
   onDraftChange,
   onSavePrompt,
   onRegeneratePrompt,
   onGenerateFrame,
-  onApproveFrame,
 }: FrameEditorCardProps) {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
 
   if (!frame || !draft) {
     return (
       <div className="rounded-xl border border-dashed border-(--color-border-muted) bg-(--color-bg-base) p-4">
-        <p className="text-sm text-(--color-text-muted)">当前 Segment 缺少帧记录。</p>
+        <p className="text-sm text-(--color-text-muted)">当前 Shot 缺少帧记录。</p>
       </div>
     );
   }
@@ -38,16 +37,6 @@ export function FrameEditorCard({
   const canSavePrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
   const canGenerateFrame =
     frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0;
-  const canApproveFrame = frame.imageAssetPath !== null;
-  const isBusy =
-    actionBusy?.kind === "approve-all" ||
-    actionBusy?.kind === "regenerate-all-prompts" ||
-    actionBusy?.kind === "generate-all-frames" ||
-    (actionBusy?.frameId === frame.id &&
-      (actionBusy.kind === "save" ||
-        actionBusy.kind === "regenerate" ||
-        actionBusy.kind === "generate" ||
-        actionBusy.kind === "approve"));
 
   return (
     <section
@@ -146,7 +135,7 @@ export function FrameEditorCard({
                   promptTextCurrent: event.target.value,
                 })
               }
-              disabled={isBusy || isPromptPending}
+              disabled={busy || isPromptPending}
               className="w-full min-h-32 rounded-xl border border-(--color-border) bg-(--color-bg-surface) px-3 py-3 text-sm text-(--color-text-primary)"
             />
           </label>
@@ -164,7 +153,7 @@ export function FrameEditorCard({
                   negativePromptTextCurrent: event.target.value,
                 })
               }
-              disabled={isBusy || isPromptPending}
+              disabled={busy || isPromptPending}
               className="w-full min-h-24 rounded-xl border border-(--color-border) bg-(--color-bg-surface) px-3 py-3 text-sm text-(--color-text-primary)"
             />
           </label>
@@ -215,7 +204,7 @@ export function FrameEditorCard({
             onClick={() => {
               void onSavePrompt(frame);
             }}
-            disabled={isBusy || !canSavePrompt}
+            disabled={busy || !canSavePrompt}
             className={getButtonClassName({ variant: "secondary" })}
           >
             保存{frameLabel}提示词
@@ -225,7 +214,7 @@ export function FrameEditorCard({
             onClick={() => {
               void onRegeneratePrompt(frame);
             }}
-            disabled={isBusy || isPromptPending}
+            disabled={busy || isPromptPending}
             className={getButtonClassName({ variant: "warning" })}
           >
             重新生成{frameLabel} Prompt
@@ -235,20 +224,10 @@ export function FrameEditorCard({
             onClick={() => {
               void onGenerateFrame(frame);
             }}
-            disabled={isBusy || !canGenerateFrame}
+            disabled={busy || !canGenerateFrame}
             className={getButtonClassName()}
           >
             生成{frameLabel}图片
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void onApproveFrame(frame);
-            }}
-            disabled={isBusy || !canApproveFrame}
-            className={getButtonClassName({ variant: "success" })}
-          >
-            审核通过{frameLabel}
           </button>
         </div>
 

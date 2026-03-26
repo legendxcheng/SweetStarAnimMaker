@@ -17,7 +17,7 @@ describe("video storage", () => {
     await Promise.all(tempDirs.splice(0).map((tempDir) => fs.rm(tempDir, { recursive: true, force: true })));
   });
 
-  it("writes current batch manifest, current video assets, and versioned assets inside the segment directory", async () => {
+  it("writes current batch manifest, current video assets, and versioned assets inside the shot directory", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-videos-"));
     tempDirs.push(tempDir);
     await fs.mkdir(path.join(tempDir, "prompt-templates"), { recursive: true });
@@ -41,20 +41,24 @@ describe("video storage", () => {
       projectStorageDir: "projects/proj_1-my-story",
       sourceImageBatchId: "image_batch_1",
       sourceShotScriptId: "shot_script_1",
-      segmentCount: 1,
+      shotCount: 1,
       createdAt: "2026-03-25T00:00:00.000Z",
       updatedAt: "2026-03-25T00:00:00.000Z",
     });
     const segment = createSegmentVideoRecord({
-      id: "video_segment_1",
+      id: "video_shot_1",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceImageBatchId: batch.sourceImageBatchId,
       sourceShotScriptId: batch.sourceShotScriptId,
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
       segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
+      shotOrder: 1,
+      frameDependency: "start_frame_only",
+      durationSec: 3,
       status: "in_review",
       updatedAt: "2026-03-25T00:05:00.000Z",
       sourceTaskId: "task_segment_1",
@@ -91,16 +95,16 @@ describe("video storage", () => {
         path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "manifest.json"),
         "utf8",
       ),
-    ).resolves.toContain('"segmentCount": 1');
+    ).resolves.toContain('"shotCount": 1');
     await expect(
       fs.readFile(
-        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "segments", "scene_1__segment_1", "current.json"),
+        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "shots", "scene_1__segment_1__shot_1", "current.json"),
         "utf8",
       ),
     ).resolves.toContain('"provider": "vector-engine"');
     await expect(
       fs.readFile(
-        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "segments", "scene_1__segment_1", "versions", "task_segment_1.json"),
+        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "shots", "scene_1__segment_1__shot_1", "versions", "task_segment_1.json"),
         "utf8",
       ),
     ).resolves.toContain('"version": 2');
@@ -128,20 +132,24 @@ describe("video storage", () => {
       projectStorageDir: "projects/proj_1-my-story",
       sourceImageBatchId: "image_batch_1",
       sourceShotScriptId: "shot_script_1",
-      segmentCount: 1,
+      shotCount: 1,
       createdAt: "2026-03-25T00:00:00.000Z",
       updatedAt: "2026-03-25T00:00:00.000Z",
     });
     const segment = createSegmentVideoRecord({
-      id: "video_segment_timeout",
+      id: "video_shot_timeout",
       batchId: batch.id,
       projectId: "proj_1",
       projectStorageDir: "projects/proj_1-my-story",
       sourceImageBatchId: batch.sourceImageBatchId,
       sourceShotScriptId: batch.sourceShotScriptId,
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
       segmentId: "segment_1",
       sceneId: "scene_1",
-      order: 1,
+      shotOrder: 1,
+      frameDependency: "start_frame_only",
+      durationSec: 3,
       status: "in_review",
       updatedAt: "2026-03-25T00:05:00.000Z",
       sourceTaskId: "task_segment_timeout",

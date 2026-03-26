@@ -89,12 +89,13 @@ describe("spec1 project flow", () => {
       expect.objectContaining({
         id: projectId,
         currentMasterPlot: null,
-        premise: {
+        premise: expect.objectContaining({
           path: "premise/v1.md",
           bytes: Buffer.byteLength(premiseText, "utf8"),
           text: premiseText,
           updatedAt: expect.any(String),
-        },
+          visualStyleText: "",
+        }),
       }),
     );
   });

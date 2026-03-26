@@ -14,6 +14,10 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import {
+  replaceFrameOnShot,
+  resolveShotFrameRecord,
+} from "./shot-reference-frame-helpers";
 import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface RegenerateFramePromptInput {
@@ -46,18 +50,35 @@ export function createRegenerateFramePromptUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      const frame = await dependencies.shotImageRepository.findFrameById(input.frameId);
+      const resolvedShotFrame = project.currentImageBatchId
+        ? await resolveShotFrameRecord({
+            repository: dependencies.shotImageRepository,
+            batchId: project.currentImageBatchId,
+            frameId: input.frameId,
+          })
+        : null;
+      const frame =
+        resolvedShotFrame?.frame ??
+        (await dependencies.shotImageRepository.findFrameById(input.frameId));
 
       if (!frame || frame.projectId !== project.id) {
         throw new ShotImageNotFoundError(input.frameId);
       }
 
       const timestamp = dependencies.clock.now();
-      await dependencies.shotImageRepository.updateFrame({
+      const updatedFrame = {
         ...frame,
-        planStatus: "pending",
+        planStatus: "pending" as const,
         updatedAt: timestamp,
-      });
+      };
+
+      if (resolvedShotFrame?.shot && dependencies.shotImageRepository.updateShot) {
+        await dependencies.shotImageRepository.updateShot(
+          replaceFrameOnShot(resolvedShotFrame.shot, updatedFrame),
+        );
+      } else {
+        await dependencies.shotImageRepository.updateFrame(updatedFrame);
+      }
       const task = createTaskRecord({
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,
@@ -71,10 +92,11 @@ export function createRegenerateFramePromptUseCase(
         projectId: project.id,
         taskType: "frame_prompt_generate",
         batchId: frame.batchId,
+        shotId: resolvedShotFrame?.shot.shotId,
         frameId: frame.id,
         sourceShotScriptId: frame.sourceShotScriptId,
-        segmentId: frame.segmentId,
-        sceneId: frame.sceneId,
+        segmentId: resolvedShotFrame?.shot.segmentId ?? frame.segmentId,
+        sceneId: resolvedShotFrame?.shot.sceneId ?? frame.sceneId,
         frameType: frame.frameType,
       };
 

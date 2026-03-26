@@ -15,7 +15,7 @@ export interface CreateSoraVideoProviderOptions {
 
 export interface SubmitSoraImageToVideoInput {
   image: string;
-  imageTail: string;
+  imageTail?: string;
   promptText: string;
   orientation?: string | null;
   size?: string | null;
@@ -94,7 +94,9 @@ export function createSoraVideoProvider(
     async submitImageToVideo(input) {
       const apiToken = readApiToken(options.apiToken);
       const image = await resolveAssetUrl(input.image, options.referenceImageUploader);
-      const imageTail = await resolveAssetUrl(input.imageTail, options.referenceImageUploader);
+      const imageTail = input.imageTail
+        ? await resolveAssetUrl(input.imageTail, options.referenceImageUploader)
+        : null;
       const promptText = input.promptText.trim();
 
       if (!promptText) {
@@ -102,7 +104,7 @@ export function createSoraVideoProvider(
       }
 
       const requestBody: Record<string, unknown> = {
-        images: [image, imageTail],
+        images: imageTail ? [image, imageTail] : [image],
         model: modelName,
         orientation: input.orientation?.trim() || defaultOrientation,
         prompt: promptText,
@@ -205,11 +207,14 @@ export function createSoraStageVideoProvider(
 
   return {
     async generateSegmentVideo(input) {
-      const submitted = await provider.submitImageToVideo({
+      const submitInput = {
         image: input.startFramePath,
-        imageTail: input.endFramePath,
         promptText: input.promptText,
         durationSeconds: input.durationSec ?? undefined,
+        ...(input.endFramePath ? { imageTail: input.endFramePath } : {}),
+      };
+      const submitted = await provider.submitImageToVideo({
+        ...submitInput,
       });
       const completed = await provider.waitForImageToVideoTask({
         taskId: submitted.taskId,

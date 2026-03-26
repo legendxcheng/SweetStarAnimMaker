@@ -1,4 +1,11 @@
-import { type TaskStatus, type TaskType } from "@sweet-star/shared";
+import type {
+  CurrentShotScript,
+  ShotFrameDependency,
+  ShotScriptItem,
+  ShotScriptSegment,
+  TaskStatus,
+  TaskType,
+} from "@sweet-star/shared";
 
 export const masterPlotGenerateQueueName = "master-plot-generate";
 export const characterSheetsGenerateQueueName = "character-sheets-generate";
@@ -181,6 +188,7 @@ export interface FramePromptGenerateTaskInput {
   projectId: string;
   taskType: "frame_prompt_generate";
   batchId: string;
+  shotId?: string;
   frameId: string;
   sourceShotScriptId: string;
   segmentId: string;
@@ -204,13 +212,17 @@ export interface VideosGenerateTaskInput {
   imageBatch: {
     id: string;
     sourceShotScriptId: string;
-    segmentCount: number;
-    totalFrameCount: number;
-    approvedFrameCount: number;
+    shotCount: number;
+    totalRequiredFrameCount: number;
+    approvedShotCount: number;
     updatedAt: string;
+    // Temporary aliases for segment-first callers still being migrated.
+    segmentCount?: number;
+    totalFrameCount?: number;
+    approvedFrameCount?: number;
   };
   sourceShotScriptId: string;
-  shotScript: import("@sweet-star/shared").CurrentShotScript;
+  shotScript: CurrentShotScript;
   sourceStoryboardId?: string;
   storyboard?: {
     id: string;
@@ -229,7 +241,11 @@ export interface SegmentVideoGenerateTaskInput {
   sourceShotScriptId: string;
   segmentId: string;
   sceneId: string;
-  segment: import("@sweet-star/shared").ShotScriptSegment;
+  shotId: string;
+  shotCode: string;
+  frameDependency: ShotFrameDependency;
+  segment: ShotScriptSegment;
+  shot: ShotScriptItem;
   startFrame: {
     id: string;
     imageAssetPath: string | null;
@@ -241,7 +257,7 @@ export interface SegmentVideoGenerateTaskInput {
     imageAssetPath: string | null;
     imageWidth?: number | null;
     imageHeight?: number | null;
-  };
+  } | null;
   promptTemplateKey: "segment_video.generate";
 }
 

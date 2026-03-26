@@ -1,5 +1,3 @@
-import type { ShotFrameDependency } from "./shot-script";
-
 export type ImageFrameType = "start_frame" | "end_frame";
 
 export type ImageFramePlanStatus = "pending" | "planned" | "plan_failed";
@@ -20,7 +18,7 @@ export interface CurrentImageBatch {
   updatedAt: string;
 }
 
-export type ShotReferenceStatus = "pending" | "in_review" | "approved";
+export type ShotReferenceStatus = "pending" | "in_review" | "approved" | "failed";
 
 export interface ShotReferenceFrame {
   id: string;
@@ -75,6 +73,8 @@ export interface StartAndEndShotReferenceRecord extends ShotReferenceRecordBase 
 export type ShotReferenceRecord =
   | StartFrameOnlyShotReferenceRecord
   | StartAndEndShotReferenceRecord;
+
+export type SegmentFrameRecord = ShotReferenceFrame;
 
 export interface ImageFrameListResponse {
   currentBatch: CurrentImageBatch;

@@ -168,11 +168,11 @@ describe("regenerate all video prompts use case", () => {
     const result = await useCase.execute({ projectId: "proj_1" });
 
     expect(videoRepository.updateSegment).toHaveBeenCalledTimes(2);
-    expect(result.segments).toHaveLength(2);
-    expect(result.segments[0]?.promptTextCurrent).toBe(
+    expect(result.shots).toHaveLength(2);
+    expect(result.shots[0]?.promptTextCurrent).toBe(
       "Summary: Rin arrives at the flooded market.\nShots: ",
     );
-    expect(result.segments[1]?.promptTextCurrent).toBe(
+    expect(result.shots[1]?.promptTextCurrent).toBe(
       "Summary: Rin turns toward the submerged crossing.\nShots: ",
     );
   });
