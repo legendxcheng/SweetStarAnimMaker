@@ -172,4 +172,120 @@ describe("get shot script review use case", () => {
       approveAll: true,
     });
   });
+
+  it("disables approve-all when any segment is still incomplete", async () => {
+    const useCase = createGetShotScriptReviewUseCase({
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_20260322_ab12cd",
+          name: "My Story",
+          slug: "my-story",
+          storageDir: "projects/proj_20260322_ab12cd-my-story",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 120,
+          currentMasterPlotId: "mp_20260322_ab12cd",
+          currentCharacterSheetBatchId: "char_batch_v1",
+          currentStoryboardId: "storyboard_20260322_ab12cd",
+          currentShotScriptId: "shot_script_20260322_ab12cd",
+          status: "shot_script_in_review",
+          createdAt: "2026-03-22T10:00:00.000Z",
+          updatedAt: "2026-03-22T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-22T10:00:00.000Z",
+        }),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
+        updateStatus: vi.fn(),
+        listAll: vi.fn(),
+      },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn().mockResolvedValue({
+          id: "shot_script_20260322_ab12cd",
+          title: "Episode 1 Shot Script",
+          sourceStoryboardId: "storyboard_20260322_ab12cd",
+          sourceTaskId: "task_20260322_shot_script",
+          updatedAt: "2026-03-22T12:00:00.000Z",
+          approvedAt: null,
+          segmentCount: 2,
+          shotCount: 1,
+          totalDurationSec: 3,
+          segments: [
+            {
+              segmentId: "segment_1",
+              sceneId: "scene_1",
+              order: 1,
+              name: "雨市压境",
+              summary: "林夏确认退路被封。",
+              durationSec: 3,
+              status: "approved",
+              lastGeneratedAt: "2026-03-22T12:00:00.000Z",
+              approvedAt: "2026-03-22T12:05:00.000Z",
+              shots: [
+                {
+                  id: "shot_1",
+                  sceneId: "scene_1",
+                  segmentId: "segment_1",
+                  order: 1,
+                  shotCode: "SC01-SG01-SH01",
+                  durationSec: 3,
+                  purpose: "建立堵路信息。",
+                  visual: "积水漫过青石路。",
+                  subject: "林夏",
+                  action: "停住脚步。",
+                  dialogue: null,
+                  os: "来得真快。",
+                  audio: "雨声。",
+                  transitionHint: "切近景",
+                  continuityNotes: "布包在左肩。",
+                },
+              ],
+            },
+            {
+              segmentId: "segment_2",
+              sceneId: "scene_2",
+              order: 1,
+              name: null,
+              summary: "压出最终悬念。",
+              durationSec: 5,
+              status: "pending",
+              lastGeneratedAt: null,
+              approvedAt: null,
+              shots: [],
+            },
+          ],
+        }),
+      },
+      shotScriptReviewRepository: {
+        insert: vi.fn(),
+        findLatestByProjectId: vi.fn().mockResolvedValue(null),
+      },
+      taskRepository: {
+        insert: vi.fn(),
+        findById: vi.fn(),
+        findLatestByProjectId: vi.fn().mockResolvedValue(null),
+        delete: vi.fn(),
+        markRunning: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+    });
+
+    const result = await useCase.execute({
+      projectId: "proj_20260322_ab12cd",
+    });
+
+    expect(result.availableActions.approveAll).toBe(false);
+    expect(result.availableActions.regenerateSegment).toBe(true);
+  });
 });

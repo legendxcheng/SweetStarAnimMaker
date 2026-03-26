@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
   SaveShotScriptSegmentRequest,
+  ShotFrameDependency,
   ShotScriptItem,
+  ShotScriptSegment,
   ShotScriptReviewWorkspace,
 } from "@sweet-star/shared";
 import {
@@ -14,6 +16,14 @@ import { AsyncState } from "../components/async-state";
 import { StatusBadge } from "../components/status-badge";
 import { apiClient } from "../services/api-client";
 import { getButtonClassName } from "../styles/button-styles";
+
+const shotFrameDependencyOptions: Array<{
+  value: ShotFrameDependency;
+  label: string;
+}> = [
+  { value: "start_frame_only", label: "首帧即可" },
+  { value: "start_and_end_frame", label: "需要首尾帧" },
+];
 
 function toSegmentDrafts(workspace: ShotScriptReviewWorkspace) {
   return Object.fromEntries(
@@ -27,6 +37,18 @@ function toSegmentDrafts(workspace: ShotScriptReviewWorkspace) {
       } satisfies SaveShotScriptSegmentRequest,
     ]),
   ) as Record<string, SaveShotScriptSegmentRequest>;
+}
+
+function getSegmentReviewLabel(segment: ShotScriptSegment) {
+  if (segment.status === "approved") {
+    return "已通过";
+  }
+
+  if (segment.status === "pending" || segment.status === "generating" || segment.shots.length === 0) {
+    return "未生成完成";
+  }
+
+  return "待通过";
 }
 
 export function ShotScriptReviewPage() {
@@ -69,6 +91,24 @@ export function ShotScriptReviewPage() {
   const hasDirtySegments = dirtySegmentIds.length > 0;
 
   const orderedSegments = useMemo(() => workspace?.currentShotScript.segments ?? [], [workspace]);
+  const hasIncompleteSegments = useMemo(
+    () => orderedSegments.some((segment) => segment.status === "pending" || segment.shots.length === 0),
+    [orderedSegments],
+  );
+  const unapprovedSegments = useMemo(
+    () => orderedSegments.filter((segment) => segment.status !== "approved"),
+    [orderedSegments],
+  );
+  const incompleteSegmentCount = useMemo(
+    () =>
+      unapprovedSegments.filter(
+        (segment) =>
+          segment.status === "pending" ||
+          segment.status === "generating" ||
+          segment.shots.length === 0,
+      ).length,
+    [unapprovedSegments],
+  );
 
   const sceneIds = useMemo(() => {
     const seen = new Set<string>();
@@ -212,8 +252,14 @@ export function ShotScriptReviewPage() {
 
     try {
       setApprovingAll(true);
-      await apiClient.approveAllShotScriptSegments(projectId, {});
-      navigate(`/projects/${projectId}`);
+      const result = await apiClient.approveAllShotScriptSegments(projectId, {});
+
+      if (result.approvedAt) {
+        navigate(`/projects/${projectId}`);
+        return;
+      }
+
+      await loadWorkspace();
     } catch (err) {
       alert(`全部通过失败：${(err as Error).message}`);
     } finally {
@@ -277,7 +323,7 @@ export function ShotScriptReviewPage() {
                 >
                   重新生成
                 </button>
-                {ws.availableActions.approveAll && (
+                {ws.availableActions.approveAll && !hasIncompleteSegments && (
                   <button
                     onClick={() => {
                       void handleApproveAll();
@@ -330,10 +376,48 @@ export function ShotScriptReviewPage() {
                     </p>
                   </div>
                 </div>
+
+                {unapprovedSegments.length > 0 && (
+                  <div className="mt-5 rounded-lg border border-(--color-warning)/30 bg-(--color-warning)/8 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-(--color-text-primary)">
+                          还有 {unapprovedSegments.length} 个段落未通过
+                        </p>
+                        <p className="mt-1 text-xs text-(--color-text-muted)">
+                          {incompleteSegmentCount > 0
+                            ? `其中 ${incompleteSegmentCount} 个段落未生成完成，全部通过按钮会继续隐藏。`
+                            : "当前都已生成完成，但仍需逐段通过。"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2">
+                      {unapprovedSegments.map((segment) => (
+                        <div
+                          key={toShotScriptSegmentSelector(segment)}
+                          className="rounded-lg border border-(--color-border) bg-(--color-bg-surface) px-3 py-2"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-(--color-text-primary)">
+                              {segment.sceneId} / {segment.segmentId}
+                            </p>
+                            <span className="rounded-full bg-(--color-bg-base) px-2 py-0.5 text-xs font-medium text-(--color-text-muted)">
+                              {getSegmentReviewLabel(segment)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-(--color-text-muted)">
+                            {segment.name ?? segment.summary ?? segment.segmentId}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {sceneIds.length > 1 && (
-                <nav aria-label="Scene 导航" className="rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5 flex gap-1 overflow-x-auto">
+                <nav aria-label="Scene 导航" className="shrink-0 rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5 flex gap-1 overflow-x-auto overflow-y-hidden">
                   {sceneIds.map((sceneId) => {
                     const isActive = sceneId === activeSceneId;
                     const count = sceneSegmentCounts.get(sceneId) ?? 0;
@@ -343,7 +427,7 @@ export function ShotScriptReviewPage() {
                         type="button"
                         onClick={() => setActiveSceneId(sceneId)}
                         className={[
-                          "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                          "relative shrink-0 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
                           isActive
                             ? "bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) shadow-sm"
                             : "text-(--color-text-muted) hover:text-(--color-text-primary) hover:bg-(--color-bg-elevated)",
@@ -645,6 +729,33 @@ export function ShotScriptReviewPage() {
                                 rows={2}
                                 className={textareaClass}
                               />
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`shot-frame-dependency-${shot.id}`}
+                                className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+                              >
+                                镜头 {shot.order} 画面依赖
+                              </label>
+                              <select
+                                id={`shot-frame-dependency-${shot.id}`}
+                                value={shot.frameDependency}
+                                onChange={(event) =>
+                                  updateShotField(
+                                    segmentSelector,
+                                    shotIndex,
+                                    "frameDependency",
+                                    event.target.value as ShotFrameDependency,
+                                  )
+                                }
+                                className={inputClass}
+                              >
+                                {shotFrameDependencyOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                             <div>
                               <label

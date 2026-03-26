@@ -9,6 +9,7 @@ import type { StoryboardProvider } from "../ports/storyboard-provider";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessStoryboardGenerateTaskInput {
   taskId: string;
@@ -75,6 +76,11 @@ export function createProcessStoryboardGenerateTaskUseCase(
           masterPlot: taskInput.masterPlot,
           promptText,
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
 
         await dependencies.masterPlotStorage.writeRawResponse({
@@ -122,6 +128,10 @@ export function createProcessStoryboardGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 
@@ -137,7 +147,7 @@ export function createProcessStoryboardGenerateTaskUseCase(
         });
         await dependencies.projectRepository.updateStatus({
           projectId: task.projectId,
-          status: "master_plot_approved",
+          status: "character_sheets_approved",
           updatedAt: finishedAt,
         });
 

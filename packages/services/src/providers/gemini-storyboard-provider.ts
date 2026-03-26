@@ -7,6 +7,8 @@ import type {
   StoryboardProvider,
 } from "@sweet-star/core";
 
+import { buildProviderRequestError } from "./provider-request-error";
+
 export interface CreateGeminiStoryboardProviderOptions {
   baseUrl?: string;
   apiToken?: string;
@@ -113,9 +115,8 @@ async function requestGeminiJson(input: {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Gemini ${input.errorLabel} provider request failed with status ${response.status}`,
-      );
+      const bodyText = typeof response.text === "function" ? await response.text() : null;
+      throw buildProviderRequestError(`Gemini ${input.errorLabel}`, response.status, bodyText);
     }
 
     const rawResponse = await response.json();

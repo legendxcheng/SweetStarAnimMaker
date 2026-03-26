@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 import type { FastifyInstance } from "fastify";
 
-import { createProjectRequestSchema } from "@sweet-star/shared";
+import { createProjectRequestSchema, resetProjectPremiseRequestSchema } from "@sweet-star/shared";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
 
@@ -26,6 +26,16 @@ export function registerProjectRoutes(
 
     return services.getProjectDetail.execute({
       projectId: params.projectId,
+    });
+  });
+
+  app.put("/projects/:projectId/premise/reset", async (request) => {
+    const params = request.params as { projectId: string };
+    const payload = resetProjectPremiseRequestSchema.parse(request.body);
+
+    return services.resetProjectPremise.execute({
+      projectId: params.projectId,
+      ...payload,
     });
   });
 

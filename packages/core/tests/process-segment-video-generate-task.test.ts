@@ -120,6 +120,9 @@ describe("process segment video generate task use case", () => {
         sceneId: "scene_1",
         order: 1,
         status: "generating",
+        promptTextSeed: "seed prompt",
+        promptTextCurrent: "用户保存后的当前提示词",
+        promptUpdatedAt: "2026-03-25T00:12:00.000Z",
         videoAssetPath: null,
         thumbnailAssetPath: null,
         durationSec: null,
@@ -145,6 +148,9 @@ describe("process segment video generate task use case", () => {
         sceneId: "scene_1",
         order: 1,
         status: "generating",
+        promptTextSeed: "seed prompt",
+        promptTextCurrent: "用户保存后的当前提示词",
+        promptUpdatedAt: "2026-03-25T00:12:00.000Z",
         videoAssetPath: null,
         thumbnailAssetPath: null,
         durationSec: null,
@@ -183,11 +189,11 @@ describe("process segment video generate task use case", () => {
     const videoProvider = {
       generateSegmentVideo: vi.fn().mockResolvedValue({
         provider: "vector-engine",
-        model: "sora-2-all",
+        model: "kling-v3",
         videoUrl: "https://cdn.example/output.mp4",
         thumbnailUrl: "https://cdn.example/output.webp",
         rawResponse: '{"status":"completed"}',
-        durationSec: 8,
+        durationSec: 10,
       }),
     };
 
@@ -208,16 +214,16 @@ describe("process segment video generate task use case", () => {
 
     await useCase.execute({ taskId: "task_segment_video_1" });
 
-    expect(videoProvider.generateSegmentVideo).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId: "proj_1",
-        segmentId: "segment_1",
-        model: "sora-2-all",
-      }),
-    );
+    const providerCall = videoProvider.generateSegmentVideo.mock.calls[0]?.[0];
+    expect(providerCall).toMatchObject({
+      projectId: "proj_1",
+      segmentId: "segment_1",
+      promptText: "用户保存后的当前提示词",
+    });
+    expect(providerCall).not.toHaveProperty("model");
     expect(videoStorage.writePromptSnapshot).toHaveBeenCalledWith({
       taskStorageDir: "projects/proj_1-my-story/tasks/task_segment_video_1",
-      promptText: expect.stringContaining("Summary: Rin arrives at the flooded market."),
+      promptText: "用户保存后的当前提示词",
       promptVariables: expect.objectContaining({
         segment: expect.objectContaining({ segmentId: "segment_1" }),
       }),
@@ -233,7 +239,7 @@ describe("process segment video generate task use case", () => {
       thumbnailSourceUrl: "https://cdn.example/output.webp",
       metadata: expect.objectContaining({
         provider: "vector-engine",
-        model: "sora-2-all",
+        model: "kling-v3",
       }),
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
@@ -555,11 +561,11 @@ describe("process segment video generate task use case", () => {
     const videoProvider = {
       generateSegmentVideo: vi.fn().mockResolvedValue({
         provider: "vector-engine",
-        model: "sora-2-all",
+        model: "kling-v3",
         videoUrl: "https://cdn.example/scene-2-output.mp4",
         thumbnailUrl: "https://cdn.example/scene-2-output.webp",
         rawResponse: '{"status":"completed"}',
-        durationSec: 8,
+        durationSec: 10,
       }),
     };
 
@@ -590,7 +596,7 @@ describe("process segment video generate task use case", () => {
       thumbnailSourceUrl: "https://cdn.example/scene-2-output.webp",
       metadata: expect.objectContaining({
         provider: "vector-engine",
-        model: "sora-2-all",
+        model: "kling-v3",
       }),
     });
   });

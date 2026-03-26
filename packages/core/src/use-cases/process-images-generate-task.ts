@@ -18,6 +18,7 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessImagesGenerateTaskInput {
   taskId: string;
@@ -85,10 +86,18 @@ export function createProcessImagesGenerateTaskUseCase(
           updatedAt: startedAt,
         });
 
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         await dependencies.shotImageRepository.insertBatch(batch);
         await dependencies.shotImageStorage.writeBatchManifest({ batch });
         for (const segment of currentShotScript.segments) {
           for (const frameType of ["start_frame", "end_frame"] as const) {
+            if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+              return;
+            }
+
             const frame = createSegmentFrameRecord({
               id: toSegmentFrameId(batch.id, segment.sceneId, segment.segmentId, frameType),
               batchId: batch.id,
@@ -137,6 +146,10 @@ export function createProcessImagesGenerateTaskUseCase(
           }
         }
 
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         await dependencies.projectRepository.updateCurrentImageBatch({
           projectId: project.id,
           batchId: batch.id,
@@ -161,6 +174,10 @@ export function createProcessImagesGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

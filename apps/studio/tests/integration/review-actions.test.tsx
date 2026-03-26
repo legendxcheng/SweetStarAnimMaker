@@ -470,6 +470,120 @@ describe("Review Actions", () => {
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");
   });
 
+  it("lists concrete unapproved shot-script segments in the top summary card", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue({
+      ...shotScriptWorkspace,
+      currentShotScript: {
+        ...shotScriptWorkspace.currentShotScript,
+        segmentCount: 3,
+        shotCount: 2,
+        totalDurationSec: 11,
+        segments: [
+          {
+            ...shotScriptWorkspace.currentShotScript.segments[0],
+            sceneId: "scene-1",
+            segmentId: "segment-1",
+            status: "approved",
+            approvedAt: "2024-01-01T00:00:01Z",
+          },
+          {
+            ...shotScriptWorkspace.currentShotScript.segments[0],
+            sceneId: "scene-2",
+            segmentId: "segment-1",
+            order: 1,
+            name: "集市转运",
+            status: "in_review",
+            approvedAt: null,
+          },
+          {
+            ...shotScriptWorkspace.currentShotScript.segments[0],
+            sceneId: "scene-2",
+            segmentId: "segment-2",
+            order: 2,
+            name: null,
+            summary: "财主突然现身。",
+            status: "pending",
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      },
+      availableActions: {
+        ...shotScriptWorkspace.availableActions,
+        approveAll: false,
+      },
+    });
+
+    renderShotScriptPage();
+
+    await screen.findByRole("heading", { name: "镜头脚本审核" });
+
+    expect(screen.getByText("还有 2 个段落未通过")).toBeInTheDocument();
+    expect(screen.getByText("scene-2 / segment-1")).toBeInTheDocument();
+    expect(screen.getByText("待通过")).toBeInTheDocument();
+    expect(screen.getByText("集市转运")).toBeInTheDocument();
+    expect(screen.getByText("scene-2 / segment-2")).toBeInTheDocument();
+    expect(screen.getByText("未生成完成")).toBeInTheDocument();
+    expect(screen.getByText("财主突然现身。")).toBeInTheDocument();
+  });
+
+  it("does not render approve-all when the workspace still has incomplete segments", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue({
+      ...shotScriptWorkspace,
+      currentShotScript: {
+        ...shotScriptWorkspace.currentShotScript,
+        segmentCount: 2,
+        segments: [
+          ...shotScriptWorkspace.currentShotScript.segments,
+          {
+            segmentId: "segment-2",
+            sceneId: "scene-2",
+            order: 1,
+            name: null,
+            summary: "压出最终悬念。",
+            durationSec: 5,
+            status: "pending" as const,
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      },
+      availableActions: {
+        ...shotScriptWorkspace.availableActions,
+        approveAll: false,
+      },
+    });
+
+    renderShotScriptPage();
+
+    await screen.findByRole("heading", { name: "镜头脚本审核" });
+
+    expect(screen.queryByRole("button", { name: "全部通过" })).not.toBeInTheDocument();
+  });
+
+  it("refreshes the shot-script workspace instead of redirecting when approve-all returns an incomplete draft", async () => {
+    vi.spyOn(apiModule.apiClient, "approveAllShotScriptSegments").mockResolvedValue({
+      ...shotScriptWorkspace.currentShotScript,
+      approvedAt: null,
+      updatedAt: "2024-01-01T00:00:02Z",
+    });
+
+    renderShotScriptPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "全部通过" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.approveAllShotScriptSegments).toHaveBeenCalledWith("proj-1", {});
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.getShotScriptReviewWorkspace).toHaveBeenCalledTimes(2);
+    });
+
+    expect(navigate).not.toHaveBeenCalledWith("/projects/proj-1");
+  });
+
   it("uses a scene-aware selector for shot-script actions when raw segment ids repeat", async () => {
     vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue({
       ...shotScriptWorkspace,

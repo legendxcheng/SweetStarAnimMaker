@@ -19,6 +19,8 @@ import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { buildSegmentVideoPrompt } from "./build-segment-video-prompt";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessVideosGenerateTaskInput {
   taskId: string;
@@ -80,11 +82,27 @@ export function createProcessVideosGenerateTaskUseCase(
         createdAt: startedAt,
         updatedAt: startedAt,
       });
+      const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
+        storageDir: project.storageDir,
+        promptTemplateKey: taskInput.promptTemplateKey,
+      });
+
+      if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+        return;
+      }
 
       await dependencies.videoRepository.insertBatch(batch);
       await dependencies.videoStorage.writeBatchManifest({ batch });
+      await dependencies.projectRepository.updateCurrentVideoBatch?.({
+        projectId: project.id,
+        batchId: batch.id,
+      });
 
       for (const segment of taskInput.shotScript.segments) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const startFrame = frames.find(
           (frame) =>
             frame.segmentId === segment.segmentId &&
@@ -102,6 +120,11 @@ export function createProcessVideosGenerateTaskUseCase(
           throw new Error(`Approved frame pair missing for segment ${segment.segmentId}`);
         }
 
+        const promptText = buildSegmentVideoPrompt(promptTemplate, {
+          segmentSummary: segment.summary,
+          shotsSummary: segment.shots.map((shot) => `${shot.shotCode}: ${shot.action}`).join("; "),
+        });
+
         const videoRecord = createSegmentVideoRecord({
           id: `video_${batch.id}_${segment.sceneId}_${segment.segmentId}`,
           batchId: batch.id,
@@ -113,6 +136,9 @@ export function createProcessVideosGenerateTaskUseCase(
           sceneId: segment.sceneId,
           order: segment.order,
           status: "generating",
+          promptTextSeed: promptText,
+          promptTextCurrent: promptText,
+          promptUpdatedAt: startedAt,
           updatedAt: startedAt,
         });
         await dependencies.videoRepository.insertSegment(videoRecord);
@@ -162,10 +188,9 @@ export function createProcessVideosGenerateTaskUseCase(
         });
       }
 
-      await dependencies.projectRepository.updateCurrentVideoBatch?.({
-        projectId: project.id,
-        batchId: batch.id,
-      });
+      if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+        return;
+      }
       const finishedAt = dependencies.clock.now();
       await dependencies.taskFileStorage.writeTaskOutput({
         task,

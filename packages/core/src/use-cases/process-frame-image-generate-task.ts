@@ -12,6 +12,8 @@ import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotImageStorage } from "../ports/shot-image-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import { appendVisualStyleToPrompt } from "./append-visual-style-to-prompt";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessFrameImageGenerateTaskInput {
   taskId: string;
@@ -92,10 +94,18 @@ export function createProcessFrameImageGenerateTaskUseCase(
         const imageResult = await dependencies.shotImageProvider.generateShotImage({
           projectId: activeProject.id,
           frameId: activeFrame.id,
-          promptText: activeFrame.promptTextCurrent,
+          promptText: appendVisualStyleToPrompt(
+            activeFrame.promptTextCurrent,
+            activeProject.visualStyleText,
+          ),
           negativePromptText: activeFrame.negativePromptTextCurrent,
           referenceImagePaths: resolvedReferenceImagePaths,
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const updatedFrame = {
           ...activeFrame,
@@ -157,6 +167,10 @@ export function createProcessFrameImageGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

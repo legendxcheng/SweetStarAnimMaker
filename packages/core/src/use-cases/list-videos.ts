@@ -4,7 +4,10 @@ import { toCurrentVideoBatchSummary } from "../domain/video";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentVideoBatchNotFoundError } from "../errors/video-errors";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoRepository } from "../ports/video-repository";
+import type { VideoStorage } from "../ports/video-storage";
+import { repairSegmentVideoPromptsIfMissing } from "./repair-segment-video-prompts";
 
 export interface ListVideosInput {
   projectId: string;
@@ -16,6 +19,8 @@ export interface ListVideosUseCase {
 
 export interface ListVideosUseCaseDependencies {
   projectRepository: ProjectRepository;
+  shotScriptStorage: ShotScriptStorage;
+  videoStorage: VideoStorage;
   videoRepository: VideoRepository;
 }
 
@@ -41,10 +46,23 @@ export function createListVideosUseCase(
       }
 
       const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
+      const repairedSegments = await Promise.all(
+        segments.map((segment) =>
+          repairSegmentVideoPromptsIfMissing(
+            {
+              shotScriptStorage: dependencies.shotScriptStorage,
+              videoStorage: dependencies.videoStorage,
+              videoRepository: dependencies.videoRepository,
+            },
+            project,
+            segment,
+          ),
+        ),
+      );
 
       return {
-        currentBatch: toCurrentVideoBatchSummary(batch, segments),
-        segments: segments.map(toVisibleSegmentVideoRecord),
+        currentBatch: toCurrentVideoBatchSummary(batch, repairedSegments),
+        segments: repairedSegments.map(toVisibleSegmentVideoRecord),
       };
     },
   };

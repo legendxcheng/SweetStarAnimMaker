@@ -344,6 +344,28 @@ export function ImagePhasePanel({
     }
   }
 
+  async function handleGenerateAllFrames() {
+    if (!batchSummary || frames.length === 0 || hasPendingFramePlans) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "generate-all-frames" });
+
+      for (const frame of frames) {
+        await apiClient.generateImageFrame(project.id, frame.id);
+      }
+
+      await refreshProject();
+      await refreshFrames();
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   return (
     <section aria-label="画面工作区">
       <div className={cardClass}>
@@ -365,6 +387,18 @@ export function ImagePhasePanel({
                 className={getButtonClassName({ variant: "warning" })}
               >
                 重新生成当前批次全部 Prompt
+              </button>
+            )}
+            {batchSummary && segmentGroups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleGenerateAllFrames();
+                }}
+                disabled={actionBusy !== null || frames.length === 0 || hasPendingFramePlans}
+                className={getButtonClassName({ variant: "warning" })}
+              >
+                重新生成当前批次全部帧
               </button>
             )}
             {batchSummary && (
@@ -470,7 +504,7 @@ export function ImagePhasePanel({
       )}
 
       {sceneIds.length > 1 && (
-        <nav aria-label="Scene 导航" className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5">
+        <nav aria-label="Scene 导航" className="mb-4 shrink-0 flex gap-1 overflow-x-auto overflow-y-hidden rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5">
           {sceneIds.map((sceneId) => {
             const isActive = sceneId === activeSceneId;
             const count = sceneSegmentCounts.get(sceneId) ?? 0;
@@ -481,7 +515,7 @@ export function ImagePhasePanel({
                 type="button"
                 onClick={() => setActiveSceneId(sceneId)}
                 className={[
-                  "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                  "relative shrink-0 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
                   isActive
                     ? "bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) shadow-sm"
                     : "text-(--color-text-muted) hover:text-(--color-text-primary) hover:bg-(--color-bg-elevated)",
@@ -555,6 +589,7 @@ export function ImagePhasePanel({
           </div>
         </article>
       ))}
+
     </section>
   );
 }

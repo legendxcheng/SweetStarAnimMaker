@@ -2,18 +2,16 @@
 
 任务目标：
 - 使用已审核通过的 start_frame 和 end_frame
-- 生成一个单段、连续、稳定的 segment 视频片段
+- 生成一个单段、连续、稳定的多镜头 segment 视频片段
 - 保持角色外观、服装、构图逻辑与环境连续性
 - 让镜头运动、动作节奏和情绪推进与 segment 内容一致
 
 已知输入：
-- start_frame 路径：{{start_frame_path}}
-- end_frame 路径：{{end_frame_path}}
 - segment 摘要：{{segment_summary}}
 - shots 摘要：{{shots_summary}}
 
 输出要求：
-- 明确描述从 start_frame 过渡到 end_frame 的镜头运动和主体动作
+- 根据 shots 摘要组织为连续的多镜头片段，镜头衔接自然，整体从 start_frame 状态推进到 end_frame 状态
 - 强调角色身份稳定、服装稳定、空间连续性、时间连续性
 - 保持电影镜头语言，避免突兀跳切、畸形肢体、主体漂移
 - 结果应适合短视频片段生成，不要输出分镜列表或 JSON

@@ -10,6 +10,7 @@ import {
   createShotScriptGenerateTaskResponseSchema,
   createStoryboardGenerateTaskResponseSchema,
   createProjectRequestSchema,
+  resetProjectPremiseRequestSchema,
   currentMasterPlotResponseSchema,
   currentShotScriptResponseSchema,
   currentStoryboardResponseSchema,
@@ -19,8 +20,11 @@ import {
   segmentVideoResponseSchema,
   videoListResponseSchema,
   regenerateAllImagePromptsResponseSchema,
+  regenerateAllVideoPromptsRequestSchema,
   regenerateImageFramePromptRequestSchema,
+  regenerateVideoPromptRequestSchema,
   regenerateVideoSegmentRequestSchema,
+  saveVideoPromptRequestSchema,
   updateCharacterSheetPromptRequestSchema,
   updateImageFramePromptRequestSchema,
   masterPlotReviewWorkspaceResponseSchema,
@@ -115,7 +119,7 @@ export const apiClient = {
       method: "GET",
     }),
 
-  createProject: (data: { name: string; premiseText: string }) =>
+  createProject: (data: { name: string; premiseText: string; visualStyleText?: string }) =>
     request<ProjectDetail>("/projects", projectDetailResponseSchema, {
       method: "POST",
       body: JSON.stringify(createProjectRequestSchema.parse(data)),
@@ -124,6 +128,15 @@ export const apiClient = {
   getProjectDetail: (projectId: string) =>
     request<ProjectDetail>(`/projects/${projectId}`, projectDetailResponseSchema, {
       method: "GET",
+    }),
+
+  resetProjectPremise: (
+    projectId: string,
+    data: { premiseText: string; visualStyleText?: string; confirmReset: true },
+  ) =>
+    request<ProjectDetail>(`/projects/${projectId}/premise/reset`, projectDetailResponseSchema, {
+      method: "PUT",
+      body: JSON.stringify(resetProjectPremiseRequestSchema.parse(data)),
     }),
 
   createMasterPlotGenerateTask: (projectId: string) =>
@@ -413,6 +426,44 @@ export const apiClient = {
       {
         method: "POST",
         body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  updateVideoPrompt: (
+    projectId: string,
+    videoId: string,
+    data: { promptTextCurrent: string },
+  ) =>
+    request<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${videoId}/prompt`,
+      segmentVideoResponseSchema,
+      {
+        method: "PUT",
+        body: JSON.stringify(saveVideoPromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateVideoPrompt: (
+    projectId: string,
+    videoId: string,
+    data: Record<string, never> = {},
+  ) =>
+    request<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${videoId}/regenerate-prompt`,
+      segmentVideoResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateVideoPromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateAllVideoPrompts: (projectId: string, data: Record<string, never> = {}) =>
+    request<VideoListResponse>(
+      `/projects/${projectId}/videos/regenerate-prompts`,
+      videoListResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateAllVideoPromptsRequestSchema.parse(data)),
       },
     ),
 

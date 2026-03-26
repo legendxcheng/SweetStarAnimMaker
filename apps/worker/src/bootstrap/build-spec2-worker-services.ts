@@ -54,6 +54,10 @@ import {
   createGeminiCharacterSheetProvider,
   createGeminiShotScriptProvider,
   createGeminiStoryboardProvider,
+  createGrokCharacterSheetProvider,
+  createGrokFramePromptProvider,
+  createGrokShotScriptProvider,
+  createGrokStoryboardProvider,
   createLocalDataPaths,
   createReferenceImageUploader,
   createSqliteCharacterSheetRepository,
@@ -63,18 +67,18 @@ import {
   createSqliteTaskRepository,
   createShotImageStorage,
   createShotScriptStorage,
-  createSoraStageVideoProvider,
   createStoryboardStorage,
   createTaskFileStorage,
   createTurnaroundImageProvider,
   createVideoStorage,
   initializeSqliteSchema,
   createSqliteVideoRepository,
-} from "@sweet-star/services";
+  } from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
+import { createConfiguredVideoProvider } from "./video-provider-config";
 
-const DEFAULT_FRAME_IMAGE_SIZE = "2848x1600";
+const DEFAULT_LANDSCAPE_IMAGE_SIZE = "2848x1600";
 
 export interface BuildSpec2WorkerServicesOptions {
   workspaceRoot?: string;
@@ -122,6 +126,8 @@ export interface Spec2WorkerServices {
 export function buildSpec2WorkerServices(
   options: BuildSpec2WorkerServicesOptions,
 ): Spec2WorkerServices {
+  const defaultLandscapeImageSize =
+    process.env.FRAME_IMAGE_SIZE?.trim() || DEFAULT_LANDSCAPE_IMAGE_SIZE;
   const paths = options.workspaceRoot ? createLocalDataPaths(options.workspaceRoot) : null;
   const db = paths ? createSqliteDb({ paths }) : null;
   const defaultStoryboardStorage = paths ? createStoryboardStorage({ paths }) : null;
@@ -156,14 +162,24 @@ export function buildSpec2WorkerServices(
   const shotImageStorage =
     options.shotImageStorage ?? defaultShotImageStorage ?? createUnsupportedShotImageStorage();
   const videoStorage = options.videoStorage ?? defaultVideoStorage ?? createUnsupportedVideoStorage();
-  const storyboardProvider =
-    options.storyboardProvider ??
-    (process.env.VECTORENGINE_API_TOKEN?.trim()
-      ? createGeminiStoryboardProvider({
+  const defaultStoryboardTextProvider = process.env.VECTORENGINE_API_TOKEN?.trim()
+    ? createStoryboardProviderWithGrokFallback(
+        createGeminiStoryboardProvider({
           baseUrl: process.env.VECTORENGINE_BASE_URL,
           apiToken: process.env.VECTORENGINE_API_TOKEN,
           model: process.env.STORYBOARD_LLM_MODEL,
-        })
+        }),
+        createGrokStoryboardProvider({
+          baseUrl: process.env.VECTORENGINE_BASE_URL,
+          apiToken: process.env.VECTORENGINE_API_TOKEN,
+          model: process.env.STORYBOARD_GROK_MODEL,
+        }),
+      )
+    : null;
+  const storyboardProvider =
+    options.storyboardProvider ??
+    (defaultStoryboardTextProvider
+      ? defaultStoryboardTextProvider
       : {
           async generateStoryboard() {
             throw new Error("VECTORENGINE_API_TOKEN is required for storyboard generation");
@@ -171,12 +187,8 @@ export function buildSpec2WorkerServices(
         });
   const masterPlotProvider =
     options.masterPlotProvider ??
-    (process.env.VECTORENGINE_API_TOKEN?.trim()
-      ? createGeminiStoryboardProvider({
-          baseUrl: process.env.VECTORENGINE_BASE_URL,
-          apiToken: process.env.VECTORENGINE_API_TOKEN,
-          model: process.env.STORYBOARD_LLM_MODEL,
-        })
+    (defaultStoryboardTextProvider
+      ? defaultStoryboardTextProvider
       : {
           async generateMasterPlot() {
             throw new Error("VECTORENGINE_API_TOKEN is required for master plot generation");
@@ -185,11 +197,18 @@ export function buildSpec2WorkerServices(
   const shotScriptProvider =
     options.shotScriptProvider ??
     (process.env.VECTORENGINE_API_TOKEN?.trim()
-      ? createGeminiShotScriptProvider({
-          baseUrl: process.env.VECTORENGINE_BASE_URL,
-          apiToken: process.env.VECTORENGINE_API_TOKEN,
-          model: process.env.SHOT_SCRIPT_LLM_MODEL,
-        })
+      ? createShotScriptProviderWithGrokFallback(
+          createGeminiShotScriptProvider({
+            baseUrl: process.env.VECTORENGINE_BASE_URL,
+            apiToken: process.env.VECTORENGINE_API_TOKEN,
+            model: process.env.SHOT_SCRIPT_LLM_MODEL,
+          }),
+          createGrokShotScriptProvider({
+            baseUrl: process.env.VECTORENGINE_BASE_URL,
+            apiToken: process.env.VECTORENGINE_API_TOKEN,
+            model: process.env.SHOT_SCRIPT_GROK_MODEL,
+          }),
+        )
       : {
           async generateShotScriptSegment() {
             throw new Error("VECTORENGINE_API_TOKEN is required for shot script generation");
@@ -197,11 +216,18 @@ export function buildSpec2WorkerServices(
         });
   const characterSheetPromptProvider =
     options.characterSheetPromptProvider ??
-    createGeminiCharacterSheetProvider({
-      baseUrl: process.env.VECTORENGINE_BASE_URL,
-      apiToken: process.env.VECTORENGINE_API_TOKEN,
-      model: process.env.CHARACTER_SHEET_PROMPT_MODEL,
-    });
+    createCharacterSheetPromptProviderWithGrokFallback(
+      createGeminiCharacterSheetProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.CHARACTER_SHEET_PROMPT_MODEL,
+      }),
+      createGrokCharacterSheetProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.CHARACTER_SHEET_PROMPT_GROK_MODEL,
+      }),
+    );
   const referenceImageUploader = createReferenceImageUploader({
     providerOrder: process.env.IMAGE_UPLOAD_PROVIDER_ORDER?.split(","),
     picgoApiKey: process.env.PICGO_API_KEY,
@@ -212,30 +238,36 @@ export function buildSpec2WorkerServices(
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.CHARACTER_SHEET_IMAGE_MODEL,
+      size: defaultLandscapeImageSize,
       referenceImageUploader,
     });
   const framePromptProvider =
     options.framePromptProvider ??
-    createGeminiFramePromptProvider({
-      baseUrl: process.env.VECTORENGINE_BASE_URL,
-      apiToken: process.env.VECTORENGINE_API_TOKEN,
-      model: process.env.FRAME_PROMPT_MODEL,
-    });
+    createFramePromptProviderWithGrokFallback(
+      createGeminiFramePromptProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.FRAME_PROMPT_MODEL,
+      }),
+      createGrokFramePromptProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.FRAME_PROMPT_GROK_MODEL,
+      }),
+    );
   const shotImageProvider =
     options.shotImageProvider ??
     createTurnaroundImageProvider({
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.FRAME_IMAGE_MODEL,
-      size: process.env.FRAME_IMAGE_SIZE?.trim() || DEFAULT_FRAME_IMAGE_SIZE,
+      size: defaultLandscapeImageSize,
       referenceImageUploader,
     });
   const videoProvider =
     options.videoProvider ??
-    createSoraStageVideoProvider({
-      baseUrl: process.env.VECTORENGINE_BASE_URL,
-      apiToken: process.env.VECTORENGINE_API_TOKEN,
-      modelName: process.env.VIDEO_MODEL,
+    createConfiguredVideoProvider({
+      env: process.env,
       referenceImageUploader,
     });
   const taskIdGenerator =
@@ -435,6 +467,117 @@ export function buildSpec2WorkerServices(
       db?.close();
     },
   };
+}
+
+function createStoryboardProviderWithGrokFallback(
+  primary: MasterPlotProvider & StoryboardProvider,
+  fallback: MasterPlotProvider & StoryboardProvider,
+): MasterPlotProvider & StoryboardProvider {
+  return {
+    async generateMasterPlot(input) {
+      try {
+        return await primary.generateMasterPlot(input);
+      } catch (error) {
+        if (!shouldRetryWithGrok(error)) {
+          throw error;
+        }
+
+        return fallback.generateMasterPlot(input);
+      }
+    },
+    async generateStoryboard(input) {
+      try {
+        return await primary.generateStoryboard(input);
+      } catch (error) {
+        if (!shouldRetryWithGrok(error)) {
+          throw error;
+        }
+
+        return fallback.generateStoryboard(input);
+      }
+    },
+  };
+}
+
+function createShotScriptProviderWithGrokFallback(
+  primary: ShotScriptProvider,
+  fallback: ShotScriptProvider,
+): ShotScriptProvider {
+  return {
+    generateShotScript: primary.generateShotScript
+      ? async (input) => {
+          try {
+            return await primary.generateShotScript!(input);
+          } catch (error) {
+            if (!shouldRetryWithGrok(error) || !fallback.generateShotScript) {
+              throw error;
+            }
+
+            return fallback.generateShotScript(input);
+          }
+        }
+      : undefined,
+    async generateShotScriptSegment(input) {
+      try {
+        return await primary.generateShotScriptSegment(input);
+      } catch (error) {
+        if (!shouldRetryWithGrok(error)) {
+          throw error;
+        }
+
+        return fallback.generateShotScriptSegment(input);
+      }
+    },
+  };
+}
+
+function createCharacterSheetPromptProviderWithGrokFallback(
+  primary: CharacterSheetPromptProvider,
+  fallback: CharacterSheetPromptProvider,
+): CharacterSheetPromptProvider {
+  return {
+    async generateCharacterPrompt(input) {
+      try {
+        return await primary.generateCharacterPrompt(input);
+      } catch (error) {
+        if (!shouldRetryWithGrok(error)) {
+          throw error;
+        }
+
+        return fallback.generateCharacterPrompt(input);
+      }
+    },
+  };
+}
+
+function createFramePromptProviderWithGrokFallback(
+  primary: FramePromptProvider,
+  fallback: FramePromptProvider,
+): FramePromptProvider {
+  return {
+    async generateFramePrompt(input) {
+      try {
+        return await primary.generateFramePrompt(input);
+      } catch (error) {
+        if (!shouldRetryWithGrok(error)) {
+          throw error;
+        }
+
+        return fallback.generateFramePrompt(input);
+      }
+    },
+  };
+}
+
+function shouldRetryWithGrok(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes("PROHIBITED_CONTENT") ||
+    /content is prohibited/i.test(error.message)
+  );
 }
 
 function createUnsupportedShotScriptStorage(): ShotScriptStorage {

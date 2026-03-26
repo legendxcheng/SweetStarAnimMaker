@@ -39,6 +39,7 @@ describe("process frame image generate task use case", () => {
         storageDir: "projects/proj_20260324_ab12cd-my-story",
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
         currentMasterPlotId: "master_plot_v1",
         currentCharacterSheetBatchId: "char_batch_v1",
         currentStoryboardId: "storyboard_v1",
@@ -163,7 +164,7 @@ describe("process frame image generate task use case", () => {
     expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith({
       projectId: "proj_20260324_ab12cd",
       frameId: "frame_segment_1_start",
-      promptText: "用户编辑后的 Prompt",
+      promptText: "用户编辑后的 Prompt\n\n画面风格：赛璐璐动画，冷色霓虹雨夜，电影感光影",
       negativePromptText: "模糊，低清晰度",
       referenceImagePaths: ["E:/refs/char_rin.png"],
     });
@@ -232,6 +233,7 @@ describe("process frame image generate task use case", () => {
         storageDir: "projects/proj_20260324_ab12cd-my-story",
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
         currentMasterPlotId: "master_plot_v1",
         currentCharacterSheetBatchId: "char_batch_v1",
         currentStoryboardId: "storyboard_v1",

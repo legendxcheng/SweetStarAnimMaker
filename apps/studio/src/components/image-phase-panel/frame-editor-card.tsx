@@ -42,6 +42,7 @@ export function FrameEditorCard({
   const isBusy =
     actionBusy?.kind === "approve-all" ||
     actionBusy?.kind === "regenerate-all-prompts" ||
+    actionBusy?.kind === "generate-all-frames" ||
     (actionBusy?.frameId === frame.id &&
       (actionBusy.kind === "save" ||
         actionBusy.kind === "regenerate" ||

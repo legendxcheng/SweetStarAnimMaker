@@ -70,12 +70,14 @@ export function createSqliteVideoRepository(
           `
             INSERT INTO segment_videos (
               id, batch_id, project_id, project_storage_dir, source_image_batch_id, source_shot_script_id,
-              segment_id, scene_id, segment_order, status, video_asset_path, thumbnail_asset_path,
+              segment_id, scene_id, segment_order, status, prompt_text_seed, prompt_text_current,
+              prompt_updated_at, video_asset_path, thumbnail_asset_path,
               duration_sec, provider, model, updated_at, approved_at, source_task_id, storage_dir,
               current_video_rel_path, current_metadata_rel_path, thumbnail_rel_path, versions_storage_dir
             ) VALUES (
               @id, @batch_id, @project_id, @project_storage_dir, @source_image_batch_id, @source_shot_script_id,
-              @segment_id, @scene_id, @segment_order, @status, @video_asset_path, @thumbnail_asset_path,
+              @segment_id, @scene_id, @segment_order, @status, @prompt_text_seed, @prompt_text_current,
+              @prompt_updated_at, @video_asset_path, @thumbnail_asset_path,
               @duration_sec, @provider, @model, @updated_at, @approved_at, @source_task_id, @storage_dir,
               @current_video_rel_path, @current_metadata_rel_path, @thumbnail_rel_path, @versions_storage_dir
             )
@@ -125,6 +127,9 @@ export function createSqliteVideoRepository(
             UPDATE segment_videos
             SET
               status = @status,
+              prompt_text_seed = @prompt_text_seed,
+              prompt_text_current = @prompt_text_current,
+              prompt_updated_at = @prompt_updated_at,
               video_asset_path = @video_asset_path,
               thumbnail_asset_path = @thumbnail_asset_path,
               duration_sec = @duration_sec,
@@ -170,6 +175,9 @@ interface SegmentVideoRow {
   scene_id: string;
   segment_order: number;
   status: SegmentVideoRecordEntity["status"];
+  prompt_text_seed: string;
+  prompt_text_current: string;
+  prompt_updated_at: string;
   video_asset_path: string | null;
   thumbnail_asset_path: string | null;
   duration_sec: number | null;
@@ -227,6 +235,9 @@ function toSegmentRow(segment: SegmentVideoRecordEntity): SegmentVideoRow {
     scene_id: segment.sceneId,
     segment_order: segment.order,
     status: segment.status,
+    prompt_text_seed: segment.promptTextSeed,
+    prompt_text_current: segment.promptTextCurrent,
+    prompt_updated_at: segment.promptUpdatedAt,
     video_asset_path: segment.videoAssetPath,
     thumbnail_asset_path: segment.thumbnailAssetPath,
     duration_sec: segment.durationSec,
@@ -255,6 +266,9 @@ function fromSegmentRow(row: SegmentVideoRow): SegmentVideoRecordEntity {
     sceneId: row.scene_id,
     order: row.segment_order,
     status: row.status,
+    promptTextSeed: row.prompt_text_seed,
+    promptTextCurrent: row.prompt_text_current,
+    promptUpdatedAt: row.prompt_updated_at,
     videoAssetPath: row.video_asset_path,
     thumbnailAssetPath: row.thumbnail_asset_path,
     durationSec: row.duration_sec,

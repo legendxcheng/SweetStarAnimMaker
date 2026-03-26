@@ -205,6 +205,7 @@ export function ProjectDetailPage() {
   const [error, setError] = useState<Error | null>(null);
   const [activeTask, setActiveTask] = useState<TaskDetail | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
+  const [resettingPremise, setResettingPremise] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState<ProjectPhaseKey>("premise");
   const [hasAutoSelectedPhase, setHasAutoSelectedPhase] = useState(false);
 
@@ -367,6 +368,28 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleResetPremise = async (input: {
+    premiseText: string;
+    visualStyleText?: string;
+    confirmReset: true;
+  }) => {
+    if (!projectId || resettingPremise) {
+      return;
+    }
+
+    setResettingPremise(true);
+
+    try {
+      const nextProject = await apiClient.resetProjectPremise(projectId, input);
+      setProject(nextProject);
+      setSelectedPhase("premise");
+      setHasAutoSelectedPhase(true);
+      setActiveTask(null);
+    } finally {
+      setResettingPremise(false);
+    }
+  };
+
   const phaseItems = PROJECT_PHASES.map((phase) => ({
     ...phase,
     enabled:
@@ -411,7 +434,11 @@ export function ProjectDetailPage() {
 
               <div>
                 {selectedPhase === "premise" ? (
-                  <PremisePhasePanel project={currentProject} />
+                  <PremisePhasePanel
+                    project={currentProject}
+                    resetting={resettingPremise}
+                    onReset={handleResetPremise}
+                  />
                 ) : selectedPhase === "master_plot" ? (
                   <MasterPlotPhasePanel
                     project={currentProject}

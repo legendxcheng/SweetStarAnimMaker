@@ -12,6 +12,7 @@ import { toProjectDetailDto } from "./project-detail-dto";
 export interface CreateProjectInput {
   name: string;
   premiseText: string;
+  visualStyleText?: string;
 }
 
 export interface CreateProjectUseCase {
@@ -33,6 +34,7 @@ export function createCreateProjectUseCase(
     async execute(input) {
       const name = requireNonEmptyText(input.name, "Project name is required");
       const premiseText = requireNonEmptyText(input.premiseText, "Premise is required");
+      const visualStyleText = normalizeOptionalText(input.visualStyleText);
       const timestamp = dependencies.clock.now();
       const project = createProjectRecord({
         id: dependencies.idGenerator.generateProjectId(),
@@ -41,6 +43,7 @@ export function createCreateProjectUseCase(
         createdAt: timestamp,
         updatedAt: timestamp,
         premiseUpdatedAt: timestamp,
+        visualStyleText,
       });
 
       const storedPremise = await dependencies.premiseStorage.writePremise({
@@ -68,7 +71,7 @@ export function createCreateProjectUseCase(
         throw error;
       }
 
-      return toProjectDetailDto(persistedProject, null, null, null, premiseText);
+      return toProjectDetailDto(persistedProject, null, null, null, premiseText, visualStyleText);
     },
   };
 }
@@ -81,4 +84,8 @@ function requireNonEmptyText(value: string, message: string) {
   }
 
   return trimmed;
+}
+
+function normalizeOptionalText(value: string | undefined) {
+  return value?.trim() ?? "";
 }

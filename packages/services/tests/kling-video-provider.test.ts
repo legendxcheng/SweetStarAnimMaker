@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createKlingVideoProvider } from "../src/index";
+import { createKlingStageVideoProvider, createKlingVideoProvider } from "../src/index";
 
 describe("kling video provider", () => {
   afterEach(() => {
@@ -160,6 +160,45 @@ describe("kling video provider", () => {
     expect(result.failed).toBe(false);
   });
 
+  it("reads the video url from task_result.videos when Kling nests completed results", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: 0,
+        data: {
+          task_id: "kling_task_nested",
+          task_status: "succeed",
+          task_result: {
+            videos: [
+              {
+                id: "video_nested_1",
+                url: "https://cdn.example/nested-output.mp4",
+                duration: "10.041",
+              },
+            ],
+          },
+        },
+        message: "SUCCEED",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createKlingVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const result = await provider.getImageToVideoTask({
+      taskId: "kling_task_nested",
+    });
+
+    expect(result.taskId).toBe("kling_task_nested");
+    expect(result.status).toBe("succeed");
+    expect(result.videoUrl).toBe("https://cdn.example/nested-output.mp4");
+    expect(result.errorMessage).toBeNull();
+    expect(result.completed).toBe(true);
+    expect(result.failed).toBe(false);
+  });
+
   it("does not treat a top-level success message as an error message", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -263,5 +302,131 @@ describe("kling video provider", () => {
     ).rejects.toThrow(
       'Kling video provider request failed with status 400; requestId=req_kling_400; body={"message":"bad image"}',
     );
+  });
+
+  it("uses Kling stage defaults with multi_prompt for production video generation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "kling_task_stage",
+            task_status: "submitted",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "kling_task_stage",
+            task_status: "succeed",
+            video_url: "https://cdn.example/stage-output.mp4",
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createKlingStageVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const result = await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      segmentId: "segment_1",
+      promptText: "保持主体稳定，镜头缓慢推进。",
+      startFramePath: "https://cdn.example/start.png",
+      endFramePath: "https://cdn.example/end.png",
+      durationSec: 6,
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.image).toBe("https://cdn.example/start.png");
+    expect(request.image_tail).toBe("https://cdn.example/end.png");
+    expect(request.mode).toBe("std");
+    expect(request.sound).toBe("on");
+    expect(request.multi_shot).toBeUndefined();
+    expect(request.duration).toBe(10);
+    expect(request.prompt).toBeUndefined();
+    expect(request.multi_prompt).toEqual([
+      {
+        index: 1,
+        prompt: "保持主体稳定，镜头缓慢推进。",
+        duration: "10",
+      },
+    ]);
+    expect(result.provider).toBe("kling-video");
+    expect(result.model).toBe("kling-v3");
+    expect(result.videoUrl).toBe("https://cdn.example/stage-output.mp4");
+    expect(result.thumbnailUrl).toBeNull();
+    expect(result.durationSec).toBe(10);
+  });
+
+  it("condenses long stage prompts so Kling multi_prompt stays within provider limits", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "kling_task_compact",
+            task_status: "submitted",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "kling_task_compact",
+            task_status: "succeed",
+            video_url: "https://cdn.example/compact-output.mp4",
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createKlingStageVideoProvider({
+      apiToken: "test-token",
+    });
+
+    await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      segmentId: "segment_1",
+      promptText: `你是一个电影级 image-to-video 提示词编排器。
+
+任务目标：
+- 使用已审核通过的 start_frame 和 end_frame
+- 生成一个单段、连续、稳定的 segment 视频片段
+
+已知输入：
+- segment 摘要：阿福的包子摊在暴雨中被毁，他在泥水中拼命捡拾包子，陷入极度绝望并质问苍天。
+- shots 摘要：S01_SEG01_SH01: 阿福跌跌撞撞地扑向散落的蒸笼，四肢着地跪在积水里寻找包子。; S01_SEG01_SH02: 阿福双手剧烈颤抖，小心翼翼又无助地试图把烂在泥里的包子捧起来，泥水从指缝间流走。; S01_SEG01_SH03: 阿福死死攥住手中的泥包子，猛地仰起头看向漆黑的夜空，脖颈青筋暴起，撕心裂肺地嚎哭质问。; S01_SEG01_SH04: 阿福保持跪地仰天的姿态，一动不动，任凭冰冷的暴雨无情地冲刷着他单薄的身躯。
+
+输出要求：
+- 明确描述从 start_frame 过渡到 end_frame 的镜头运动和主体动作
+- 强调角色身份稳定、服装稳定、空间连续性、时间连续性
+- 保持电影镜头语言，避免突兀跳切、畸形肢体、主体漂移`,
+      startFramePath: "https://cdn.example/start.png",
+      endFramePath: "https://cdn.example/end.png",
+      durationSec: 10,
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.multi_prompt).toHaveLength(1);
+    expect(request.multi_prompt[0].prompt.length).toBeLessThanOrEqual(512);
+    expect(request.multi_prompt[0].prompt).toContain(
+      "阿福的包子摊在暴雨中被毁，他在泥水中拼命捡拾包子",
+    );
+    expect(request.multi_prompt[0].prompt).toContain(
+      "阿福跌跌撞撞地扑向散落的蒸笼",
+    );
+    expect(request.multi_prompt[0].prompt).not.toContain("你是一个电影级");
+    expect(request.multi_prompt[0].prompt).not.toContain("start_frame");
+    expect(request.multi_prompt[0].prompt).not.toContain("end_frame");
+    expect(request.multi_prompt[0].prompt).not.toContain("从 start_frame 过渡到 end_frame");
+    expect(request.multi_prompt[0].prompt).toContain("多镜头");
+    expect(request.multi_prompt[0].prompt).toContain("镜头衔接自然");
   });
 });

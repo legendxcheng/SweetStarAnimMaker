@@ -11,6 +11,7 @@ export interface ProjectPremiseMetadata {
   bytes: number;
   updatedAt: string;
   text: string;
+  visualStyleText: string;
 }
 
 export interface ProjectDetail {

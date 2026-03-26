@@ -45,6 +45,14 @@ export interface UpdateProjectStatusInput {
   updatedAt: string;
 }
 
+export interface ResetProjectToPremiseInput {
+  projectId: string;
+  premiseBytes: number;
+  visualStyleText: string;
+  updatedAt: string;
+  premiseUpdatedAt: string;
+}
+
 export interface ProjectRepository {
   insert(project: ProjectRecord): Promise<void> | void;
   findById(projectId: string): Promise<ProjectRecord | null> | ProjectRecord | null;
@@ -71,4 +79,5 @@ export interface ProjectRepository {
     input: UpdateCurrentVideoBatchInput,
   ): Promise<void> | void;
   updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
+  resetToPremise?(input: ResetProjectToPremiseInput): Promise<void> | void;
 }

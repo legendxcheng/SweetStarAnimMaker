@@ -10,6 +10,7 @@ import type { ShotScriptProvider } from "../ports/shot-script-provider";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessShotScriptSegmentGenerateTaskInput {
   taskId: string;
@@ -93,6 +94,11 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           promptText,
           variables: promptVariables,
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
 
         await dependencies.shotScriptStorage.writeRawResponse({
@@ -151,6 +157,10 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

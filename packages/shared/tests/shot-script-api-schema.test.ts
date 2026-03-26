@@ -77,6 +77,7 @@ describe("shot script api schema", () => {
               visual: "清晨积水漫过青石路，摊棚和红灯笼歪斜压向画面前景。",
               subject: "林夏背着湿透的布包站在水线边。",
               action: "她停住脚步，抬眼看向前方被占住的通道。",
+              frameDependency: "start_frame_only",
               dialogue: "无",
               os: "来得比我还快。",
               audio: "水声、摊布拍打声、远处人群骚动。",
@@ -90,6 +91,7 @@ describe("shot script api schema", () => {
 
     expect(parsed.segments).toHaveLength(1);
     expect(parsed.segments[0]?.shots[0]?.segmentId).toBe("segment_1");
+    expect(parsed.segments[0]?.shots[0]?.frameDependency).toBe("start_frame_only");
   });
 
   it("accepts a generating current shot-script payload with empty segment shots", () => {
@@ -140,6 +142,7 @@ describe("shot script api schema", () => {
           visual: "清晨积水漫过青石路，摊棚和红灯笼歪斜压向画面前景。",
           subject: "林夏背着湿透的布包站在水线边。",
           action: "她停住脚步，抬眼看向前方被占住的通道。",
+          frameDependency: "start_and_end_frame",
           dialogue: "无",
           os: "来得比我还快。",
           audio: "水声、摊布拍打声、远处人群骚动。",
@@ -150,6 +153,7 @@ describe("shot script api schema", () => {
     });
 
     expect(parsed.shots[0]?.os).toBe("来得比我还快。");
+    expect(parsed.shots[0]?.frameDependency).toBe("start_and_end_frame");
   });
 
   it("accepts a regenerate-shot-script-segment request payload", () => {
@@ -208,6 +212,7 @@ describe("shot script api schema", () => {
                 visual: "清晨积水漫过青石路，摊棚和红灯笼歪斜压向画面前景。",
                 subject: "林夏背着湿透的布包站在水线边。",
                 action: "她停住脚步，抬眼看向前方被占住的通道。",
+                frameDependency: "start_frame_only",
                 dialogue: "无",
                 os: "来得比我还快。",
                 audio: "水声、摊布拍打声、远处人群骚动。",

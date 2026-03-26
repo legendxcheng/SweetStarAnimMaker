@@ -11,6 +11,7 @@ import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 
 describe("projects api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
+  const visualStyleText = "赛璐璐动画，冷色霓虹雨夜，电影感光影";
   const tempDirs: string[] = [];
   const apps: FastifyInstance[] = [];
 
@@ -32,6 +33,7 @@ describe("projects api", () => {
       payload: {
         name: "My Story",
         premiseText,
+        visualStyleText,
       },
     });
 
@@ -47,6 +49,7 @@ describe("projects api", () => {
           path: "premise/v1.md",
           bytes: Buffer.byteLength(premiseText, "utf8"),
           text: premiseText,
+          visualStyleText,
           updatedAt: expect.any(String),
         },
       }),
@@ -62,6 +65,7 @@ describe("projects api", () => {
       payload: {
         name: "   ",
         premiseText: "   ",
+        visualStyleText: "   ",
       },
     });
 
@@ -76,6 +80,7 @@ describe("projects api", () => {
       payload: {
         name: "My Story",
         premiseText,
+        visualStyleText,
       },
     });
     const projectId = created.json().id as string;
@@ -94,9 +99,87 @@ describe("projects api", () => {
           path: "premise/v1.md",
           bytes: Buffer.byteLength(premiseText, "utf8"),
           text: premiseText,
+          visualStyleText,
         }),
       }),
     );
+  });
+
+  it("resets a project's premise and returns a premise-ready detail payload", async () => {
+    const { app, tempDir } = await createTempApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: {
+        name: "My Story",
+        premiseText,
+        visualStyleText,
+      },
+    });
+    const projectId = created.json().id as string;
+    const paths = createLocalDataPaths(tempDir);
+    const db = createSqliteDb({ paths });
+    const repository = createSqliteProjectRepository({ db });
+
+    repository.updateStatus({
+      projectId,
+      status: "master_plot_in_review",
+      updatedAt: "2026-03-25T12:00:00.000Z",
+    });
+    db.close();
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/projects/${projectId}/premise/reset`,
+      payload: {
+        premiseText: "A retired courier steals back a star map from a drowned archive.",
+        visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+        confirmReset: true,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: projectId,
+        status: "premise_ready",
+        premise: expect.objectContaining({
+          text: "A retired courier steals back a star map from a drowned archive.",
+          visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+        }),
+        currentMasterPlot: null,
+        currentCharacterSheetBatch: null,
+        currentStoryboard: null,
+        currentShotScript: null,
+        currentImageBatch: null,
+        currentVideoBatch: null,
+      }),
+    );
+  });
+
+  it("returns 400 when premise reset confirmation is missing", async () => {
+    const { app } = await createTempApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: {
+        name: "My Story",
+        premiseText,
+        visualStyleText,
+      },
+    });
+    const projectId = created.json().id as string;
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/projects/${projectId}/premise/reset`,
+      payload: {
+        premiseText: "A retired courier steals back a star map from a drowned archive.",
+        visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
   });
 
   it("returns 404 for a missing project", async () => {
@@ -118,6 +201,7 @@ describe("projects api", () => {
       payload: {
         name: "My Story",
         premiseText,
+        visualStyleText,
       },
     });
     const projectId = created.json().id as string;

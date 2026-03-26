@@ -6,6 +6,8 @@ import type {
 } from "@sweet-star/core";
 import { buildShotScriptCanonicalCharacterValidator } from "@sweet-star/core";
 
+import { buildProviderRequestError } from "./provider-request-error";
+
 export interface CreateGeminiShotScriptProviderOptions {
   baseUrl?: string;
   apiToken?: string;
@@ -49,7 +51,10 @@ export function createGeminiShotScriptProvider(
           promptText,
           responseJsonSchema: shotScriptSegmentResponseJsonSchema,
         });
-        const segment = normalizeShotScriptSegmentPayload(JSON.parse(rawText), input.variables);
+        const segment = normalizeShotScriptSegmentPayload(
+          parseShotScriptPayload(rawText),
+          input.variables,
+        );
         const violations = validator.validateShots(segment.shots);
 
         if (violations.length === 0) {
@@ -117,9 +122,8 @@ async function requestGeminiJson(input: {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Gemini ${input.errorLabel} provider request failed with status ${response.status}`,
-      );
+      const bodyText = typeof response.text === "function" ? await response.text() : null;
+      throw buildProviderRequestError(`Gemini ${input.errorLabel}`, response.status, bodyText);
     }
 
     const rawResponse = await response.json();
@@ -158,6 +162,7 @@ const shotScriptSegmentResponseJsonSchema = {
           "visual",
           "subject",
           "action",
+          "frameDependency",
           "dialogue",
           "os",
           "audio",
@@ -175,6 +180,7 @@ const shotScriptSegmentResponseJsonSchema = {
           visual: { type: "string" },
           subject: { type: "string" },
           action: { type: "string" },
+          frameDependency: { type: "string" },
           dialogue: { type: ["string", "null"] },
           os: { type: ["string", "null"] },
           audio: { type: ["string", "null"] },
@@ -249,6 +255,92 @@ function normalizeShotScriptSegmentPayload(
     approvedAt: null,
     shots: normalizedShots,
   };
+}
+
+function parseShotScriptPayload(rawText: string) {
+  const directPayload = tryParseJson(rawText.trim());
+
+  if (directPayload !== null) {
+    return directPayload;
+  }
+
+  const extractedObjectText = extractFirstJsonObject(rawText);
+
+  if (extractedObjectText !== null) {
+    const extractedPayload = tryParseJson(extractedObjectText);
+
+    if (extractedPayload !== null) {
+      return extractedPayload;
+    }
+  }
+
+  throw new Error("Gemini shot script provider returned invalid shot script JSON");
+}
+
+function tryParseJson(rawText: string) {
+  try {
+    return JSON.parse(rawText) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function extractFirstJsonObject(rawText: string) {
+  const startIndex = rawText.indexOf("{");
+
+  if (startIndex < 0) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let index = startIndex; index < rawText.length; index += 1) {
+    const char = rawText[index];
+
+    if (char === undefined) {
+      break;
+    }
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        isEscaped = true;
+        continue;
+      }
+
+      if (char === "\"") {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+
+      if (depth === 0) {
+        return rawText.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
 }
 
 function readCanonicalCharacterContext(
@@ -341,6 +433,10 @@ function normalizeShot(
     visual: readNonEmptyString((shot as { visual?: unknown }).visual, "visual"),
     subject: readNonEmptyString((shot as { subject?: unknown }).subject, "subject"),
     action: readNonEmptyString((shot as { action?: unknown }).action, "action"),
+    frameDependency: readFrameDependency(
+      (shot as { frameDependency?: unknown }).frameDependency,
+      "frameDependency",
+    ),
     dialogue: readNullableString((shot as { dialogue?: unknown }).dialogue, "dialogue"),
     os: readNullableString((shot as { os?: unknown }).os, "os"),
     audio: readNullableString((shot as { audio?: unknown }).audio, "audio"),
@@ -390,6 +486,7 @@ function assertChineseFirstShots(
     visual: string;
     subject: string;
     action: string;
+    frameDependency: "start_frame_only" | "start_and_end_frame";
     dialogue: string | null;
     os: string | null;
     audio: string | null;
@@ -403,6 +500,7 @@ function assertChineseFirstShots(
       shot.visual,
       shot.subject,
       shot.action,
+      shot.frameDependency,
       shot.dialogue,
       shot.os,
       shot.audio,
@@ -480,4 +578,15 @@ function readPositiveInteger(value: unknown, fieldName: string) {
   }
 
   return value;
+}
+
+function readFrameDependency(
+  value: unknown,
+  fieldName: string,
+): "start_frame_only" | "start_and_end_frame" {
+  if (value === "start_frame_only" || value === "start_and_end_frame") {
+    return value;
+  }
+
+  throw new Error(`Gemini shot script provider returned invalid ${fieldName}`);
 }

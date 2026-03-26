@@ -12,6 +12,7 @@ import type { TaskRepository } from "../ports/task-repository";
 import type { VideoProvider } from "../ports/video-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessSegmentVideoGenerateTaskInput {
   taskId: string;
@@ -77,10 +78,6 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
           throw new SegmentVideoNotFoundError(taskInput.segmentId);
         }
 
-        const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
-          storageDir: project.storageDir,
-          promptTemplateKey: taskInput.promptTemplateKey,
-        });
         const startFramePath = await dependencies.videoStorage.resolveProjectAssetPath({
           projectStorageDir: project.storageDir,
           assetRelPath: taskInput.startFrame.imageAssetPath ?? "",
@@ -102,14 +99,7 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
             height: taskInput.endFrame.imageHeight ?? null,
           },
         };
-        const promptText = renderSegmentVideoPrompt(promptTemplate, {
-          startFramePath,
-          endFramePath,
-          segmentSummary: taskInput.segment.summary,
-          shotsSummary: taskInput.segment.shots
-            .map((shot) => `${shot.shotCode}: ${shot.action}`)
-            .join("; "),
-        });
+        const promptText = currentSegment.promptTextCurrent;
 
         await dependencies.videoStorage.writePromptSnapshot({
           taskStorageDir: task.storageDir,
@@ -128,8 +118,11 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
           startFramePath,
           endFramePath,
           durationSec: taskInput.segment.durationSec,
-          model: "sora-2-all",
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
 
         await dependencies.videoStorage.writeRawResponse({
           taskStorageDir: task.storageDir,
@@ -198,6 +191,10 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 
@@ -252,20 +249,4 @@ function deriveProjectVideoStatus(
   }
 
   return "videos_in_review";
-}
-
-function renderSegmentVideoPrompt(
-  template: string,
-  vars: {
-    startFramePath: string;
-    endFramePath: string;
-    segmentSummary: string;
-    shotsSummary: string;
-  },
-) {
-  return template
-    .replaceAll("{{start_frame_path}}", vars.startFramePath)
-    .replaceAll("{{end_frame_path}}", vars.endFramePath)
-    .replaceAll("{{segment_summary}}", vars.segmentSummary)
-    .replaceAll("{{shots_summary}}", vars.shotsSummary);
 }

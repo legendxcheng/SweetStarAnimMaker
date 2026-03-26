@@ -4,6 +4,8 @@ import type {
   GenerateFramePromptResult,
 } from "@sweet-star/core";
 
+import { buildProviderRequestError } from "./provider-request-error";
+
 export interface CreateGeminiFramePromptProviderOptions {
   baseUrl?: string;
   apiToken?: string;
@@ -91,7 +93,8 @@ async function requestGeminiJson(input: {
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini frame prompt provider request failed with status ${response.status}`);
+      const bodyText = typeof response.text === "function" ? await response.text() : null;
+      throw buildProviderRequestError("Gemini frame prompt", response.status, bodyText);
     }
 
     const rawResponse = await response.json();

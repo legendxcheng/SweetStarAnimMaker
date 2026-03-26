@@ -59,6 +59,9 @@ export interface CreateSegmentVideoRecordInput {
   sceneId: string;
   order: number;
   status?: SegmentVideoStatus;
+  promptTextSeed?: string;
+  promptTextCurrent?: string;
+  promptUpdatedAt?: string;
   videoAssetPath?: string | null;
   thumbnailAssetPath?: string | null;
   durationSec?: number | null;
@@ -119,6 +122,9 @@ export function createSegmentVideoRecord(
     sceneId: input.sceneId,
     order: input.order,
     status: input.status ?? "generating",
+    promptTextSeed: input.promptTextSeed ?? "",
+    promptTextCurrent: input.promptTextCurrent ?? "",
+    promptUpdatedAt: input.promptUpdatedAt ?? input.updatedAt,
     videoAssetPath: input.videoAssetPath ?? null,
     thumbnailAssetPath: input.thumbnailAssetPath ?? null,
     durationSec: input.durationSec ?? null,

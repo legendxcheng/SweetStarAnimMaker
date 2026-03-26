@@ -379,6 +379,150 @@ describe("ImagePhasePanel", () => {
     ).toBe(true);
   });
 
+  it("submits batch frame regeneration requests and disables image actions while pending", async () => {
+    const refreshProject = vi.fn();
+    let resolveFirstFrame: (() => void) | undefined;
+    let resolveSecondFrame: (() => void) | undefined;
+
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce(imageListResponse)
+      .mockResolvedValueOnce({
+        ...imageListResponse,
+        frames: imageListResponse.frames.map((frame) => ({
+          ...frame,
+          imageStatus: "generating" as const,
+        })),
+      });
+    vi.spyOn(apiModule.apiClient, "generateImageFrame")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstFrame = () =>
+              resolve({
+                id: "task-frame-image-1",
+                projectId: "proj-1",
+                type: "frame_image_generate",
+                status: "pending",
+                createdAt: "2024-01-01T00:00:10Z",
+                updatedAt: "2024-01-01T00:00:10Z",
+                startedAt: null,
+                finishedAt: null,
+                errorMessage: null,
+                files: {
+                  inputPath: "tasks/task-frame-image-1/input.json",
+                  outputPath: "tasks/task-frame-image-1/output.json",
+                  logPath: "tasks/task-frame-image-1/log.txt",
+                },
+              });
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondFrame = () =>
+              resolve({
+                id: "task-frame-image-2",
+                projectId: "proj-1",
+                type: "frame_image_generate",
+                status: "pending",
+                createdAt: "2024-01-01T00:00:11Z",
+                updatedAt: "2024-01-01T00:00:11Z",
+                startedAt: null,
+                finishedAt: null,
+                errorMessage: null,
+                files: {
+                  inputPath: "tasks/task-frame-image-2/input.json",
+                  outputPath: "tasks/task-frame-image-2/output.json",
+                  logPath: "tasks/task-frame-image-2/log.txt",
+                },
+              });
+          }),
+      );
+
+    render(
+      <ImagePhasePanel
+        project={baseProject}
+        task={null}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={refreshProject}
+      />,
+    );
+
+    const batchButton = await screen.findByRole("button", {
+      name: "重新生成当前批次全部帧",
+    });
+    const singleFrameButton = screen.getByRole("button", { name: "生成起始帧图片" });
+
+    fireEvent.click(batchButton);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.generateImageFrame).toHaveBeenNthCalledWith(
+        1,
+        "proj-1",
+        "frame-start-1",
+      );
+    });
+
+    expect(batchButton).toBeDisabled();
+    expect(singleFrameButton).toBeDisabled();
+
+    await act(async () => {
+      resolveFirstFrame?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.generateImageFrame).toHaveBeenNthCalledWith(
+        2,
+        "proj-1",
+        "frame-end-1",
+      );
+    });
+
+    expect(batchButton).toBeDisabled();
+    expect(singleFrameButton).toBeDisabled();
+
+    await act(async () => {
+      resolveSecondFrame?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(refreshProject).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("renders the batch frame regenerate button in the top action area", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
+
+    renderPanel();
+
+    const batchFrameButton = await screen.findByRole("button", {
+      name: "重新生成当前批次全部帧",
+    });
+    const batchPromptButton = screen.getByRole("button", {
+      name: "重新生成当前批次全部 Prompt",
+    });
+    const segmentHeading = screen.getByRole("heading", { name: "Segment 1" });
+
+    expect(
+      batchFrameButton.compareDocumentPosition(segmentHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      batchPromptButton.compareDocumentPosition(batchFrameButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("polls pending frame prompts and keeps image generation disabled until prompts are ready", async () => {
     let refreshTimer: (() => void) | undefined;
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {

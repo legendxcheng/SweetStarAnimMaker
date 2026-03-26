@@ -106,6 +106,7 @@ export function createGetProjectDetailUseCase(
         currentCharacterSheetBatch,
         currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
         premiseText,
+        project.visualStyleText,
         currentShotScript ? toCurrentShotScriptSummary(currentShotScript) : null,
         currentImageBatch,
         currentVideoBatch,

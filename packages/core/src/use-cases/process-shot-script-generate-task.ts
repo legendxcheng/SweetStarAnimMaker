@@ -11,6 +11,7 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import { isTaskStillActive } from "./task-reset-guard";
 import {
   createTaskRecord,
   shotScriptSegmentGenerateQueueName,
@@ -78,6 +79,10 @@ export function createProcessShotScriptGenerateTaskUseCase(
             updatedAt: startedAt,
           });
 
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return;
+          }
+
           await dependencies.shotScriptStorage.writeCurrentShotScript({
             storageDir: project.storageDir,
             shotScript,
@@ -89,6 +94,10 @@ export function createProcessShotScriptGenerateTaskUseCase(
 
           for (const scene of taskInput.storyboard.scenes) {
             for (const segment of scene.segments) {
+              if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+                return;
+              }
+
               const segmentTask = createTaskRecord({
                 id: dependencies.taskIdGenerator.generateTaskId(),
                 projectId: project.id,
@@ -132,6 +141,10 @@ export function createProcessShotScriptGenerateTaskUseCase(
                 taskType: segmentTask.type,
               });
             }
+          }
+
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return;
           }
 
           const finishedAt = dependencies.clock.now();
@@ -179,6 +192,11 @@ export function createProcessShotScriptGenerateTaskUseCase(
           promptText,
           variables: promptVariables,
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
 
         await dependencies.shotScriptStorage.writeRawResponse({
@@ -226,6 +244,10 @@ export function createProcessShotScriptGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

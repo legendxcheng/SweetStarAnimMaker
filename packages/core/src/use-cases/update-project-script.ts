@@ -74,6 +74,7 @@ export function createUpdateProjectScriptUseCase(
         null,
         null,
         premiseText,
+        project.visualStyleText,
       );
     },
   };

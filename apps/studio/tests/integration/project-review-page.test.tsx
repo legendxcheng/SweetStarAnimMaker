@@ -102,6 +102,7 @@ const shotScriptWorkspace = {
             visual: "暴雨中的码头反着冷蓝色灯牌。",
             subject: "林夏",
             action: "林夏撑伞穿过码头入口。",
+            frameDependency: "start_frame_only" as const,
             dialogue: null,
             os: "今晚绝不能出错。",
             audio: "暴雨、风声、船笛。",
@@ -136,6 +137,79 @@ const refreshedShotScriptWorkspace = {
           {
             ...shotScriptWorkspace.currentShotScript.segments[0].shots[0],
             transitionHint: "缓慢推近",
+          },
+        ],
+      },
+    ],
+  },
+};
+
+const multiSceneStoryboardWorkspace = {
+  ...workspace,
+  currentStoryboard: {
+    ...workspace.currentStoryboard,
+    scenes: [
+      ...workspace.currentStoryboard.scenes,
+      {
+        id: "scene-2",
+        order: 2,
+        name: "Second Wind",
+        dramaticPurpose: "Push Rin toward the next decision.",
+        segments: [
+          {
+            id: "segment-2",
+            order: 1,
+            durationSec: 8,
+            visual: "A flare tears across the flooded skyline.",
+            characterAction: "Rin turns toward the harbor lights.",
+            dialogue: "The signal came back.",
+            voiceOver: null,
+            audio: "Rain eases into a metallic echo.",
+            purpose: "Set up the turn.",
+          },
+        ],
+      },
+    ],
+  },
+};
+
+const multiSceneShotScriptWorkspace = {
+  ...shotScriptWorkspace,
+  currentShotScript: {
+    ...shotScriptWorkspace.currentShotScript,
+    segmentCount: 2,
+    shotCount: 2,
+    totalDurationSec: 8,
+    segments: [
+      ...shotScriptWorkspace.currentShotScript.segments,
+      {
+        segmentId: "segment-2",
+        sceneId: "scene-2",
+        order: 1,
+        name: "灯塔回响",
+        summary: "林夏在灯塔下确认新的目标。",
+        durationSec: 4,
+        status: "in_review" as const,
+        lastGeneratedAt: "2024-01-01T00:00:01Z",
+        approvedAt: null,
+        shots: [
+          {
+            id: "shot-2",
+            sceneId: "scene-2",
+            segmentId: "segment-2",
+            order: 1,
+            shotCode: "S02-SG01-SH01",
+            purpose: "切到第二场。",
+            visual: "灯塔的光扫过潮湿的台阶。",
+            subject: "林夏",
+            action: "林夏停下脚步回头。",
+            frameDependency: "start_frame_only" as const,
+            dialogue: null,
+            os: null,
+            audio: "海浪、风声、灯塔机械声。",
+            transitionHint: null,
+            continuityNotes: "仍然保持黑伞和湿透外套。",
+            durationSec: 4,
           },
         ],
       },
@@ -230,6 +304,7 @@ function renderShotScriptPage() {
 
 describe("Project Review Page", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     globalThis.alert = vi.fn();
   });
@@ -248,6 +323,23 @@ describe("Project Review Page", () => {
     expect(
       screen.getByDisplayValue("Rain shakes across the cockpit glass."),
     ).toBeInTheDocument();
+  });
+
+  it("keeps storyboard scene navigation as a non-shrinking single-row scroller", async () => {
+    vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace").mockResolvedValue(
+      multiSceneStoryboardWorkspace,
+    );
+
+    renderPage();
+
+    const nav = await screen.findByRole("navigation", { name: "Scene 导航" });
+    const sceneButton = screen.getByRole("button", { name: /Opening/ });
+
+    expect(nav).toHaveClass("shrink-0");
+    expect(nav).toHaveClass("overflow-x-auto");
+    expect(nav).toHaveClass("overflow-y-hidden");
+    expect(sceneButton).toHaveClass("shrink-0");
+    expect(sceneButton).toHaveClass("whitespace-nowrap");
   });
 
   it("loads the master-plot workspace and renders editable fields", async () => {
@@ -285,7 +377,25 @@ describe("Project Review Page", () => {
     expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
     expect(screen.getByDisplayValue("S01-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("暴雨中的码头反着冷蓝色灯牌。")).toBeInTheDocument();
+    expect(screen.getByLabelText("镜头 1 画面依赖")).toHaveValue("start_frame_only");
     expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
+  });
+
+  it("keeps shot-script scene navigation as a non-shrinking single-row scroller", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
+      multiSceneShotScriptWorkspace,
+    );
+
+    renderShotScriptPage();
+
+    const nav = await screen.findByRole("navigation", { name: "Scene 导航" });
+    const sceneButton = screen.getByRole("button", { name: /scene-1/ });
+
+    expect(nav).toHaveClass("shrink-0");
+    expect(nav).toHaveClass("overflow-x-auto");
+    expect(nav).toHaveClass("overflow-y-hidden");
+    expect(sceneButton).toHaveClass("shrink-0");
+    expect(sceneButton).toHaveClass("whitespace-nowrap");
   });
 
   it("disables storyboard top regenerate while there are unsaved changes", async () => {
@@ -428,6 +538,9 @@ describe("Project Review Page", () => {
     fireEvent.change(screen.getByLabelText("段落 1 标题"), {
       target: { value: "雨夜码头加强版" },
     });
+    fireEvent.change(screen.getByLabelText("镜头 1 画面依赖"), {
+      target: { value: "start_and_end_frame" },
+    });
     fireEvent.change(screen.getByLabelText("镜头 1 转场提示"), {
       target: { value: "缓慢推近" },
     });
@@ -453,6 +566,7 @@ describe("Project Review Page", () => {
               visual: "暴雨中的码头反着冷蓝色灯牌。",
               subject: "林夏",
               action: "林夏撑伞穿过码头入口。",
+              frameDependency: "start_and_end_frame",
               dialogue: null,
               os: "今晚绝不能出错。",
               audio: "暴雨、风声、船笛。",

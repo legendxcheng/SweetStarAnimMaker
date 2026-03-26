@@ -1,11 +1,12 @@
 import type { CurrentShotScript } from "@sweet-star/shared";
+import { toShotScriptSegmentSelector } from "@sweet-star/shared";
 
 import { mergeShotScriptSegment, toApprovedShotScriptSegment } from "../domain/shot-script";
 import {
   createShotScriptReviewId,
   createShotScriptReviewRecord,
 } from "../domain/shot-script-review";
-import { ProjectNotFoundError } from "../errors/project-errors";
+import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -46,11 +47,23 @@ export function createApproveAllShotScriptSegmentsUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
+      const incompleteSegment = currentShotScript.segments.find(
+        (segment) => segment.status === "pending" || segment.shots.length === 0,
+      );
+
+      if (incompleteSegment) {
+        throw new ProjectValidationError(
+          `Shot script approve-all requires a complete draft before approval: ${toShotScriptSegmentSelector(
+            incompleteSegment,
+          )}`,
+        );
+      }
+
       const approvedAt = dependencies.clock.now();
       let updatedShotScript = currentShotScript;
 
       for (const segment of currentShotScript.segments) {
-        if (segment.status === "approved" || segment.shots.length === 0) {
+        if (segment.status === "approved") {
           continue;
         }
 

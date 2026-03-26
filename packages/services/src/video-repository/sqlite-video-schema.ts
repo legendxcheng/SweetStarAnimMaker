@@ -29,6 +29,9 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
       scene_id TEXT NOT NULL,
       segment_order INTEGER NOT NULL,
       status TEXT NOT NULL,
+      prompt_text_seed TEXT NOT NULL DEFAULT '',
+      prompt_text_current TEXT NOT NULL DEFAULT '',
+      prompt_updated_at TEXT NOT NULL DEFAULT '',
       video_asset_path TEXT NULL,
       thumbnail_asset_path TEXT NULL,
       duration_sec REAL NULL,
@@ -46,4 +49,20 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
       FOREIGN KEY(batch_id) REFERENCES video_batches(id)
     )
   `);
+
+  ensureSegmentVideosColumn(db, "prompt_text_seed", "TEXT NOT NULL DEFAULT ''");
+  ensureSegmentVideosColumn(db, "prompt_text_current", "TEXT NOT NULL DEFAULT ''");
+  ensureSegmentVideosColumn(db, "prompt_updated_at", "TEXT NOT NULL DEFAULT ''");
+}
+
+function ensureSegmentVideosColumn(
+  db: SqliteDatabase,
+  columnName: string,
+  columnDefinition: string,
+) {
+  const columns = db.prepare("PRAGMA table_info(segment_videos)").all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE segment_videos ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
 }

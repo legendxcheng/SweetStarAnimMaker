@@ -48,6 +48,7 @@ describe("create project use case", () => {
     const result = await useCase.execute({
       name: "My Story",
       premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
     });
 
     expect(repository.insert).toHaveBeenCalledWith(
@@ -56,6 +57,7 @@ describe("create project use case", () => {
         slug: "my-story",
         storageDir: "projects/proj_20260317_ab12cd-my-story",
         premiseBytes: 88,
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
       }),
     );
     expect(masterPlotStorage.initializePromptTemplate).toHaveBeenCalledWith({
@@ -75,6 +77,7 @@ describe("create project use case", () => {
         bytes: 88,
         updatedAt: "2026-03-17T00:00:00.000Z",
         text: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
       },
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
@@ -132,6 +135,7 @@ describe("create project use case", () => {
       useCase.execute({
         name: "My Story",
         premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
       }),
     ).rejects.toThrow("insert failed");
 

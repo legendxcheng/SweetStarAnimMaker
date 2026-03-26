@@ -294,7 +294,7 @@ export function ReviewWorkspacePage() {
                 </div>
 
                 {currentDraft.scenes.length > 1 && (
-                  <nav aria-label="Scene 导航" className="rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5 flex gap-1 overflow-x-auto">
+                  <nav aria-label="Scene 导航" className="shrink-0 rounded-xl bg-(--color-bg-surface) border border-(--color-border) p-1.5 flex gap-1 overflow-x-auto overflow-y-hidden">
                     {currentDraft.scenes.map((scene, index) => {
                       const isActive = index === activeSceneIndex;
                       return (
@@ -303,7 +303,7 @@ export function ReviewWorkspacePage() {
                           type="button"
                           onClick={() => setActiveSceneIndex(index)}
                           className={[
-                            "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                            "relative shrink-0 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
                             isActive
                               ? "bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) shadow-sm"
                               : "text-(--color-text-muted) hover:text-(--color-text-primary) hover:bg-(--color-bg-elevated)",

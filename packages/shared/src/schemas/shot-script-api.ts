@@ -11,6 +11,7 @@ const shotScriptSegmentStatuses = [
   "in_review",
   "approved",
 ] as const;
+const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
 
 export const shotScriptItemResponseSchema = z.object({
   id: z.string(),
@@ -23,6 +24,7 @@ export const shotScriptItemResponseSchema = z.object({
   visual: requiredTextSchema,
   subject: requiredTextSchema,
   action: requiredTextSchema,
+  frameDependency: z.enum(shotFrameDependencies),
   dialogue: z.string().trim().min(1).nullable(),
   os: z.string().trim().min(1).nullable(),
   audio: z.string().trim().min(1).nullable(),

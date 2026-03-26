@@ -51,6 +51,10 @@ export function createRegenerateMasterPlotUseCase(
         projectId: project.id,
         batchId: null,
       });
+      await dependencies.projectRepository.updateCurrentVideoBatch?.({
+        projectId: project.id,
+        batchId: null,
+      });
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
         status: "premise_ready",

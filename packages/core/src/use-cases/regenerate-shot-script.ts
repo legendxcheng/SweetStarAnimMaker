@@ -27,6 +27,9 @@ const shotScriptRegenerateAllowedStatuses = new Set([
   "images_generating",
   "images_in_review",
   "images_approved",
+  "videos_generating",
+  "videos_in_review",
+  "videos_approved",
 ]);
 
 export function createRegenerateShotScriptUseCase(
@@ -55,6 +58,10 @@ export function createRegenerateShotScriptUseCase(
         shotScriptId: null,
       });
       await dependencies.projectRepository.updateCurrentImageBatch({
+        projectId: project.id,
+        batchId: null,
+      });
+      await dependencies.projectRepository.updateCurrentVideoBatch?.({
         projectId: project.id,
         batchId: null,
       });

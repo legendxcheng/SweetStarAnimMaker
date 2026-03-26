@@ -55,6 +55,9 @@ const videoListResponse = {
       sceneId: "scene-1",
       order: 1,
       status: "in_review" as const,
+      promptTextSeed: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
+      promptTextCurrent: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
+      promptUpdatedAt: "2024-01-01T00:00:11Z",
       videoAssetPath: "videos/batches/video-batch-1/segments/segment-1/current.mp4",
       thumbnailAssetPath: "videos/batches/video-batch-1/segments/segment-1/thumbnail.webp",
       durationSec: 6,
@@ -87,9 +90,32 @@ describe("VideoPhasePanel", () => {
     vi.clearAllMocks();
   });
 
-  it("loads the current video batch and supports regenerate, approve, and approve-all actions", async () => {
+  it("loads the current video batch and supports prompt editing plus segment and batch actions", async () => {
     const refreshProject = vi.fn();
     vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue(videoListResponse);
+    vi.spyOn(apiModule.apiClient, "updateVideoPrompt").mockResolvedValue({
+      ...videoListResponse.segments[0],
+      promptTextCurrent: "用户改写后的视频提示词",
+      promptUpdatedAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateVideoPrompt").mockResolvedValue({
+      ...videoListResponse.segments[0],
+      promptTextCurrent: "重新生成后的视频提示词",
+      promptUpdatedAt: "2024-01-01T00:00:13Z",
+      updatedAt: "2024-01-01T00:00:13Z",
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateAllVideoPrompts").mockResolvedValue({
+      currentBatch: videoListResponse.currentBatch,
+      segments: [
+        {
+          ...videoListResponse.segments[0],
+          promptTextCurrent: "批量重生成后的视频提示词",
+          promptUpdatedAt: "2024-01-01T00:00:14Z",
+          updatedAt: "2024-01-01T00:00:14Z",
+        },
+      ],
+    });
     vi.spyOn(apiModule.apiClient, "regenerateVideoSegment").mockResolvedValue({
       id: "task-video-segment-regen-1",
       projectId: "proj-1",
@@ -139,6 +165,37 @@ describe("VideoPhasePanel", () => {
     expect(screen.getByText("sora-2-all")).toBeInTheDocument();
     expect(screen.getByText("vector-engine")).toBeInTheDocument();
     expect(screen.getByText("6s")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成所有段落提示词" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成所有视频段落" })).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByDisplayValue("雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。"),
+      {
+        target: { value: "用户改写后的视频提示词" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存提示词" }));
+    await waitFor(() => {
+      expect(apiModule.apiClient.updateVideoPrompt).toHaveBeenCalledWith("proj-1", "video-segment-1", {
+        promptTextCurrent: "用户改写后的视频提示词",
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成当前段落提示词" }));
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateVideoPrompt).toHaveBeenCalledWith(
+        "proj-1",
+        "video-segment-1",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成所有段落提示词" }));
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateAllVideoPrompts).toHaveBeenCalledWith("proj-1");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "重新生成当前片段" }));
     await waitFor(() => {
@@ -146,6 +203,11 @@ describe("VideoPhasePanel", () => {
         "proj-1",
         "video-segment-1",
       );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成所有视频段落" }));
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateVideoSegment).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "审核通过当前片段" }));
@@ -161,7 +223,46 @@ describe("VideoPhasePanel", () => {
       expect(apiModule.apiClient.approveAllVideoSegments).toHaveBeenCalledWith("proj-1");
     });
 
-    expect(refreshProject).toHaveBeenCalledTimes(3);
+    expect(refreshProject).toHaveBeenCalledTimes(4);
+  });
+
+  it("disables video regeneration while a prompt draft is unsaved", async () => {
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue(videoListResponse);
+    vi.spyOn(apiModule.apiClient, "updateVideoPrompt").mockResolvedValue({
+      ...videoListResponse.segments[0],
+      promptTextCurrent: "新的保存后提示词",
+      promptUpdatedAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    fireEvent.change(
+      screen.getByDisplayValue("雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。"),
+      {
+        target: { value: "新的保存后提示词" },
+      },
+    );
+
+    expect(screen.getByRole("button", { name: "保存提示词" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "重新生成当前片段" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "重新生成所有视频段落" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "保存提示词" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.updateVideoPrompt).toHaveBeenCalledWith("proj-1", "video-segment-1", {
+        promptTextCurrent: "新的保存后提示词",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "保存提示词" })).not.toBeInTheDocument();
+    });
   });
 
   it("shows the generate entry when the current video batch does not exist", () => {
@@ -180,5 +281,59 @@ describe("VideoPhasePanel", () => {
 
     expect(onGenerate).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/为每个 Segment 生成一个可审核视频片段/i)).toBeInTheDocument();
+  });
+
+  it("reloads the current batch after project status changes for the same batch", async () => {
+    const generatingProject = {
+      ...baseProject,
+      status: "videos_generating" as const,
+      updatedAt: "2024-01-01T00:00:20Z",
+    };
+    const refreshedProject = {
+      ...generatingProject,
+      status: "videos_in_review" as const,
+      updatedAt: "2024-01-01T00:00:30Z",
+    };
+    const listVideos = vi
+      .spyOn(apiModule.apiClient, "listVideos")
+      .mockResolvedValueOnce({
+        currentBatch: generatingProject.currentVideoBatch,
+        segments: [
+          {
+            ...videoListResponse.segments[0],
+            status: "generating" as const,
+            videoAssetPath: null,
+            thumbnailAssetPath: null,
+            updatedAt: "2024-01-01T00:00:20Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce(videoListResponse);
+
+    const view = renderPanel({
+      project: generatingProject,
+    });
+
+    await waitFor(() => {
+      expect(listVideos).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByText("当前 Segment 还没有可播放视频")).toBeInTheDocument();
+
+    view.rerender(
+      <VideoPhasePanel
+        project={refreshedProject}
+        task={null}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(listVideos).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText("vector-engine")).toBeInTheDocument();
   });
 });

@@ -6,13 +6,65 @@ describe("project api schema", () => {
     const parsed = shared.createProjectRequestSchema.parse({
       name: "My Story",
       premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+      visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
     });
 
     expect(parsed.name).toBe("My Story");
     expect(parsed.premiseText).toContain("singing comet");
+    expect(parsed.visualStyleText).toContain("赛璐璐");
+  });
+
+  it("accepts a valid reset-project-premise payload", () => {
+    const parsed = shared.resetProjectPremiseRequestSchema.parse({
+      premiseText: "A retired courier steals back a star map from a drowned archive.",
+      visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+      confirmReset: true,
+    });
+
+    expect(parsed.premiseText).toContain("star map");
+    expect(parsed.visualStyleText).toContain("潮湿港口");
+    expect(parsed.confirmReset).toBe(true);
+  });
+
+  it("rejects reset-project-premise payloads without explicit confirmation", () => {
+    expect(() =>
+      shared.resetProjectPremiseRequestSchema.parse({
+        premiseText: "A retired courier steals back a star map from a drowned archive.",
+        visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+      }),
+    ).toThrow();
   });
 
   it("accepts project detail without a current master plot", () => {
+    const parsed = shared.projectDetailResponseSchema.parse({
+      id: "proj_20260317_ab12cd",
+      name: "My Story",
+      slug: "my-story",
+      status: "premise_ready",
+      storageDir: "projects/proj_20260317_ab12cd-my-story",
+      createdAt: "2026-03-17T12:00:00.000Z",
+      updatedAt: "2026-03-17T12:00:00.000Z",
+      premise: {
+        path: "premise/v1.md",
+        bytes: 123,
+        updatedAt: "2026-03-17T12:00:00.000Z",
+        text: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
+      },
+      currentMasterPlot: null,
+      currentCharacterSheetBatch: null,
+      currentStoryboard: null,
+      currentShotScript: null,
+      currentImageBatch: null,
+      currentVideoBatch: null,
+    });
+
+    expect(parsed.currentMasterPlot).toBeNull();
+    expect(parsed.premise.text).toContain("singing comet");
+    expect(parsed.premise.visualStyleText).toContain("赛璐璐");
+  });
+
+  it("defaults missing premise visual style text for legacy project detail payloads", () => {
     const parsed = shared.projectDetailResponseSchema.parse({
       id: "proj_20260317_ab12cd",
       name: "My Story",
@@ -35,8 +87,7 @@ describe("project api schema", () => {
       currentVideoBatch: null,
     });
 
-    expect(parsed.currentMasterPlot).toBeNull();
-    expect(parsed.premise.text).toContain("singing comet");
+    expect(parsed.premise.visualStyleText).toBe("");
   });
 
   it("exposes the expanded master-plot workflow statuses", () => {
@@ -184,6 +235,7 @@ describe("project api schema", () => {
         bytes: 123,
         updatedAt: "2026-03-21T12:00:00.000Z",
         text: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
       },
       currentMasterPlot: {
         id: "master_plot_v1",

@@ -4,6 +4,8 @@ import type {
   GenerateCharacterSheetPromptResult,
 } from "@sweet-star/core";
 
+import { buildProviderRequestError } from "./provider-request-error";
+
 export interface CreateGeminiCharacterSheetProviderOptions {
   baseUrl?: string;
   apiToken?: string;
@@ -66,9 +68,8 @@ export function createGeminiCharacterSheetProvider(
         });
 
         if (!response.ok) {
-          throw new Error(
-            `Gemini character sheet provider request failed with status ${response.status}`,
-          );
+          const bodyText = typeof response.text === "function" ? await response.text() : null;
+          throw buildProviderRequestError("Gemini character sheet", response.status, bodyText);
         }
 
         const rawResponse = await response.json();

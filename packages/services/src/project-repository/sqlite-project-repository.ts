@@ -1,6 +1,7 @@
 import type {
   ProjectRecord,
   ProjectRepository,
+  ResetProjectToPremiseInput,
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentImageBatchInput,
   UpdateCurrentMasterPlotInput,
@@ -29,6 +30,7 @@ interface SqliteProjectRow {
   current_shot_script_id: string | null;
   current_image_batch_id: string | null;
   current_video_batch_id: string | null;
+  visual_style_text?: string | null;
   script_rel_path?: string | null;
   script_bytes?: number | null;
   script_updated_at?: string | null;
@@ -78,6 +80,7 @@ export function createSqliteProjectRepository(
                 current_shot_script_id,
                 current_image_batch_id,
                 current_video_batch_id,
+                visual_style_text,
                 script_rel_path,
                 script_bytes,
                 script_updated_at
@@ -98,6 +101,7 @@ export function createSqliteProjectRepository(
                 @current_shot_script_id,
                 @current_image_batch_id,
                 @current_video_batch_id,
+                @visual_style_text,
                 @script_rel_path,
                 @script_bytes,
                 @script_updated_at
@@ -127,7 +131,8 @@ export function createSqliteProjectRepository(
               current_storyboard_id,
               current_shot_script_id,
               current_image_batch_id,
-              current_video_batch_id
+              current_video_batch_id,
+              visual_style_text
             ) VALUES (
               @id,
               @name,
@@ -144,7 +149,8 @@ export function createSqliteProjectRepository(
               @current_storyboard_id,
               @current_shot_script_id,
               @current_image_batch_id,
-              @current_video_batch_id
+              @current_video_batch_id,
+              @visual_style_text
             )
           `,
         )
@@ -170,7 +176,8 @@ export function createSqliteProjectRepository(
               current_storyboard_id,
               current_shot_script_id,
               current_image_batch_id,
-              current_video_batch_id${legacySelectColumns}
+              current_video_batch_id,
+              visual_style_text${legacySelectColumns}
             FROM projects
             WHERE id = ?
           `,
@@ -199,7 +206,8 @@ export function createSqliteProjectRepository(
               current_storyboard_id,
               current_shot_script_id,
               current_image_batch_id,
-              current_video_batch_id${legacySelectColumns}
+              current_video_batch_id,
+              visual_style_text${legacySelectColumns}
             FROM projects
             ORDER BY updated_at DESC
           `,
@@ -269,6 +277,9 @@ export function createSqliteProjectRepository(
     },
     updateStatus(input) {
       updateProjectStatus(options.db, input);
+    },
+    resetToPremise(input) {
+      resetProjectToPremise(options.db, input, hasLegacyScriptColumns);
     },
   };
 }
@@ -370,6 +381,131 @@ function updateProjectStatus(db: SqliteDatabase, input: UpdateProjectStatusInput
   });
 }
 
+function resetProjectToPremise(
+  db: SqliteDatabase,
+  input: ResetProjectToPremiseInput,
+  hasLegacyScriptColumns: boolean,
+) {
+  const transaction = db.transaction(() => {
+    db.prepare(
+      `
+        DELETE FROM storyboard_reviews
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM shot_script_reviews
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM storyboard_versions
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM character_sheets
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM character_sheet_batches
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM shot_image_frames
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM shot_image_batches
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM segment_videos
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM video_batches
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+    db.prepare(
+      `
+        DELETE FROM tasks
+        WHERE project_id = ?
+      `,
+    ).run(input.projectId);
+
+    const params = {
+      project_id: input.projectId,
+      premise_bytes: input.premiseBytes,
+      updated_at: input.updatedAt,
+      premise_updated_at: input.premiseUpdatedAt,
+      visual_style_text: input.visualStyleText,
+      status: "premise_ready",
+      script_bytes: input.premiseBytes,
+      script_updated_at: input.premiseUpdatedAt,
+    };
+
+    if (hasLegacyScriptColumns) {
+      db.prepare(
+        `
+          UPDATE projects
+          SET
+            premise_bytes = @premise_bytes,
+            updated_at = @updated_at,
+            premise_updated_at = @premise_updated_at,
+            visual_style_text = @visual_style_text,
+            status = @status,
+            current_master_plot_id = NULL,
+            current_character_sheet_batch_id = NULL,
+            current_storyboard_id = NULL,
+            current_shot_script_id = NULL,
+            current_image_batch_id = NULL,
+            current_video_batch_id = NULL,
+            script_bytes = @script_bytes,
+            script_updated_at = @script_updated_at
+          WHERE id = @project_id
+        `,
+      ).run(params);
+      return;
+    }
+
+    db.prepare(
+      `
+        UPDATE projects
+        SET
+          premise_bytes = @premise_bytes,
+          updated_at = @updated_at,
+          premise_updated_at = @premise_updated_at,
+          visual_style_text = @visual_style_text,
+          status = @status,
+          current_master_plot_id = NULL,
+          current_character_sheet_batch_id = NULL,
+          current_storyboard_id = NULL,
+          current_shot_script_id = NULL,
+          current_image_batch_id = NULL,
+          current_video_batch_id = NULL
+        WHERE id = @project_id
+      `,
+    ).run(params);
+  });
+
+  transaction();
+}
+
 function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
   return {
     id: project.id,
@@ -388,6 +524,7 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     current_shot_script_id: project.currentShotScriptId,
     current_image_batch_id: project.currentImageBatchId,
     current_video_batch_id: project.currentVideoBatchId,
+    visual_style_text: project.visualStyleText,
     script_rel_path: project.premiseRelPath,
     script_bytes: project.premiseBytes,
     script_updated_at: project.premiseUpdatedAt,
@@ -416,6 +553,7 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     currentShotScriptId: row.current_shot_script_id,
     currentImageBatchId: row.current_image_batch_id,
     currentVideoBatchId: row.current_video_batch_id,
+    visualStyleText: row.visual_style_text ?? "",
     status: normalizeProjectStatus(row.status),
     createdAt: row.created_at,
     updatedAt: row.updated_at,

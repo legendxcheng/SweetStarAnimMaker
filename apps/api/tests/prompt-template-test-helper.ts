@@ -42,6 +42,11 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "prompt-templates",
     "shot_image.generate.txt",
   );
+  const segmentVideoTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "segment_video.generate.txt",
+  );
 
   await fs.mkdir(path.dirname(masterPlotPromptTemplatePath), { recursive: true });
   await fs.writeFile(
@@ -112,6 +117,15 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
       "{{shot.environment}}",
       "{{shot.subjectCharacters}}",
       "{{promptTextCurrent}}",
+    ].join("\n"),
+    "utf8",
+  );
+  await fs.writeFile(
+    segmentVideoTemplatePath,
+    [
+      "Create a segment video prompt.",
+      "Summary: {{segment_summary}}",
+      "Shots: {{shots_summary}}",
     ].join("\n"),
     "utf8",
   );

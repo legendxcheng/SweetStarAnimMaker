@@ -20,12 +20,14 @@ const baseProject = {
     bytes: 42,
     updatedAt: "2024-01-01T00:00:00Z",
     text: "A washed-up pilot discovers a singing comet above a drowned city.",
+    visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
   },
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
   currentStoryboard: null,
   currentShotScript: null,
   currentImageBatch: null,
+  currentVideoBatch: null,
 };
 
 const approvedMasterPlotProject = {
@@ -350,6 +352,63 @@ describe("Project Detail Page", () => {
     expect(screen.getByText("premise/v1.md")).toBeInTheDocument();
   });
 
+  it("resets the project premise after a second confirmation", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const resetProjectPremise = vi
+      .spyOn(apiModule.apiClient, "resetProjectPremise")
+      .mockResolvedValue({
+        ...baseProject,
+        premise: {
+          ...baseProject.premise,
+          text: "A retired courier steals back a star map from a drowned archive.",
+          visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+        },
+      });
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("textbox", { name: "Premise 文本" }),
+    ).toHaveValue(baseProject.premise.text);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Premise 文本" }), {
+      target: { value: "A retired courier steals back a star map from a drowned archive." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "画面风格描述" }), {
+      target: { value: "胶片颗粒感，潮湿港口，低饱和暖金补光" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "重新输入前提并重置项目" }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(resetProjectPremise).toHaveBeenCalledWith("proj-1", {
+        premiseText: "A retired courier steals back a star map from a drowned archive.",
+        visualStyleText: "胶片颗粒感，潮湿港口，低饱和暖金补光",
+        confirmReset: true,
+      });
+    });
+    expect(screen.getByRole("textbox", { name: "Premise 文本" })).toHaveValue(
+      "A retired courier steals back a star map from a drowned archive.",
+    );
+  });
+
+  it("does not reset the project premise when the user cancels confirmation", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const resetProjectPremise = vi.spyOn(apiModule.apiClient, "resetProjectPremise");
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("textbox", { name: "Premise 文本" }),
+    ).toHaveValue(baseProject.premise.text);
+    fireEvent.click(screen.getByRole("button", { name: "重新输入前提并重置项目" }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(resetProjectPremise).not.toHaveBeenCalled();
+  });
+
   it("switches to the master-plot panel when the user clicks 主情节", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(approvedMasterPlotProject);
 
@@ -573,6 +632,9 @@ describe("Project Detail Page", () => {
           sceneId: "scene-1",
           order: 1,
           status: "in_review" as const,
+          promptTextSeed: "seed video prompt",
+          promptTextCurrent: "current video prompt",
+          promptUpdatedAt: "2024-01-01T00:00:11Z",
           videoAssetPath: "videos/batches/video-batch-1/segments/segment-1/current.mp4",
           thumbnailAssetPath: "videos/batches/video-batch-1/segments/segment-1/thumbnail.webp",
           durationSec: 6,

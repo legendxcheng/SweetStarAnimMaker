@@ -4,7 +4,7 @@
 
 这份文档说明如何在 SweetStarAnimMaker 中通过 VectorEngine 调用 Kling 图生视频接口，并给出最小可用脚本入口、真实联调结果、以及常见故障排查方式。
 
-本文内容基于当前仓库实现和 2026-03-24 的实际联调结果整理。
+本文内容基于当前仓库实现，以及 2026-03-24 到 2026-03-26 的实际联调结果整理。
 
 ## 当前接入范围
 
@@ -33,6 +33,121 @@ Authorization: Bearer <VECTORENGINE_API_TOKEN>
 ```
 
 也就是说，这次 Kling 视频调用和项目里现有的生图、Gemini 调用一样，继续复用同一个 `VECTORENGINE_API_TOKEN`。
+## 2026-03-26 官方 Omni Video 实测补充
+
+除了当前仓库已经接入的 `image2video` 之外，2026-03-26 我还额外对照官方 Kling Omni Video 文档，直接验证了 VectorEngine 的 `omni-video` 中转接口。
+
+参考文档：
+
+- VectorEngine Apifox：`https://vectorengine.apifox.cn/api-394023139`
+- Kling 官方文档：`https://app.klingai.com/cn/dev/document-api/apiReference/model/OmniVideo`
+
+这次额外验证使用的中转路径是：
+
+```text
+POST /kling/v1/videos/omni-video
+GET  /kling/v1/videos/omni-video/{id}
+GET  /kling/v1/videos/omni-video?pageNum=1&pageSize=30
+```
+
+注意：
+
+- 当前仓库里的 provider 和 smoke 脚本仍然只正式接了 `image2video`
+- 下面这一节只是说明：VectorEngine 的 `omni-video` 中转在当前账号下已经做过真实探测
+
+### 这次验证的前提结论
+
+如果后续只考虑 `kling-v3-omni`，当前实测结论是：
+
+- `kling-v3-omni` 模型可以成功创建 `omni-video` 任务
+- `kling-v3-omni` + `duration=3` 可以成功创建任务
+- 单任务查询接口可用
+- 列表查询接口在 VectorEngine 中转地址上当前没有返回 JSON，而是返回 HTML 页面
+
+### 已确认成功的请求
+
+#### 1. `kling-v3-omni` 创建任务可用
+
+实测请求体包含：
+
+```json
+{
+  "model_name": "kling-v3-omni",
+  "prompt": "让<<<image_1>>>保持主体稳定，做轻微镜头推进。",
+  "image_list": [
+    {
+      "image_url": "https://h2.inkwai.com/bs2/upload-ylab-stunt/se/ai_portal_queue_mmu_image_upscale_aiweb/3214b798-e1b4-4b00-b7af-72b5b0417420_raw_image_0.jpg"
+    }
+  ],
+  "mode": "pro",
+  "aspect_ratio": "16:9",
+  "shot_type": "customize",
+  "duration": "3"
+}
+```
+
+实际成功返回过的任务包括：
+
+- `865962896030339133`
+- `865965353288339525`
+
+这说明以下几点已经验证通过：
+
+- VectorEngine 的 `POST /kling/v1/videos/omni-video` 在当前账号下可用
+- `model_name = "kling-v3-omni"` 可用
+- `duration = 3` 在 `kling-v3-omni` 下可用
+
+#### 2. 单任务查询接口可用
+
+实测查询：
+
+```text
+GET /kling/v1/videos/omni-video/{taskId}
+```
+
+对任务 `865965353288339525` 查询时，成功返回：
+
+- `message = "SUCCEED"`
+- `data.task_status = "submitted"`
+
+这说明：
+
+- VectorEngine 的 `GET /kling/v1/videos/omni-video/{id}` 在当前账号下可用
+- 判断任务状态时，仍然应以 `data.task_status` 为准，而不是只看顶层 `message`
+
+#### 3. 列表查询接口当前不按 JSON API 返回
+
+我还实测了：
+
+```text
+GET /kling/v1/videos/omni-video?pageNum=1&pageSize=5
+```
+
+返回结果是：
+
+- `HTTP 200`
+- `Content-Type: text/html; charset=utf-8`
+- 响应体是网页 HTML，不是 JSON
+
+这说明至少截至 2026-03-26：
+
+- 官方文档里的“查询任务（列表）”接口
+- 在 VectorEngine 的 `https://api.vectorengine.ai/kling/v1/videos/omni-video?pageNum=...` 这条中转路径上
+- 当前没有表现出可直接当作 JSON API 使用的行为
+
+### 关于 `duration` 的当前判断
+
+这次联调里有一个容易混淆的点：
+
+- `kling-video-o1` + `duration=3`，多次实测返回 `429`
+- 但同一时间段内，不带 `duration` 的对照请求可以成功
+- `kling-v3-omni` + `duration=3` 则可以成功创建任务
+
+因此如果你的目标模型固定是 `kling-v3-omni`，当前可以把以下结论当作已验证事实：
+
+- `duration=3` 可用
+
+但如果你不显式指定模型，不能把这个结论泛化到 `kling-video-o1`。
 
 ## 当前默认配置
 
@@ -345,3 +460,4 @@ duration must be between 3 and 15 for kling-v3
 尚未确认：
 
 - 当前账号和当前队列条件下，任务从 `submitted` 到最终视频 URL 的稳定完成时延
+

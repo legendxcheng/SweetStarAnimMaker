@@ -41,6 +41,7 @@ describe("process character sheet generate task use case", () => {
         storageDir: "projects/proj_20260321_ab12cd-my-story",
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
         currentMasterPlotId: "mp_20260321_ab12cd",
         currentCharacterSheetBatchId: "char_batch_task_20260321_character_sheets",
         currentStoryboardId: null,
@@ -239,7 +240,7 @@ describe("process character sheet generate task use case", () => {
       projectId: "proj_20260321_ab12cd",
       characterId: "char_task_20260321_character_sheets_rin_1",
       promptText:
-        "Turnaround sheet for Rin: silver pilot jacket, storm glare, scar at the brow",
+        "Turnaround sheet for Rin: silver pilot jacket, storm glare, scar at the brow\n\n画面风格：赛璐璐动画，冷色霓虹雨夜，电影感光影",
       referenceImagePaths: ["E:/tmp/ref-1.png"],
     });
     expect(characterSheetStorage.writeCurrentImage).toHaveBeenCalledWith({

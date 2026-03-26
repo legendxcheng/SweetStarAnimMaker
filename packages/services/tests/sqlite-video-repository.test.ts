@@ -62,6 +62,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       order: 1,
       status: "in_review",
+      promptTextSeed: "seed prompt 1",
+      promptTextCurrent: "current prompt 1",
+      promptUpdatedAt: "2026-03-25T01:04:00.000Z",
       updatedAt: "2026-03-25T01:05:00.000Z",
       sourceTaskId: "task_segment_1",
     });
@@ -114,6 +117,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       order: 1,
       status: "generating",
+      promptTextSeed: "seed prompt 2",
+      promptTextCurrent: "current prompt 2",
+      promptUpdatedAt: "2026-03-25T01:04:00.000Z",
       updatedAt: "2026-03-25T01:05:00.000Z",
     });
 
@@ -124,6 +130,8 @@ describe("sqlite video repository", () => {
     const updatedSegment = {
       ...segment,
       status: "approved" as const,
+      promptTextCurrent: "updated prompt 2",
+      promptUpdatedAt: "2026-03-25T01:09:00.000Z",
       videoAssetPath: "videos/batches/video_batch_2/segments/scene_1-segment_2/current.mp4",
       thumbnailAssetPath: "videos/batches/video_batch_2/segments/scene_1-segment_2/thumbnail.webp",
       durationSec: 8,
@@ -137,6 +145,9 @@ describe("sqlite video repository", () => {
     repository.updateSegment(updatedSegment);
 
     expect(repository.findSegmentById(segment.id)).toEqual(updatedSegment);
+    expect(repository.findSegmentById(segment.id)?.promptTextSeed).toBe("seed prompt 2");
+    expect(repository.findSegmentById(segment.id)?.promptTextCurrent).toBe("updated prompt 2");
+    expect(repository.findSegmentById(segment.id)?.promptUpdatedAt).toBe("2026-03-25T01:09:00.000Z");
   });
 
   it("finds the current segment by scene id and segment id when segment ids repeat across scenes", async () => {
@@ -171,6 +182,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       order: 1,
       status: "in_review",
+      promptTextSeed: "seed prompt scene 1",
+      promptTextCurrent: "current prompt scene 1",
+      promptUpdatedAt: "2026-03-25T01:04:00.000Z",
       updatedAt: "2026-03-25T01:05:00.000Z",
       sourceTaskId: "task_segment_scene_1",
     });
@@ -185,6 +199,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_2",
       order: 2,
       status: "in_review",
+      promptTextSeed: "seed prompt scene 2",
+      promptTextCurrent: "current prompt scene 2",
+      promptUpdatedAt: "2026-03-25T01:04:30.000Z",
       updatedAt: "2026-03-25T01:06:00.000Z",
       sourceTaskId: "task_segment_scene_2",
     });

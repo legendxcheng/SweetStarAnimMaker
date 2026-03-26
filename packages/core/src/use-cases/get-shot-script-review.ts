@@ -53,6 +53,9 @@ export function createGetShotScriptReviewUseCase(
         dependencies.taskRepository.findLatestByProjectId(project.id, "shot_script_generate"),
       ]);
       const latestTask = latestSegmentTask ?? latestBatchTask;
+      const hasIncompleteSegments = currentShotScript.segments.some(
+        (segment) => segment.status === "pending" || segment.shots.length === 0,
+      );
 
       return {
         projectId: project.id,
@@ -65,7 +68,7 @@ export function createGetShotScriptReviewUseCase(
           saveSegment: project.status === "shot_script_in_review",
           regenerateSegment: project.status === "shot_script_in_review",
           approveSegment: project.status === "shot_script_in_review",
-          approveAll: project.status === "shot_script_in_review",
+          approveAll: project.status === "shot_script_in_review" && !hasIncompleteSegments,
         },
       };
     },

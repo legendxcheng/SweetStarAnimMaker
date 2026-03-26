@@ -4,6 +4,8 @@ export type ShotScriptSegmentStatus =
   | "in_review"
   | "approved";
 
+export type ShotFrameDependency = "start_frame_only" | "start_and_end_frame";
+
 export interface ShotScriptItem {
   id: string;
   sceneId: string;
@@ -15,6 +17,7 @@ export interface ShotScriptItem {
   visual: string;
   subject: string;
   action: string;
+  frameDependency: ShotFrameDependency;
   dialogue: string | null;
   os: string | null;
   audio: string | null;

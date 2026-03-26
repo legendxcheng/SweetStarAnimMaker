@@ -161,6 +161,24 @@ export {
   type CreateStoryboardReviewRecordInput,
 } from "./domain/storyboard-review";
 export {
+  createUpdateVideoPromptUseCase,
+  type UpdateVideoPromptInput,
+  type UpdateVideoPromptUseCase,
+  type UpdateVideoPromptUseCaseDependencies,
+} from "./use-cases/update-video-prompt";
+export {
+  createRegenerateVideoPromptUseCase,
+  type RegenerateVideoPromptInput,
+  type RegenerateVideoPromptUseCase,
+  type RegenerateVideoPromptUseCaseDependencies,
+} from "./use-cases/regenerate-video-prompt";
+export {
+  createRegenerateAllVideoPromptsUseCase,
+  type RegenerateAllVideoPromptsInput,
+  type RegenerateAllVideoPromptsUseCase,
+  type RegenerateAllVideoPromptsUseCaseDependencies,
+} from "./use-cases/regenerate-all-video-prompts";
+export {
   characterSheetGenerateQueueName,
   characterSheetsGenerateQueueName,
   createTaskRecord,
@@ -261,6 +279,7 @@ export type {
 } from "./ports/character-sheet-storage";
 export type {
   ProjectRepository,
+  ResetProjectToPremiseInput,
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentImageBatchInput,
   UpdateCurrentMasterPlotInput,
@@ -775,3 +794,9 @@ export {
   type UpdateProjectScriptUseCase,
   type UpdateProjectScriptUseCaseDependencies,
 } from "./use-cases/update-project-script";
+export {
+  createResetProjectPremiseUseCase,
+  type ResetProjectPremiseInput,
+  type ResetProjectPremiseUseCase,
+  type ResetProjectPremiseUseCaseDependencies,
+} from "./use-cases/reset-project-premise";

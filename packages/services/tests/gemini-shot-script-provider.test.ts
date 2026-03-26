@@ -31,6 +31,7 @@ describe("gemini shot script provider", () => {
                         visual: "清晨积水漫过青石路。",
                         subject: "林夏站在水线边。",
                         action: "她停住脚步。",
+                        frameDependency: "start_frame_only",
                         dialogue: null,
                         os: "来得真快。",
                         audio: "雨声和摊贩叫卖声。",
@@ -48,6 +49,7 @@ describe("gemini shot script provider", () => {
                         visual: "她盯住前方杂乱摊棚后的黑影。",
                         subject: "林夏",
                         action: "抬眼锁定目标。",
+                        frameDependency: "start_and_end_frame",
                         dialogue: "果然有人先到了。",
                         os: null,
                         audio: "环境声压低，心跳声轻起。",
@@ -101,10 +103,81 @@ describe("gemini shot script provider", () => {
     expect(request.systemInstruction.parts[0].text).toContain("Simplified Chinese");
     expect(request.generationConfig.responseMimeType).toBe("application/json");
     expect(request.generationConfig.responseJsonSchema.properties.shots).toBeDefined();
+    expect(
+      request.generationConfig.responseJsonSchema.properties.shots.items.required,
+    ).toContain("frameDependency");
+    expect(
+      request.generationConfig.responseJsonSchema.properties.shots.items.properties.frameDependency,
+    ).toEqual({ type: "string" });
     expect(result.segment.segmentId).toBe("segment_1");
     expect(result.segment.summary).toBe("林夏在积水集市入口发现退路已被封住。");
     expect(result.segment.shots[0]?.shotCode).toBe("SC01-SG01-SH01");
+    expect(result.segment.shots[0]?.frameDependency).toBe("start_frame_only");
     expect(result.rawResponse).toContain("雨市压境");
+  });
+
+  it("accepts Gemini responses that prepend explanatory text before the JSON object", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `**Generating final shot script JSON...**
+{
+  "name": "借运成契",
+  "summary": "阿福按下血印后，借条中的金色气流涌入胸口。",
+  "shots": [
+    {
+      "id": "shot_1",
+      "sceneId": "scene_1",
+      "segmentId": "segment_1",
+      "order": 1,
+      "shotCode": "SC01-SG01-SH01",
+      "durationSec": 6,
+      "purpose": "完成借运契约的关键动作。",
+      "visual": "发光借条上的金色气流从纸面钻出。",
+      "subject": "阿福",
+      "action": "阿福按下血印后捂住胸口，金光涌入体内。",
+      "frameDependency": "start_and_end_frame",
+      "dialogue": "只要能救我女儿，什么代价我都愿意！",
+      "os": null,
+      "audio": "心跳加速的鼓点与法术声叠起。",
+      "transitionHint": "切特写",
+      "continuityNotes": "延续前镜头中阿福跪地持借条的姿态。"
+    }
+  ]
+}`,
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请生成中文镜头脚本。",
+      variables: {
+        scene: { id: "scene_1" },
+        segment: { id: "segment_1", order: 1, durationSec: 6 },
+      },
+    });
+
+    expect(result.segment.summary).toBe("阿福按下血印后，借条中的金色气流涌入胸口。");
+    expect(result.segment.shots[0]?.frameDependency).toBe("start_and_end_frame");
+    expect(result.rawResponse).toContain("**Generating final shot script JSON...**");
   });
 
   it("rejects non-2xx provider responses", async () => {
@@ -132,6 +205,42 @@ describe("gemini shot script provider", () => {
         },
       }),
     ).rejects.toThrow("Gemini shot script provider request failed with status 401");
+  });
+
+  it("includes prohibited-content details from provider error bodies", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () =>
+          JSON.stringify({
+            error: {
+              code: "PROHIBITED_CONTENT",
+              message:
+                "request blocked by Google Gemini (PROHIBITED_CONTENT): content is prohibited under official usage policies.",
+            },
+          }),
+      }),
+    );
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateShotScriptSegment({
+        promptText: "请生成镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+        },
+      }),
+    ).rejects.toThrow(
+      "Gemini shot script provider request failed with status 500; code=PROHIBITED_CONTENT; message=request blocked by Google Gemini",
+    );
   });
 
   it("rejects responses without usable shot script content", async () => {
@@ -186,6 +295,7 @@ describe("gemini shot script provider", () => {
                         visual: "积水集市入口压迫感很强。",
                         subject: "林夏",
                         action: "停下脚步。",
+                        frameDependency: "start_frame_only",
                         dialogue: null,
                         os: null,
                         audio: "雨声。",
@@ -249,6 +359,7 @@ describe("gemini shot script provider", () => {
                           visual: "Rainy market entrance.",
                           subject: "Rin",
                           action: "She stops walking.",
+                          frameDependency: "start_frame_only",
                           dialogue: null,
                           os: null,
                           audio: "Rain.",
@@ -309,6 +420,7 @@ describe("gemini shot script provider", () => {
                           visual: "积水集市入口。",
                           subject: "林夏",
                           action: "停住脚步。",
+                          frameDependency: "start_frame_only",
                           dialogue: null,
                           os: null,
                           audio: "雨声。",
@@ -369,6 +481,7 @@ describe("gemini shot script provider", () => {
                           visual: "冷色屏幕光打在K的脸上。",
                           subject: "K",
                           action: "K疲惫地敲击键盘。",
+                          frameDependency: "start_frame_only",
                           dialogue: null,
                           os: null,
                           audio: "键盘声。",
@@ -437,6 +550,7 @@ describe("gemini shot script provider", () => {
                           visual: "冷色屏幕光打在K的脸上。",
                           subject: "K",
                           action: "K疲惫地敲击键盘。",
+                          frameDependency: "start_frame_only",
                           dialogue: null,
                           os: null,
                           audio: "键盘声。",
@@ -475,6 +589,7 @@ describe("gemini shot script provider", () => {
                           visual: "冷色屏幕光打在职员K的脸上。",
                           subject: "职员K",
                           action: "职员K疲惫地敲击键盘。",
+                          frameDependency: "start_frame_only",
                           dialogue: null,
                           os: null,
                           audio: "键盘声。",
@@ -545,6 +660,7 @@ describe("gemini shot script provider", () => {
                         visual: "冷色屏幕光打在K的脸上。",
                         subject: "K",
                         action: "K疲惫地敲击键盘。",
+                        frameDependency: "start_frame_only",
                         dialogue: null,
                         os: null,
                         audio: "键盘声。",

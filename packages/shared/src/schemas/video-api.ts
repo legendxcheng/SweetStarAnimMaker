@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const segmentVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
+const requiredTextSchema = z.string().trim().min(1);
 
 export const currentVideoBatchSummaryResponseSchema = z.object({
   id: z.string(),
@@ -21,6 +22,9 @@ export const segmentVideoResponseSchema = z.object({
   sceneId: z.string(),
   order: z.number().int().positive(),
   status: z.enum(segmentVideoStatuses),
+  promptTextSeed: requiredTextSchema,
+  promptTextCurrent: requiredTextSchema,
+  promptUpdatedAt: z.string(),
   videoAssetPath: z.string().nullable(),
   thumbnailAssetPath: z.string().nullable(),
   durationSec: z.number().positive().nullable(),
@@ -38,6 +42,14 @@ export const videoListResponseSchema = z.object({
 
 export const approveVideoSegmentRequestSchema = z.object({});
 
+export const saveVideoPromptRequestSchema = z.object({
+  promptTextCurrent: requiredTextSchema,
+});
+
+export const regenerateVideoPromptRequestSchema = z.object({});
+
 export const regenerateVideoSegmentRequestSchema = z.object({});
+
+export const regenerateAllVideoPromptsRequestSchema = z.object({});
 
 export const approveAllVideoSegmentsRequestSchema = z.object({});

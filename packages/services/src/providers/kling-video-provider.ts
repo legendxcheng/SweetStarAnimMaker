@@ -1,3 +1,4 @@
+import type { VideoProvider } from "@sweet-star/core";
 import type { ReferenceImageUploader } from "../image-upload/reference-image-uploader";
 
 export interface CreateKlingVideoProviderOptions {
@@ -10,12 +11,21 @@ export interface CreateKlingVideoProviderOptions {
   fetchFn?: typeof fetch;
 }
 
+export interface KlingMultiPromptItem {
+  index: number;
+  prompt: string;
+  duration: string;
+}
+
 export interface SubmitImageToVideoInput {
   image: string;
   imageTail: string;
   promptText?: string;
   negativePromptText?: string | null;
   durationSeconds?: number | null;
+  sound?: string | null;
+  multiShot?: boolean | null;
+  multiPrompt?: KlingMultiPromptItem[] | null;
   cfgScale?: number | null;
   callbackUrl?: string | null;
   externalTaskId?: string | null;
@@ -61,9 +71,20 @@ export interface KlingVideoProvider {
   ): Promise<GetImageToVideoTaskResult> | GetImageToVideoTaskResult;
 }
 
+export interface CreateKlingStageVideoProviderOptions extends CreateKlingVideoProviderOptions {
+  durationSeconds?: number;
+  sound?: string;
+  multiShot?: boolean;
+  pollIntervalMs?: number;
+  pollTimeoutMs?: number;
+}
+
 const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
 const DEFAULT_MODEL_NAME = "kling-v3";
 const DEFAULT_MODE = "pro";
+const DEFAULT_STAGE_MODE = "std";
+const DEFAULT_STAGE_DURATION_SECONDS = 10;
+const DEFAULT_STAGE_SOUND = "on";
 const SUCCESS_STATUSES = new Set(["succeed", "succeeded", "success", "completed", "done"]);
 const FAILURE_STATUSES = new Set(["failed", "fail", "error", "canceled", "cancelled", "rejected"]);
 
@@ -92,6 +113,20 @@ export function createKlingVideoProvider(
       const promptText = input.promptText?.trim();
       if (promptText) {
         requestBody.prompt = promptText;
+      }
+
+      const sound = input.sound?.trim();
+      if (sound) {
+        requestBody.sound = sound;
+      }
+
+      if (typeof input.multiShot === "boolean" && shouldSendMultiShot(input.imageTail)) {
+        requestBody.multi_shot = input.multiShot;
+      }
+
+      const multiPrompt = normalizeMultiPrompt(input.multiPrompt);
+      if (multiPrompt.length > 0) {
+        requestBody.multi_prompt = multiPrompt;
       }
 
       const negativePromptText = input.negativePromptText?.trim();
@@ -178,6 +213,9 @@ export function createKlingVideoProvider(
           ]) ?? input.taskId,
         status,
         videoUrl: readFirstString(payload, [
+          ["data", "task_result", "video_url"],
+          ["data", "task_result", "video", "url"],
+          ["data", "task_result", "videos", "0", "url"],
           ["data", "video_url"],
           ["data", "video", "url"],
           ["data", "videos", "0", "url"],
@@ -216,6 +254,103 @@ export function createKlingVideoProvider(
       }
     },
   };
+}
+
+export function createKlingStageVideoProvider(
+  options: CreateKlingStageVideoProviderOptions = {},
+): VideoProvider {
+  const provider = createKlingVideoProvider({
+    ...options,
+    mode: options.mode?.trim() || DEFAULT_STAGE_MODE,
+  });
+  const durationSeconds = isPositiveNumber(options.durationSeconds)
+    ? Number(options.durationSeconds)
+    : DEFAULT_STAGE_DURATION_SECONDS;
+  const sound = options.sound?.trim() || DEFAULT_STAGE_SOUND;
+  const multiShot = typeof options.multiShot === "boolean" ? options.multiShot : true;
+  const pollIntervalMs = options.pollIntervalMs;
+  const pollTimeoutMs = options.pollTimeoutMs;
+
+  return {
+    async generateSegmentVideo(input) {
+      const stagePromptText = buildStageMultiPromptText(input.promptText);
+      const multiPrompt = [
+        {
+          index: 1,
+          prompt: stagePromptText,
+          duration: String(durationSeconds),
+        },
+      ];
+      const submitted = await provider.submitImageToVideo({
+        image: input.startFramePath,
+        imageTail: input.endFramePath,
+        durationSeconds,
+        sound,
+        multiShot,
+        multiPrompt,
+      });
+      const completed = await provider.waitForImageToVideoTask({
+        taskId: submitted.taskId,
+        pollIntervalMs,
+        timeoutMs: pollTimeoutMs,
+      });
+
+      if (completed.failed) {
+        throw new Error(
+          completed.errorMessage
+            ? `Kling video generation failed: ${completed.errorMessage}`
+            : `Kling video generation failed for task ${completed.taskId}`,
+        );
+      }
+
+      if (!completed.videoUrl) {
+        throw new Error(`Kling video generation completed without video url for task ${completed.taskId}`);
+      }
+
+      return {
+        provider: submitted.provider,
+        model: submitted.modelName,
+        videoUrl: completed.videoUrl,
+        thumbnailUrl: null,
+        rawResponse: JSON.stringify({
+          submit: JSON.parse(submitted.rawResponse),
+          result: JSON.parse(completed.rawResponse),
+        }),
+        durationSec: durationSeconds,
+      };
+    },
+  };
+}
+
+function buildStageMultiPromptText(promptText: string, maxLength = 512) {
+  const normalizedPrompt = normalizeWhitespace(promptText);
+  const looksLikePromptTemplate =
+    promptText.includes("任务目标") ||
+    promptText.includes("已知输入") ||
+    promptText.includes("输出要求") ||
+    promptText.includes("提示词编排器");
+
+  if (!looksLikePromptTemplate && normalizedPrompt.length <= maxLength) {
+    return normalizedPrompt;
+  }
+
+  const segmentSummary = extractPromptValue(promptText, "segment 摘要");
+  const shotsSummary = compactShotsSummary(extractPromptValue(promptText, "shots 摘要") ?? "");
+  const condensedPrompt = normalizeWhitespace(
+    [
+      "基于首尾帧生成连续稳定的多镜头片段，镜头衔接自然，保持主体身份、服装、空间和时间连续，动作推进贴合剧情，避免跳切、漂移和畸形。",
+      segmentSummary ? `剧情：${segmentSummary}` : null,
+      shotsSummary ? `分镜动作：${shotsSummary}` : null,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(" "),
+  );
+
+  if (condensedPrompt.length <= maxLength) {
+    return condensedPrompt;
+  }
+
+  return condensedPrompt.slice(0, maxLength).trim();
 }
 
 function readApiToken(apiToken: string | undefined) {
@@ -354,6 +489,49 @@ function readTaskErrorMessage(payload: unknown, failed: boolean) {
   }
 
   return readFirstString(payload, [["message"]]);
+}
+
+function normalizeMultiPrompt(value: KlingMultiPromptItem[] | null | undefined) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item) => item && Number.isInteger(item.index) && item.index > 0)
+    .map((item) => ({
+      index: item.index,
+      prompt: item.prompt.trim(),
+      duration: item.duration.trim(),
+    }))
+    .filter((item) => item.prompt.length > 0 && item.duration.length > 0);
+}
+
+function extractPromptValue(promptText: string, label: string) {
+  const escapedLabel = escapeForRegExp(label);
+  const match = promptText.match(
+    new RegExp(`(?:^|\\n)\\s*-?\\s*${escapedLabel}\\s*[：:]\\s*(.+)`, "u"),
+  );
+
+  return match ? normalizeWhitespace(match[1]) : null;
+}
+
+function compactShotsSummary(value: string) {
+  return normalizeWhitespace(
+    value.replace(/\b[A-Za-z0-9_-]+\s*:\s*/gu, "").replace(/\s*;\s*/gu, "；"),
+  );
+}
+
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+function escapeForRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function shouldSendMultiShot(imageTail: string) {
+  // VectorEngine currently rejects multi_shot when a tail image is present.
+  return imageTail.trim().length === 0;
 }
 
 function readPath(value: unknown, path: string[]) {

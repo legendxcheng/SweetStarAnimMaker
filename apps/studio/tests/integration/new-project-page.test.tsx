@@ -36,6 +36,8 @@ describe("New Project Page", () => {
         path: "premise/v1.md",
         bytes: 42,
         updatedAt: "2024-01-01T00:00:00Z",
+        text: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
       },
     });
 
@@ -49,12 +51,18 @@ describe("New Project Page", () => {
         value: "A washed-up pilot discovers a singing comet above a drowned city.",
       },
     });
+    fireEvent.change(screen.getByLabelText("画面风格描述"), {
+      target: {
+        value: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
+      },
+    });
     fireEvent.click(screen.getByRole("button", { name: "创建项目" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.createProject).toHaveBeenCalledWith({
         name: "Test Project",
         premiseText: "A washed-up pilot discovers a singing comet above a drowned city.",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
       });
     });
 

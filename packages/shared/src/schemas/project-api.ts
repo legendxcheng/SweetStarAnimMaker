@@ -13,16 +13,25 @@ import { currentShotScriptSummaryResponseSchema } from "./shot-script-api";
 import { currentVideoBatchSummaryResponseSchema } from "./video-api";
 
 const requiredTextSchema = z.string().trim().min(1);
+const optionalTextSchema = z.string().trim().default("");
 const premiseMetadataSchema = z.object({
   path: z.string(),
   bytes: z.number().int().nonnegative(),
   updatedAt: z.string(),
   text: z.string(),
+  visualStyleText: optionalTextSchema,
 });
 
 export const createProjectRequestSchema = z.object({
   name: requiredTextSchema,
   premiseText: requiredTextSchema,
+  visualStyleText: optionalTextSchema.optional().default(""),
+});
+
+export const resetProjectPremiseRequestSchema = z.object({
+  premiseText: requiredTextSchema,
+  visualStyleText: optionalTextSchema.optional().default(""),
+  confirmReset: z.literal(true),
 });
 
 export const projectSummaryResponseSchema = z.object({

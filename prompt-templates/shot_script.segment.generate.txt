@@ -9,6 +9,7 @@
 - 一个 segment 可以拆成多个 shots，数量由你根据节奏自行决定
 - 该 segment 内所有 shots 的总时长应尽量贴近 segment.durationSec，且不能明显偏离
 - 每个 shot 都必须具体、可见、可执行，不能写空泛概括
+- 每个 shot 都必须判断视频生成时依赖哪种边界帧模式，并输出固定枚举字段
 - 不要输出 imagePrompt、negativePrompt、motionHint 等出图字段
 - 不要补写当前 segment 之外的剧情
 - 保持角色造型、服装、道具、机位连续性
@@ -62,11 +63,20 @@ Storyboard 标题：{{storyboardTitle}}
 - visual
 - subject
 - action
+- frameDependency
 - dialogue
 - os
 - audio
 - transitionHint
 - continuityNotes
+
+frameDependency 只能是以下两种之一：
+- start_frame_only: 镜头画面变动不大，主要是轻微动作、表情、视线、镜头微推拉，首帧即可自然延展
+- start_and_end_frame: 镜头需要明确落到另一姿态、位置、朝向、构图、景别或状态，必须同时依赖首帧和尾帧
+
+判断原则：
+- 如果这个镜头“变化不大，就使用首帧即可”，输出 start_frame_only
+- 如果这个镜头需要明显的开始态到结束态变化，输出 start_and_end_frame
 
 shotCode 必须稳定、可读，并体现当前 scene/segment 内部顺序。
 请直接输出 JSON，不要添加 markdown 代码块，不要添加额外解释。

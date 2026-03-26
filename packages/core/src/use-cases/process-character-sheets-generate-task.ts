@@ -22,6 +22,7 @@ import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
 import type { MasterPlotStorage } from "../ports/storyboard-storage";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessCharacterSheetsGenerateTaskInput {
   taskId: string;
@@ -90,6 +91,10 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
           updatedAt: startedAt,
         });
 
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         await dependencies.characterSheetRepository.insertBatch(batch);
         await dependencies.characterSheetStorage.writeBatchManifest({ batch });
         await dependencies.projectRepository.updateCurrentCharacterSheetBatch({
@@ -103,6 +108,10 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
         });
 
         for (const [index, characterName] of taskInput.mainCharacters.entries()) {
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return;
+          }
+
           const promptText = renderCharacterPromptTemplate(promptTemplate, masterPlot, characterName);
           const promptResult =
             await dependencies.characterSheetPromptProvider.generateCharacterPrompt({
@@ -111,6 +120,11 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
               characterName,
               promptText,
             });
+
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return;
+          }
+
           const character = createCharacterSheetRecord({
             id: toCharacterSheetId(batch.id, characterName, index),
             projectId: project.id,
@@ -169,6 +183,10 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
           });
         }
 
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
 
         await dependencies.taskFileStorage.writeTaskOutput({
@@ -188,6 +206,10 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

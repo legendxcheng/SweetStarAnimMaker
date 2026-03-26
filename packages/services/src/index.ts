@@ -55,19 +55,44 @@ export {
   type CreateGeminiCharacterSheetProviderOptions,
 } from "./providers/gemini-character-sheet-provider";
 export {
+  createGrokCharacterSheetProvider,
+  type CreateGrokCharacterSheetProviderOptions,
+} from "./providers/grok-character-sheet-provider";
+export {
   createTurnaroundImageProvider,
   type CreateTurnaroundImageProviderOptions,
 } from "./providers/turnaround-image-provider";
 export {
   createKlingVideoProvider,
+  createKlingStageVideoProvider,
   type CreateKlingVideoProviderOptions,
+  type CreateKlingStageVideoProviderOptions,
   type GetImageToVideoTaskInput,
   type GetImageToVideoTaskResult,
+  type KlingMultiPromptItem,
   type KlingVideoProvider,
   type SubmitImageToVideoInput,
   type SubmitImageToVideoResult,
   type WaitForImageToVideoTaskInput,
 } from "./providers/kling-video-provider";
+export {
+  createKlingOmniProvider,
+  type CreateElementInput,
+  type CreateElementResult,
+  type CreateKlingOmniProviderOptions,
+  type GetElementInput,
+  type GetElementResult,
+  type GetOmniVideoTaskInput,
+  type GetOmniVideoTaskResult,
+  type KlingOmniAspectRatio,
+  type KlingOmniProvider,
+  type ListElementsInput,
+  type ListElementsResult,
+  type SubmitOmniVideoResult,
+  type SubmitOmniVideoWithStartFrameInput,
+  type SubmitOmniVideoWithElementsInput,
+  type SubmitOmniVideoWithFramesInput,
+} from "./providers/kling-omni-provider";
 export {
   createSoraVideoProvider,
   createSoraStageVideoProvider,
@@ -95,6 +120,10 @@ export {
   type CreateGeminiFramePromptProviderOptions,
 } from "./providers/gemini-frame-prompt-provider";
 export {
+  createGrokFramePromptProvider,
+  type CreateGrokFramePromptProviderOptions,
+} from "./providers/grok-frame-prompt-provider";
+export {
   createReferenceImageUploader,
   type CreateReferenceImageUploaderOptions,
   type ReferenceImageUploader,
@@ -104,9 +133,17 @@ export {
   type CreateGeminiStoryboardProviderOptions,
 } from "./providers/gemini-storyboard-provider";
 export {
+  createGrokStoryboardProvider,
+  type CreateGrokStoryboardProviderOptions,
+} from "./providers/grok-storyboard-provider";
+export {
   createGeminiShotScriptProvider,
   type CreateGeminiShotScriptProviderOptions,
 } from "./providers/gemini-shot-script-provider";
+export {
+  createGrokShotScriptProvider,
+  type CreateGrokShotScriptProviderOptions,
+} from "./providers/grok-shot-script-provider";
 export {
   createSqliteTaskRepository,
   type CreateSqliteTaskRepositoryOptions,

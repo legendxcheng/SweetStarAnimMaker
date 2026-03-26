@@ -234,7 +234,7 @@ describe("process storyboard generate task use case", () => {
     });
   });
 
-  it("marks the task failed, logs the error, and returns the project to master_plot_approved", async () => {
+  it("marks the task failed, logs the error, and returns the project to character_sheets_approved", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -361,7 +361,7 @@ describe("process storyboard generate task use case", () => {
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260321_ab12cd",
-      status: "master_plot_approved",
+      status: "character_sheets_approved",
       updatedAt: "2026-03-21T12:02:00.000Z",
     });
   });

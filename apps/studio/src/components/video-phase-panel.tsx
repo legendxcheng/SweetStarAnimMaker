@@ -50,11 +50,19 @@ export function VideoPhasePanel({
   const [actionError, setActionError] = useState<Error | null>(null);
   const [actionBusy, setActionBusy] = useState<
     | {
-        kind: "regenerate" | "approve" | "approve-all";
+        kind:
+          | "save-prompt"
+          | "regenerate-prompt"
+          | "regenerate-all-prompts"
+          | "regenerate"
+          | "regenerate-all-videos"
+          | "approve"
+          | "approve-all";
         segmentId?: string;
       }
     | null
   >(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
@@ -64,6 +72,7 @@ export function VideoPhasePanel({
   useEffect(() => {
     if (!batchSummary) {
       setVideos([]);
+      setDrafts({});
       setListError(null);
       setListLoading(false);
       return;
@@ -99,7 +108,7 @@ export function VideoPhasePanel({
     return () => {
       cancelled = true;
     };
-  }, [batchSummary?.id, project.id]);
+  }, [batchSummary?.id, project.id, project.updatedAt]);
 
   useEffect(() => {
     if (!batchSummary || project.status !== "videos_generating") {
@@ -134,6 +143,35 @@ export function VideoPhasePanel({
 
   function applyVideoListResponse(response: VideoListResponse) {
     setVideos(response.segments);
+    setDrafts((currentDrafts) => {
+      const nextDrafts: Record<string, string> = {};
+      const previousVideosById = new Map(videos.map((video) => [video.id, video]));
+
+      for (const segment of response.segments) {
+        const currentDraft = currentDrafts[segment.id];
+        const previousSegment = previousVideosById.get(segment.id);
+        const shouldSyncWithServer =
+          currentDraft === undefined ||
+          !previousSegment ||
+          currentDraft === previousSegment.promptTextCurrent;
+
+        nextDrafts[segment.id] = shouldSyncWithServer
+          ? segment.promptTextCurrent
+          : currentDraft;
+      }
+
+      return nextDrafts;
+    });
+  }
+
+  function updateVideo(nextVideo: SegmentVideoRecord) {
+    setVideos((currentVideos) =>
+      currentVideos.map((video) => (video.id === nextVideo.id ? nextVideo : video)),
+    );
+    setDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [nextVideo.id]: nextVideo.promptTextCurrent,
+    }));
   }
 
   async function refreshProject() {
@@ -152,6 +190,42 @@ export function VideoPhasePanel({
       await apiClient.regenerateVideoSegment(project.id, videoId);
       await refreshProject();
       await refreshVideos();
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleSavePrompt(segment: SegmentVideoRecord) {
+    const promptTextCurrent = drafts[segment.id]?.trim() ?? "";
+
+    if (!promptTextCurrent) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "save-prompt", segmentId: segment.id });
+      const updatedSegment = await apiClient.updateVideoPrompt(project.id, segment.id, {
+        promptTextCurrent,
+      });
+
+      updateVideo(updatedSegment);
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRegeneratePrompt(segment: SegmentVideoRecord) {
+    try {
+      setActionBusy({ kind: "regenerate-prompt", segmentId: segment.id });
+      const updatedSegment = await apiClient.regenerateVideoPrompt(project.id, segment.id);
+
+      updateVideo(updatedSegment);
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -188,9 +262,52 @@ export function VideoPhasePanel({
     }
   }
 
+  async function handleRegenerateAllPrompts() {
+    if (!batchSummary) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "regenerate-all-prompts" });
+      const response = await apiClient.regenerateAllVideoPrompts(project.id);
+
+      applyVideoListResponse(response);
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRegenerateAllVideos() {
+    if (!batchSummary || videos.length === 0) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "regenerate-all-videos" });
+
+      for (const segment of videos) {
+        await apiClient.regenerateVideoSegment(project.id, segment.id);
+      }
+
+      await refreshProject();
+      await refreshVideos();
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   const canApproveAll =
     videos.length > 0 &&
     videos.every((segment) => segment.status === "in_review" || segment.status === "approved");
+  const hasDirtyPrompts = videos.some(
+    (segment) => (drafts[segment.id] ?? segment.promptTextCurrent) !== segment.promptTextCurrent,
+  );
 
   return (
     <section aria-label="视频工作区">
@@ -203,6 +320,30 @@ export function VideoPhasePanel({
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-3">
+            {batchSummary && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleRegenerateAllPrompts();
+                }}
+                disabled={actionBusy !== null}
+                className={getButtonClassName({ variant: "warning" })}
+              >
+                重新生成所有段落提示词
+              </button>
+            )}
+            {batchSummary && videos.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleRegenerateAllVideos();
+                }}
+                disabled={actionBusy !== null || hasDirtyPrompts || videos.length === 0}
+                className={getButtonClassName({ variant: "warning" })}
+              >
+                重新生成所有视频段落
+              </button>
+            )}
             {batchSummary && (
               <button
                 type="button"
@@ -308,8 +449,14 @@ export function VideoPhasePanel({
       )}
 
       {videos.map((segment) => {
+        const promptDraft = drafts[segment.id] ?? segment.promptTextCurrent;
+        const isDirty = promptDraft !== segment.promptTextCurrent;
+        const canSavePrompt = promptDraft.trim().length > 0;
         const isBusy =
-          actionBusy?.kind === "approve-all" || actionBusy?.segmentId === segment.id;
+          actionBusy?.kind === "approve-all" ||
+          actionBusy?.kind === "regenerate-all-prompts" ||
+          actionBusy?.kind === "regenerate-all-videos" ||
+          actionBusy?.segmentId === segment.id;
 
         return (
           <article key={segment.id} className={cardClass}>
@@ -355,6 +502,21 @@ export function VideoPhasePanel({
 
               <div className="grid gap-3">
                 <div>
+                  <p className={metaLabelClass}>视频提示词</p>
+                  <textarea
+                    value={promptDraft}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setDrafts((currentDrafts) => ({
+                        ...currentDrafts,
+                        [segment.id]: value,
+                      }));
+                    }}
+                    rows={6}
+                    className="w-full rounded-xl border border-(--color-border) bg-(--color-bg-base) px-3 py-2 text-sm text-(--color-text-primary) outline-none focus:border-(--color-primary)"
+                  />
+                </div>
+                <div>
                   <p className={metaLabelClass}>模型</p>
                   <p className={metaValueClass}>{segment.model ?? "未生成"}</p>
                 </div>
@@ -375,12 +537,36 @@ export function VideoPhasePanel({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3 pt-2">
+                  {isDirty && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleSavePrompt(segment);
+                      }}
+                      disabled={isBusy || !canSavePrompt}
+                      className={getButtonClassName()}
+                    >
+                      保存提示词
+                    </button>
+                  )}
+                  {!isDirty && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleRegeneratePrompt(segment);
+                      }}
+                      disabled={isBusy}
+                      className={getButtonClassName({ variant: "warning" })}
+                    >
+                      重新生成当前段落提示词
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
                       void handleRegenerate(segment.id);
                     }}
-                    disabled={isBusy}
+                    disabled={isBusy || isDirty}
                     className={getButtonClassName({ variant: "warning" })}
                   >
                     重新生成当前片段

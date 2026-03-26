@@ -43,6 +43,7 @@ describe("project domain", () => {
       currentCharacterSheetBatch,
       null,
       "A washed-up pilot discovers a singing comet above a drowned city.",
+      "赛璐璐动画，冷色霓虹雨夜，电影感光影",
     );
     const summary = toProjectSummaryDto(project, null, currentCharacterSheetBatch, null);
 
@@ -51,6 +52,7 @@ describe("project domain", () => {
       bytes: 0,
       updatedAt: "2026-03-17T00:00:00.000Z",
       text: "A washed-up pilot discovers a singing comet above a drowned city.",
+      visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
     });
     expect(detail.currentMasterPlot).toBeNull();
     expect(detail.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);

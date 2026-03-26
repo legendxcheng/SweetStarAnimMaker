@@ -39,15 +39,18 @@ import {
   createListProjectsUseCase,
   createGenerateFrameImageUseCase,
   createRegenerateAllFramePromptsUseCase,
+  createRegenerateAllVideoPromptsUseCase,
   createRegenerateCharacterSheetsUseCase,
   createRegenerateShotScriptSegmentUseCase,
   createRegenerateImagesUseCase,
+  createRegenerateVideoPromptUseCase,
   createRegenerateVideoSegmentUseCase,
   createRegenerateMasterPlotUseCase,
   createRegenerateCharacterSheetUseCase,
   createRegenerateFramePromptUseCase,
   createRegenerateShotScriptUseCase,
   createRegenerateStoryboardUseCase,
+  createResetProjectPremiseUseCase,
   createRejectMasterPlotUseCase,
   createRejectStoryboardUseCase,
   createSaveHumanMasterPlotUseCase,
@@ -55,6 +58,7 @@ import {
   createSaveHumanStoryboardVersionUseCase,
   createUpdateCharacterSheetPromptUseCase,
   createUpdateFramePromptUseCase,
+  createUpdateVideoPromptUseCase,
   createUpdateProjectScriptUseCase,
   type TaskIdGenerator,
   type TaskQueue,
@@ -312,6 +316,8 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     listVideos: createListVideosUseCase({
       projectRepository: repository,
+      shotScriptStorage,
+      videoStorage,
       videoRepository,
     }),
     getImageFrame: createGetImageFrameUseCase({
@@ -320,6 +326,8 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     getVideo: createGetVideoUseCase({
       projectRepository: repository,
+      shotScriptStorage,
+      videoStorage,
       videoRepository,
     }),
     getImageFrameContent: createGetImageFrameContentUseCase({
@@ -350,6 +358,12 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     updateProjectScript: createUpdateProjectScriptUseCase({
       repository,
       premiseStorage,
+      clock,
+    }),
+    resetProjectPremise: createResetProjectPremiseUseCase({
+      repository,
+      premiseStorage,
+      masterPlotStorage,
       clock,
     }),
     saveHumanMasterPlot: createSaveHumanMasterPlotUseCase({
@@ -458,6 +472,11 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       shotImageRepository,
       clock,
     }),
+    updateVideoPrompt: createUpdateVideoPromptUseCase({
+      projectRepository: repository,
+      videoRepository,
+      clock,
+    }),
     regenerateCharacterSheet: createRegenerateCharacterSheetUseCase({
       projectRepository: repository,
       characterSheetRepository,
@@ -475,6 +494,20 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       taskFileStorage,
       taskQueue: queuedTaskGateway,
       taskIdGenerator,
+      clock,
+    }),
+    regenerateVideoPrompt: createRegenerateVideoPromptUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      videoRepository,
+      videoStorage,
+      clock,
+    }),
+    regenerateAllVideoPrompts: createRegenerateAllVideoPromptsUseCase({
+      projectRepository: repository,
+      shotScriptStorage,
+      videoRepository,
+      videoStorage,
       clock,
     }),
     regenerateAllFramePrompts: createRegenerateAllFramePromptsUseCase({

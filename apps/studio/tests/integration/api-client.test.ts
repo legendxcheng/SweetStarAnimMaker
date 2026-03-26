@@ -183,6 +183,56 @@ describe("API Client", () => {
     expect(headers.has("Content-Type")).toBe(false);
   });
 
+  it("calls the premise reset endpoint with the expected payload", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "proj_1",
+        name: "Test Project",
+        slug: "test-project",
+        status: "premise_ready",
+        storageDir: "/path/to/project",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-02T00:00:00Z",
+        premise: {
+          path: "premise/v1.md",
+          bytes: 52,
+          updatedAt: "2024-01-02T00:00:00Z",
+          text: "A new premise after reset.",
+          visualStyleText: "Warm watercolor dusk.",
+        },
+        currentMasterPlot: null,
+        currentCharacterSheetBatch: null,
+        currentStoryboard: null,
+        currentShotScript: null,
+        currentImageBatch: null,
+        currentVideoBatch: null,
+      }),
+    });
+    global.fetch = mockFetch;
+
+    const response = await apiClient.resetProjectPremise("proj_1", {
+      premiseText: "A new premise after reset.",
+      visualStyleText: "Warm watercolor dusk.",
+      confirmReset: true,
+    });
+
+    expect(response.premise.visualStyleText).toBe("Warm watercolor dusk.");
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${config.apiBaseUrl}/projects/proj_1/premise/reset`,
+      expect.objectContaining({
+        method: "PUT",
+      }),
+    );
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string)).toEqual({
+      premiseText: "A new premise after reset.",
+      visualStyleText: "Warm watercolor dusk.",
+      confirmReset: true,
+    });
+  });
+
   it("calls the shot-script endpoints with the expected methods and payloads", async () => {
     const baseSegment = {
       segmentId: "segment_1",
@@ -896,6 +946,312 @@ describe("API Client", () => {
     expect(response.frames[0]?.planStatus).toBe("pending");
     expect(response.frames[0]?.promptTextSeed).toBe("");
     expect(response.frames[0]?.promptTextCurrent).toBe("");
+  });
+
+  it("calls the video endpoints with the expected methods and parses prompt-aware payloads", async () => {
+    const responses = [
+      {
+        id: "task_videos_1",
+        projectId: "proj_1",
+        type: "videos_generate",
+        status: "pending",
+        createdAt: "2026-03-25T00:00:00.000Z",
+        updatedAt: "2026-03-25T00:00:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_videos_1/input.json",
+          outputPath: "tasks/task_videos_1/output.json",
+          logPath: "tasks/task_videos_1/log.txt",
+        },
+      },
+      {
+        currentBatch: {
+          id: "video_batch_1",
+          sourceImageBatchId: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          approvedSegmentCount: 0,
+          updatedAt: "2026-03-25T00:00:01.000Z",
+        },
+        segments: [
+          {
+            id: "video_segment_1",
+            projectId: "proj_1",
+            batchId: "video_batch_1",
+            sourceImageBatchId: "image_batch_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            status: "in_review",
+            promptTextSeed: "seed prompt",
+            promptTextCurrent: "current prompt",
+            promptUpdatedAt: "2026-03-25T00:00:01.000Z",
+            videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+            thumbnailAssetPath:
+              "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+            durationSec: 6,
+            provider: "vector-engine",
+            model: "sora-2-all",
+            updatedAt: "2026-03-25T00:00:01.000Z",
+            approvedAt: null,
+            sourceTaskId: "task_video_segment_1",
+          },
+        ],
+      },
+      {
+        id: "video_segment_1",
+        projectId: "proj_1",
+        batchId: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        status: "in_review",
+        promptTextSeed: "seed prompt",
+        promptTextCurrent: "current prompt",
+        promptUpdatedAt: "2026-03-25T00:00:01.000Z",
+        videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+        thumbnailAssetPath:
+          "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+        durationSec: 6,
+        provider: "vector-engine",
+        model: "sora-2-all",
+        updatedAt: "2026-03-25T00:00:01.000Z",
+        approvedAt: null,
+        sourceTaskId: "task_video_segment_1",
+      },
+      {
+        id: "video_segment_1",
+        projectId: "proj_1",
+        batchId: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        status: "in_review",
+        promptTextSeed: "seed prompt",
+        promptTextCurrent: "用户保存后的视频提示词",
+        promptUpdatedAt: "2026-03-25T00:00:02.000Z",
+        videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+        thumbnailAssetPath:
+          "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+        durationSec: 6,
+        provider: "vector-engine",
+        model: "sora-2-all",
+        updatedAt: "2026-03-25T00:00:02.000Z",
+        approvedAt: null,
+        sourceTaskId: "task_video_segment_1",
+      },
+      {
+        id: "video_segment_1",
+        projectId: "proj_1",
+        batchId: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        status: "in_review",
+        promptTextSeed: "seed prompt",
+        promptTextCurrent: "重新生成的视频提示词",
+        promptUpdatedAt: "2026-03-25T00:00:03.000Z",
+        videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+        thumbnailAssetPath:
+          "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+        durationSec: 6,
+        provider: "vector-engine",
+        model: "sora-2-all",
+        updatedAt: "2026-03-25T00:00:03.000Z",
+        approvedAt: null,
+        sourceTaskId: "task_video_segment_1",
+      },
+      {
+        currentBatch: {
+          id: "video_batch_1",
+          sourceImageBatchId: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          approvedSegmentCount: 0,
+          updatedAt: "2026-03-25T00:00:04.000Z",
+        },
+        segments: [
+          {
+            id: "video_segment_1",
+            projectId: "proj_1",
+            batchId: "video_batch_1",
+            sourceImageBatchId: "image_batch_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            status: "in_review",
+            promptTextSeed: "seed prompt",
+            promptTextCurrent: "重新生成的视频提示词",
+            promptUpdatedAt: "2026-03-25T00:00:04.000Z",
+            videoAssetPath:
+              "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+            thumbnailAssetPath:
+              "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+            durationSec: 6,
+            provider: "vector-engine",
+            model: "sora-2-all",
+            updatedAt: "2026-03-25T00:00:04.000Z",
+            approvedAt: null,
+            sourceTaskId: "task_video_segment_1",
+          },
+        ],
+      },
+      {
+        id: "task_video_segment_regen_1",
+        projectId: "proj_1",
+        type: "segment_video_generate",
+        status: "pending",
+        createdAt: "2026-03-25T00:00:05.000Z",
+        updatedAt: "2026-03-25T00:00:05.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_video_segment_regen_1/input.json",
+          outputPath: "tasks/task_video_segment_regen_1/output.json",
+          logPath: "tasks/task_video_segment_regen_1/log.txt",
+        },
+      },
+      {
+        id: "video_segment_1",
+        projectId: "proj_1",
+        batchId: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        status: "approved",
+        promptTextSeed: "seed prompt",
+        promptTextCurrent: "重新生成的视频提示词",
+        promptUpdatedAt: "2026-03-25T00:00:04.000Z",
+        videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+        thumbnailAssetPath:
+          "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+        durationSec: 6,
+        provider: "vector-engine",
+        model: "sora-2-all",
+        updatedAt: "2026-03-25T00:00:06.000Z",
+        approvedAt: "2026-03-25T00:00:06.000Z",
+        sourceTaskId: "task_video_segment_regen_1",
+      },
+      {
+        currentBatch: {
+          id: "video_batch_1",
+          sourceImageBatchId: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          approvedSegmentCount: 1,
+          updatedAt: "2026-03-25T00:00:07.000Z",
+        },
+        segments: [
+          {
+            id: "video_segment_1",
+            projectId: "proj_1",
+            batchId: "video_batch_1",
+            sourceImageBatchId: "image_batch_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            status: "approved",
+            promptTextSeed: "seed prompt",
+            promptTextCurrent: "重新生成的视频提示词",
+            promptUpdatedAt: "2026-03-25T00:00:04.000Z",
+            videoAssetPath:
+              "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
+            thumbnailAssetPath:
+              "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+            durationSec: 6,
+            provider: "vector-engine",
+            model: "sora-2-all",
+            updatedAt: "2026-03-25T00:00:07.000Z",
+            approvedAt: "2026-03-25T00:00:07.000Z",
+            sourceTaskId: "task_video_segment_regen_1",
+          },
+        ],
+      },
+    ];
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[0] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[1] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[2] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[3] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[4] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[5] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[6] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[7] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[8] });
+    global.fetch = mockFetch;
+
+    await apiClient.createVideosGenerateTask("proj_1");
+    await apiClient.listVideos("proj_1");
+    await apiClient.getVideo("proj_1", "video_segment_1");
+    await apiClient.updateVideoPrompt("proj_1", "video_segment_1", {
+      promptTextCurrent: "用户保存后的视频提示词",
+    });
+    await apiClient.regenerateVideoPrompt("proj_1", "video_segment_1");
+    await apiClient.regenerateAllVideoPrompts("proj_1");
+    await apiClient.regenerateVideoSegment("proj_1", "video_segment_1");
+    await apiClient.approveVideoSegment("proj_1", "video_segment_1");
+    await apiClient.approveAllVideoSegments("proj_1");
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      `${config.apiBaseUrl}/projects/proj_1/videos/generate`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      `${config.apiBaseUrl}/projects/proj_1/videos`,
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1`,
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      4,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/prompt`,
+      expect.objectContaining({ method: "PUT" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      5,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/regenerate-prompt`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      6,
+      `${config.apiBaseUrl}/projects/proj_1/videos/regenerate-prompts`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      7,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/regenerate`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      8,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/approve`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      9,
+      `${config.apiBaseUrl}/projects/proj_1/videos/approve-all`,
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
 });

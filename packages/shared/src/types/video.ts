@@ -19,6 +19,9 @@ export interface SegmentVideoRecord {
   sceneId: string;
   order: number;
   status: SegmentVideoStatus;
+  promptTextSeed: string;
+  promptTextCurrent: string;
+  promptUpdatedAt: string;
   videoAssetPath: string | null;
   thumbnailAssetPath: string | null;
   durationSec: number | null;
@@ -36,6 +39,14 @@ export interface VideoListResponse {
 
 export interface ApproveVideoSegmentRequest {}
 
+export interface SaveVideoPromptRequest {
+  promptTextCurrent: string;
+}
+
+export interface RegenerateVideoPromptRequest {}
+
 export interface RegenerateVideoSegmentRequest {}
+
+export interface RegenerateAllVideoPromptsRequest {}
 
 export interface ApproveAllVideoSegmentsRequest {}

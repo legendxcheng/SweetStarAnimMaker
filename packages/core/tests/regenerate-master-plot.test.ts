@@ -23,6 +23,7 @@ describe("regenerate master plot use case", () => {
         currentStoryboardId: "storyboard_v1",
         currentShotScriptId: "shot_script_v1",
         currentImageBatchId: "image_batch_v1",
+        currentVideoBatchId: "video_batch_v1",
         status: "images_generating",
         createdAt: "2026-03-24T10:00:00.000Z",
         updatedAt: "2026-03-24T12:00:00.000Z",
@@ -34,6 +35,7 @@ describe("regenerate master plot use case", () => {
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
       updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
       updateStatus: vi.fn(),
       listAll: vi.fn(),
     };
@@ -66,6 +68,10 @@ describe("regenerate master plot use case", () => {
       shotScriptId: null,
     });
     expect(projectRepository.updateCurrentImageBatch).toHaveBeenCalledWith({
+      projectId: "proj_20260324_ab12cd",
+      batchId: null,
+    });
+    expect(projectRepository.updateCurrentVideoBatch).toHaveBeenCalledWith({
       projectId: "proj_20260324_ab12cd",
       batchId: null,
     });

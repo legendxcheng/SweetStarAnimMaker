@@ -8,6 +8,7 @@ import type { MasterPlotProvider } from "../ports/storyboard-provider";
 import type { MasterPlotStorage } from "../ports/storyboard-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessMasterPlotGenerateTaskInput {
   taskId: string;
@@ -73,6 +74,11 @@ export function createProcessMasterPlotGenerateTaskUseCase(
           premiseText: taskInput.premiseText,
           promptText,
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const masterPlot = normalizeMasterPlot({
           taskId: task.id,
@@ -114,6 +120,10 @@ export function createProcessMasterPlotGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

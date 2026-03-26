@@ -8,6 +8,8 @@ import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import { appendVisualStyleToPrompt } from "./append-visual-style-to-prompt";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessCharacterSheetGenerateTaskInput {
   taskId: string;
@@ -75,9 +77,12 @@ export function createProcessCharacterSheetGenerateTaskUseCase(
           storageDir: project.storageDir,
           promptTemplateKey: taskInput.imagePromptTemplateKey,
         });
-        const promptText = imagePromptTemplate
-          .replaceAll("{{characterName}}", taskInput.characterName)
-          .replaceAll("{{promptTextCurrent}}", taskInput.promptTextCurrent);
+        const promptText = appendVisualStyleToPrompt(
+          imagePromptTemplate
+            .replaceAll("{{characterName}}", taskInput.characterName)
+            .replaceAll("{{promptTextCurrent}}", taskInput.promptTextCurrent),
+          project.visualStyleText,
+        );
         const providerResult = await dependencies.characterSheetImageProvider.generateCharacterSheetImage(
           {
             projectId: project.id,
@@ -86,6 +91,11 @@ export function createProcessCharacterSheetGenerateTaskUseCase(
             referenceImagePaths: taskInput.referenceImagePaths,
           },
         );
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
 
         await dependencies.characterSheetStorage.writeImageVersion({
@@ -158,6 +168,10 @@ export function createProcessCharacterSheetGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

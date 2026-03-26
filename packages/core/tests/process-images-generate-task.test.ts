@@ -488,11 +488,10 @@ describe("process images generate task use case", () => {
   });
 
   it("creates different frame ids for the same segment across separate image batches", async () => {
-    const taskRepository = {
-      insert: vi.fn(),
-      findById: vi
-        .fn()
-        .mockResolvedValueOnce({
+    const tasksById = new Map([
+      [
+        "task_20260324_images_first",
+        {
           id: "task_20260324_images_first",
           projectId: "proj_20260324_ab12cd",
           type: "images_generate",
@@ -508,8 +507,11 @@ describe("process images generate task use case", () => {
           updatedAt: "2026-03-24T00:11:00.000Z",
           startedAt: null,
           finishedAt: null,
-        })
-        .mockResolvedValueOnce({
+        },
+      ],
+      [
+        "task_20260324_images_second",
+        {
           id: "task_20260324_images_second",
           projectId: "proj_20260324_ab12cd",
           type: "images_generate",
@@ -525,7 +527,12 @@ describe("process images generate task use case", () => {
           updatedAt: "2026-03-24T00:14:00.000Z",
           startedAt: null,
           finishedAt: null,
-        }),
+        },
+      ],
+    ]);
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockImplementation(async (taskId: string) => tasksById.get(taskId) ?? null),
       findLatestByProjectId: vi.fn(),
       delete: vi.fn(),
       markRunning: vi.fn(),

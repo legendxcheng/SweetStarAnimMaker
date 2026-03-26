@@ -19,6 +19,7 @@ export { taskStatuses, type TaskStatus } from "./constants/task-status";
 export { taskTypes, type TaskType } from "./constants/task-type";
 export {
   createProjectRequestSchema,
+  resetProjectPremiseRequestSchema,
   projectDetailResponseSchema,
   projectListResponseSchema,
   projectSummaryResponseSchema,
@@ -38,7 +39,10 @@ export {
   approveAllVideoSegmentsRequestSchema,
   approveVideoSegmentRequestSchema,
   currentVideoBatchSummaryResponseSchema,
+  regenerateAllVideoPromptsRequestSchema,
+  regenerateVideoPromptRequestSchema,
   regenerateVideoSegmentRequestSchema,
+  saveVideoPromptRequestSchema,
   segmentVideoResponseSchema,
   videoListResponseSchema,
 } from "./schemas/video-api";
@@ -125,7 +129,10 @@ export type {
   ApproveAllVideoSegmentsRequest,
   ApproveVideoSegmentRequest,
   CurrentVideoBatchSummary,
+  RegenerateAllVideoPromptsRequest,
+  RegenerateVideoPromptRequest,
   RegenerateVideoSegmentRequest,
+  SaveVideoPromptRequest,
   SegmentVideoRecord,
   SegmentVideoStatus,
   VideoListResponse,
@@ -133,6 +140,7 @@ export type {
 export type {
   CurrentShotScript,
   CurrentShotScriptSummary,
+  ShotFrameDependency,
   ShotScriptItem,
   ShotScriptSegment,
   ShotScriptSegmentStatus,

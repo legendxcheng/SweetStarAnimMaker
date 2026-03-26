@@ -3,6 +3,7 @@ import {
   toShotScriptSegmentSelector,
   type CurrentShotScript,
   type ProjectDetail,
+  type ShotFrameDependency,
   type TaskDetail,
 } from "@sweet-star/shared";
 import { Link } from "react-router-dom";
@@ -16,6 +17,11 @@ const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   running: "执行中",
   succeeded: "已完成",
   failed: "失败",
+};
+
+const SHOT_FRAME_DEPENDENCY_LABELS: Record<ShotFrameDependency, string> = {
+  start_frame_only: "首帧即可",
+  start_and_end_frame: "需要首尾帧",
 };
 
 interface ShotScriptPhasePanelProps {
@@ -276,7 +282,7 @@ export function ShotScriptPhasePanel({
               </div>
 
               {sceneIds.length > 1 && (
-                <nav aria-label="Scene 导航" className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-(--color-bg-base) border border-(--color-border-muted) p-1.5">
+                <nav aria-label="Scene 导航" className="mb-4 shrink-0 flex gap-1 overflow-x-auto overflow-y-hidden rounded-xl bg-(--color-bg-base) border border-(--color-border-muted) p-1.5">
                   {sceneIds.map((sceneId) => {
                     const isActive = sceneId === activeSceneId;
                     const count = sceneSegmentCounts.get(sceneId) ?? 0;
@@ -286,7 +292,7 @@ export function ShotScriptPhasePanel({
                         type="button"
                         onClick={() => setActiveSceneId(sceneId)}
                         className={[
-                          "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                          "relative shrink-0 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200",
                           isActive
                             ? "bg-gradient-to-r from-(--color-accent) to-(--color-accent-end) text-(--color-bg-base) shadow-sm"
                             : "text-(--color-text-muted) hover:text-(--color-text-primary) hover:bg-(--color-bg-elevated)",
@@ -387,6 +393,12 @@ export function ShotScriptPhasePanel({
                                 <p className={metaLabelClass}>动作</p>
                                 <p className="text-sm leading-7 text-(--color-text-primary)">
                                   {shot.action}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={metaLabelClass}>画面依赖</p>
+                                <p className="text-sm leading-7 text-(--color-text-primary)">
+                                  {SHOT_FRAME_DEPENDENCY_LABELS[shot.frameDependency]}
                                 </p>
                               </div>
                               <div>

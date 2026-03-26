@@ -91,6 +91,7 @@ describe("image worker integration", () => {
         name: "My Story",
         slug: "my-story",
         storageDir: "projects/proj_1-my-story",
+        visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
         premiseRelPath: "premise/v1.md",
         premiseBytes: 88,
         currentMasterPlotId: null,
@@ -116,7 +117,12 @@ describe("image worker integration", () => {
       insertBatch: vi.fn(),
       findBatchById: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
-      listFramesByBatchId: vi.fn(),
+      listFramesByBatchId: vi.fn().mockResolvedValue([
+        {
+          id: "frame_start_1",
+          imageStatus: "in_review",
+        },
+      ]),
       insertFrame: vi.fn(),
       findFrameById: vi
         .fn()
@@ -440,7 +446,12 @@ describe("image worker integration", () => {
     expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith(
       expect.objectContaining({
         frameId: "frame_start_1",
-        promptText: "雨夜市场入口，林站在霓虹雨幕前。",
+        promptText: expect.stringContaining("雨夜市场入口，林站在霓虹雨幕前。"),
+      }),
+    );
+    expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptText: expect.stringContaining("画面风格：赛璐璐动画，冷色霓虹雨夜，电影感光影"),
       }),
     );
   });
@@ -496,6 +507,7 @@ describe("image worker integration", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_1-my-story",
+          visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
           premiseRelPath: "premise/v1.md",
           premiseBytes: 88,
           currentMasterPlotId: "mp_1",
@@ -571,7 +583,12 @@ describe("image worker integration", () => {
         insertBatch: vi.fn(),
         findBatchById: vi.fn(),
         findCurrentBatchByProjectId: vi.fn(),
-        listFramesByBatchId: vi.fn(),
+        listFramesByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "frame_start_1",
+            imageStatus: "in_review",
+          },
+        ]),
         insertFrame: vi.fn(),
         findFrameById: vi.fn().mockResolvedValue({
           id: "frame_start_1",

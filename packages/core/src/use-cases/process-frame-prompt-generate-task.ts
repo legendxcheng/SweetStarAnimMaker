@@ -13,6 +13,7 @@ import type { ShotImageStorage } from "../ports/shot-image-storage";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
+import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessFramePromptGenerateTaskInput {
   taskId: string;
@@ -116,6 +117,11 @@ export function createProcessFramePromptGenerateTaskUseCase(
             imageAssetPath: character.imageAssetPath,
           })),
         });
+
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const validCharacterIds = new Set(characterRoster.map((character) => character.id));
         const selectedCharacterIds = promptPlan.selectedCharacterIds.filter((id) =>
           validCharacterIds.has(id)
@@ -184,6 +190,10 @@ export function createProcessFramePromptGenerateTaskUseCase(
           finishedAt,
         });
       } catch (error) {
+        if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+          return;
+        }
+
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 

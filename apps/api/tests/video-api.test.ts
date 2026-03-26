@@ -111,6 +111,7 @@ describe("videos api", () => {
             id: "video_segment_1",
             segmentId: "segment_1",
             status: "in_review",
+            promptTextCurrent: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
           }),
         ]),
       }),
@@ -127,6 +128,58 @@ describe("videos api", () => {
         id: "video_segment_1",
         model: "sora-2-all",
         provider: "vector-engine",
+        promptTextCurrent: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
+      }),
+    );
+
+    const savePromptResponse = await app.inject({
+      method: "PUT",
+      url: `/projects/${project.id}/videos/segments/video_segment_1/prompt`,
+      payload: {
+        promptTextCurrent: "用户改写后的当前视频提示词",
+      },
+    });
+
+    expect(savePromptResponse.statusCode).toBe(200);
+    expect(savePromptResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "video_segment_1",
+        promptTextCurrent: "用户改写后的当前视频提示词",
+      }),
+    );
+
+    const regeneratePromptResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/segments/video_segment_1/regenerate-prompt`,
+      payload: {},
+    });
+
+    expect(regeneratePromptResponse.statusCode).toBe(200);
+    expect(regeneratePromptResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "video_segment_1",
+        promptTextCurrent: expect.stringContaining("林在雨夜市场边停下"),
+      }),
+    );
+
+    const regenerateAllPromptsResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/regenerate-prompts`,
+      payload: {},
+    });
+
+    expect(regenerateAllPromptsResponse.statusCode).toBe(200);
+    expect(regenerateAllPromptsResponse.json()).toEqual(
+      expect.objectContaining({
+        currentBatch: expect.objectContaining({
+          id: "video_batch_1",
+        }),
+        segments: expect.arrayContaining([
+          expect.objectContaining({
+            id: "video_segment_1",
+            promptTextCurrent: expect.stringContaining("林在雨夜市场边停下"),
+          }),
+        ]),
       }),
     );
 
@@ -501,6 +554,9 @@ async function seedVideoBatch(input: {
     sceneId: "scene_1",
     order: 1,
     status: "in_review",
+    promptTextSeed: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
+    promptTextCurrent: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
+    promptUpdatedAt: "2026-03-25T01:04:00.000Z",
     videoAssetPath: "videos/batches/video_batch_1/segments/segment_1/current.mp4",
     thumbnailAssetPath: "videos/batches/video_batch_1/segments/segment_1/thumbnail.webp",
     durationSec: 6,
@@ -734,6 +790,9 @@ async function seedVideoBatchWithDuplicateSegmentIds(input: {
       sceneId: "scene_1",
       order: 1,
       status: "in_review",
+      promptTextSeed: "scene 1 video prompt",
+      promptTextCurrent: "scene 1 video prompt",
+      promptUpdatedAt: "2026-03-25T01:04:00.000Z",
       videoAssetPath: "videos/batches/video_batch_dup_1/segments/scene_1__segment_1/current.mp4",
       thumbnailAssetPath: "videos/batches/video_batch_dup_1/segments/scene_1__segment_1/thumbnail.webp",
       durationSec: 6,
@@ -753,6 +812,9 @@ async function seedVideoBatchWithDuplicateSegmentIds(input: {
       sceneId: "scene_2",
       order: 2,
       status: "in_review",
+      promptTextSeed: "scene 2 video prompt",
+      promptTextCurrent: "scene 2 video prompt",
+      promptUpdatedAt: "2026-03-25T01:04:30.000Z",
       videoAssetPath: "videos/batches/video_batch_dup_1/segments/scene_2__segment_1/current.mp4",
       thumbnailAssetPath: "videos/batches/video_batch_dup_1/segments/scene_2__segment_1/thumbnail.webp",
       durationSec: 6,

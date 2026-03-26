@@ -3,7 +3,10 @@ import type { FastifyInstance } from "fastify";
 import {
   approveAllVideoSegmentsRequestSchema,
   approveVideoSegmentRequestSchema,
+  regenerateAllVideoPromptsRequestSchema,
+  regenerateVideoPromptRequestSchema,
   regenerateVideoSegmentRequestSchema,
+  saveVideoPromptRequestSchema,
 } from "@sweet-star/shared";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
@@ -48,6 +51,36 @@ export function registerVideoRoutes(
     });
 
     return reply.status(201).send(task);
+  });
+
+  app.put("/projects/:projectId/videos/segments/:videoId/prompt", async (request) => {
+    const params = request.params as { projectId: string; videoId: string };
+    const body = saveVideoPromptRequestSchema.parse(request.body ?? {});
+
+    return services.updateVideoPrompt.execute({
+      projectId: params.projectId,
+      videoId: params.videoId,
+      ...body,
+    });
+  });
+
+  app.post("/projects/:projectId/videos/segments/:videoId/regenerate-prompt", async (request) => {
+    const params = request.params as { projectId: string; videoId: string };
+    regenerateVideoPromptRequestSchema.parse(request.body ?? {});
+
+    return services.regenerateVideoPrompt.execute({
+      projectId: params.projectId,
+      videoId: params.videoId,
+    });
+  });
+
+  app.post("/projects/:projectId/videos/regenerate-prompts", async (request) => {
+    const params = request.params as { projectId: string };
+    regenerateAllVideoPromptsRequestSchema.parse(request.body ?? {});
+
+    return services.regenerateAllVideoPrompts.execute({
+      projectId: params.projectId,
+    });
   });
 
   app.post("/projects/:projectId/videos/segments/:videoId/approve", async (request) => {

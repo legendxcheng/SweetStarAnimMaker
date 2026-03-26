@@ -9,6 +9,7 @@ export function NewProjectPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [premiseText, setPremiseText] = useState("");
+  const [visualStyleText, setVisualStyleText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -22,6 +23,7 @@ export function NewProjectPage() {
       const response = await apiClient.createProject({
         name: name.trim(),
         premiseText: premiseText.trim(),
+        visualStyleText: visualStyleText.trim(),
       });
       navigate(`/projects/${response.id}`);
     } catch (err) {
@@ -81,6 +83,24 @@ export function NewProjectPage() {
             required
             disabled={submitting}
             rows={10}
+            className={`${inputClass} resize-y font-[inherit]`}
+          />
+        </div>
+
+        <div className="mb-6">
+          <label
+            htmlFor="project-visual-style"
+            className="block text-sm font-medium text-(--color-text-primary) mb-1.5"
+          >
+            画面风格描述
+          </label>
+          <textarea
+            id="project-visual-style"
+            value={visualStyleText}
+            onChange={(e) => setVisualStyleText(e.target.value)}
+            placeholder="例如：赛璐璐动画，冷色霓虹雨夜，电影感光影"
+            disabled={submitting}
+            rows={4}
             className={`${inputClass} resize-y font-[inherit]`}
           />
         </div>

@@ -19,6 +19,7 @@ export type ImagePhaseActionKind =
   | "save"
   | "regenerate"
   | "regenerate-all-prompts"
+  | "generate-all-frames"
   | "generate"
   | "approve"
   | "approve-all";
