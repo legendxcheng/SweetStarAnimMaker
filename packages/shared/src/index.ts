@@ -43,7 +43,7 @@ export {
   regenerateVideoPromptRequestSchema,
   regenerateVideoSegmentRequestSchema,
   saveVideoPromptRequestSchema,
-  segmentVideoResponseSchema,
+  shotVideoResponseSchema,
   videoListResponseSchema,
 } from "./schemas/video-api";
 export {
@@ -122,7 +122,9 @@ export type {
   ImageFrameType,
   RegenerateAllImagePromptsResponse,
   RegenerateImageFramePromptRequest,
-  SegmentFrameRecord,
+  ShotReferenceFrame,
+  ShotReferenceRecord,
+  ShotReferenceStatus,
   UpdateImageFramePromptRequest,
 } from "./types/shot-image";
 export type {
@@ -133,8 +135,8 @@ export type {
   RegenerateVideoPromptRequest,
   RegenerateVideoSegmentRequest,
   SaveVideoPromptRequest,
-  SegmentVideoRecord,
-  SegmentVideoStatus,
+  ShotVideoRecord,
+  ShotVideoStatus,
   VideoListResponse,
 } from "./types/video";
 export type {

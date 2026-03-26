@@ -7,31 +7,32 @@ describe("video api schema", () => {
       id: "video_batch_v1",
       sourceImageBatchId: "image_batch_v1",
       sourceShotScriptId: "shot_script_v1",
-      segmentCount: 3,
-      approvedSegmentCount: 1,
+      shotCount: 2,
+      approvedShotCount: 1,
       updatedAt: "2026-03-25T12:00:00.000Z",
     });
 
-    expect(parsed.segmentCount).toBe(3);
-    expect(parsed.approvedSegmentCount).toBe(1);
+    expect(parsed.shotCount).toBe(2);
+    expect(parsed.approvedShotCount).toBe(1);
   });
 
-  it("accepts a segment video record payload", () => {
-    const parsed = shared.segmentVideoResponseSchema.parse({
+  it("accepts a shot video record payload", () => {
+    const parsed = shared.shotVideoResponseSchema.parse({
       id: "video_segment_1",
       projectId: "proj_1",
       batchId: "video_batch_v1",
       sourceImageBatchId: "image_batch_v1",
       sourceShotScriptId: "shot_script_v1",
-      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
       sceneId: "scene_1",
-      order: 1,
+      frameDependency: "start_and_end_frame",
       status: "in_review",
       promptTextSeed: "seed prompt",
       promptTextCurrent: "current prompt",
       promptUpdatedAt: "2026-03-25T12:00:30.000Z",
-      videoAssetPath: "videos/batches/video_batch_v1/segments/segment_1/current.mp4",
-      thumbnailAssetPath: "videos/batches/video_batch_v1/segments/segment_1/thumbnail.webp",
+      videoAssetPath: "videos/batches/video_batch_v1/shots/shot_1/current.mp4",
+      thumbnailAssetPath: "videos/batches/video_batch_v1/shots/shot_1/thumbnail.webp",
       durationSec: 8,
       provider: "vector-engine",
       model: "sora-2-all",
@@ -42,37 +43,40 @@ describe("video api schema", () => {
 
     expect(parsed.status).toBe("in_review");
     expect(parsed.model).toBe("sora-2-all");
+    expect(parsed.shotCode).toBe("SC01-SG01-SH01");
+    expect(parsed.frameDependency).toBe("start_and_end_frame");
     expect(parsed.promptTextSeed).toBe("seed prompt");
     expect(parsed.promptTextCurrent).toBe("current prompt");
     expect(parsed.promptUpdatedAt).toBe("2026-03-25T12:00:30.000Z");
   });
 
-  it("accepts a list response for the current videos batch", () => {
+  it("accepts a list response for the current shot videos batch", () => {
     const parsed = shared.videoListResponseSchema.parse({
       currentBatch: {
         id: "video_batch_v1",
         sourceImageBatchId: "image_batch_v1",
         sourceShotScriptId: "shot_script_v1",
-        segmentCount: 2,
-        approvedSegmentCount: 1,
+        shotCount: 2,
+        approvedShotCount: 1,
         updatedAt: "2026-03-25T12:00:00.000Z",
       },
-      segments: [
+      shots: [
         {
           id: "video_segment_1",
           projectId: "proj_1",
           batchId: "video_batch_v1",
           sourceImageBatchId: "image_batch_v1",
           sourceShotScriptId: "shot_script_v1",
-          segmentId: "segment_1",
+          shotId: "shot_1",
+          shotCode: "SC01-SG01-SH01",
           sceneId: "scene_1",
-          order: 1,
+          frameDependency: "start_and_end_frame",
           status: "approved",
           promptTextSeed: "seed prompt",
           promptTextCurrent: "current prompt",
           promptUpdatedAt: "2026-03-25T12:00:30.000Z",
-          videoAssetPath: "videos/batches/video_batch_v1/segments/segment_1/current.mp4",
-          thumbnailAssetPath: "videos/batches/video_batch_v1/segments/segment_1/thumbnail.webp",
+          videoAssetPath: "videos/batches/video_batch_v1/shots/shot_1/current.mp4",
+          thumbnailAssetPath: "videos/batches/video_batch_v1/shots/shot_1/thumbnail.webp",
           durationSec: 8,
           provider: "vector-engine",
           model: "sora-2-all",
@@ -83,9 +87,13 @@ describe("video api schema", () => {
       ],
     });
 
-    expect(parsed.segments).toHaveLength(1);
+    expect(parsed.shots).toHaveLength(1);
+    expect(parsed.currentBatch.shotCount).toBe(2);
+    expect(parsed.currentBatch.approvedShotCount).toBe(1);
     expect(parsed.currentBatch.sourceImageBatchId).toBe("image_batch_v1");
-    expect(parsed.segments[0]?.promptTextCurrent).toBe("current prompt");
+    expect(parsed.shots[0]?.shotCode).toBe("SC01-SG01-SH01");
+    expect(parsed.shots[0]?.frameDependency).toBe("start_and_end_frame");
+    expect(parsed.shots[0]?.promptTextCurrent).toBe("current prompt");
   });
 
   it("accepts prompt-related video request payloads", () => {

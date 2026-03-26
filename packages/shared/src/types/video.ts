@@ -1,24 +1,27 @@
-export type SegmentVideoStatus = "generating" | "in_review" | "approved" | "failed";
+import type { ShotFrameDependency } from "./shot-script";
+
+export type ShotVideoStatus = "generating" | "in_review" | "approved" | "failed";
 
 export interface CurrentVideoBatchSummary {
   id: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  segmentCount: number;
-  approvedSegmentCount: number;
+  shotCount: number;
+  approvedShotCount: number;
   updatedAt: string;
 }
 
-export interface SegmentVideoRecord {
+export interface ShotVideoRecord {
   id: string;
   projectId: string;
   batchId: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  segmentId: string;
+  shotId: string;
+  shotCode: string;
   sceneId: string;
-  order: number;
-  status: SegmentVideoStatus;
+  frameDependency: ShotFrameDependency;
+  status: ShotVideoStatus;
   promptTextSeed: string;
   promptTextCurrent: string;
   promptUpdatedAt: string;
@@ -34,7 +37,7 @@ export interface SegmentVideoRecord {
 
 export interface VideoListResponse {
   currentBatch: CurrentVideoBatchSummary;
-  segments: SegmentVideoRecord[];
+  shots: ShotVideoRecord[];
 }
 
 export interface ApproveVideoSegmentRequest {}
