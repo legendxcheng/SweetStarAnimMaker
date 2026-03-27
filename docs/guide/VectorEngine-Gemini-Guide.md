@@ -248,6 +248,27 @@ Invoke-WebRequest `
 
 如果一开始就跑全链路，很容易把平台问题、配置问题、解析问题、队列问题混在一起。
 
+## 当前并发策略
+
+当前仓库里的 Gemini 调用不是“全部并发”也不是“全部串行”，而是按任务类型区分：
+
+- `master plot` 和 `storyboard` 生成各自只发起一次 `generateContent` 请求，本质上是单请求流程
+- `character sheet` 的角色提示词生成现在会以最多 `4` 个并发请求执行，而不是逐个角色串行等待
+- `frame prompt` 任务队列的 worker 并发度现在是 `4`，因此同一批 frame prompt 的 Gemini 请求可以并发跑起来
+
+对应代码位置：
+
+- `packages/core/src/use-cases/process-character-sheets-generate-task.ts`
+- `apps/worker/src/index.ts`
+
+如果你要继续调优吞吐，优先关注：
+
+- VectorEngine 账号的 `429`
+- 上游模型稳定性
+- worker 机器本身的 CPU / 内存 / 网络
+
+不要盲目继续把并发度拉高，否则更容易把限流和偶发失败放大。
+
 ## 常见错误与判断方法
 
 ### 401 / 403
@@ -352,3 +373,4 @@ STORYBOARD_LLM_MODEL=gemini-2.5-pro
 - 环境变量有没有进入进程
 - 模型名是否当前可用
 - 失败时日志是否足够定位问题
+

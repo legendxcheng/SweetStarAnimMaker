@@ -41,6 +41,22 @@ When `referenceImagePaths` are present on a character-sheet image request:
 
 If every upload provider fails, image generation stops before the VectorEngine request is sent.
 
+## Current Parallelism
+
+Current image generation in this repository is split by stage:
+
+- reference image upload inside a single image request still follows configured uploader order and is not a bulk parallel uploader
+- `images_generate` is a batch orchestration task that creates per-frame work items
+- `frame_image_generate` worker concurrency is `4`, so multiple VectorEngine image requests can run in parallel
+
+Relevant code:
+
+- `apps/worker/src/index.ts`
+- `packages/core/src/use-cases/process-images-generate-task.ts`
+- `packages/core/src/use-cases/process-frame-image-generate-task.ts`
+
+If you see `429` or unstable upstream failures after raising throughput, reduce worker concurrency before changing request payloads.
+
 ## Current Scope
 
 This uploader is currently used for reference images that feed image-generation requests.
@@ -51,3 +67,4 @@ Out of scope for this release:
 - Browser-side uploads
 - A standalone upload API
 - Automatic image compression or format conversion
+

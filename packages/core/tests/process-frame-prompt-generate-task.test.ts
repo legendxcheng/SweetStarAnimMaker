@@ -66,6 +66,7 @@ describe("process frame prompt generate task use case", () => {
         projectId: "proj_20260324_ab12cd",
         taskType: "frame_prompt_generate",
         batchId: "image_batch_task_20260324_images",
+        shotId: "shot_1",
         frameId: "frame_segment_1_start",
         sourceShotScriptId: "shot_script_v1",
         segmentId: "segment_1",
@@ -178,6 +179,7 @@ describe("process frame prompt generate task use case", () => {
                 visual: "清晨积水集市入口。",
                 subject: "林夏",
                 action: "她停住脚步。",
+                frameDependency: "start_and_end_frame",
                 dialogue: null,
                 os: "来得比我还快。",
                 audio: "雨声与水声。",
@@ -335,6 +337,21 @@ describe("process frame prompt generate task use case", () => {
 
     await useCase.execute({ taskId: "task_frame_prompt_1" });
 
+    expect(framePromptProvider.generateFramePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameType: "start_frame",
+        currentShot: expect.objectContaining({
+          id: "shot_1",
+          shotCode: "S01-SG01-SH01",
+          action: "她停住脚步。",
+          frameDependency: "start_and_end_frame",
+        }),
+        segment: expect.objectContaining({
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+        }),
+      }),
+    );
     expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "frame_segment_1_start",
@@ -432,6 +449,7 @@ describe("process frame prompt generate task use case", () => {
         projectId: "proj_20260324_ab12cd",
         taskType: "frame_prompt_generate",
         batchId: "image_batch_task_20260324_images",
+        shotId: "shot_scene_2",
         frameId: "frame_scene_2__segment_1_start",
         sourceShotScriptId: "shot_script_v1",
         segmentId: "segment_1",
@@ -556,6 +574,7 @@ describe("process frame prompt generate task use case", () => {
                 visual: "第二场画面。",
                 subject: "林夏",
                 action: "回头。",
+                frameDependency: "start_frame_only",
                 dialogue: null,
                 os: null,
                 audio: "广播杂音。",
@@ -694,6 +713,7 @@ describe("process frame prompt generate task use case", () => {
         projectId: "proj_20260324_ab12cd",
         taskType: "frame_prompt_generate",
         batchId: "image_batch_task_20260324_images",
+        shotId: "shot_1",
         frameId: "frame_segment_1_end",
         sourceShotScriptId: "shot_script_v1",
         segmentId: "segment_1",
@@ -794,7 +814,26 @@ describe("process frame prompt generate task use case", () => {
             status: "approved",
             lastGeneratedAt: "2026-03-24T00:09:00.000Z",
             approvedAt: "2026-03-24T00:10:00.000Z",
-            shots: [],
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 3,
+                purpose: "交代堵路。",
+                visual: "清晨积水集市入口。",
+                subject: "林夏",
+                action: "她停住脚步。",
+                frameDependency: "start_and_end_frame",
+                dialogue: null,
+                os: null,
+                audio: "雨声与水声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
           },
         ],
       }),
@@ -1001,6 +1040,7 @@ describe("process frame prompt generate task use case", () => {
                 visual: "清晨积水集市入口。",
                 subject: "林夏",
                 action: "她停住脚步。",
+                frameDependency: "start_and_end_frame",
                 dialogue: null,
                 os: null,
                 audio: "雨声与水声。",

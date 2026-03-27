@@ -4,6 +4,7 @@ import type {
   GenerateFramePromptResult,
 } from "@sweet-star/core";
 
+import { buildFramePromptText } from "./frame-prompt-template";
 import { requestOpenAiCompatibleChatCompletion } from "./openai-compatible-chat";
 
 export interface CreateGrokFramePromptProviderOptions {
@@ -58,18 +59,7 @@ export function createGrokFramePromptProvider(
 }
 
 function buildPromptText(input: GenerateFramePromptInput) {
-  return [
-    `projectId: ${input.projectId}`,
-    `frameType: ${input.frameType}`,
-    "",
-    "segment:",
-    JSON.stringify(input.segment, null, 2),
-    "",
-    "approvedCharacterRoster:",
-    JSON.stringify(input.characterRoster, null, 2),
-    "",
-    "Return one JSON object with keys: frameType, selectedCharacterIds, promptText, negativePromptText, rationale.",
-  ].join("\n");
+  return buildFramePromptText(input);
 }
 
 function normalizeFramePromptPayload(

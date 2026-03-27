@@ -1,6 +1,7 @@
 import type { ShotReferenceFrame, ShotReferenceRecord } from "@sweet-star/shared";
 
 import { config } from "../../services/config";
+import { FRAME_PROMPT_PENDING_TIMEOUT_MS } from "./constants";
 import type { FrameDraftState } from "./types";
 
 export function createFrameDraft(frame: ShotReferenceFrame): FrameDraftState {
@@ -13,6 +14,17 @@ export function createFrameDraft(frame: ShotReferenceFrame): FrameDraftState {
 export function normalizeOptionalText(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+export function buildFinalImagePrompt(promptTextCurrent: string, visualStyleText: string) {
+  const trimmedPrompt = promptTextCurrent.trim();
+  const trimmedVisualStyleText = visualStyleText.trim();
+
+  if (!trimmedVisualStyleText) {
+    return trimmedPrompt;
+  }
+
+  return `${trimmedPrompt}\n\n画面风格：${trimmedVisualStyleText}`;
 }
 
 export function getFrameImageUrl(
@@ -28,6 +40,124 @@ export function getRequiredFrames(
   shot: Pick<ShotReferenceRecord, "startFrame" | "endFrame">,
 ): ShotReferenceFrame[] {
   return shot.endFrame ? [shot.startFrame, shot.endFrame] : [shot.startFrame];
+}
+
+export interface FrameGenerationStatusSummary {
+  summary: string;
+  detail: string | null;
+}
+
+export function getFrameGenerationStatusSummary(
+  shots: Array<Pick<ShotReferenceRecord, "shotCode" | "startFrame" | "endFrame">>,
+): FrameGenerationStatusSummary {
+  const orderedEntries = shots.flatMap((shot) =>
+    getRequiredFrames(shot).map((frame) => ({
+      shotCode: shot.shotCode,
+      sceneId: frame.sceneId,
+      segmentId: frame.segmentId,
+      frameLabel: frame.frameType === "start_frame" ? "起始帧" : "结束帧",
+      frame,
+    })),
+  );
+  const frames = orderedEntries.map((entry) => entry.frame);
+  const totalFrameCount = frames.length;
+
+  if (totalFrameCount === 0) {
+    return { summary: "暂无帧", detail: null };
+  }
+
+  const promptGeneratingCount = frames.filter((frame) => isFramePromptPending(frame)).length;
+
+  if (promptGeneratingCount > 0) {
+    return { summary: `Prompt 生成中 ${promptGeneratingCount}/${totalFrameCount}`, detail: null };
+  }
+
+  const promptFailedCount = frames.filter((frame) => isFramePromptFailed(frame)).length;
+
+  if (promptFailedCount > 0) {
+    const firstPromptFailure = orderedEntries.find((entry) => isFramePromptFailed(entry.frame));
+    return {
+      summary: `Prompt 失败 ${promptFailedCount}/${totalFrameCount}`,
+      detail: firstPromptFailure
+        ? `${firstPromptFailure.sceneId} / ${firstPromptFailure.segmentId} / ${firstPromptFailure.shotCode} / ${firstPromptFailure.frameLabel}`
+        : null,
+    };
+  }
+
+  const imageFailedCount = frames.filter(
+    (frame) => frame.planStatus === "planned" && frame.imageStatus === "failed",
+  ).length;
+
+  if (imageFailedCount > 0) {
+    const firstImageFailure = orderedEntries.find(
+      (entry) => entry.frame.planStatus === "planned" && entry.frame.imageStatus === "failed",
+    );
+    return {
+      summary: `图片失败 ${imageFailedCount}/${totalFrameCount}`,
+      detail: firstImageFailure
+        ? `${firstImageFailure.sceneId} / ${firstImageFailure.segmentId} / ${firstImageFailure.shotCode} / ${firstImageFailure.frameLabel}`
+        : null,
+    };
+  }
+
+  const imageGeneratingCount = frames.filter(
+    (frame) => frame.planStatus === "planned" && frame.imageStatus === "generating",
+  ).length;
+
+  if (imageGeneratingCount > 0) {
+    return { summary: `图片生成中 ${imageGeneratingCount}/${totalFrameCount}`, detail: null };
+  }
+
+  const pendingImageCount = frames.filter(
+    (frame) => frame.planStatus === "planned" && frame.imageStatus === "pending",
+  ).length;
+
+  if (pendingImageCount > 0) {
+    const promptReadyCount = frames.filter(
+      (frame) => frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0,
+    ).length;
+    return { summary: `Prompt 已就绪 ${promptReadyCount}/${totalFrameCount}`, detail: null };
+  }
+
+  const reviewableImageCount = frames.filter(
+    (frame) => frame.imageStatus === "in_review" || frame.imageStatus === "approved",
+  ).length;
+  const approvedImageCount = frames.filter((frame) => frame.imageStatus === "approved").length;
+
+  if (approvedImageCount === totalFrameCount) {
+    return { summary: `全部已通过 ${approvedImageCount}/${totalFrameCount}`, detail: null };
+  }
+
+  if (reviewableImageCount > 0) {
+    return { summary: `图片待审核 ${reviewableImageCount}/${totalFrameCount}`, detail: null };
+  }
+
+  return { summary: "处理中", detail: null };
+}
+
+export function isFramePromptPending(frame: Pick<ShotReferenceFrame, "planStatus" | "updatedAt">) {
+  return frame.planStatus === "pending" && !isFramePromptTimedOut(frame);
+}
+
+export function isFramePromptTimedOut(
+  frame: Pick<ShotReferenceFrame, "planStatus" | "updatedAt">,
+  now = Date.now(),
+) {
+  if (frame.planStatus !== "pending") {
+    return false;
+  }
+
+  const startedAt = Date.parse(frame.updatedAt);
+
+  if (Number.isNaN(startedAt)) {
+    return false;
+  }
+
+  return now - startedAt >= FRAME_PROMPT_PENDING_TIMEOUT_MS;
+}
+
+export function isFramePromptFailed(frame: Pick<ShotReferenceFrame, "planStatus" | "updatedAt">) {
+  return frame.planStatus === "plan_failed" || isFramePromptTimedOut(frame);
 }
 
 export function isShotReadyForApproval(

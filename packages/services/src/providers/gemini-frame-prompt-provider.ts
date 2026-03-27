@@ -4,6 +4,7 @@ import type {
   GenerateFramePromptResult,
 } from "@sweet-star/core";
 
+import { buildFramePromptText } from "./frame-prompt-template";
 import { buildProviderRequestError } from "./provider-request-error";
 
 export interface CreateGeminiFramePromptProviderOptions {
@@ -133,16 +134,7 @@ const framePromptPlanResponseJsonSchema = {
 } as const;
 
 function buildPromptText(input: GenerateFramePromptInput) {
-  return [
-    `projectId: ${input.projectId}`,
-    `frameType: ${input.frameType}`,
-    "",
-    "segment:",
-    JSON.stringify(input.segment, null, 2),
-    "",
-    "approvedCharacterRoster:",
-    JSON.stringify(input.characterRoster, null, 2),
-  ].join("\n");
+  return buildFramePromptText(input);
 }
 
 function extractCandidateText(rawResponse: unknown) {

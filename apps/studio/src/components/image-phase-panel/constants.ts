@@ -1,5 +1,7 @@
 import type { ShotReferenceFrame, TaskDetail } from "@sweet-star/shared";
 
+export const FRAME_PROMPT_PENDING_TIMEOUT_MS = 300_000;
+
 export const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
   running: "执行中",

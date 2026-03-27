@@ -39,6 +39,7 @@ export interface ImagePhaseActionBusy {
 
 export interface FrameEditorCardProps {
   projectId: string;
+  visualStyleText: string;
   frame: ShotReferenceFrame | null;
   draft: FrameDraftState | undefined;
   busy: boolean;

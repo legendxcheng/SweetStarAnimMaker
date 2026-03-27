@@ -49,12 +49,27 @@ describe("gemini frame-prompt provider", () => {
         summary: "林在雨夜市场边听见彗星歌声。",
         shots: [
           {
+            id: "shot_0",
+            shotCode: "SC01-SG01-SH00",
+            purpose: "建立市场的前置压迫感。",
+            visual: "市场入口之外的雨夜街口。",
+            subject: "空旷街口、远处霓虹",
+            action: "雨水顺着招牌滴落。",
+            frameDependency: "start_frame_only",
+            dialogue: null,
+            os: null,
+            audio: "雨声、远处风铃。",
+            transitionHint: "镜头切入林的背影。",
+            continuityNotes: "地面始终有积水反光。",
+          },
+          {
             id: "shot_1",
             shotCode: "SC01-SG01-SH01",
             purpose: "建立空间与人物位置。",
             visual: "雨夜积水市场，霓虹映在水面。",
             subject: "林、伊沃",
             action: "林停下脚步，伊沃在远处回头。",
+            frameDependency: "start_and_end_frame",
             dialogue: null,
             os: null,
             audio: "雨声、风铃声、遥远的人声。",
@@ -62,6 +77,20 @@ describe("gemini frame-prompt provider", () => {
             continuityNotes: "林的书包始终在左肩。",
           },
         ],
+      },
+      currentShot: {
+        id: "shot_1",
+        shotCode: "SC01-SG01-SH01",
+        purpose: "建立空间与人物位置。",
+        visual: "雨夜积水市场，霓虹映在水面。",
+        subject: "林、伊沃",
+        action: "林停下脚步，伊沃在远处回头。",
+        frameDependency: "start_and_end_frame",
+        dialogue: null,
+        os: null,
+        audio: "雨声、风铃声、遥远的人声。",
+        transitionHint: null,
+        continuityNotes: "林的书包始终在左肩。",
       },
       characterRoster: [
         {
@@ -91,9 +120,15 @@ describe("gemini frame-prompt provider", () => {
     );
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const requestText = request.contents[0].parts[0].text as string;
 
     expect(request.systemInstruction.parts[0].text).toContain("SeaDream");
-    expect(request.contents[0].parts[0].text).toContain('"characterId": "char_rin_1"');
+    expect(requestText).toContain('"characterId": "char_rin_1"');
+    expect(requestText).toContain('"currentShot"');
+    expect(requestText).toContain('"shotCode": "SC01-SG01-SH01"');
+    expect(requestText).toContain("start_frame 必须体现当前 shot 的开始状态");
+    expect(requestText).toContain("end_frame 必须体现当前 shot 的结束状态");
+    expect(requestText).toContain("不要让 start_frame 与 end_frame 只是同义改写");
     expect(request.generationConfig.responseMimeType).toBe("application/json");
     expect(result).toEqual({
       frameType: "start_frame",
@@ -150,6 +185,20 @@ describe("gemini frame-prompt provider", () => {
           summary: "结尾定格在市场边缘。",
           shots: [],
         },
+        currentShot: {
+          id: "shot_1",
+          shotCode: "SC01-SG01-SH01",
+          purpose: "定格结尾。",
+          visual: "市场边缘的冷光。",
+          subject: "林",
+          action: "她停在出口前。",
+          frameDependency: "start_and_end_frame",
+          dialogue: null,
+          os: null,
+          audio: null,
+          transitionHint: null,
+          continuityNotes: null,
+        },
         characterRoster: [],
       }),
     ).rejects.toThrow("Gemini frame prompt provider returned invalid promptText");
@@ -180,6 +229,20 @@ describe("gemini frame-prompt provider", () => {
         order: 1,
         summary: "林在雨夜市场边听见彗星歌声。",
         shots: [],
+      },
+      currentShot: {
+        id: "shot_1",
+        shotCode: "SC01-SG01-SH01",
+        purpose: "建立空间与人物位置。",
+        visual: "雨夜积水市场，霓虹映在水面。",
+        subject: "林、伊沃",
+        action: "林停下脚步，伊沃在远处回头。",
+        frameDependency: "start_frame_only",
+        dialogue: null,
+        os: null,
+        audio: "雨声、风铃声、遥远的人声。",
+        transitionHint: null,
+        continuityNotes: "林的书包始终在左肩。",
       },
       characterRoster: [],
     });

@@ -45,6 +45,8 @@ export interface ProcessCharacterSheetsGenerateTaskUseCaseDependencies {
   clock: Clock;
 }
 
+const CHARACTER_PROMPT_CONCURRENCY = 4;
+
 export function createProcessCharacterSheetsGenerateTaskUseCase(
   dependencies: ProcessCharacterSheetsGenerateTaskUseCaseDependencies,
 ): ProcessCharacterSheetsGenerateTaskUseCase {
@@ -107,81 +109,89 @@ export function createProcessCharacterSheetsGenerateTaskUseCase(
           promptTemplateKey: "character_sheet.prompt.generate",
         });
 
-        for (const [index, characterName] of taskInput.mainCharacters.entries()) {
-          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
-            return;
-          }
+        await forEachWithConcurrencyLimit(
+          taskInput.mainCharacters.map((characterName, index) => ({ characterName, index })),
+          CHARACTER_PROMPT_CONCURRENCY,
+          async ({ characterName, index }) => {
+            if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+              return;
+            }
 
-          const promptText = renderCharacterPromptTemplate(promptTemplate, masterPlot, characterName);
-          const promptResult =
-            await dependencies.characterSheetPromptProvider.generateCharacterPrompt({
+            const promptText = renderCharacterPromptTemplate(
+              promptTemplate,
+              masterPlot,
+              characterName,
+            );
+            const promptResult =
+              await dependencies.characterSheetPromptProvider.generateCharacterPrompt({
+                projectId: project.id,
+                masterPlot,
+                characterName,
+                promptText,
+              });
+
+            if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+              return;
+            }
+
+            const character = createCharacterSheetRecord({
+              id: toCharacterSheetId(batch.id, characterName, index),
               projectId: project.id,
-              masterPlot,
+              projectStorageDir: project.storageDir,
+              batchId: batch.id,
+              sourceMasterPlotId: taskInput.sourceMasterPlotId,
               characterName,
-              promptText,
+              promptTextGenerated: promptResult.promptText,
+              promptTextCurrent: promptResult.promptText,
+              updatedAt: startedAt,
             });
 
-          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
-            return;
-          }
-
-          const character = createCharacterSheetRecord({
-            id: toCharacterSheetId(batch.id, characterName, index),
-            projectId: project.id,
-            projectStorageDir: project.storageDir,
-            batchId: batch.id,
-            sourceMasterPlotId: taskInput.sourceMasterPlotId,
-            characterName,
-            promptTextGenerated: promptResult.promptText,
-            promptTextCurrent: promptResult.promptText,
-            updatedAt: startedAt,
-          });
-
-          await dependencies.characterSheetRepository.insertCharacter(character);
-          await dependencies.characterSheetStorage.writeGeneratedPrompt({
-            character,
-            promptVariables: {
-              characterName,
-              masterPlot,
-            },
-          });
-          const referenceImagePaths =
-            await dependencies.characterSheetStorage.resolveReferenceImagePaths({
+            await dependencies.characterSheetRepository.insertCharacter(character);
+            await dependencies.characterSheetStorage.writeGeneratedPrompt({
               character,
+              promptVariables: {
+                characterName,
+                masterPlot,
+              },
             });
+            const referenceImagePaths =
+              await dependencies.characterSheetStorage.resolveReferenceImagePaths({
+                character,
+              });
 
-          const characterTask = createTaskRecord({
-            id: dependencies.taskIdGenerator.generateTaskId(),
-            projectId: project.id,
-            projectStorageDir: project.storageDir,
-            type: "character_sheet_generate",
-            queueName: characterSheetGenerateQueueName,
-            createdAt: startedAt,
-          });
-          const characterTaskInput: CharacterSheetGenerateTaskInput = {
-            taskId: characterTask.id,
-            projectId: project.id,
-            taskType: "character_sheet_generate",
-            batchId: batch.id,
-            characterId: character.id,
-            sourceMasterPlotId: taskInput.sourceMasterPlotId,
-            characterName,
-            promptTextCurrent: character.promptTextCurrent,
-            imagePromptTemplateKey: "character_sheet.turnaround.generate",
-            ...(referenceImagePaths.length > 0 ? { referenceImagePaths } : {}),
-          };
+            const characterTask = createTaskRecord({
+              id: dependencies.taskIdGenerator.generateTaskId(),
+              projectId: project.id,
+              projectStorageDir: project.storageDir,
+              type: "character_sheet_generate",
+              queueName: characterSheetGenerateQueueName,
+              createdAt: startedAt,
+            });
+            const characterTaskInput: CharacterSheetGenerateTaskInput = {
+              taskId: characterTask.id,
+              projectId: project.id,
+              taskType: "character_sheet_generate",
+              batchId: batch.id,
+              characterId: character.id,
+              sourceMasterPlotId: taskInput.sourceMasterPlotId,
+              characterName,
+              promptTextCurrent: character.promptTextCurrent,
+              imagePromptTemplateKey: "character_sheet.turnaround.generate",
+              ...(referenceImagePaths.length > 0 ? { referenceImagePaths } : {}),
+            };
 
-          await dependencies.taskRepository.insert(characterTask);
-          await dependencies.taskFileStorage.createTaskArtifacts({
-            task: characterTask,
-            input: characterTaskInput,
-          });
-          await dependencies.taskQueue.enqueue({
-            taskId: characterTask.id,
-            queueName: characterTask.queueName,
-            taskType: characterTask.type,
-          });
-        }
+            await dependencies.taskRepository.insert(characterTask);
+            await dependencies.taskFileStorage.createTaskArtifacts({
+              task: characterTask,
+              input: characterTaskInput,
+            });
+            await dependencies.taskQueue.enqueue({
+              taskId: characterTask.id,
+              queueName: characterTask.queueName,
+              taskType: characterTask.type,
+            });
+          },
+        );
 
         if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
           return;
@@ -286,4 +296,31 @@ function renderCharacterPromptTemplate(
       "{{masterPlot.targetDurationSec}}",
       masterPlot.targetDurationSec === null ? "" : String(masterPlot.targetDurationSec),
     );
+}
+
+async function forEachWithConcurrencyLimit<T>(
+  items: T[],
+  concurrency: number,
+  iteratee: (item: T) => Promise<void>,
+) {
+  const queue = [...items];
+  const workerCount = Math.min(Math.max(concurrency, 1), queue.length);
+
+  if (workerCount === 0) {
+    return;
+  }
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (queue.length > 0) {
+        const item = queue.shift();
+
+        if (item === undefined) {
+          return;
+        }
+
+        await iteratee(item);
+      }
+    }),
+  );
 }

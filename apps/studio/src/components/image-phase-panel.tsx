@@ -14,7 +14,10 @@ import type {
 } from "./image-phase-panel/types";
 import {
   createFrameDraft,
+  getFrameGenerationStatusSummary,
   getRequiredFrames,
+  isFramePromptFailed,
+  isFramePromptPending,
   isShotReadyForApproval,
   normalizeOptionalText,
   replaceFrameOnShot,
@@ -46,11 +49,15 @@ export function ImagePhasePanel({
     () => shots.flatMap((shot) => getRequiredFrames(shot)),
     [shots],
   );
-  const hasPendingFramePlans = frames.some((frame) => frame.planStatus === "pending");
-  const hasFailedPromptFrames = frames.some((frame) => frame.planStatus === "plan_failed");
+  const hasPendingFramePlans = frames.some((frame) => isFramePromptPending(frame));
+  const hasFailedPromptFrames = frames.some((frame) => isFramePromptFailed(frame));
   const hasFailedImageFrames = frames.some(
     (frame) => frame.planStatus === "planned" && frame.imageStatus === "failed",
   );
+  const canGenerateAllFrames =
+    frames.length > 0 &&
+    frames.every((frame) => frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0);
+  const generationStatusSummary = getFrameGenerationStatusSummary(shots);
 
   useEffect(() => {
     if (!batchSummary) {
@@ -384,7 +391,7 @@ export function ImagePhasePanel({
   }
 
   async function handleGenerateAllFrames() {
-    if (!batchSummary || frames.length === 0 || hasPendingFramePlans) {
+    if (!batchSummary || !canGenerateAllFrames) {
       return;
     }
 
@@ -446,7 +453,7 @@ export function ImagePhasePanel({
                 onClick={() => {
                   void handleGenerateAllFrames();
                 }}
-                disabled={actionBusy !== null || frames.length === 0 || hasPendingFramePlans}
+                disabled={actionBusy !== null || !canGenerateAllFrames}
                 className={getButtonClassName({ variant: "warning" })}
               >
                 重新生成全部帧
@@ -504,6 +511,15 @@ export function ImagePhasePanel({
               <p className={metaValueClass}>
                 {new Date(batchSummary.updatedAt).toLocaleString("zh-CN")}
               </p>
+            </div>
+            <div>
+              <p className={metaLabelClass}>当前生成状态</p>
+              <p className={metaValueClass}>{generationStatusSummary.summary}</p>
+              {generationStatusSummary.detail ? (
+                <p className="text-xs text-(--color-text-muted) mt-1 break-words">
+                  {generationStatusSummary.detail}
+                </p>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -651,6 +667,7 @@ export function ImagePhasePanel({
                   <div className="grid gap-4 xl:grid-cols-2">
                     <FrameEditorCard
                       projectId={project.id}
+                      visualStyleText={project.premise.visualStyleText ?? ""}
                       frame={shot.startFrame}
                       draft={drafts[shot.startFrame.id]}
                       busy={
@@ -675,6 +692,7 @@ export function ImagePhasePanel({
                     {shot.endFrame && (
                       <FrameEditorCard
                         projectId={project.id}
+                        visualStyleText={project.premise.visualStyleText ?? ""}
                         frame={shot.endFrame}
                         draft={drafts[shot.endFrame.id]}
                         busy={

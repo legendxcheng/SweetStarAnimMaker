@@ -116,6 +116,12 @@ export function createProcessFramePromptGenerateTaskUseCase(
           throw new Error(`Shot script segment not found: ${taskInput.segmentId}`);
         }
 
+        const currentShot = segment.shots.find((item) => item.id === taskInput.shotId);
+
+        if (!currentShot) {
+          throw new Error(`Shot script shot not found: ${taskInput.shotId}`);
+        }
+
         const characterRoster = await loadApprovedCharacterRoster({
           project,
           characterSheetBatchId: project.currentCharacterSheetBatchId,
@@ -133,6 +139,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
             summary: segment.summary,
             shots: segment.shots,
           },
+          currentShot,
           characterRoster: characterRoster.map((character) => ({
             characterId: character.id,
             characterName: character.characterName,

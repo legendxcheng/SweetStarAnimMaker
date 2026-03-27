@@ -1,4 +1,19 @@
-import type { ImageFrameType } from "@sweet-star/shared";
+import type { ImageFrameType, ShotFrameDependency } from "@sweet-star/shared";
+
+export interface GenerateFramePromptShotContext {
+  id: string;
+  shotCode: string;
+  purpose: string;
+  visual: string;
+  subject: string;
+  action: string;
+  frameDependency: ShotFrameDependency;
+  dialogue: string | null;
+  os: string | null;
+  audio: string | null;
+  transitionHint: string | null;
+  continuityNotes: string | null;
+}
 
 export interface GenerateFramePromptInput {
   projectId: string;
@@ -8,20 +23,9 @@ export interface GenerateFramePromptInput {
     sceneId: string;
     order: number;
     summary: string;
-    shots: Array<{
-      id: string;
-      shotCode: string;
-      purpose: string;
-      visual: string;
-      subject: string;
-      action: string;
-      dialogue: string | null;
-      os: string | null;
-      audio: string | null;
-      transitionHint: string | null;
-      continuityNotes: string | null;
-    }>;
+    shots: Array<GenerateFramePromptShotContext>;
   };
+  currentShot: GenerateFramePromptShotContext;
   characterRoster: Array<{
     characterId: string;
     characterName: string;

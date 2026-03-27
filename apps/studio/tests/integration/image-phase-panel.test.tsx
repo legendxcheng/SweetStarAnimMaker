@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImagePhasePanel } from "../../src/components/image-phase-panel";
@@ -18,6 +18,7 @@ const baseProject = {
     path: "premise/v1.md",
     bytes: 42,
     updatedAt: "2024-01-01T00:00:00Z",
+    visualStyleText: "精致二次元动漫风",
   },
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
@@ -267,8 +268,75 @@ describe("ImagePhasePanel", () => {
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
     expect(screen.getByDisplayValue("尾帧定格在林与天际冷白尾光的对视。")).toBeInTheDocument();
+    expect(screen.queryByLabelText("起始帧负面提示词")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("结束帧负面提示词")).not.toBeInTheDocument();
     expect(screen.getByText(/未匹配角色/i)).toBeInTheDocument();
     expect(screen.getAllByText("current.png")[0]).toBeInTheDocument();
+  });
+
+  it("shows the failed frame locator in the top workspace summary", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: baseProject.currentImageBatch,
+      shots: [
+        createShot({
+          startFrame: createFrame({
+            id: "frame-start-pending",
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "pending",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            sourceTaskId: null,
+          }),
+          endFrame: createFrame({
+            id: "frame-end-plan-failed",
+            frameType: "end_frame",
+            planStatus: "plan_failed",
+            imageStatus: "pending",
+            promptTextSeed: "",
+            promptTextCurrent: "",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            sourceTaskId: "task-frame-end-plan-failed",
+          }),
+        }),
+      ],
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText("当前生成状态")).toBeInTheDocument();
+    expect(screen.getByText("Prompt 失败 1/2")).toBeInTheDocument();
+    expect(screen.getByText("scene-1 / segment-1 / S01-SG01-SH01 / 结束帧")).toBeInTheDocument();
+  });
+
+  it("opens a per-frame dialog to preview the final positive prompt", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(
+      screen.queryByText("画面风格：精致二次元动漫风"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "查看最终 Prompt" })[0]!);
+
+    const dialog = await screen.findByRole("dialog", { name: "起始帧最终 Prompt" });
+    expect(dialog).toBeInTheDocument();
+
+    expect(
+      (within(dialog).getByRole("textbox") as HTMLTextAreaElement).value,
+    ).toBe("雨夜市场入口，林站在霓虹雨幕前。\n\n画面风格：精致二次元动漫风");
   });
 
   it("renders only the start frame editor for start-frame-only shots", async () => {
@@ -375,9 +443,6 @@ describe("ImagePhasePanel", () => {
     fireEvent.change(promptInput, {
       target: { value: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。" },
     });
-    fireEvent.change(screen.getByLabelText("起始帧负面提示词"), {
-      target: { value: "低清晰度、重复人物" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "保存起始帧提示词" }));
 
     await waitFor(() => {
@@ -386,7 +451,7 @@ describe("ImagePhasePanel", () => {
         "frame-start-1",
         {
           promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
-          negativePromptTextCurrent: "低清晰度、重复人物",
+          negativePromptTextCurrent: null,
         },
       );
     });
@@ -423,6 +488,7 @@ describe("ImagePhasePanel", () => {
 
   it("submits a batch prompt regeneration request and disables prompt actions while pending", async () => {
     let resolveBatchRequest: (() => void) | undefined;
+    const pendingUpdatedAt = new Date(Date.now() - 60_000).toISOString();
 
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce(imageListResponse)
@@ -433,11 +499,13 @@ describe("ImagePhasePanel", () => {
           startFrame: {
             ...shot.startFrame,
             planStatus: "pending" as const,
+            updatedAt: pendingUpdatedAt,
           },
           endFrame: shot.endFrame
             ? {
                 ...shot.endFrame,
                 planStatus: "pending" as const,
+                updatedAt: pendingUpdatedAt,
               }
             : null,
         })),
@@ -773,6 +841,7 @@ describe("ImagePhasePanel", () => {
 
   it("polls pending frame prompts and keeps image generation disabled until prompts are ready", async () => {
     let refreshTimer: (() => void) | undefined;
+    const pendingUpdatedAt = new Date(Date.now() - 60_000).toISOString();
     vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
       refreshTimer = callback as () => void;
       return 1 as unknown as ReturnType<typeof setInterval>;
@@ -794,6 +863,7 @@ describe("ImagePhasePanel", () => {
             imageHeight: null,
             provider: null,
             model: null,
+            updatedAt: pendingUpdatedAt,
             sourceTaskId: "task-frame-prompt-pending",
           },
           endFrame: shot.endFrame
@@ -808,6 +878,7 @@ describe("ImagePhasePanel", () => {
                 imageHeight: null,
                 provider: null,
                 model: null,
+                updatedAt: pendingUpdatedAt,
                 sourceTaskId: "task-frame-prompt-pending",
               }
             : null,
@@ -837,6 +908,64 @@ describe("ImagePhasePanel", () => {
 
     expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
+  });
+
+  it("treats stale pending frame prompts as timed out and re-enables prompt regeneration", async () => {
+    const dateNowSpy = vi
+      .spyOn(Date, "now")
+      .mockReturnValue(new Date("2024-01-01T00:10:00Z").getTime());
+
+    try {
+      vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+        currentBatch: imageListResponse.currentBatch,
+        shots: imageListResponse.shots.map((shot) => ({
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus: "pending" as const,
+            imageStatus: "pending" as const,
+            promptTextSeed: "",
+            promptTextCurrent: "",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            updatedAt: "2024-01-01T00:00:00Z",
+            sourceTaskId: "task-frame-prompt-pending",
+          },
+          endFrame: shot.endFrame
+            ? {
+                ...shot.endFrame,
+                planStatus: "pending" as const,
+                imageStatus: "pending" as const,
+                promptTextSeed: "",
+                promptTextCurrent: "",
+                imageAssetPath: null,
+                imageWidth: null,
+                imageHeight: null,
+                provider: null,
+                model: null,
+                updatedAt: "2024-01-01T00:00:00Z",
+                sourceTaskId: "task-frame-prompt-pending",
+              }
+            : null,
+        })),
+      });
+
+      renderPanel();
+
+      await waitFor(() => {
+        expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(1);
+      });
+
+      expect(screen.getByRole("button", { name: "重新生成起始帧 Prompt" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "重新生成结束帧 Prompt" })).toBeEnabled();
+      expect(screen.queryByText("Prompt 仍在生成，完成前不能生成图片。")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Prompt 生成超时，可重新生成。")).toHaveLength(2);
+    } finally {
+      dateNowSpy.mockRestore();
+    }
   });
 
   it("refreshes frame image URLs when a regenerated image keeps the same content path", async () => {
@@ -911,6 +1040,8 @@ describe("ImagePhasePanel", () => {
   });
 
   it("clears visible prompt text while frame prompts are pending", async () => {
+    const pendingUpdatedAt = new Date(Date.now() - 60_000).toISOString();
+
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce({
         currentBatch: imageListResponse.currentBatch,
@@ -920,6 +1051,7 @@ describe("ImagePhasePanel", () => {
             ...shot.startFrame,
             planStatus: "pending" as const,
             imageStatus: "pending" as const,
+            updatedAt: pendingUpdatedAt,
             sourceTaskId: "task-frame-prompt-pending",
           },
           endFrame: shot.endFrame
@@ -927,6 +1059,7 @@ describe("ImagePhasePanel", () => {
                 ...shot.endFrame,
                 planStatus: "pending" as const,
                 imageStatus: "pending" as const,
+                updatedAt: pendingUpdatedAt,
                 sourceTaskId: "task-frame-prompt-pending",
               }
             : null,

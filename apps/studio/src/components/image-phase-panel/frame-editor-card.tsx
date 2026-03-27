@@ -4,10 +4,16 @@ import { config } from "../../services/config";
 import { getButtonClassName } from "../../styles/button-styles";
 import { FRAME_PLAN_STATUS_LABELS, FRAME_STATUS_LABELS } from "./constants";
 import type { FrameEditorCardProps } from "./types";
-import { getFrameImageUrl } from "./utils";
+import {
+  buildFinalImagePrompt,
+  getFrameImageUrl,
+  isFramePromptPending,
+  isFramePromptTimedOut,
+} from "./utils";
 
 export function FrameEditorCard({
   projectId,
+  visualStyleText,
   frame,
   draft,
   busy,
@@ -19,6 +25,7 @@ export function FrameEditorCard({
   onGenerateFrame,
 }: FrameEditorCardProps) {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [finalPromptPreviewOpen, setFinalPromptPreviewOpen] = useState(false);
 
   if (!frame || !draft) {
     return (
@@ -30,13 +37,18 @@ export function FrameEditorCard({
 
   const frameLabel = frame.frameType === "start_frame" ? "起始帧" : "结束帧";
   const frameImageUrl = getFrameImageUrl(projectId, frame);
-  const isPromptPending = frame.planStatus === "pending";
+  const isPromptTimedOut = isFramePromptTimedOut(frame);
+  const isPromptPending = isFramePromptPending(frame);
   const isGenerating = frame.imageStatus === "generating";
   const visiblePromptText = isPromptPending ? "" : draft.promptTextCurrent;
-  const visibleNegativePromptText = isPromptPending ? "" : draft.negativePromptTextCurrent;
   const canSavePrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
   const canGenerateFrame =
     frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0;
+  const finalPromptText = buildFinalImagePrompt(draft.promptTextCurrent, visualStyleText);
+  const canPreviewFinalPrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
+  const promptStatusLabel = isPromptTimedOut
+    ? "Prompt 生成超时"
+    : FRAME_PLAN_STATUS_LABELS[frame.planStatus];
 
   return (
     <section
@@ -49,7 +61,7 @@ export function FrameEditorCard({
             当前状态：{FRAME_STATUS_LABELS[frame.imageStatus]}
           </p>
           <p className="text-sm text-(--color-text-muted) mt-1">
-            Prompt 状态：{FRAME_PLAN_STATUS_LABELS[frame.planStatus]}
+            Prompt 状态：{promptStatusLabel}
           </p>
         </div>
         <div className="text-right">
@@ -141,24 +153,6 @@ export function FrameEditorCard({
           </label>
         </div>
 
-        <div>
-          <label className="block">
-            <span className={metaLabelClass}>{frameLabel}负面提示词</span>
-            <textarea
-              aria-label={`${frameLabel}负面提示词`}
-              value={visibleNegativePromptText}
-              onChange={(event) =>
-                onDraftChange(frame.id, {
-                  ...draft,
-                  negativePromptTextCurrent: event.target.value,
-                })
-              }
-              disabled={busy || isPromptPending}
-              className="w-full min-h-24 rounded-xl border border-(--color-border) bg-(--color-bg-surface) px-3 py-3 text-sm text-(--color-text-primary)"
-            />
-          </label>
-        </div>
-
         <div className="grid gap-3">
           <div>
             <p className={metaLabelClass}>已匹配参考图</p>
@@ -201,6 +195,14 @@ export function FrameEditorCard({
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
+            onClick={() => setFinalPromptPreviewOpen(true)}
+            disabled={busy || !canPreviewFinalPrompt}
+            className={getButtonClassName({ variant: "secondary" })}
+          >
+            查看最终 Prompt
+          </button>
+          <button
+            type="button"
             onClick={() => {
               void onSavePrompt(frame);
             }}
@@ -231,8 +233,11 @@ export function FrameEditorCard({
           </button>
         </div>
 
-        {!canGenerateFrame && frame.planStatus === "pending" && (
+        {isPromptPending && (
           <p className="text-sm text-(--color-text-muted)">Prompt 仍在生成，完成前不能生成图片。</p>
+        )}
+        {isPromptTimedOut && (
+          <p className="text-sm text-(--color-warning)">Prompt 生成超时，可重新生成。</p>
         )}
       </div>
 
@@ -278,6 +283,48 @@ export function FrameEditorCard({
                 className="mx-auto block h-auto max-w-full rounded-xl"
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {finalPromptPreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          onClick={() => setFinalPromptPreviewOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${frameLabel}最终 Prompt`}
+            className="relative w-full max-w-3xl rounded-2xl border border-white/10 bg-(--color-bg-surface) p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-(--color-text-primary)">
+                  {frameLabel}最终 Prompt
+                </p>
+                <p className="text-sm text-(--color-text-muted)">
+                  这是当前编辑内容与前提画面风格合成后的只读预览。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFinalPromptPreviewOpen(false)}
+                className={getButtonClassName({
+                  variant: "secondary",
+                  size: "compact",
+                })}
+              >
+                关闭
+              </button>
+            </div>
+
+            <textarea
+              readOnly
+              value={finalPromptText}
+              className="w-full min-h-64 rounded-xl border border-(--color-border) bg-(--color-bg-base) px-3 py-3 text-sm leading-6 text-(--color-text-primary)"
+            />
           </div>
         </div>
       )}

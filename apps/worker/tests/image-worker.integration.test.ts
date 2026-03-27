@@ -48,12 +48,24 @@ describe("image worker integration", () => {
     expect(services.processFramePromptGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_frame_prompt_1",
     });
+    expect(workerFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queueName: framePromptGenerateQueueName,
+        concurrency: 4,
+      }),
+    );
 
     const frameImageWorker = getWorker(workerFactory, frameImageGenerateQueueName);
     await frameImageWorker.processor({ data: { taskId: "task_frame_image_1" } });
     expect(services.processFrameImageGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_frame_image_1",
     });
+    expect(workerFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queueName: frameImageGenerateQueueName,
+        concurrency: 4,
+      }),
+    );
 
     await worker.close();
 
@@ -226,6 +238,22 @@ describe("image worker integration", () => {
             inputRelPath: "tasks/task_frame_prompt_1/input.json",
             outputRelPath: "tasks/task_frame_prompt_1/output.json",
             logRelPath: "tasks/task_frame_prompt_1/log.txt",
+            errorMessage: null,
+            createdAt: "2026-03-24T10:00:00.000Z",
+            updatedAt: "2026-03-24T10:00:00.000Z",
+            startedAt: null,
+            finishedAt: null,
+          })
+          .mockResolvedValueOnce({
+            id: "task_frame_image_1",
+            projectId: "proj_1",
+            type: "frame_image_generate",
+            status: "pending",
+            queueName: "frame-image-generate",
+            storageDir: "projects/proj_1-my-story/tasks/task_frame_image_1",
+            inputRelPath: "tasks/task_frame_image_1/input.json",
+            outputRelPath: "tasks/task_frame_image_1/output.json",
+            logRelPath: "tasks/task_frame_image_1/log.txt",
             errorMessage: null,
             createdAt: "2026-03-24T10:00:00.000Z",
             updatedAt: "2026-03-24T10:00:00.000Z",
@@ -665,3 +693,6 @@ function getWorker(
     processor(job: { data: { taskId: string } }): Promise<void>;
   };
 }
+
+
+

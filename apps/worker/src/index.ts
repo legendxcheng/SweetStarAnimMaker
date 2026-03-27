@@ -196,7 +196,7 @@ export async function startWorker(
   if (framePromptTaskProcessor) {
     processors.push({
       queueName: framePromptGenerateQueueName,
-      concurrency: 1,
+      concurrency: 4,
       processor: async (job: WorkerJob) => {
         await framePromptTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -209,7 +209,7 @@ export async function startWorker(
   if (frameImageTaskProcessor) {
     processors.push({
       queueName: frameImageGenerateQueueName,
-      concurrency: 1,
+      concurrency: 4,
       processor: async (job: WorkerJob) => {
         await frameImageTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -292,3 +292,5 @@ function createBullMqWorker(input: {
     },
   };
 }
+
+
