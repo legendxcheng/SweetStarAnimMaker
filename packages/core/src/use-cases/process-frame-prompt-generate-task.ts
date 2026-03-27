@@ -13,10 +13,7 @@ import type { ShotImageStorage } from "../ports/shot-image-storage";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskRepository } from "../ports/task-repository";
-import {
-  replaceFrameOnShot,
-  resolveShotFrameRecord,
-} from "./shot-reference-frame-helpers";
+import { resolveShotFrameRecord } from "./shot-reference-frame-helpers";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessFramePromptGenerateTaskInput {
@@ -185,12 +182,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
           sourceTaskId: task.id,
         };
 
-        if (shot && dependencies.shotImageRepository.updateShot) {
-          shot = replaceFrameOnShot(shot, updatedFrame);
-          await dependencies.shotImageRepository.updateShot(shot);
-        } else {
-          await dependencies.shotImageRepository.updateFrame(updatedFrame);
-        }
+        await dependencies.shotImageRepository.updateFrame(updatedFrame);
         await dependencies.shotImageStorage.writeFramePlanning({
           frame: updatedFrame,
           planning: {
@@ -240,13 +232,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
             sourceTaskId: task.id,
           };
 
-          if (shot && dependencies.shotImageRepository.updateShot) {
-            await dependencies.shotImageRepository.updateShot(
-              replaceFrameOnShot(shot, failedFrame),
-            );
-          } else {
-            await dependencies.shotImageRepository.updateFrame(failedFrame);
-          }
+          await dependencies.shotImageRepository.updateFrame(failedFrame);
         }
 
         await dependencies.taskFileStorage.appendTaskLog({

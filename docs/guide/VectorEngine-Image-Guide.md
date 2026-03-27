@@ -2,7 +2,7 @@
 
 ## Overview
 
-SweetStarAnimMaker now supports local reference image files for VectorEngine image generation by uploading them to a public image host first.
+SweetStarAnimMaker supports local reference image files for VectorEngine image generation by uploading them to a public image host first.
 
 The request flow is:
 
@@ -41,13 +41,23 @@ When `referenceImagePaths` are present on a character-sheet image request:
 
 If every upload provider fails, image generation stops before the VectorEngine request is sent.
 
-## Current Parallelism
+## Concurrency Capability vs Repository Defaults
 
-Current image generation in this repository is split by stage:
+These two points are different and should not be mixed together:
 
-- reference image upload inside a single image request still follows configured uploader order and is not a bulk parallel uploader
+- **VectorEngine image API capability**: under the current integration result, `/v1/images/generations` can support `20` concurrent requests
+- **Current repository default**: this repo still sends image-generation traffic with a worker concurrency of `4`
+
+Current behavior in this repository:
+
+- reference image upload inside a single image request still follows provider order and is a sequential fallback flow, not a provider race
 - `images_generate` is a batch orchestration task that creates per-frame work items
-- `frame_image_generate` worker concurrency is `4`, so multiple VectorEngine image requests can run in parallel
+- `frame_image_generate` worker concurrency is currently `4`, so the repo will only issue up to `4` VectorEngine image requests in parallel by default
+
+This means:
+
+- if your throughput is capped at `4`, the first bottleneck is usually the local worker setting, not the upstream VectorEngine image API
+- if you want the project to actually use the known `20`-concurrency capacity, you need to raise the worker concurrency explicitly
 
 Relevant code:
 
@@ -55,7 +65,39 @@ Relevant code:
 - `packages/core/src/use-cases/process-images-generate-task.ts`
 - `packages/core/src/use-cases/process-frame-image-generate-task.ts`
 
-If you see `429` or unstable upstream failures after raising throughput, reduce worker concurrency before changing request payloads.
+The most direct adjustment is:
+
+```ts
+{
+  queueName: frameImageGenerateQueueName,
+  concurrency: 20,
+}
+```
+
+Important notes:
+
+- the `20`-concurrency statement applies to the outbound VectorEngine image-generation API calls
+- it does **not** mean uploader providers are run in parallel for a single reference image
+- if a frame needs reference-image uploads first, that upload step still happens before the image-generation request for that frame is sent
+- if the same token is also used by Gemini or other image jobs, you still need to budget total account-level concurrency
+
+## Throughput Tuning Advice
+
+If you raise image concurrency toward `20`, pay attention to:
+
+- `429` responses from VectorEngine
+- intermittent upstream `503` failures
+- local worker CPU, memory, and network saturation
+- upload-provider stability, because reference-image upload may become the pre-request bottleneck
+
+A practical logging baseline is:
+
+- frame id
+- current queue concurrency
+- reference image count
+- upload provider used
+- VectorEngine HTTP status
+- short error summary
 
 ## Current Scope
 
@@ -67,4 +109,3 @@ Out of scope for this release:
 - Browser-side uploads
 - A standalone upload API
 - Automatic image compression or format conversion
-

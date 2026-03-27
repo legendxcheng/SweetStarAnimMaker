@@ -1108,22 +1108,14 @@ describe("process frame prompt generate task use case", () => {
 
     await useCase.execute({ taskId: "task_frame_prompt_4" });
 
-    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: shot.id,
-        referenceStatus: "pending",
-        startFrame: expect.objectContaining({
-          id: shot.startFrame.id,
-          promptTextCurrent: "新的起始帧提示词。",
-          planStatus: "planned",
-        }),
-        endFrame: expect.objectContaining({
-          id: shot.endFrame?.id,
-          promptTextCurrent: "",
-          planStatus: "pending",
-        }),
+        id: shot.startFrame.id,
+        promptTextCurrent: "新的起始帧提示词。",
+        planStatus: "planned",
+        sourceTaskId: "task_frame_prompt_4",
       }),
     );
-    expect(shotImageRepository.updateFrame).not.toHaveBeenCalled();
+    expect(shotImageRepository.updateShot).not.toHaveBeenCalled();
   });
 });

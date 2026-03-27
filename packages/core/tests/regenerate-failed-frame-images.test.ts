@@ -195,21 +195,17 @@ describe("regenerate failed frame images use case", () => {
       taskIds: ["task_failed_frame_1"],
     });
 
-    expect(shotImageRepository.updateShot).toHaveBeenCalledTimes(1);
-    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledTimes(1);
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "shot_failed_frame",
-        referenceStatus: "pending",
+        id: "frame_failed_image",
+        imageStatus: "generating",
+        approvedAt: null,
         updatedAt: "2026-03-27T00:10:00.000Z",
-        startFrame: expect.objectContaining({
-          id: "frame_failed_image",
-          imageStatus: "generating",
-          approvedAt: null,
-          updatedAt: "2026-03-27T00:10:00.000Z",
-          sourceTaskId: "task_failed_frame_1",
-        }),
+        sourceTaskId: "task_failed_frame_1",
       }),
     );
+    expect(shotImageRepository.updateShot).not.toHaveBeenCalled();
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({

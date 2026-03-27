@@ -176,17 +176,15 @@ describe("update frame prompt use case", () => {
       negativePromptTextCurrent: null,
     });
 
-    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: shot.id,
-        startFrame: expect.objectContaining({
-          id: shot.startFrame.id,
-          promptTextCurrent: "新的用户 Prompt",
-          negativePromptTextCurrent: null,
-          promptUpdatedAt: "2026-03-24T00:19:00.000Z",
-        }),
+        id: shot.startFrame.id,
+        promptTextCurrent: "新的用户 Prompt",
+        negativePromptTextCurrent: null,
+        promptUpdatedAt: "2026-03-24T00:19:00.000Z",
       }),
     );
+    expect(shotImageRepository.updateShot).not.toHaveBeenCalled();
     expect(result.promptTextCurrent).toBe("新的用户 Prompt");
   });
 });

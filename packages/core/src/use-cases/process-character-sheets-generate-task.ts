@@ -45,7 +45,7 @@ export interface ProcessCharacterSheetsGenerateTaskUseCaseDependencies {
   clock: Clock;
 }
 
-const CHARACTER_PROMPT_CONCURRENCY = 4;
+const CHARACTER_PROMPT_CONCURRENCY = 20;
 
 export function createProcessCharacterSheetsGenerateTaskUseCase(
   dependencies: ProcessCharacterSheetsGenerateTaskUseCaseDependencies,

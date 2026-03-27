@@ -16,6 +16,11 @@ export interface WriteVideoPromptSnapshotInput {
   promptVariables: Record<string, unknown>;
 }
 
+export interface WriteVideoPromptPlanInput {
+  segment: ShotVideoRecordEntity;
+  planning: Record<string, unknown>;
+}
+
 export interface WriteVideoRawResponseInput {
   taskStorageDir: string;
   rawResponse: string;
@@ -45,6 +50,7 @@ export interface VideoStorage {
   initializePromptTemplate(input: InitializeVideoPromptTemplateInput): Promise<void> | void;
   readPromptTemplate(input: ReadVideoPromptTemplateInput): Promise<string> | string;
   writePromptSnapshot(input: WriteVideoPromptSnapshotInput): Promise<void> | void;
+  writePromptPlan(input: WriteVideoPromptPlanInput): Promise<void> | void;
   writeRawResponse(input: WriteVideoRawResponseInput): Promise<void> | void;
   writeBatchManifest(input: WriteVideoBatchManifestInput): Promise<void> | void;
   writeCurrentVideo(input: WriteCurrentVideoInput): Promise<void> | void;

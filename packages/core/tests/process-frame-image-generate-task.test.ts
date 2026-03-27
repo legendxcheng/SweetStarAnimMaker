@@ -512,18 +512,11 @@ describe("process frame image generate task use case", () => {
 
     await useCase.execute({ taskId: "task_frame_image_3" });
 
-    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: shot.id,
-        referenceStatus: "pending",
-        startFrame: expect.objectContaining({
-          id: shot.startFrame.id,
-          imageStatus: "in_review",
-        }),
-        endFrame: expect.objectContaining({
-          id: shot.endFrame?.id,
-          imageStatus: "generating",
-        }),
+        id: shot.startFrame.id,
+        imageStatus: "in_review",
+        sourceTaskId: "task_frame_image_3",
       }),
     );
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
@@ -531,6 +524,6 @@ describe("process frame image generate task use case", () => {
       status: "images_generating",
       updatedAt: "2026-03-24T00:18:00.000Z",
     });
-    expect(shotImageRepository.updateFrame).not.toHaveBeenCalled();
+    expect(shotImageRepository.updateShot).not.toHaveBeenCalled();
   });
 });

@@ -410,30 +410,30 @@ describe("process character sheets generate task use case", () => {
     ).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
 
-  it("starts multiple character prompt requests before earlier Gemini calls finish", async () => {
-    let releaseFirstPrompt: (() => void) | null = null;
-    const firstPromptGate = new Promise<void>((resolve) => {
-      releaseFirstPrompt = resolve;
+  it("starts up to 20 character prompt requests before blocked Gemini calls finish", async () => {
+    let releaseBlockedPrompts!: () => void;
+    const blockedPromptGate = new Promise<void>((resolve) => {
+      releaseBlockedPrompts = resolve;
     });
+    const mainCharacters = Array.from({ length: 21 }, (_, index) => `Character ${index + 1}`);
+    let startedPromptCalls = 0;
     const promptProvider = {
-      generateCharacterPrompt: vi
-        .fn()
-        .mockImplementationOnce(async () => {
-          await firstPromptGate;
-          return {
-            promptText: "silver pilot jacket, storm glare, scar at the brow",
-            rawResponse: '{"prompt":"rin"}',
-            provider: "gemini",
-            model: "gemini-3.1-pro-preview",
-          };
-        })
-        .mockResolvedValueOnce({
-          promptText: "grease-stained coat, brass goggles, wary mechanic hands",
-          rawResponse: '{"prompt":"ivo"}',
+      generateCharacterPrompt: vi.fn().mockImplementation(async ({ characterName }) => {
+        startedPromptCalls += 1;
+
+        if (startedPromptCalls <= 20) {
+          await blockedPromptGate;
+        }
+
+        return {
+          promptText: `prompt for ${characterName}`,
+          rawResponse: JSON.stringify({ prompt: characterName }),
           provider: "gemini",
           model: "gemini-3.1-pro-preview",
-        }),
+        };
+      }),
     };
+    let generatedTaskId = 0;
     const useCase = createProcessCharacterSheetsGenerateTaskUseCase({
       taskRepository: {
         insert: vi.fn(),
@@ -493,7 +493,7 @@ describe("process character sheets generate task use case", () => {
           projectId: "proj_20260321_ab12cd",
           taskType: "character_sheets_generate",
           sourceMasterPlotId: "mp_20260321_ab12cd",
-          mainCharacters: ["Rin", "Ivo"],
+          mainCharacters,
         }),
         writeTaskOutput: vi.fn(),
         appendTaskLog: vi.fn(),
@@ -510,7 +510,7 @@ describe("process character sheets generate task use case", () => {
           logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
           synopsis:
             "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
-          mainCharacters: ["Rin", "Ivo"],
+          mainCharacters,
           coreConflict:
             "Rin must choose between private escape and saving the city that exiled her.",
           emotionalArc: "She moves from bitterness to sacrificial hope.",
@@ -546,18 +546,15 @@ describe("process character sheets generate task use case", () => {
         deleteReferenceImage: vi.fn(),
         getReferenceImageContent: vi.fn(),
         getImageContent: vi.fn(),
-        resolveReferenceImagePaths: vi
-          .fn()
-          .mockResolvedValueOnce(["E:/tmp/ref-rin-1.png"])
-          .mockResolvedValueOnce([]),
+        resolveReferenceImagePaths: vi.fn().mockResolvedValue([]),
       },
       characterSheetPromptProvider: promptProvider,
       taskQueue: { enqueue: vi.fn() },
       taskIdGenerator: {
-        generateTaskId: vi
-          .fn()
-          .mockReturnValueOnce("task_20260321_char_rin")
-          .mockReturnValueOnce("task_20260321_char_ivo"),
+        generateTaskId: vi.fn().mockImplementation(() => {
+          generatedTaskId += 1;
+          return `task_20260321_char_${generatedTaskId}`;
+        }),
       },
       clock: {
         now: vi
@@ -570,12 +567,11 @@ describe("process character sheets generate task use case", () => {
     const execution = useCase.execute({ taskId: "task_20260321_character_sheets" });
 
     await vi.waitFor(() => {
-      expect(promptProvider.generateCharacterPrompt).toHaveBeenCalled();
+      expect(promptProvider.generateCharacterPrompt).toHaveBeenCalledTimes(20);
     });
 
-    expect(promptProvider.generateCharacterPrompt).toHaveBeenCalledTimes(2);
-
-    releaseFirstPrompt?.();
+    releaseBlockedPrompts();
     await execution;
+    expect(promptProvider.generateCharacterPrompt).toHaveBeenCalledTimes(21);
   });
 });

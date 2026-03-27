@@ -2,9 +2,9 @@
 
 ## 目的
 
-这份文档说明如何在 SweetStarAnimMaker 中通过 VectorEngine 这个 AI 中转平台调用 Gemini 模型，并给出最小可用测试方法、项目接入方式、以及常见故障排查思路。
+这份文档说明如何在 SweetStarAnimMaker 中通过 VectorEngine 这个 AI 中转平台调用 Gemini 模型，并给出最小可用测试方法、项目接入方式、并发说明，以及常见故障排查思路。
 
-本文内容基于当前仓库实现和 2026-03-20 的实际联调结果整理。
+本文内容基于当前仓库实现和 2026-03-27 的联调结论整理。
 
 ## 平台定位
 
@@ -248,26 +248,61 @@ Invoke-WebRequest `
 
 如果一开始就跑全链路，很容易把平台问题、配置问题、解析问题、队列问题混在一起。
 
-## 当前并发策略
+## 并发能力与当前仓库默认值
 
-当前仓库里的 Gemini 调用不是“全部并发”也不是“全部串行”，而是按任务类型区分：
+这里要区分两件事：
 
-- `master plot` 和 `storyboard` 生成各自只发起一次 `generateContent` 请求，本质上是单请求流程
-- `character sheet` 的角色提示词生成现在会以最多 `4` 个并发请求执行，而不是逐个角色串行等待
-- `frame prompt` 任务队列的 worker 并发度现在是 `4`，因此同一批 frame prompt 的 Gemini 请求可以并发跑起来
+- **VectorEngine Gemini API 能力**：按当前联调结论，这条调用链可以支持 `20` 并发
+- **当前仓库默认配置**：仓库里和 Gemini 相关的关键位点，默认值仍然是 `4` 并发或单任务串行
+
+当前默认行为如下：
+
+- `master plot` 和 `storyboard` 生成各自只发起一次 `generateContent` 请求，本质上仍是单请求流程
+- `character sheet` 的角色提示词生成目前最多 `4` 并发
+- `frame prompt` worker 当前并发度是 `4`
+
+这意味着：
+
+- 如果你现在观察到吞吐没有拉起来，瓶颈通常先在**仓库默认并发配置**，而不是 VectorEngine Gemini API 本身
+- 以当前已知平台能力来看，把这条链路的 Gemini 并发目标提升到 `20` 是合理的
 
 对应代码位置：
 
 - `packages/core/src/use-cases/process-character-sheets-generate-task.ts`
 - `apps/worker/src/index.ts`
 
-如果你要继续调优吞吐，优先关注：
+如果你准备把项目默认值也调到 `20`，通常需要改这几处：
 
-- VectorEngine 账号的 `429`
-- 上游模型稳定性
+- `packages/core/src/use-cases/process-character-sheets-generate-task.ts` 里的 `CHARACTER_PROMPT_CONCURRENCY`
+- `apps/worker/src/index.ts` 里 `framePromptGenerateQueueName` 对应 worker 的 `concurrency`
+
+一个直观的目标状态可以写成：
+
+```ts
+const CHARACTER_PROMPT_CONCURRENCY = 20;
+```
+
+以及：
+
+```ts
+{
+  queueName: framePromptGenerateQueueName,
+  concurrency: 20,
+}
+```
+
+补充说明：
+
+- “API 支持 20 并发”说的是**上游承载能力**
+- “仓库默认是 4 并发”说的是**你当前代码实际会发出去多少并发请求**
+- 这两件事不要混为一谈
+
+如果你后续继续调优吞吐，优先关注：
+
+- VectorEngine 账号是否出现 `429`
+- 上游模型是否出现波动性 `503`
 - worker 机器本身的 CPU / 内存 / 网络
-
-不要盲目继续把并发度拉高，否则更容易把限流和偶发失败放大。
+- 同一 token 是否还被别的服务同时占用并发额度
 
 ## 常见错误与判断方法
 
@@ -305,7 +340,9 @@ Invoke-WebRequest `
 
 处理建议：
 
-- 降低并发
+- 当前链路虽然已知可以支持 `20` 并发，但如果同一账号同时跑别的任务，仍可能触发限流
+- 优先确认是不是总并发超了，而不是单个队列配置超了
+- 必要时降低并发或加入退避重试
 - 增加重试和退避
 
 ### 503
@@ -339,6 +376,8 @@ Invoke-WebRequest `
 
 - 请求模型名
 - 请求 base URL
+- 当前任务所属阶段
+- 当前队列并发配置
 - HTTP 状态码
 - 响应体摘要
 
@@ -369,8 +408,8 @@ STORYBOARD_LLM_MODEL=gemini-2.5-pro
 
 真正需要注意的不是“能不能接”，而是：
 
+- API 本身已经可以支持 `20` 并发，但仓库默认值未必已经跟上
 - 用的是不是真实 worker
 - 环境变量有没有进入进程
 - 模型名是否当前可用
 - 失败时日志是否足够定位问题
-

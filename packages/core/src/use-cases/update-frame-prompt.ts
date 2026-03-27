@@ -9,10 +9,7 @@ import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
-import {
-  replaceFrameOnShot,
-  resolveShotFrameRecord,
-} from "./shot-reference-frame-helpers";
+import { resolveShotFrameRecord } from "./shot-reference-frame-helpers";
 
 export interface UpdateFramePromptInput extends UpdateImageFramePromptRequest {
   projectId: string;
@@ -70,13 +67,7 @@ export function createUpdateFramePromptUseCase(
         updatedAt: timestamp,
       };
 
-      if (resolvedShotFrame?.shot && dependencies.shotImageRepository.updateShot) {
-        await dependencies.shotImageRepository.updateShot(
-          replaceFrameOnShot(resolvedShotFrame.shot, updatedFrame),
-        );
-      } else {
-        await dependencies.shotImageRepository.updateFrame(updatedFrame);
-      }
+      await dependencies.shotImageRepository.updateFrame(updatedFrame);
 
       return updatedFrame;
     },

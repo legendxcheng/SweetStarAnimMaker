@@ -16,8 +16,6 @@ import { appendVisualStyleToPrompt } from "./append-visual-style-to-prompt";
 import {
   deriveProjectImageStatusFromFrames,
   deriveProjectImageStatusFromShots,
-  replaceFrameOnShot,
-  replaceShotInCollection,
   resolveShotFrameRecord,
 } from "./shot-reference-frame-helpers";
 import { isTaskStillActive } from "./task-reset-guard";
@@ -162,20 +160,11 @@ export function createProcessFrameImageGenerateTaskUseCase(
         });
         let nextProjectStatus: ProjectStatus = "images_in_review";
 
-        if (shot && dependencies.shotImageRepository.updateShot) {
-          const updatedShot = replaceFrameOnShot(shot, updatedFrame);
-          await dependencies.shotImageRepository.updateShot(updatedShot);
+        await dependencies.shotImageRepository.updateFrame(updatedFrame);
 
-          if (dependencies.shotImageRepository.listShotsByBatchId) {
-            const shots = await dependencies.shotImageRepository.listShotsByBatchId(
-              updatedShot.batchId,
-            );
-            nextProjectStatus = deriveProjectImageStatusFromShots(
-              replaceShotInCollection(shots, updatedShot),
-            );
-          }
-        } else {
-          await dependencies.shotImageRepository.updateFrame(updatedFrame);
+        if (shot && dependencies.shotImageRepository.listShotsByBatchId) {
+          const shots = await dependencies.shotImageRepository.listShotsByBatchId(shot.batchId);
+          nextProjectStatus = deriveProjectImageStatusFromShots(shots);
         }
 
         await dependencies.projectRepository.updateStatus({
@@ -223,21 +212,12 @@ export function createProcessFrameImageGenerateTaskUseCase(
 
           let nextProjectStatus: ProjectStatus = "images_in_review";
 
-          if (shot && dependencies.shotImageRepository.updateShot) {
-            const restoredShot = replaceFrameOnShot(shot, restoredFrame);
-            await dependencies.shotImageRepository.updateShot(restoredShot);
+          await dependencies.shotImageRepository.updateFrame(restoredFrame);
 
-            if (dependencies.shotImageRepository.listShotsByBatchId) {
-              const shots = await dependencies.shotImageRepository.listShotsByBatchId(
-                restoredShot.batchId,
-              );
-              nextProjectStatus = deriveProjectImageStatusFromShots(
-                replaceShotInCollection(shots, restoredShot),
-              );
-            }
+          if (shot && dependencies.shotImageRepository.listShotsByBatchId) {
+            const shots = await dependencies.shotImageRepository.listShotsByBatchId(shot.batchId);
+            nextProjectStatus = deriveProjectImageStatusFromShots(shots);
           } else {
-            await dependencies.shotImageRepository.updateFrame(restoredFrame);
-
             const frames = await dependencies.shotImageRepository.listFramesByBatchId(
               frame.batchId,
             );

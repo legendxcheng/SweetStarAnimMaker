@@ -11,7 +11,7 @@ import { registerShotScriptRoutes } from "./http/register-shot-script-routes";
 import { registerStoryboardRoutes } from "./http/register-storyboard-routes";
 import { registerTaskRoutes } from "./http/register-task-routes";
 import { registerVideoRoutes } from "./http/register-video-routes";
-import type { TaskIdGenerator, TaskQueue } from "@sweet-star/core";
+import type { TaskIdGenerator, TaskQueue, VideoPromptProvider } from "@sweet-star/core";
 
 export interface BuildAppOptions {
   dataRoot?: string;
@@ -19,6 +19,7 @@ export interface BuildAppOptions {
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
   studioOrigin?: string | string[];
+  videoPromptProvider?: VideoPromptProvider;
 }
 
 const defaultStudioOrigins = [
@@ -33,6 +34,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     taskQueue: options.taskQueue,
     taskIdGenerator: options.taskIdGenerator,
     redisUrl: options.redisUrl,
+    videoPromptProvider: options.videoPromptProvider,
   });
 
   const allowedStudioOrigins = new Set(

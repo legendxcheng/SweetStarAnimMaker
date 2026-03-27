@@ -64,6 +64,7 @@ import {
   createUpdateProjectScriptUseCase,
   type TaskIdGenerator,
   type TaskQueue,
+  type VideoPromptProvider,
 } from "@sweet-star/core";
 import {
   createBullMqTaskQueue,
@@ -83,6 +84,7 @@ import {
   createVideoStorage,
   initializeSqliteSchema,
   createSqliteVideoRepository,
+  createGeminiVideoPromptProvider,
 } from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
@@ -92,6 +94,7 @@ export interface BuildSpec1ServicesOptions {
   taskQueue?: TaskQueue;
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
+  videoPromptProvider?: VideoPromptProvider;
 }
 
 export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
@@ -113,6 +116,13 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const characterSheetStorage = createCharacterSheetStorage({ paths });
   const shotImageStorage = createShotImageStorage({ paths });
   const videoStorage = createVideoStorage({ paths });
+  const videoPromptProvider =
+    options.videoPromptProvider ??
+    createGeminiVideoPromptProvider({
+      baseUrl: process.env.VECTORENGINE_BASE_URL,
+      apiToken: process.env.VECTORENGINE_API_TOKEN,
+      model: process.env.VIDEO_PROMPT_MODEL,
+    });
   const masterPlotStorage = storyboardStorage;
   const clock = {
     now: () => new Date().toISOString(),
@@ -319,7 +329,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     listVideos: createListVideosUseCase({
       projectRepository: repository,
       shotScriptStorage,
+      shotImageRepository,
       videoStorage,
+      videoPromptProvider,
       videoRepository,
     }),
     getImageFrame: createGetImageFrameUseCase({
@@ -329,7 +341,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     getVideo: createGetVideoUseCase({
       projectRepository: repository,
       shotScriptStorage,
+      shotImageRepository,
       videoStorage,
+      videoPromptProvider,
       videoRepository,
     }),
     getImageFrameContent: createGetImageFrameContentUseCase({
@@ -501,15 +515,19 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     regenerateVideoPrompt: createRegenerateVideoPromptUseCase({
       projectRepository: repository,
       shotScriptStorage,
+      shotImageRepository,
       videoRepository,
       videoStorage,
+      videoPromptProvider,
       clock,
     }),
     regenerateAllVideoPrompts: createRegenerateAllVideoPromptsUseCase({
       projectRepository: repository,
       shotScriptStorage,
+      shotImageRepository,
       videoRepository,
       videoStorage,
+      videoPromptProvider,
       clock,
     }),
     regenerateAllFramePrompts: createRegenerateAllFramePromptsUseCase({

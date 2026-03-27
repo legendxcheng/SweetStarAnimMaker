@@ -165,4 +165,60 @@ describe("video storage", () => {
     });
     await expect(writePromise).rejects.toThrow("Video asset download timed out");
   });
+
+  it("writes video prompt planning metadata beside the shot assets", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-video-plan-"));
+    tempDirs.push(tempDir);
+    const paths = createLocalDataPaths(tempDir);
+    const storage = createVideoStorage({ paths });
+    const segment = createSegmentVideoRecord({
+      id: "video_shot_plan",
+      batchId: "video_batch_1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceImageBatchId: "image_batch_1",
+      sourceShotScriptId: "shot_script_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      segmentId: "segment_1",
+      sceneId: "scene_1",
+      shotOrder: 1,
+      frameDependency: "start_and_end_frame",
+      durationSec: 5,
+      status: "generating",
+      updatedAt: "2026-03-27T00:05:00.000Z",
+      sourceTaskId: "task_segment_plan",
+    });
+
+    await storage.writePromptPlan({
+      segment,
+      planning: {
+        finalPrompt: "以<<<image_1>>>为首帧锚点，让林缓慢抬头并继续前进。",
+        dialoguePlan: "说话主体：林；台词：有人先到了。",
+        audioPlan: "雨声、摊布拍打声、远处人群底噪。",
+        visualGuardrails: "保持外观、服装与空间连续；自然衔接尾帧。",
+        rationale: "把对白和环境声并入 Kling Omni 单镜头提示词。",
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+      },
+    });
+
+    await expect(
+      fs.readFile(
+        path.join(
+          tempDir,
+          ".local-data",
+          "projects",
+          "proj_1-my-story",
+          "videos",
+          "batches",
+          "video_batch_1",
+          "shots",
+          "scene_1__segment_1__shot_1",
+          "prompt.plan.json",
+        ),
+        "utf8",
+      ),
+    ).resolves.toContain('"dialoguePlan": "说话主体：林；台词：有人先到了。"');
+  });
 });

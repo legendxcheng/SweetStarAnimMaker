@@ -18,8 +18,9 @@ import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
 import type { VideoRepository } from "../ports/video-repository";
+import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoStorage } from "../ports/video-storage";
-import { buildSegmentVideoPrompt } from "./build-segment-video-prompt";
+import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessVideosGenerateTaskInput {
@@ -37,6 +38,7 @@ export interface ProcessVideosGenerateTaskUseCaseDependencies {
   shotImageRepository: ShotImageRepository;
   videoRepository: VideoRepository;
   videoStorage: VideoStorage;
+  videoPromptProvider: VideoPromptProvider;
   taskQueue: TaskQueue;
   taskIdGenerator: TaskIdGenerator;
   clock: Clock;
@@ -88,11 +90,6 @@ export function createProcessVideosGenerateTaskUseCase(
         createdAt: startedAt,
         updatedAt: startedAt,
       });
-      const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
-        storageDir: project.storageDir,
-        promptTemplateKey: taskInput.promptTemplateKey,
-      });
-
       if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
         return;
       }
@@ -123,11 +120,16 @@ export function createProcessVideosGenerateTaskUseCase(
             throw new Error(`Approved reference missing for shot ${shot.id}`);
           }
 
-          const promptText = buildSegmentVideoPrompt(promptTemplate, {
-            segmentSummary: segment.summary,
-            shotsSummary: `${shot.shotCode}: ${shot.action}`,
-          });
+          const promptPlan = await dependencies.videoPromptProvider.generateVideoPrompt(
+            buildVideoPromptProviderInput({
+              projectId: project.id,
+              segment,
+              shot,
+              shotReference,
+            }),
+          );
 
+          const promptText = promptPlan.finalPrompt;
           const videoRecord = createShotVideoRecord({
             id: `video_${batch.id}_${shot.sceneId}_${shot.segmentId}_${shot.id}`,
             batchId: batch.id,
@@ -147,6 +149,19 @@ export function createProcessVideosGenerateTaskUseCase(
             promptUpdatedAt: startedAt,
             durationSec: shot.durationSec ?? null,
             updatedAt: startedAt,
+          });
+          await dependencies.videoStorage.writePromptPlan({
+            segment: videoRecord,
+            planning: {
+              finalPrompt: promptPlan.finalPrompt,
+              dialoguePlan: promptPlan.dialoguePlan,
+              audioPlan: promptPlan.audioPlan,
+              visualGuardrails: promptPlan.visualGuardrails,
+              rationale: promptPlan.rationale,
+              provider: promptPlan.provider,
+              model: promptPlan.model,
+              rawResponse: promptPlan.rawResponse,
+            },
           });
           await dependencies.videoRepository.insertSegment(videoRecord);
 

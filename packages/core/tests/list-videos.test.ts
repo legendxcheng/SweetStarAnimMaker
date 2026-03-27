@@ -31,15 +31,29 @@ describe("list videos use case", () => {
         writeCurrentShotScript: vi.fn(),
         readCurrentShotScript: vi.fn(),
       },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listFramesByBatchId: vi.fn(),
+        listShotsByBatchId: vi.fn(),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn(),
+        updateFrame: vi.fn(),
+      },
       videoStorage: {
         initializePromptTemplate: vi.fn(),
         readPromptTemplate: vi.fn(),
         writePromptSnapshot: vi.fn(),
+        writePromptPlan: vi.fn(),
         writeRawResponse: vi.fn(),
         writeBatchManifest: vi.fn(),
         writeCurrentVideo: vi.fn(),
         writeVideoVersion: vi.fn(),
         resolveProjectAssetPath: vi.fn(),
+      },
+      videoPromptProvider: {
+        generateVideoPrompt: vi.fn(),
       },
       videoRepository: {
         insertBatch: vi.fn(),
@@ -170,15 +184,29 @@ describe("list videos use case", () => {
         writeCurrentShotScript: vi.fn(),
         readCurrentShotScript: vi.fn(),
       },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listFramesByBatchId: vi.fn(),
+        listShotsByBatchId: vi.fn(),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn(),
+        updateFrame: vi.fn(),
+      },
       videoStorage: {
         initializePromptTemplate: vi.fn(),
         readPromptTemplate: vi.fn(),
         writePromptSnapshot: vi.fn(),
+        writePromptPlan: vi.fn(),
         writeRawResponse: vi.fn(),
         writeBatchManifest: vi.fn(),
         writeCurrentVideo: vi.fn(),
         writeVideoVersion: vi.fn(),
         resolveProjectAssetPath: vi.fn(),
+      },
+      videoPromptProvider: {
+        generateVideoPrompt: vi.fn(),
       },
       videoRepository: {
         insertBatch: vi.fn(),
@@ -270,6 +298,48 @@ describe("list videos use case", () => {
       currentMetadataRelPath: "ignored",
       thumbnailRelPath: "ignored",
       versionsStorageDir: "ignored",
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn().mockResolvedValue([
+        {
+          id: "shot_ref_1",
+          batchId: "image_batch_1",
+          projectId: "proj_1",
+          sourceShotScriptId: "shot_script_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          shotId: "shot_1",
+          storageDir: "ignored",
+          manifestRelPath: "ignored",
+          updatedAt: "2026-03-25T00:18:00.000Z",
+          startFrame: {
+            id: "frame_start_1",
+            promptTextSeed: "seed",
+            promptTextCurrent: "current",
+            imageAssetPath: "images/start.png",
+            imageWidth: 1024,
+            imageHeight: 576,
+            provider: null,
+            model: null,
+            updatedAt: "2026-03-25T00:18:00.000Z",
+            currentImageRelPath: "ignored",
+            currentMetadataRelPath: "ignored",
+            promptSeedRelPath: "ignored",
+            promptCurrentRelPath: "ignored",
+            planningRelPath: "ignored",
+            versionsStorageDir: "ignored",
+            promptVersionsStorageDir: "ignored",
+          },
+          endFrame: null,
+        },
+      ]),
+      insertFrame: vi.fn(),
+      findFrameById: vi.fn(),
+      updateFrame: vi.fn(),
     };
     const videoRepository = {
       insertBatch: vi.fn(),
@@ -377,17 +447,29 @@ describe("list videos use case", () => {
           ],
         }),
       },
+      shotImageRepository,
       videoStorage: {
         initializePromptTemplate: vi.fn(),
-        readPromptTemplate: vi
-          .fn()
-          .mockResolvedValue("Summary: {{segment_summary}}\nShots: {{shots_summary}}"),
+        readPromptTemplate: vi.fn(),
         writePromptSnapshot: vi.fn(),
+        writePromptPlan: vi.fn(),
         writeRawResponse: vi.fn(),
         writeBatchManifest: vi.fn(),
         writeCurrentVideo: vi.fn(),
         writeVideoVersion: vi.fn(),
         resolveProjectAssetPath: vi.fn(),
+      },
+      videoPromptProvider: {
+        generateVideoPrompt: vi.fn().mockResolvedValue({
+          finalPrompt:
+            "以<<<image_1>>>为首帧锚点，林进入积水市场并短暂停步，口型不可见，无对白，保留雨声与脚步踩水声。",
+          dialoguePlan: "无明确台词。",
+          audioPlan: "雨声与脚步踩水声。",
+          visualGuardrails: "保持林的外观与服装稳定。",
+          rationale: "修复缺失提示词时仍保留环境声与动作。",
+          provider: "gemini",
+          model: "gemini-3.1-pro-preview",
+        }),
       },
       videoRepository,
     });
@@ -398,17 +480,18 @@ describe("list videos use case", () => {
       expect.objectContaining({
         id: "video_shot_1",
         promptTextSeed:
-          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
+          "以<<<image_1>>>为首帧锚点，林进入积水市场并短暂停步，口型不可见，无对白，保留雨声与脚步踩水声。",
         promptTextCurrent:
-          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
+          "以<<<image_1>>>为首帧锚点，林进入积水市场并短暂停步，口型不可见，无对白，保留雨声与脚步踩水声。",
       }),
     );
+    expect(shotImageRepository.listShotsByBatchId).toHaveBeenCalledWith("image_batch_1");
     expect(result.shots[0]).toEqual(
       expect.objectContaining({
         promptTextSeed:
-          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
+          "以<<<image_1>>>为首帧锚点，林进入积水市场并短暂停步，口型不可见，无对白，保留雨声与脚步踩水声。",
         promptTextCurrent:
-          "Summary: Rin arrives at the flooded market.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and looks ahead.",
+          "以<<<image_1>>>为首帧锚点，林进入积水市场并短暂停步，口型不可见，无对白，保留雨声与脚步踩水声。",
       }),
     );
   });

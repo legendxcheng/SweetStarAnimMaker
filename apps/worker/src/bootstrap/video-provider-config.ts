@@ -1,6 +1,6 @@
 import type { VideoProvider } from "@sweet-star/core";
 import {
-  createKlingStageVideoProvider,
+  createKlingOmniStageVideoProvider,
   createSoraStageVideoProvider,
   type ReferenceImageUploader,
 } from "@sweet-star/services";
@@ -19,13 +19,10 @@ export function createConfiguredVideoProvider(
   const apiToken = env.VECTORENGINE_API_TOKEN;
 
   if (providerName === "kling") {
-    return createKlingStageVideoProvider({
+    return createKlingOmniStageVideoProvider({
       baseUrl,
       apiToken,
       modelName: readPreferredModel(env, "KLING_VIDEO_MODEL"),
-      mode: env.KLING_VIDEO_MODE?.trim() || "std",
-      sound: env.KLING_VIDEO_SOUND?.trim() || "on",
-      multiShot: readBoolean(env.KLING_VIDEO_MULTI_SHOT) ?? true,
       durationSeconds: readPositiveInteger(env.KLING_VIDEO_DURATION) ?? 10,
       referenceImageUploader: options.referenceImageUploader,
     });
@@ -61,22 +58,4 @@ function readPositiveInteger(value: string | undefined) {
 
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function readBoolean(value: string | undefined) {
-  const normalized = value?.trim().toLowerCase();
-
-  if (!normalized) {
-    return null;
-  }
-
-  if (normalized === "true") {
-    return true;
-  }
-
-  if (normalized === "false") {
-    return false;
-  }
-
-  return null;
 }

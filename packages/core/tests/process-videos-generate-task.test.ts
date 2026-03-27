@@ -209,10 +209,9 @@ describe("process videos generate task use case", () => {
     };
     const videoStorage = {
       initializePromptTemplate: vi.fn(),
-      readPromptTemplate: vi
-        .fn()
-        .mockResolvedValue("Summary: {{segment_summary}}\nShots: {{shots_summary}}"),
+      readPromptTemplate: vi.fn(),
       writePromptSnapshot: vi.fn(),
+      writePromptPlan: vi.fn(),
       writeRawResponse: vi.fn(),
       writeBatchManifest: vi.fn(),
       writeCurrentVideo: vi.fn(),
@@ -220,6 +219,28 @@ describe("process videos generate task use case", () => {
       resolveProjectAssetPath: vi.fn(),
     };
     const taskQueue = { enqueue: vi.fn() };
+    const videoPromptProvider = {
+      generateVideoPrompt: vi
+        .fn()
+        .mockResolvedValueOnce({
+          finalPrompt: "以<<<image_1>>>为首帧锚点，林谨慎走入积水市场，口型清晰说出“有人先到了”，雨声持续压场。",
+          dialoguePlan: "说话主体：林；台词：有人先到了。",
+          audioPlan: "雨声持续，摊布拍打声和远处人群骚动做底。",
+          visualGuardrails: "保持林的外观、服装和挎包位置稳定。",
+          rationale: "把对白和环境声直接编入 Kling Omni 单镜头提示词。",
+          provider: "gemini",
+          model: "gemini-3.1-pro-preview",
+        })
+        .mockResolvedValueOnce({
+          finalPrompt: "以<<<image_1>>>为首帧锚点，林指向更亮的巷口，无对白，保留水流和脚步涉水声。",
+          dialoguePlan: "无明确台词。",
+          audioPlan: "水流声、脚步涉水声。",
+          visualGuardrails: "从首帧自然推进到尾帧，避免跳切和主体漂移。",
+          rationale: "强调尾帧衔接和动作推进。",
+          provider: "gemini",
+          model: "gemini-3.1-pro-preview",
+        }),
+    };
 
     const useCase = createProcessVideosGenerateTaskUseCase({
       taskRepository,
@@ -228,6 +249,7 @@ describe("process videos generate task use case", () => {
       shotImageRepository,
       videoRepository,
       videoStorage,
+      videoPromptProvider,
       taskQueue,
       taskIdGenerator: {
         generateTaskId: vi
@@ -262,9 +284,9 @@ describe("process videos generate task use case", () => {
         durationSec: 3,
         status: "generating",
         promptTextSeed:
-          "Summary: Rin arrives.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and scans ahead.",
+          "以<<<image_1>>>为首帧锚点，林谨慎走入积水市场，口型清晰说出“有人先到了”，雨声持续压场。",
         promptTextCurrent:
-          "Summary: Rin arrives.\nShots: SC01-SG01-SH01: Rin steps into the flooded market and scans ahead.",
+          "以<<<image_1>>>为首帧锚点，林谨慎走入积水市场，口型清晰说出“有人先到了”，雨声持续压场。",
       }),
     );
     expect(videoRepository.insertSegment).toHaveBeenNthCalledWith(
@@ -318,6 +340,30 @@ describe("process videos generate task use case", () => {
       projectId: "proj_1",
       batchId: "video_batch_task_videos_1",
     });
+    expect(videoPromptProvider.generateVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentShot: expect.objectContaining({
+          shotCode: "SC01-SG01-SH01",
+          dialogue: null,
+          audio: null,
+        }),
+        startFrame: expect.objectContaining({
+          imageAssetPath:
+            "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+        }),
+        endFrame: null,
+      }),
+    );
+    expect(videoStorage.writePromptPlan).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        segment: expect.objectContaining({ shotId: "shot_1" }),
+        planning: expect.objectContaining({
+          dialoguePlan: "说话主体：林；台词：有人先到了。",
+          provider: "gemini",
+        }),
+      }),
+    );
   });
 
   it("sets the current video batch before enqueuing shot video tasks", async () => {
@@ -477,10 +523,9 @@ describe("process videos generate task use case", () => {
     };
     const videoStorage = {
       initializePromptTemplate: vi.fn(),
-      readPromptTemplate: vi
-        .fn()
-        .mockResolvedValue("Summary: {{segment_summary}}\nShots: {{shots_summary}}"),
+      readPromptTemplate: vi.fn(),
       writePromptSnapshot: vi.fn(),
+      writePromptPlan: vi.fn(),
       writeRawResponse: vi.fn(),
       writeBatchManifest: vi.fn(),
       writeCurrentVideo: vi.fn(),
@@ -492,6 +537,17 @@ describe("process videos generate task use case", () => {
         callOrder.push("enqueue");
       }),
     };
+    const videoPromptProvider = {
+      generateVideoPrompt: vi.fn().mockResolvedValue({
+        finalPrompt: "以<<<image_1>>>为首帧锚点，让林进入市场并观察前方。",
+        dialoguePlan: "无明确台词。",
+        audioPlan: "雨声。",
+        visualGuardrails: "保持单镜头连续。",
+        rationale: "最小可用提示词。",
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+      }),
+    };
 
     const useCase = createProcessVideosGenerateTaskUseCase({
       taskRepository,
@@ -500,6 +556,7 @@ describe("process videos generate task use case", () => {
       shotImageRepository,
       videoRepository,
       videoStorage,
+      videoPromptProvider,
       taskQueue,
       taskIdGenerator: { generateTaskId: () => "task_segment_video_1" },
       clock: {

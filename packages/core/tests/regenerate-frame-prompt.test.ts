@@ -186,15 +186,13 @@ describe("regenerate frame prompt use case", () => {
       frameId: shot.startFrame.id,
     });
 
-    expect(shotImageRepository.updateShot).toHaveBeenCalledWith(
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: shot.id,
-        startFrame: expect.objectContaining({
-          id: shot.startFrame.id,
-          planStatus: "pending",
-        }),
+        id: shot.startFrame.id,
+        planStatus: "pending",
       }),
     );
+    expect(shotImageRepository.updateShot).not.toHaveBeenCalled();
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({

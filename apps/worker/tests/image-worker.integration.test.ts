@@ -51,7 +51,7 @@ describe("image worker integration", () => {
     expect(workerFactory).toHaveBeenCalledWith(
       expect.objectContaining({
         queueName: framePromptGenerateQueueName,
-        concurrency: 4,
+        concurrency: 20,
       }),
     );
 
@@ -63,7 +63,7 @@ describe("image worker integration", () => {
     expect(workerFactory).toHaveBeenCalledWith(
       expect.objectContaining({
         queueName: frameImageGenerateQueueName,
-        concurrency: 4,
+        concurrency: 20,
       }),
     );
 
@@ -292,6 +292,7 @@ describe("image worker integration", () => {
             projectId: "proj_1",
             taskType: "frame_prompt_generate",
             batchId: "image_batch_1",
+            shotId: "shot_1",
             frameId: "frame_start_1",
             sourceShotScriptId: "shot_script_1",
             segmentId: "segment_1",

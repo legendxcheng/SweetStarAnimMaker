@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type { VideoStorage } from "@sweet-star/core";
+import { videoPromptPlanFileName } from "@sweet-star/core";
 
 import { ensureParentDirectory } from "./fs-utils";
 import type { LocalDataPaths } from "./local-data-paths";
@@ -68,6 +69,16 @@ export function createVideoStorage(options: CreateVideoStorageOptions): VideoSto
         ),
         "utf8",
       );
+    },
+    async writePromptPlan(input) {
+      const promptPlanPath = path.join(
+        options.paths.dataRootDir,
+        input.segment.storageDir,
+        videoPromptPlanFileName,
+      );
+
+      await ensureParentDirectory(promptPlanPath);
+      await fs.writeFile(promptPlanPath, JSON.stringify(input.planning, null, 2), "utf8");
     },
     async writeRawResponse(input) {
       const rawResponsePath = path.join(

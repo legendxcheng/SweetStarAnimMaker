@@ -17,9 +17,12 @@ describe("regenerate video prompt use case", () => {
         projectStorageDir: "projects/proj_1-my-story",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
+        shotId: "shot_1",
+        shotCode: "S01-SG01",
         segmentId: "segment_1",
         sceneId: "scene_1",
-        order: 1,
+        shotOrder: 1,
+        frameDependency: "start_frame_only",
         status: "in_review",
         promptTextSeed: "原始视频提示词",
         promptTextCurrent: "旧视频提示词",
@@ -98,6 +101,7 @@ describe("regenerate video prompt use case", () => {
                   order: 1,
                   shotCode: "S01-SG01",
                   durationSec: 8,
+                  frameDependency: "start_frame_only",
                   purpose: "Arrival",
                   visual: "Rin crosses the flooded market.",
                   subject: "Rin",
@@ -113,18 +117,71 @@ describe("regenerate video prompt use case", () => {
           ],
         }),
       },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listFramesByBatchId: vi.fn(),
+        listShotsByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "shot_ref_1",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            shotId: "shot_1",
+            storageDir: "ignored",
+            manifestRelPath: "ignored",
+            updatedAt: "2026-03-25T00:18:00.000Z",
+            startFrame: {
+              id: "frame_start_1",
+              promptTextSeed: "seed",
+              promptTextCurrent: "current",
+              imageAssetPath: "images/start.png",
+              imageWidth: 1024,
+              imageHeight: 576,
+              provider: null,
+              model: null,
+              updatedAt: "2026-03-25T00:18:00.000Z",
+              currentImageRelPath: "ignored",
+              currentMetadataRelPath: "ignored",
+              promptSeedRelPath: "ignored",
+              promptCurrentRelPath: "ignored",
+              planningRelPath: "ignored",
+              versionsStorageDir: "ignored",
+              promptVersionsStorageDir: "ignored",
+            },
+            endFrame: null,
+          },
+        ]),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn(),
+        updateFrame: vi.fn(),
+      },
       videoRepository,
       videoStorage: {
         initializePromptTemplate: vi.fn(),
-        readPromptTemplate: vi
-          .fn()
-          .mockResolvedValue("Summary: {{segment_summary}}\nShots: {{shots_summary}}"),
+        readPromptTemplate: vi.fn(),
         writePromptSnapshot: vi.fn(),
+        writePromptPlan: vi.fn(),
         writeRawResponse: vi.fn(),
         writeBatchManifest: vi.fn(),
         writeCurrentVideo: vi.fn(),
         writeVideoVersion: vi.fn(),
         resolveProjectAssetPath: vi.fn(),
+      },
+      videoPromptProvider: {
+        generateVideoPrompt: vi.fn().mockResolvedValue({
+          finalPrompt:
+            "以<<<image_1>>>为首帧锚点，林抵达积水市场后先停步，再抬头观察，口型清晰说出“有人先到了”，保留雨声和摊布拍打声。",
+          dialoguePlan: "说话主体：林；台词：有人先到了。",
+          audioPlan: "雨声和摊布拍打声。",
+          visualGuardrails: "保持林的挎包和服装稳定。",
+          rationale: "把对白、环境声和连续性要求并入 Omni 提示词。",
+          provider: "gemini",
+          model: "gemini-3.1-pro-preview",
+        }),
       },
       clock: { now: () => "2026-03-25T00:20:00.000Z" },
     });
@@ -138,10 +195,10 @@ describe("regenerate video prompt use case", () => {
       expect.objectContaining({
         promptTextSeed: "原始视频提示词",
         promptTextCurrent:
-          "Summary: Rin arrives at the flooded market.\nShots: S01-SG01: She advances toward the camera.",
+          "以<<<image_1>>>为首帧锚点，林抵达积水市场后先停步，再抬头观察，口型清晰说出“有人先到了”，保留雨声和摊布拍打声。",
         promptUpdatedAt: "2026-03-25T00:20:00.000Z",
       }),
     );
-    expect(result.promptTextCurrent).toContain("Rin arrives at the flooded market.");
+    expect(result.promptTextCurrent).toContain("有人先到了");
   });
 });

@@ -146,6 +146,7 @@ export {
   createSegmentVideoRecord,
   createVideoBatchRecord,
   toCurrentVideoBatchSummary,
+  videoPromptPlanFileName,
   type CreateSegmentVideoRecordInput,
   type CreateVideoBatchRecordInput,
   type SegmentVideoRecordEntity,
@@ -314,6 +315,13 @@ export type {
   GenerateSegmentVideoResult,
   VideoProvider,
 } from "./ports/video-provider";
+export type {
+  GenerateVideoPromptFrameContext,
+  GenerateVideoPromptInput,
+  GenerateVideoPromptResult,
+  GenerateVideoPromptShotContext,
+  VideoPromptProvider,
+} from "./ports/video-prompt-provider";
 export type { VideoRepository } from "./ports/video-repository";
 export type {
   InitializeVideoPromptTemplateInput,
@@ -322,6 +330,7 @@ export type {
   VideoStorage,
   WriteCurrentVideoInput,
   WriteVideoBatchManifestInput,
+  WriteVideoPromptPlanInput,
   WriteVideoPromptSnapshotInput,
   WriteVideoRawResponseInput,
   WriteVideoVersionInput,

@@ -14,10 +14,7 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
-import {
-  replaceFrameOnShot,
-  resolveShotFrameRecord,
-} from "./shot-reference-frame-helpers";
+import { resolveShotFrameRecord } from "./shot-reference-frame-helpers";
 import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface RegenerateFramePromptInput {
@@ -72,13 +69,7 @@ export function createRegenerateFramePromptUseCase(
         updatedAt: timestamp,
       };
 
-      if (resolvedShotFrame?.shot && dependencies.shotImageRepository.updateShot) {
-        await dependencies.shotImageRepository.updateShot(
-          replaceFrameOnShot(resolvedShotFrame.shot, updatedFrame),
-        );
-      } else {
-        await dependencies.shotImageRepository.updateFrame(updatedFrame);
-      }
+      await dependencies.shotImageRepository.updateFrame(updatedFrame);
       const task = createTaskRecord({
         id: dependencies.taskIdGenerator.generateTaskId(),
         projectId: project.id,

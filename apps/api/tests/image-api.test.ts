@@ -637,35 +637,55 @@ async function markImageShotFailedForPrompt(
     throw new Error("shot_ref_1 not found");
   }
 
-  const nextShot = {
-    ...shot,
-    startFrame: {
-      ...shot.startFrame,
-      planStatus: input.frameId === "frame_start_1" ? ("plan_failed" as const) : shot.startFrame.planStatus,
-      promptTextSeed: input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextSeed,
-      promptTextCurrent: input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextCurrent,
-      imageStatus: input.frameId === "frame_start_1" ? ("pending" as const) : shot.startFrame.imageStatus,
-      imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
-      provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
-      model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
-      updatedAt: "2026-03-24T13:10:00.000Z",
-    },
-    endFrame:
-      shot.endFrame === null
-        ? null
-        : {
+  const nextShot =
+    shot.frameDependency === "start_frame_only"
+      ? {
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus:
+              input.frameId === "frame_start_1" ? ("plan_failed" as const) : shot.startFrame.planStatus,
+            promptTextSeed: input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextSeed,
+            promptTextCurrent:
+              input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextCurrent,
+            imageStatus: input.frameId === "frame_start_1" ? ("pending" as const) : shot.startFrame.imageStatus,
+            imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
+            provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
+            model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
+            updatedAt: "2026-03-24T13:10:00.000Z",
+          },
+          endFrame: null,
+          updatedAt: "2026-03-24T13:10:00.000Z",
+        }
+      : {
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus:
+              input.frameId === "frame_start_1" ? ("plan_failed" as const) : shot.startFrame.planStatus,
+            promptTextSeed: input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextSeed,
+            promptTextCurrent:
+              input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextCurrent,
+            imageStatus: input.frameId === "frame_start_1" ? ("pending" as const) : shot.startFrame.imageStatus,
+            imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
+            provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
+            model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
+            updatedAt: "2026-03-24T13:10:00.000Z",
+          },
+          endFrame: {
             ...shot.endFrame,
             planStatus: input.frameId === "frame_end_1" ? ("plan_failed" as const) : shot.endFrame.planStatus,
             promptTextSeed: input.frameId === "frame_end_1" ? "" : shot.endFrame.promptTextSeed,
-            promptTextCurrent: input.frameId === "frame_end_1" ? "" : shot.endFrame.promptTextCurrent,
+            promptTextCurrent:
+              input.frameId === "frame_end_1" ? "" : shot.endFrame.promptTextCurrent,
             imageStatus: input.frameId === "frame_end_1" ? ("pending" as const) : shot.endFrame.imageStatus,
             imageAssetPath: input.frameId === "frame_end_1" ? null : shot.endFrame.imageAssetPath,
             provider: input.frameId === "frame_end_1" ? null : shot.endFrame.provider,
             model: input.frameId === "frame_end_1" ? null : shot.endFrame.model,
             updatedAt: "2026-03-24T13:10:00.000Z",
           },
-    updatedAt: "2026-03-24T13:10:00.000Z",
-  };
+          updatedAt: "2026-03-24T13:10:00.000Z",
+        };
 
   await shotImageRepository.updateShot?.(nextShot);
   db.close();
@@ -687,21 +707,34 @@ async function markImageShotFailedForFrame(
     throw new Error("shot_ref_1 not found");
   }
 
-  const nextShot = {
-    ...shot,
-    startFrame: {
-      ...shot.startFrame,
-      planStatus: "planned" as const,
-      imageStatus: input.frameId === "frame_start_1" ? ("failed" as const) : shot.startFrame.imageStatus,
-      imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
-      provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
-      model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
-      updatedAt: "2026-03-24T13:10:00.000Z",
-    },
-    endFrame:
-      shot.endFrame === null
-        ? null
-        : {
+  const nextShot =
+    shot.frameDependency === "start_frame_only"
+      ? {
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus: "planned" as const,
+            imageStatus: input.frameId === "frame_start_1" ? ("failed" as const) : shot.startFrame.imageStatus,
+            imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
+            provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
+            model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
+            updatedAt: "2026-03-24T13:10:00.000Z",
+          },
+          endFrame: null,
+          updatedAt: "2026-03-24T13:10:00.000Z",
+        }
+      : {
+          ...shot,
+          startFrame: {
+            ...shot.startFrame,
+            planStatus: "planned" as const,
+            imageStatus: input.frameId === "frame_start_1" ? ("failed" as const) : shot.startFrame.imageStatus,
+            imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
+            provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
+            model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
+            updatedAt: "2026-03-24T13:10:00.000Z",
+          },
+          endFrame: {
             ...shot.endFrame,
             planStatus: "planned" as const,
             imageStatus: input.frameId === "frame_end_1" ? ("failed" as const) : shot.endFrame.imageStatus,
@@ -710,8 +743,8 @@ async function markImageShotFailedForFrame(
             model: input.frameId === "frame_end_1" ? null : shot.endFrame.model,
             updatedAt: "2026-03-24T13:10:00.000Z",
           },
-    updatedAt: "2026-03-24T13:10:00.000Z",
-  };
+          updatedAt: "2026-03-24T13:10:00.000Z",
+        };
 
   await shotImageRepository.updateShot?.(nextShot);
   db.close();

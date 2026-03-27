@@ -343,6 +343,19 @@ describe("videos api", () => {
       dataRoot: tempDir,
       taskQueue: options?.taskQueue,
       taskIdGenerator: options?.taskIdGenerator,
+      videoPromptProvider: {
+        generateVideoPrompt: vi.fn().mockResolvedValue({
+          finalPrompt:
+            "以<<<image_1>>>为首帧锚点，林在雨夜市场边停下，抬头望向天际，保留雨声、风铃声和远处低鸣，镜头平稳推进，保持角色与环境连续。",
+          dialoguePlan: "无明确台词，无旁白。",
+          audioPlan: "雨声、风铃声、远处低鸣。",
+          visualGuardrails: "保持雨夜市场、林的服装与空间方位连续。",
+          rationale: "将动作、环境声和连续性收束成单镜头 Kling Omni 提示词。",
+          provider: "gemini",
+          model: "gemini-3.1-pro-preview",
+          rawResponse: "{}",
+        }),
+      },
     });
     apps.push(app);
     await app.ready();

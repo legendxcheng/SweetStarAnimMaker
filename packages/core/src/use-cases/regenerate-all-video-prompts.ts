@@ -1,15 +1,17 @@
 import type { VideoListResponse } from "@sweet-star/shared";
 
-import { buildSegmentVideoPrompt } from "./build-segment-video-prompt";
 import { toCurrentVideoBatchSummary } from "../domain/video";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import { CurrentVideoBatchNotFoundError } from "../errors/video-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
+import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
 
 export interface RegenerateAllVideoPromptsInput {
   projectId: string;
@@ -22,8 +24,10 @@ export interface RegenerateAllVideoPromptsUseCase {
 export interface RegenerateAllVideoPromptsUseCaseDependencies {
   projectRepository: ProjectRepository;
   shotScriptStorage: ShotScriptStorage;
+  shotImageRepository: ShotImageRepository;
   videoRepository: VideoRepository;
   videoStorage: VideoStorage;
+  videoPromptProvider: VideoPromptProvider;
   clock: Clock;
 }
 
@@ -56,13 +60,15 @@ export function createRegenerateAllVideoPromptsUseCase(
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 
-      const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
-        storageDir: project.storageDir,
-        promptTemplateKey: "segment_video.generate",
-      });
       const timestamp = dependencies.clock.now();
       const shots = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-      const updatedShots = shots.map((currentShot) => {
+      if (!dependencies.shotImageRepository.listShotsByBatchId) {
+        throw new CurrentShotScriptNotFoundError(project.id);
+      }
+      const shotReferences = await dependencies.shotImageRepository.listShotsByBatchId(
+        batch.sourceImageBatchId,
+      );
+      const updatedShots = await Promise.all(shots.map(async (currentShot) => {
         const scriptSegment = shotScript.segments.find(
           (item) =>
             item.segmentId === currentShot.segmentId && item.sceneId === currentShot.sceneId,
@@ -72,28 +78,57 @@ export function createRegenerateAllVideoPromptsUseCase(
           throw new CurrentShotScriptNotFoundError(project.id);
         }
 
-        const promptTextCurrent = buildSegmentVideoPrompt(promptTemplate, {
-          segmentSummary: scriptSegment.summary,
-          shotsSummary: scriptSegment.shots
-            .map((shot) => `${shot.shotCode}: ${shot.action}`)
-            .join("; "),
-        });
+        const scriptShot = scriptSegment.shots.find((item) => item.id === currentShot.shotId);
+        const shotReference = shotReferences.find((item) => item.shotId === currentShot.shotId);
+
+        if (!scriptShot || !shotReference) {
+          throw new CurrentShotScriptNotFoundError(project.id);
+        }
+
+        const promptPlan = await dependencies.videoPromptProvider.generateVideoPrompt(
+          buildVideoPromptProviderInput({
+            projectId: project.id,
+            segment: scriptSegment,
+            shot: scriptShot,
+            shotReference,
+          }),
+        );
 
         return {
           ...currentShot,
-          promptTextCurrent,
+          promptTextCurrent: promptPlan.finalPrompt,
           promptUpdatedAt: timestamp,
           updatedAt: timestamp,
+          _promptPlan: promptPlan,
         };
-      });
+      }));
 
       for (const shot of updatedShots) {
-        await dependencies.videoRepository.updateSegment(shot);
+        const { _promptPlan, ...persistedShot } = shot as typeof shot & {
+          _promptPlan: Awaited<ReturnType<VideoPromptProvider["generateVideoPrompt"]>>;
+        };
+        await dependencies.videoRepository.updateSegment(persistedShot);
+        await dependencies.videoStorage.writePromptPlan({
+          segment: persistedShot,
+          planning: {
+            finalPrompt: _promptPlan.finalPrompt,
+            dialoguePlan: _promptPlan.dialoguePlan,
+            audioPlan: _promptPlan.audioPlan,
+            visualGuardrails: _promptPlan.visualGuardrails,
+            rationale: _promptPlan.rationale,
+            provider: _promptPlan.provider,
+            model: _promptPlan.model,
+            rawResponse: _promptPlan.rawResponse,
+          },
+        });
       }
 
       return {
-        currentBatch: toCurrentVideoBatchSummary(batch, updatedShots),
-        shots: updatedShots,
+        currentBatch: toCurrentVideoBatchSummary(
+          batch,
+          updatedShots.map(({ _promptPlan: _unused, ...shot }) => shot),
+        ),
+        shots: updatedShots.map(({ _promptPlan: _unused, ...shot }) => shot),
       };
     },
   };

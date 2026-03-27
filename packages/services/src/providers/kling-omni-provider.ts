@@ -1,3 +1,4 @@
+import type { VideoProvider } from "@sweet-star/core";
 import type { ReferenceImageUploader } from "../image-upload/reference-image-uploader";
 
 export interface CreateKlingOmniProviderOptions {
@@ -8,6 +9,13 @@ export interface CreateKlingOmniProviderOptions {
   timeoutMs?: number;
   referenceImageUploader?: ReferenceImageUploader;
   fetchFn?: typeof fetch;
+}
+
+export interface CreateKlingOmniStageVideoProviderOptions extends CreateKlingOmniProviderOptions {
+  durationSeconds?: number;
+  aspectRatio?: KlingOmniAspectRatio;
+  pollIntervalMs?: number;
+  pollTimeoutMs?: number;
 }
 
 export type KlingOmniAspectRatio = "16:9" | "9:16" | "1:1";
@@ -131,6 +139,7 @@ const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
 const DEFAULT_MODEL_NAME = "kling-v3-omni";
 const DEFAULT_MODE = "pro";
 const DEFAULT_DURATION_SECONDS = 5;
+const DEFAULT_STAGE_DURATION_SECONDS = 10;
 const SUCCESS_STATUSES = new Set(["succeed", "succeeded", "success", "completed", "done"]);
 const FAILURE_STATUSES = new Set(["failed", "fail", "error", "canceled", "cancelled", "rejected"]);
 
@@ -365,6 +374,68 @@ export function createKlingOmniProvider(
       return {
         items: items.map((item) => normalizeElementTaskResult(item, null)),
         rawResponse: JSON.stringify(payload),
+      };
+    },
+  };
+}
+
+export function createKlingOmniStageVideoProvider(
+  options: CreateKlingOmniStageVideoProviderOptions = {},
+): VideoProvider {
+  const provider = createKlingOmniProvider(options);
+  const durationSeconds = isPositiveNumber(options.durationSeconds)
+    ? Number(options.durationSeconds)
+    : DEFAULT_STAGE_DURATION_SECONDS;
+  const aspectRatio = options.aspectRatio ?? null;
+  const pollIntervalMs = options.pollIntervalMs;
+  const pollTimeoutMs = options.pollTimeoutMs;
+
+  return {
+    async generateSegmentVideo(input) {
+      const submitted = input.endFramePath
+        ? await provider.submitOmniVideoWithFrames({
+            promptText: input.promptText,
+            startImage: input.startFramePath,
+            endImage: input.endFramePath,
+            durationSeconds: input.durationSec ?? durationSeconds,
+            aspectRatio,
+          })
+        : await provider.submitOmniVideoWithStartFrame({
+            promptText: input.promptText,
+            startImage: input.startFramePath,
+            durationSeconds: input.durationSec ?? durationSeconds,
+            aspectRatio,
+          });
+      const completed = await waitForOmniTask(provider, {
+        taskId: submitted.taskId,
+        pollIntervalMs,
+        timeoutMs: pollTimeoutMs,
+      });
+
+      if (completed.failed) {
+        throw new Error(
+          completed.errorMessage
+            ? `Kling omni video generation failed: ${completed.errorMessage}`
+            : `Kling omni video generation failed for task ${completed.taskId}`,
+        );
+      }
+
+      if (!completed.videoUrl) {
+        throw new Error(
+          `Kling omni video generation completed without video url for task ${completed.taskId}`,
+        );
+      }
+
+      return {
+        provider: submitted.provider,
+        model: submitted.modelName,
+        videoUrl: completed.videoUrl,
+        thumbnailUrl: null,
+        rawResponse: JSON.stringify({
+          submit: JSON.parse(submitted.rawResponse),
+          result: JSON.parse(completed.rawResponse),
+        }),
+        durationSec: input.durationSec ?? durationSeconds,
       };
     },
   };
@@ -637,6 +708,43 @@ function isRemoteUrl(value: string) {
 
 function isPositiveNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+async function waitForOmniTask(
+  provider: KlingOmniProvider,
+  input: { taskId: string; pollIntervalMs?: number; timeoutMs?: number },
+) {
+  const startedAt = Date.now();
+  const timeoutMs = input.timeoutMs ?? 300_000;
+  const pollIntervalMs = input.pollIntervalMs ?? 5_000;
+
+  while (true) {
+    const result = await provider.getOmniVideoTask({
+      taskId: input.taskId,
+    });
+
+    if (result.completed || result.failed) {
+      return result;
+    }
+
+    if (Date.now() - startedAt >= timeoutMs) {
+      throw new Error(
+        `Kling omni provider polling timed out after ${timeoutMs}ms for task ${input.taskId}`,
+      );
+    }
+
+    await delay(pollIntervalMs);
+  }
+}
+
+function delay(ms: number) {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 async function requestJson(input: {

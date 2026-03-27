@@ -1,6 +1,8 @@
 import type { SegmentVideoRecord } from "@sweet-star/shared";
 
-import { buildSegmentVideoPrompt } from "./build-segment-video-prompt";
+import type { ShotImageRepository } from "../ports/shot-image-repository";
+import type { VideoPromptProvider } from "../ports/video-prompt-provider";
+import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
@@ -22,8 +24,10 @@ export interface RegenerateVideoPromptUseCase {
 export interface RegenerateVideoPromptUseCaseDependencies {
   projectRepository: ProjectRepository;
   shotScriptStorage: ShotScriptStorage;
+  shotImageRepository: ShotImageRepository;
   videoRepository: VideoRepository;
   videoStorage: VideoStorage;
+  videoPromptProvider: VideoPromptProvider;
   clock: Clock;
 }
 
@@ -61,14 +65,33 @@ export function createRegenerateVideoPromptUseCase(
         throw new SegmentVideoNotFoundError(input.videoId);
       }
 
-      const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
-        storageDir: project.storageDir,
-        promptTemplateKey: "segment_video.generate",
-      });
-      const promptTextCurrent = buildSegmentVideoPrompt(promptTemplate, {
-        segmentSummary: segment.summary,
-        shotsSummary: segment.shots.map((shot) => `${shot.shotCode}: ${shot.action}`).join("; "),
-      });
+      const shot = segment.shots.find((item) => item.id === currentSegment.shotId);
+
+      if (!shot) {
+        throw new SegmentVideoNotFoundError(input.videoId);
+      }
+
+      if (!dependencies.shotImageRepository.listShotsByBatchId) {
+        throw new SegmentVideoNotFoundError(input.videoId);
+      }
+
+      const shotReference = (
+        await dependencies.shotImageRepository.listShotsByBatchId(currentSegment.sourceImageBatchId)
+      ).find((item) => item.shotId === currentSegment.shotId);
+
+      if (!shotReference) {
+        throw new SegmentVideoNotFoundError(input.videoId);
+      }
+
+      const promptPlan = await dependencies.videoPromptProvider.generateVideoPrompt(
+        buildVideoPromptProviderInput({
+          projectId: project.id,
+          segment,
+          shot,
+          shotReference,
+        }),
+      );
+      const promptTextCurrent = promptPlan.finalPrompt;
       const timestamp = dependencies.clock.now();
       const updatedSegment = {
         ...currentSegment,
@@ -78,6 +101,19 @@ export function createRegenerateVideoPromptUseCase(
       };
 
       await dependencies.videoRepository.updateSegment(updatedSegment);
+      await dependencies.videoStorage.writePromptPlan({
+        segment: updatedSegment,
+        planning: {
+          finalPrompt: promptPlan.finalPrompt,
+          dialoguePlan: promptPlan.dialoguePlan,
+          audioPlan: promptPlan.audioPlan,
+          visualGuardrails: promptPlan.visualGuardrails,
+          rationale: promptPlan.rationale,
+          provider: promptPlan.provider,
+          model: promptPlan.model,
+          rawResponse: promptPlan.rawResponse,
+        },
+      });
 
       return updatedSegment;
     },

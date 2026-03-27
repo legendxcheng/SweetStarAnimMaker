@@ -7,6 +7,7 @@ import {
   createProcessMasterPlotGenerateTaskUseCase,
   createProcessSegmentVideoGenerateTaskUseCase,
   createProcessVideosGenerateTaskUseCase,
+  type VideoPromptProvider,
   createProcessCharacterSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
   createProcessShotScriptGenerateTaskUseCase,
@@ -51,6 +52,7 @@ import {
   createBullMqTaskQueue,
   createCharacterSheetStorage,
   createGeminiFramePromptProvider,
+  createGeminiVideoPromptProvider,
   createGeminiCharacterSheetProvider,
   createGeminiShotScriptProvider,
   createGeminiStoryboardProvider,
@@ -100,6 +102,7 @@ export interface BuildSpec2WorkerServicesOptions {
   characterSheetPromptProvider?: CharacterSheetPromptProvider;
   characterSheetImageProvider?: CharacterSheetImageProvider;
   framePromptProvider?: FramePromptProvider;
+  videoPromptProvider?: VideoPromptProvider;
   shotImageProvider?: ShotImageProvider;
   videoProvider?: VideoProvider;
   taskQueue?: TaskQueue;
@@ -255,6 +258,13 @@ export function buildSpec2WorkerServices(
         model: process.env.FRAME_PROMPT_GROK_MODEL,
       }),
     );
+  const videoPromptProvider =
+    options.videoPromptProvider ??
+    createGeminiVideoPromptProvider({
+      baseUrl: process.env.VECTORENGINE_BASE_URL,
+      apiToken: process.env.VECTORENGINE_API_TOKEN,
+      model: process.env.VIDEO_PROMPT_MODEL,
+    });
   const shotImageProvider =
     options.shotImageProvider ??
     createTurnaroundImageProvider({
@@ -419,6 +429,7 @@ export function buildSpec2WorkerServices(
       shotImageRepository,
       videoRepository,
       videoStorage,
+      videoPromptProvider,
       taskQueue,
       taskIdGenerator,
       clock: options.clock ?? {
@@ -613,6 +624,9 @@ function createUnsupportedShotImageRepository(): ShotImageRepository {
     listFramesByBatchId() {
       throw new Error("Shot image repository is not configured");
     },
+    listShotsByBatchId() {
+      throw new Error("Shot image repository is not configured");
+    },
     insertFrame() {
       throw new Error("Shot image repository is not configured");
     },
@@ -695,6 +709,9 @@ function createUnsupportedVideoStorage(): VideoStorage {
       throw new Error("Video storage is not configured");
     },
     async writePromptSnapshot() {
+      throw new Error("Video storage is not configured");
+    },
+    async writePromptPlan() {
       throw new Error("Video storage is not configured");
     },
     async writeRawResponse() {

@@ -12,7 +12,6 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
-import { replaceFrameOnShot } from "./shot-reference-frame-helpers";
 
 export interface RegenerateFailedFrameImagesInput {
   projectId: string;
@@ -101,17 +100,7 @@ export function createRegenerateFailedFrameImagesUseCase(
           updatedAt: timestamp,
           sourceTaskId: task.id,
         };
-        const owningShot = shots?.find(
-          (shot) => shot.startFrame.id === frame.id || shot.endFrame?.id === frame.id,
-        );
-
-        if (owningShot && dependencies.shotImageRepository.updateShot) {
-          await dependencies.shotImageRepository.updateShot(
-            replaceFrameOnShot(owningShot, updatedFrame),
-          );
-        } else {
-          await dependencies.shotImageRepository.updateFrame(updatedFrame);
-        }
+        await dependencies.shotImageRepository.updateFrame(updatedFrame);
 
         await dependencies.taskQueue.enqueue({
           taskId: task.id,

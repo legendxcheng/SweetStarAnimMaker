@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  createKlingStageVideoProvider,
+  createKlingOmniStageVideoProvider,
   createSoraStageVideoProvider,
 } from "@sweet-star/services";
 
@@ -12,7 +12,7 @@ vi.mock("@sweet-star/services", async () => {
 
   return {
     ...actual,
-    createKlingStageVideoProvider: vi.fn(() => ({
+    createKlingOmniStageVideoProvider: vi.fn(() => ({
       generateSegmentVideo: vi.fn(),
     })),
     createSoraStageVideoProvider: vi.fn(() => ({
@@ -39,13 +39,10 @@ describe("createConfiguredVideoProvider", () => {
       referenceImageUploader,
     });
 
-    expect(createKlingStageVideoProvider).toHaveBeenCalledWith({
+    expect(createKlingOmniStageVideoProvider).toHaveBeenCalledWith({
       baseUrl: "https://api.vectorengine.ai",
       apiToken: "test-token",
       modelName: undefined,
-      mode: "std",
-      sound: "on",
-      multiShot: true,
       durationSeconds: 10,
       referenceImageUploader,
     });
@@ -73,7 +70,7 @@ describe("createConfiguredVideoProvider", () => {
       modelName: "sora-custom",
       referenceImageUploader,
     });
-    expect(createKlingStageVideoProvider).not.toHaveBeenCalled();
+    expect(createKlingOmniStageVideoProvider).not.toHaveBeenCalled();
   });
 
   it("rejects unsupported provider names", () => {

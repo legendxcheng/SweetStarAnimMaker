@@ -77,9 +77,11 @@ export {
 } from "./providers/kling-video-provider";
 export {
   createKlingOmniProvider,
+  createKlingOmniStageVideoProvider,
   type CreateElementInput,
   type CreateElementResult,
   type CreateKlingOmniProviderOptions,
+  type CreateKlingOmniStageVideoProviderOptions,
   type GetElementInput,
   type GetElementResult,
   type GetOmniVideoTaskInput,
@@ -119,6 +121,10 @@ export {
   createGeminiFramePromptProvider,
   type CreateGeminiFramePromptProviderOptions,
 } from "./providers/gemini-frame-prompt-provider";
+export {
+  createGeminiVideoPromptProvider,
+  type CreateGeminiVideoPromptProviderOptions,
+} from "./providers/gemini-video-prompt-provider";
 export {
   createGrokFramePromptProvider,
   type CreateGrokFramePromptProviderOptions,

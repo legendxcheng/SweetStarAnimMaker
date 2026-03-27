@@ -15,6 +15,7 @@ export const videoCurrentFileName = "current.mp4";
 export const videoCurrentMetadataFileName = "current.json";
 export const videoThumbnailFileName = "thumbnail.webp";
 export const videoVersionsDirectoryName = "versions";
+export const videoPromptPlanFileName = "prompt.plan.json";
 
 export interface VideoBatchRecord {
   id: string;
