@@ -6,6 +6,7 @@ export interface CreateKlingOmniProviderOptions {
   apiToken?: string;
   modelName?: string;
   mode?: string;
+  sound?: string;
   timeoutMs?: number;
   referenceImageUploader?: ReferenceImageUploader;
   fetchFn?: typeof fetch;
@@ -26,6 +27,7 @@ export interface SubmitOmniVideoWithFramesInput {
   endImage: string;
   durationSeconds?: number | null;
   aspectRatio?: KlingOmniAspectRatio | null;
+  sound?: string | null;
   callbackUrl?: string | null;
   externalTaskId?: string | null;
 }
@@ -35,6 +37,7 @@ export interface SubmitOmniVideoWithStartFrameInput {
   startImage: string;
   durationSeconds?: number | null;
   aspectRatio?: KlingOmniAspectRatio | null;
+  sound?: string | null;
   callbackUrl?: string | null;
   externalTaskId?: string | null;
 }
@@ -44,6 +47,7 @@ export interface SubmitOmniVideoWithElementsInput {
   elementIds: Array<string | number>;
   durationSeconds?: number | null;
   aspectRatio?: KlingOmniAspectRatio | null;
+  sound?: string | null;
   callbackUrl?: string | null;
   externalTaskId?: string | null;
 }
@@ -140,6 +144,7 @@ const DEFAULT_MODEL_NAME = "kling-v3-omni";
 const DEFAULT_MODE = "pro";
 const DEFAULT_DURATION_SECONDS = 5;
 const DEFAULT_STAGE_DURATION_SECONDS = 10;
+const DEFAULT_STAGE_SOUND = "on";
 const SUCCESS_STATUSES = new Set(["succeed", "succeeded", "success", "completed", "done"]);
 const FAILURE_STATUSES = new Set(["failed", "fail", "error", "canceled", "cancelled", "rejected"]);
 
@@ -168,6 +173,7 @@ export function createKlingOmniProvider(
           promptText: input.promptText,
           durationSeconds: input.durationSeconds,
           aspectRatio: input.aspectRatio,
+          sound: input.sound ?? options.sound,
           callbackUrl: input.callbackUrl,
           externalTaskId: input.externalTaskId,
           imageList: [{ image_url: startImage, type: "first_frame" }],
@@ -199,6 +205,7 @@ export function createKlingOmniProvider(
           promptText: input.promptText,
           durationSeconds: input.durationSeconds,
           aspectRatio: input.aspectRatio,
+          sound: input.sound ?? options.sound,
           callbackUrl: input.callbackUrl,
           externalTaskId: input.externalTaskId,
           imageList: [
@@ -227,6 +234,7 @@ export function createKlingOmniProvider(
       };
 
       assignOptionalString(requestBody, "aspect_ratio", input.aspectRatio);
+      assignOptionalString(requestBody, "sound", input.sound ?? options.sound);
       assignOptionalString(requestBody, "callback_url", input.callbackUrl);
       assignOptionalString(requestBody, "external_task_id", input.externalTaskId);
 
@@ -387,6 +395,7 @@ export function createKlingOmniStageVideoProvider(
     ? Number(options.durationSeconds)
     : DEFAULT_STAGE_DURATION_SECONDS;
   const aspectRatio = options.aspectRatio ?? null;
+  const sound = options.sound?.trim() || DEFAULT_STAGE_SOUND;
   const pollIntervalMs = options.pollIntervalMs;
   const pollTimeoutMs = options.pollTimeoutMs;
 
@@ -399,12 +408,14 @@ export function createKlingOmniStageVideoProvider(
             endImage: input.endFramePath,
             durationSeconds: input.durationSec ?? durationSeconds,
             aspectRatio,
+            sound,
           })
         : await provider.submitOmniVideoWithStartFrame({
             promptText: input.promptText,
             startImage: input.startFramePath,
             durationSeconds: input.durationSec ?? durationSeconds,
             aspectRatio,
+            sound,
           });
       const completed = await waitForOmniTask(provider, {
         taskId: submitted.taskId,
@@ -484,6 +495,7 @@ async function submitOmniVideoRequest(
     promptText: string;
     durationSeconds?: number | null;
     aspectRatio?: KlingOmniAspectRatio | null;
+    sound?: string | null;
     callbackUrl?: string | null;
     externalTaskId?: string | null;
     imageList?: Array<{ image_url: string; type: "first_frame" | "end_frame" }>;
@@ -497,6 +509,7 @@ async function submitOmniVideoRequest(
   };
 
   assignOptionalString(requestBody, "aspect_ratio", input.aspectRatio);
+  assignOptionalString(requestBody, "sound", input.sound);
   assignOptionalString(requestBody, "callback_url", input.callbackUrl);
   assignOptionalString(requestBody, "external_task_id", input.externalTaskId);
 

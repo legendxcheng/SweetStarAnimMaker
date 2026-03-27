@@ -5,6 +5,7 @@ import {
   createProcessFramePromptGenerateTaskUseCase,
   createProcessImagesGenerateTaskUseCase,
   createProcessMasterPlotGenerateTaskUseCase,
+  createProcessSegmentVideoPromptGenerateTaskUseCase,
   createProcessSegmentVideoGenerateTaskUseCase,
   createProcessVideosGenerateTaskUseCase,
   type VideoPromptProvider,
@@ -28,6 +29,7 @@ import {
   type ProcessFrameImageGenerateTaskUseCase,
   type ProcessFramePromptGenerateTaskUseCase,
   type ProcessImagesGenerateTaskUseCase,
+  type ProcessSegmentVideoPromptGenerateTaskUseCase,
   type ProcessSegmentVideoGenerateTaskUseCase,
   type ProcessVideosGenerateTaskUseCase,
   type ProcessShotScriptGenerateTaskUseCase,
@@ -120,6 +122,7 @@ export interface Spec2WorkerServices {
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
   processImagesGenerateTask: ProcessImagesGenerateTaskUseCase;
   processVideosGenerateTask: ProcessVideosGenerateTaskUseCase;
+  processSegmentVideoPromptGenerateTask: ProcessSegmentVideoPromptGenerateTaskUseCase;
   processSegmentVideoGenerateTask: ProcessSegmentVideoGenerateTaskUseCase;
   processFramePromptGenerateTask: ProcessFramePromptGenerateTaskUseCase;
   processFrameImageGenerateTask: ProcessFrameImageGenerateTaskUseCase;
@@ -427,6 +430,19 @@ export function buildSpec2WorkerServices(
       projectRepository,
       taskFileStorage,
       shotImageRepository,
+      videoRepository,
+      videoStorage,
+      videoPromptProvider,
+      taskQueue,
+      taskIdGenerator,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processSegmentVideoPromptGenerateTask: createProcessSegmentVideoPromptGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
       videoRepository,
       videoStorage,
       videoPromptProvider,

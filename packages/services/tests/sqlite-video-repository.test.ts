@@ -62,6 +62,7 @@ describe("sqlite video repository", () => {
       shotCode: "SC01-SG01-SH01",
       sceneId: "scene_1",
       segmentId: "segment_1",
+      segmentOrder: 1,
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 3,
@@ -127,6 +128,7 @@ describe("sqlite video repository", () => {
       shotCode: "SC01-SG01-SH02",
       sceneId: "scene_1",
       segmentId: "segment_1",
+      segmentOrder: 1,
       shotOrder: 2,
       frameDependency: "start_and_end_frame",
       durationSec: 5,
@@ -170,6 +172,56 @@ describe("sqlite video repository", () => {
     expect(persistedShot?.currentVideoRelPath).toContain("/shots/");
   });
 
+  it("persists segment order for current video shots", async () => {
+    const { projectRepository, repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_video_2b",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-25T00:00:00.000Z",
+      updatedAt: "2026-03-25T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-25T00:00:00.000Z",
+      premiseBytes: 7,
+    });
+    const batch = createVideoBatchRecord({
+      id: "video_batch_2b",
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: "image_batch_2b",
+      sourceShotScriptId: "shot_script_2b",
+      shotCount: 1,
+      createdAt: "2026-03-25T01:00:00.000Z",
+      updatedAt: "2026-03-25T01:00:00.000Z",
+    });
+    const shot = createSegmentVideoRecord({
+      id: "video_shot_2b",
+      batchId: batch.id,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: batch.sourceImageBatchId,
+      sourceShotScriptId: batch.sourceShotScriptId,
+      shotId: "shot_2b",
+      shotCode: "SC01-SG02-SH01",
+      sceneId: "scene_1",
+      segmentId: "segment_2",
+      segmentOrder: 2,
+      shotOrder: 1,
+      frameDependency: "start_frame_only",
+      durationSec: 4,
+      status: "generating",
+      promptTextSeed: "seed prompt 2b",
+      promptTextCurrent: "current prompt 2b",
+      promptUpdatedAt: "2026-03-25T01:04:00.000Z",
+      updatedAt: "2026-03-25T01:05:00.000Z",
+    });
+
+    projectRepository.insert(project);
+    repository.insertBatch(batch);
+    repository.insertSegment(shot);
+
+    expect(repository.findSegmentById(shot.id)).toEqual(shot);
+  });
+
   it("finds the current shot by scene id, segment id, and shot id when ids repeat across shots", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     const project = createProjectRecord({
@@ -202,6 +254,7 @@ describe("sqlite video repository", () => {
       shotCode: "SC01-SG01-SH01",
       sceneId: "scene_1",
       segmentId: "segment_1",
+      segmentOrder: 1,
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 3,
@@ -223,6 +276,7 @@ describe("sqlite video repository", () => {
       shotCode: "SC02-SG01-SH01",
       sceneId: "scene_2",
       segmentId: "segment_1",
+      segmentOrder: 1,
       shotOrder: 1,
       frameDependency: "start_and_end_frame",
       durationSec: 5,

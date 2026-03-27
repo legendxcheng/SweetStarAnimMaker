@@ -363,7 +363,7 @@ export function VideoPhasePanel({
                 disabled={disableGenerate}
                 className={getButtonClassName()}
               >
-                {creatingTask ? "启动中..." : "开始生成视频"}
+                {creatingTask ? "启动中..." : "开始生成视频提示词"}
               </button>
             )}
           </div>
@@ -390,7 +390,7 @@ export function VideoPhasePanel({
           </div>
         ) : (
           <p className="text-sm text-(--color-text-muted)">
-            当前阶段会基于已审核的 Shot 参考帧，为每个 Shot 生成一个可审核视频片段。
+            当前阶段会先为每个 Shot 生成可编辑视频提示词，确认后再逐镜头或整批生成视频。
           </p>
         )}
       </div>

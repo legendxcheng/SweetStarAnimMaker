@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createKlingOmniProvider } from "../src/index";
+import { createKlingOmniProvider, createKlingOmniStageVideoProvider } from "../src/index";
 
 describe("kling omni provider", () => {
   afterEach(() => {
@@ -379,5 +379,73 @@ describe("kling omni provider", () => {
     ).rejects.toThrow(
       'Kling omni provider request failed with status 400; requestId=req_omni_400; body={"message":"invalid element payload"}',
     );
+  });
+
+  it("uses Omni stage defaults with sound enabled for production video generation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "omni_task_stage",
+            task_status: "submitted",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "omni_task_stage",
+            task_status: "succeed",
+            task_result: {
+              videos: [
+                {
+                  url: "https://cdn.example/omni-stage-output.mp4",
+                },
+              ],
+            },
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createKlingOmniStageVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const result = await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      frameDependency: "start_and_end_frame",
+      promptText: "让<<<image_1>>>中的角色缓慢转身看向镜头。",
+      startFramePath: "https://cdn.example/start.png",
+      endFramePath: "https://cdn.example/end.png",
+      durationSec: 6,
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.model_name).toBe("kling-v3-omni");
+    expect(request.sound).toBe("on");
+    expect(request.duration).toBe("6");
+    expect(request.image_list).toEqual([
+      {
+        image_url: "https://cdn.example/start.png",
+        type: "first_frame",
+      },
+      {
+        image_url: "https://cdn.example/end.png",
+        type: "end_frame",
+      },
+    ]);
+    expect(result.provider).toBe("kling-omni");
+    expect(result.model).toBe("kling-v3-omni");
+    expect(result.videoUrl).toBe("https://cdn.example/omni-stage-output.mp4");
+    expect(result.thumbnailUrl).toBeNull();
+    expect(result.durationSec).toBe(6);
   });
 });

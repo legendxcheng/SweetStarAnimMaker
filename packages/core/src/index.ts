@@ -207,6 +207,7 @@ export {
   framePromptGenerateQueueName,
   imagesGenerateQueueName,
   masterPlotGenerateQueueName,
+  segmentVideoPromptGenerateQueueName,
   segmentVideoGenerateQueueName,
   videosGenerateQueueName,
   shotScriptGenerateQueueName,
@@ -228,6 +229,7 @@ export {
   type ImagesGenerateTaskInput,
   type MasterPlotGenerateTaskInput,
   type SegmentVideoGenerateTaskInput,
+  type SegmentVideoPromptGenerateTaskInput,
   type ShotScriptGenerateTaskInput,
   type ShotScriptSegmentGenerateTaskInput,
   type StoryboardGenerateTaskInput,
@@ -605,6 +607,12 @@ export {
   type ProcessVideosGenerateTaskUseCase,
   type ProcessVideosGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-videos-generate-task";
+export {
+  createProcessSegmentVideoPromptGenerateTaskUseCase,
+  type ProcessSegmentVideoPromptGenerateTaskInput,
+  type ProcessSegmentVideoPromptGenerateTaskUseCase,
+  type ProcessSegmentVideoPromptGenerateTaskUseCaseDependencies,
+} from "./use-cases/process-segment-video-prompt-generate-task";
 export {
   createProcessSegmentVideoGenerateTaskUseCase,
   type ProcessSegmentVideoGenerateTaskInput,

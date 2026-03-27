@@ -57,7 +57,7 @@ export function createSqliteVideoRepository(
             SELECT *
             FROM segment_videos
             WHERE batch_id = ?
-            ORDER BY shot_order ASC, updated_at ASC
+            ORDER BY segment_order ASC, shot_order ASC, updated_at ASC
           `,
         )
         .all(batchId) as SegmentVideoRow[];
@@ -70,14 +70,14 @@ export function createSqliteVideoRepository(
           `
             INSERT INTO segment_videos (
               id, batch_id, project_id, project_storage_dir, source_image_batch_id, source_shot_script_id,
-              shot_id, shot_code, scene_id, segment_id, shot_order, frame_dependency, status,
+              shot_id, shot_code, scene_id, segment_id, segment_order, shot_order, frame_dependency, status,
               prompt_text_seed, prompt_text_current, prompt_updated_at, video_asset_path,
               thumbnail_asset_path, duration_sec, provider, model, updated_at, approved_at,
               source_task_id, storage_dir, current_video_rel_path, current_metadata_rel_path,
               thumbnail_rel_path, versions_storage_dir
             ) VALUES (
               @id, @batch_id, @project_id, @project_storage_dir, @source_image_batch_id, @source_shot_script_id,
-              @shot_id, @shot_code, @scene_id, @segment_id, @shot_order, @frame_dependency, @status,
+              @shot_id, @shot_code, @scene_id, @segment_id, @segment_order, @shot_order, @frame_dependency, @status,
               @prompt_text_seed, @prompt_text_current, @prompt_updated_at, @video_asset_path,
               @thumbnail_asset_path, @duration_sec, @provider, @model, @updated_at, @approved_at,
               @source_task_id, @storage_dir, @current_video_rel_path, @current_metadata_rel_path,
@@ -156,6 +156,7 @@ export function createSqliteVideoRepository(
               shot_code = @shot_code,
               scene_id = @scene_id,
               segment_id = @segment_id,
+              segment_order = @segment_order,
               shot_order = @shot_order,
               frame_dependency = @frame_dependency,
               status = @status,
@@ -208,6 +209,7 @@ interface SegmentVideoRow {
   shot_code: string;
   scene_id: string;
   segment_id: string;
+  segment_order: number;
   shot_order: number;
   frame_dependency: SegmentVideoRecordEntity["frameDependency"];
   status: SegmentVideoRecordEntity["status"];
@@ -275,6 +277,7 @@ function toSegmentRow(segment: SegmentVideoRecordEntity): SegmentVideoRow {
     shot_code: segment.shotCode,
     scene_id: segment.sceneId,
     segment_id: segment.segmentId,
+    segment_order: segment.segmentOrder,
     shot_order: segment.shotOrder,
     frame_dependency: segment.frameDependency,
     status: segment.status,
@@ -309,6 +312,7 @@ function fromSegmentRow(row: SegmentVideoRow): SegmentVideoRecordEntity {
     shotCode: row.shot_code,
     sceneId: row.scene_id,
     segmentId: row.segment_id,
+    segmentOrder: row.segment_order,
     shotOrder: row.shot_order,
     frameDependency: row.frame_dependency,
     status: row.status,

@@ -20,6 +20,9 @@ export interface ShotVideoRecord {
   shotId: string;
   shotCode: string;
   sceneId: string;
+  segmentId: string;
+  segmentOrder: number;
+  shotOrder: number;
   frameDependency: ShotFrameDependency;
   status: ShotVideoStatus;
   promptTextSeed: string;

@@ -1,4 +1,5 @@
 import {
+  segmentVideoPromptGenerateQueueName,
   segmentVideoGenerateQueueName,
   videosGenerateQueueName,
 } from "@sweet-star/core";
@@ -13,6 +14,7 @@ describe("video worker integration", () => {
     const processCharacterSheetsGenerateTask = { execute: vi.fn() };
     const processCharacterSheetGenerateTask = { execute: vi.fn() };
     const processVideosGenerateTask = { execute: vi.fn() };
+    const processSegmentVideoPromptGenerateTask = { execute: vi.fn() };
     const processSegmentVideoGenerateTask = { execute: vi.fn() };
     const close = vi.fn();
     const workerFactory = vi.fn(({ processor }) => ({
@@ -27,6 +29,7 @@ describe("video worker integration", () => {
         processCharacterSheetsGenerateTask,
         processCharacterSheetGenerateTask,
         processVideosGenerateTask,
+        processSegmentVideoPromptGenerateTask,
         processSegmentVideoGenerateTask,
       },
       workerFactory,
@@ -35,10 +38,16 @@ describe("video worker integration", () => {
     const videosWorkerIndex = workerFactory.mock.calls.findIndex(
       ([input]) => input.queueName === videosGenerateQueueName,
     );
+    const promptWorkerIndex = workerFactory.mock.calls.findIndex(
+      ([input]) => input.queueName === segmentVideoPromptGenerateQueueName,
+    );
     const segmentWorkerIndex = workerFactory.mock.calls.findIndex(
       ([input]) => input.queueName === segmentVideoGenerateQueueName,
     );
     const videosWorker = workerFactory.mock.results[videosWorkerIndex]?.value as {
+      processor(job: { data: { taskId: string } }): Promise<void>;
+    };
+    const promptWorker = workerFactory.mock.results[promptWorkerIndex]?.value as {
       processor(job: { data: { taskId: string } }): Promise<void>;
     };
     const segmentWorker = workerFactory.mock.results[segmentWorkerIndex]?.value as {
@@ -50,6 +59,11 @@ describe("video worker integration", () => {
         taskId: "task_videos_batch_1",
       },
     });
+    await promptWorker.processor({
+      data: {
+        taskId: "task_video_prompt_1",
+      },
+    });
     await segmentWorker.processor({
       data: {
         taskId: "task_video_segment_1",
@@ -58,6 +72,12 @@ describe("video worker integration", () => {
 
     expect(workerFactory).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: videosGenerateQueueName }),
+    );
+    expect(workerFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queueName: segmentVideoPromptGenerateQueueName,
+        concurrency: 20,
+      }),
     );
     expect(workerFactory).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -73,6 +93,9 @@ describe("video worker integration", () => {
     );
     expect(processVideosGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_videos_batch_1",
+    });
+    expect(processSegmentVideoPromptGenerateTask.execute).toHaveBeenCalledWith({
+      taskId: "task_video_prompt_1",
     });
     expect(processSegmentVideoGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_video_segment_1",

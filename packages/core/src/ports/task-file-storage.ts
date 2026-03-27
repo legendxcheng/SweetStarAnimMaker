@@ -6,6 +6,7 @@ import type {
   ImagesGenerateTaskInput,
   MasterPlotGenerateTaskInput,
   SegmentVideoGenerateTaskInput,
+  SegmentVideoPromptGenerateTaskInput,
   ShotScriptGenerateTaskInput,
   ShotScriptSegmentGenerateTaskInput,
   StoryboardGenerateTaskInput,
@@ -24,6 +25,7 @@ export type SupportedTaskInput =
   | FramePromptGenerateTaskInput
   | FrameImageGenerateTaskInput
   | VideosGenerateTaskInput
+  | SegmentVideoPromptGenerateTaskInput
   | SegmentVideoGenerateTaskInput;
 
 export interface CreateTaskArtifactsInput {

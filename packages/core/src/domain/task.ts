@@ -17,6 +17,7 @@ export const imagesGenerateQueueName = "images-generate";
 export const framePromptGenerateQueueName = "frame-prompt-generate";
 export const frameImageGenerateQueueName = "frame-image-generate";
 export const videosGenerateQueueName = "videos-generate";
+export const segmentVideoPromptGenerateQueueName = "segment-video-prompt-generate";
 export const segmentVideoGenerateQueueName = "segment-video-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
@@ -236,6 +237,35 @@ export interface SegmentVideoGenerateTaskInput {
   taskId: string;
   projectId: string;
   taskType: "segment_video_generate";
+  batchId: string;
+  sourceImageBatchId: string;
+  sourceShotScriptId: string;
+  segmentId: string;
+  sceneId: string;
+  shotId: string;
+  shotCode: string;
+  frameDependency: ShotFrameDependency;
+  segment: ShotScriptSegment;
+  shot: ShotScriptItem;
+  startFrame: {
+    id: string;
+    imageAssetPath: string | null;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  };
+  endFrame: {
+    id: string;
+    imageAssetPath: string | null;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  } | null;
+  promptTemplateKey: "segment_video.generate";
+}
+
+export interface SegmentVideoPromptGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "segment_video_prompt_generate";
   batchId: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;

@@ -654,8 +654,10 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "视频" }));
 
     expect(screen.getByRole("heading", { name: "视频工作区" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "开始生成视频" })).toBeInTheDocument();
-    expect(screen.getByText(/为每个 Shot 生成一个可审核视频片段/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "开始生成视频提示词" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/先为每个 Shot 生成可编辑视频提示词，确认后再逐镜头或整批生成视频/i),
+    ).toBeInTheDocument();
   });
 
   it("auto-selects the videos phase when the project already has a current video batch", async () => {

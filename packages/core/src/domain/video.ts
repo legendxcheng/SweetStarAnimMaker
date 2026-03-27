@@ -33,8 +33,6 @@ export interface VideoBatchRecord {
 }
 
 export interface ShotVideoRecordEntity extends ShotVideoRecord {
-  segmentId: string;
-  shotOrder: number;
   projectStorageDir: string;
   storageDir: string;
   currentVideoRelPath: string;
@@ -68,6 +66,7 @@ export interface CreateShotVideoRecordInput {
   shotCode: string;
   sceneId: string;
   segmentId: string;
+  segmentOrder: number;
   shotOrder: number;
   frameDependency: ShotFrameDependency;
   status?: ShotVideoStatus;
@@ -156,6 +155,7 @@ export function createShotVideoRecord(input: CreateShotVideoRecordInput): ShotVi
     shotCode: input.shotCode,
     sceneId: input.sceneId,
     segmentId: input.segmentId,
+    segmentOrder: input.segmentOrder,
     shotOrder: input.shotOrder,
     frameDependency: input.frameDependency,
     status: input.status ?? "generating",

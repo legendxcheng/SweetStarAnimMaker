@@ -295,7 +295,7 @@ describe("VideoPhasePanel", () => {
     });
   });
 
-  it("shows the generate entry when the current video batch does not exist", () => {
+  it("shows a prompt-only generate entry when the current video batch does not exist", () => {
     const onGenerate = vi.fn();
 
     renderPanel({
@@ -307,10 +307,12 @@ describe("VideoPhasePanel", () => {
       onGenerate,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "开始生成视频" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始生成视频提示词" }));
 
     expect(onGenerate).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/为每个 Shot 生成一个可审核视频片段/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/先为每个 Shot 生成可编辑视频提示词，确认后再逐镜头或整批生成视频/i),
+    ).toBeInTheDocument();
   });
 
   it("reloads the current batch after project status changes for the same batch", async () => {

@@ -88,8 +88,12 @@ export function createGetProjectDetailUseCase(
         );
 
         if (batch) {
-          const frames = await dependencies.shotImageRepository.listFramesByBatchId(batch.id);
-          currentImageBatch = toCompatibleCurrentImageBatch(batch, frames);
+          const shots = dependencies.shotImageRepository.listShotsByBatchId
+            ? await dependencies.shotImageRepository.listShotsByBatchId(batch.id)
+            : null;
+          const records =
+            shots ?? (await dependencies.shotImageRepository.listFramesByBatchId(batch.id));
+          currentImageBatch = toCompatibleCurrentImageBatch(batch, records);
         }
       }
 

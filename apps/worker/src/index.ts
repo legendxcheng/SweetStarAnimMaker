@@ -7,6 +7,7 @@ import {
   framePromptGenerateQueueName,
   imagesGenerateQueueName,
   masterPlotGenerateQueueName,
+  segmentVideoPromptGenerateQueueName,
   segmentVideoGenerateQueueName,
   type CharacterSheetImageProvider,
   type CharacterSheetPromptProvider,
@@ -63,6 +64,9 @@ export interface StartWorkerOptions {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processVideosGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processSegmentVideoPromptGenerateTask?: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processSegmentVideoGenerateTask?: {
@@ -231,7 +235,19 @@ export async function startWorker(
     });
   }
   const segmentVideoTaskProcessor = services.processSegmentVideoGenerateTask;
+  const segmentVideoPromptTaskProcessor = services.processSegmentVideoPromptGenerateTask;
 
+  if (segmentVideoPromptTaskProcessor) {
+    processors.push({
+      queueName: segmentVideoPromptGenerateQueueName,
+      concurrency: 20,
+      processor: async (job: WorkerJob) => {
+        await segmentVideoPromptTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
   if (segmentVideoTaskProcessor) {
     processors.push({
       queueName: segmentVideoGenerateQueueName,
@@ -292,5 +308,4 @@ function createBullMqWorker(input: {
     },
   };
 }
-
 

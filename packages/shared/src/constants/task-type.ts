@@ -9,6 +9,7 @@ export const taskTypes = [
   "frame_prompt_generate",
   "frame_image_generate",
   "videos_generate",
+  "segment_video_prompt_generate",
   "segment_video_generate",
 ] as const;
 
