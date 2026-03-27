@@ -319,4 +319,134 @@ describe("get project detail use case", () => {
       }),
     ).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
+
+  it("normalizes legacy image and video batch summaries in project detail", async () => {
+    const repository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockReturnValue({
+        id: "proj_legacy_detail",
+        name: "Legacy Detail",
+        slug: "legacy-detail",
+        storageDir: "projects/proj_legacy_detail",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: null,
+        currentCharacterSheetBatchId: null,
+        currentStoryboardId: null,
+        currentShotScriptId: null,
+        currentImageBatchId: "image_batch_legacy",
+        currentVideoBatchId: "video_batch_empty",
+        status: "images_in_review",
+        createdAt: "2026-03-17T00:00:00.000Z",
+        updatedAt: "2026-03-17T00:00:00.000Z",
+        premiseUpdatedAt: "2026-03-17T00:00:00.000Z",
+      }),
+      listAll: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
+      updateStatus: vi.fn(),
+    };
+
+    const useCase = createGetProjectDetailUseCase({
+      repository,
+      premiseStorage: {
+        readPremise: vi.fn().mockResolvedValue("legacy premise"),
+        writePremise: vi.fn(),
+        deletePremise: vi.fn(),
+      },
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn(),
+      },
+      storyboardStorage: {
+        writeRawResponse: vi.fn(),
+        writeStoryboardVersion: vi.fn(),
+        readStoryboardVersion: vi.fn(),
+        writeCurrentStoryboard: vi.fn(),
+        readCurrentStoryboard: vi.fn(),
+      },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn(),
+      },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn(),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "image_batch_legacy",
+          projectId: "proj_legacy_detail",
+          projectStorageDir: "projects/proj_legacy_detail",
+          sourceShotScriptId: "shot_script_legacy",
+          segmentCount: 2,
+          totalFrameCount: 3,
+          storageDir: "projects/proj_legacy_detail/images/batches/image_batch_legacy",
+          manifestRelPath: "images/batches/image_batch_legacy/manifest.json",
+          createdAt: "2026-03-23T12:00:00.000Z",
+          updatedAt: "2026-03-23T12:10:00.000Z",
+        }),
+        listFramesByBatchId: vi.fn().mockResolvedValue([
+          { id: "frame_1", imageStatus: "approved" },
+          { id: "frame_2", imageStatus: "in_review" },
+        ]),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn(),
+        updateFrame: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+      },
+      videoRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "video_batch_empty",
+          projectId: "proj_legacy_detail",
+          projectStorageDir: "projects/proj_legacy_detail",
+          sourceImageBatchId: "image_batch_legacy",
+          sourceShotScriptId: "shot_script_legacy",
+          shotCount: 0,
+          updatedAt: "2026-03-25T12:00:00.000Z",
+        }),
+        findCurrentBatchByProjectId: vi.fn(),
+        listSegmentsByBatchId: vi.fn().mockResolvedValue([]),
+        insertSegment: vi.fn(),
+        findSegmentById: vi.fn(),
+        findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+        findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
+        updateSegment: vi.fn(),
+      },
+    });
+
+    const result = await useCase.execute({
+      projectId: "proj_legacy_detail",
+    });
+
+    expect(result.currentImageBatch).toEqual(
+      expect.objectContaining({
+        shotCount: 2,
+        totalRequiredFrameCount: 3,
+        approvedShotCount: 1,
+      }),
+    );
+    expect(result.currentVideoBatch).toBeNull();
+  });
 });

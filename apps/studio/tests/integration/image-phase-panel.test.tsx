@@ -348,6 +348,16 @@ describe("ImagePhasePanel", () => {
       frameCount: 2,
       taskIds: ["task-frame-prompt-1", "task-frame-prompt-2"],
     });
+    vi.spyOn(apiModule.apiClient, "regenerateFailedImagePrompts").mockResolvedValue({
+      batchId: "image-batch-1",
+      frameCount: 1,
+      taskIds: ["task-frame-prompt-failed-1"],
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateFailedImageFrames").mockResolvedValue({
+      batchId: "image-batch-1",
+      frameCount: 1,
+      taskIds: ["task-frame-image-failed-1"],
+    });
 
     render(
       <ImagePhasePanel
@@ -447,7 +457,7 @@ describe("ImagePhasePanel", () => {
     renderPanel();
 
     const batchButton = await screen.findByRole("button", {
-      name: "重新生成当前批次全部 Prompt",
+      name: "重新生成全部 Prompt",
     });
     const singleFrameButton = screen.getByRole("button", { name: "重新生成起始帧 Prompt" });
 
@@ -554,7 +564,7 @@ describe("ImagePhasePanel", () => {
     );
 
     const batchButton = await screen.findByRole("button", {
-      name: "重新生成当前批次全部帧",
+      name: "重新生成全部帧",
     });
     const singleFrameButton = screen.getByRole("button", { name: "生成起始帧图片" });
 
@@ -608,10 +618,10 @@ describe("ImagePhasePanel", () => {
     renderPanel();
 
     const batchFrameButton = await screen.findByRole("button", {
-      name: "重新生成当前批次全部帧",
+      name: "重新生成全部帧",
     });
     const batchPromptButton = screen.getByRole("button", {
-      name: "重新生成当前批次全部 Prompt",
+      name: "重新生成全部 Prompt",
     });
     const segmentHeading = screen.getByRole("heading", { name: "Segment 1" });
 
@@ -623,6 +633,142 @@ describe("ImagePhasePanel", () => {
       batchPromptButton.compareDocumentPosition(batchFrameButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("shows failure-only retry buttons and retries only failed prompt and frame items", async () => {
+    const refreshProject = vi.fn();
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce({
+        currentBatch: baseProject.currentImageBatch,
+        shots: [
+          createShot({
+            id: "shot-ref-failed-prompt",
+            startFrame: createFrame({
+              id: "frame-failed-prompt",
+              planStatus: "plan_failed",
+              imageStatus: "pending",
+              promptTextSeed: "",
+              promptTextCurrent: "",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+            endFrame: null,
+            frameDependency: "start_frame_only",
+          }),
+          createShot({
+            id: "shot-ref-failed-frame",
+            startFrame: createFrame({
+              id: "frame-failed-image",
+              planStatus: "planned",
+              imageStatus: "failed",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+            endFrame: null,
+            frameDependency: "start_frame_only",
+          }),
+          createShot({
+            id: "shot-ref-pending",
+            startFrame: createFrame({
+              id: "frame-pending-image",
+              planStatus: "planned",
+              imageStatus: "pending",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+            endFrame: null,
+            frameDependency: "start_frame_only",
+          }),
+        ],
+      })
+      .mockResolvedValueOnce({
+        currentBatch: baseProject.currentImageBatch,
+        shots: [
+          createShot({
+            id: "shot-ref-failed-frame",
+            startFrame: createFrame({
+              id: "frame-failed-image",
+              planStatus: "planned",
+              imageStatus: "failed",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+            endFrame: null,
+            frameDependency: "start_frame_only",
+          }),
+        ],
+      })
+      .mockResolvedValue({
+        currentBatch: baseProject.currentImageBatch,
+        shots: [createShot()],
+      });
+    vi.spyOn(apiModule.apiClient, "regenerateFailedImagePrompts").mockResolvedValue({
+      batchId: "image-batch-1",
+      frameCount: 1,
+      taskIds: ["task-failed-prompt-1"],
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateFailedImageFrames").mockResolvedValue({
+      batchId: "image-batch-1",
+      frameCount: 1,
+      taskIds: ["task-failed-frame-1"],
+    });
+
+    render(
+      <ImagePhasePanel
+        project={baseProject}
+        task={null}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={refreshProject}
+      />,
+    );
+
+    const failedPromptButton = await screen.findByRole("button", {
+      name: "重新生成失败的Prompt",
+    });
+    const failedFrameButton = screen.getByRole("button", {
+      name: "重新生成失败的帧",
+    });
+
+    expect(failedPromptButton).toBeEnabled();
+    expect(failedFrameButton).toBeEnabled();
+
+    fireEvent.click(failedPromptButton);
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateFailedImagePrompts).toHaveBeenCalledWith("proj-1");
+    });
+
+    fireEvent.click(failedFrameButton);
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateFailedImageFrames).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(refreshProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables failure-only retry buttons when no matching failed items exist", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
+
+    renderPanel();
+
+    expect(
+      await screen.findByRole("button", { name: "重新生成失败的Prompt" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "重新生成失败的帧" })).toBeDisabled();
   });
 
   it("polls pending frame prompts and keeps image generation disabled until prompts are ready", async () => {

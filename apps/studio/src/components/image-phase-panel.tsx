@@ -47,6 +47,10 @@ export function ImagePhasePanel({
     [shots],
   );
   const hasPendingFramePlans = frames.some((frame) => frame.planStatus === "pending");
+  const hasFailedPromptFrames = frames.some((frame) => frame.planStatus === "plan_failed");
+  const hasFailedImageFrames = frames.some(
+    (frame) => frame.planStatus === "planned" && frame.imageStatus === "failed",
+  );
 
   useEffect(() => {
     if (!batchSummary) {
@@ -344,6 +348,41 @@ export function ImagePhasePanel({
     }
   }
 
+  async function handleRegenerateFailedPrompts() {
+    if (!batchSummary || !hasFailedPromptFrames) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "regenerate-failed-prompts" });
+      await apiClient.regenerateFailedImagePrompts(project.id);
+      await refreshShots();
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRegenerateFailedFrames() {
+    if (!batchSummary || !hasFailedImageFrames) {
+      return;
+    }
+
+    try {
+      setActionBusy({ kind: "regenerate-failed-frames" });
+      await apiClient.regenerateFailedImageFrames(project.id);
+      await refreshProject();
+      await refreshShots();
+      setActionError(null);
+    } catch (error) {
+      setActionError(error as Error);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   async function handleGenerateAllFrames() {
     if (!batchSummary || frames.length === 0 || hasPendingFramePlans) {
       return;
@@ -386,7 +425,19 @@ export function ImagePhasePanel({
                 disabled={actionBusy !== null}
                 className={getButtonClassName({ variant: "warning" })}
               >
-                重新生成当前批次全部 Prompt
+                重新生成全部 Prompt
+              </button>
+            )}
+            {batchSummary && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleRegenerateFailedPrompts();
+                }}
+                disabled={actionBusy !== null || !hasFailedPromptFrames}
+                className={getButtonClassName({ variant: "warning" })}
+              >
+                重新生成失败的Prompt
               </button>
             )}
             {batchSummary && segmentGroups.length > 0 && (
@@ -398,7 +449,19 @@ export function ImagePhasePanel({
                 disabled={actionBusy !== null || frames.length === 0 || hasPendingFramePlans}
                 className={getButtonClassName({ variant: "warning" })}
               >
-                重新生成当前批次全部帧
+                重新生成全部帧
+              </button>
+            )}
+            {batchSummary && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleRegenerateFailedFrames();
+                }}
+                disabled={actionBusy !== null || !hasFailedImageFrames}
+                className={getButtonClassName({ variant: "warning" })}
+              >
+                重新生成失败的帧
               </button>
             )}
             {batchSummary && (
@@ -493,13 +556,13 @@ export function ImagePhasePanel({
 
       {batchSummary && listLoading && (
         <div className={cardClass}>
-          <p className="text-sm text-(--color-text-muted)">正在加载当前画面批次...</p>
+          <p className="text-sm text-(--color-text-muted)">正在加载画面...</p>
         </div>
       )}
 
       {batchSummary && !listLoading && segmentGroups.length === 0 && !listError && (
         <div className={cardClass}>
-          <p className="text-sm text-(--color-text-muted)">当前批次还没有可编辑的 Shot 参考图。</p>
+          <p className="text-sm text-(--color-text-muted)">还没有可编辑的 Shot 参考图。</p>
         </div>
       )}
 
@@ -554,6 +617,8 @@ export function ImagePhasePanel({
               const shotBusy =
                 actionBusy?.kind === "approve-all" ||
                 actionBusy?.kind === "regenerate-all-prompts" ||
+                actionBusy?.kind === "regenerate-failed-prompts" ||
+                actionBusy?.kind === "regenerate-failed-frames" ||
                 actionBusy?.kind === "generate-all-frames" ||
                 (actionBusy?.kind === "approve" && actionBusy.shotId === shot.id);
               const canApproveShot =

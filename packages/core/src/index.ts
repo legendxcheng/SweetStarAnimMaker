@@ -712,6 +712,20 @@ export {
   type RegenerateAllFramePromptsUseCaseDependencies,
 } from "./use-cases/regenerate-all-frame-prompts";
 export {
+  createRegenerateFailedFramePromptsUseCase,
+  type RegenerateFailedFramePromptsInput,
+  type RegenerateFailedFramePromptsResult,
+  type RegenerateFailedFramePromptsUseCase,
+  type RegenerateFailedFramePromptsUseCaseDependencies,
+} from "./use-cases/regenerate-failed-frame-prompts";
+export {
+  createRegenerateFailedFrameImagesUseCase,
+  type RegenerateFailedFrameImagesInput,
+  type RegenerateFailedFrameImagesResult,
+  type RegenerateFailedFrameImagesUseCase,
+  type RegenerateFailedFrameImagesUseCaseDependencies,
+} from "./use-cases/regenerate-failed-frame-images";
+export {
   createApproveCharacterSheetUseCase,
   type ApproveCharacterSheetInput,
   type ApproveCharacterSheetUseCase,

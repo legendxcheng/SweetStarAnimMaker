@@ -87,6 +87,7 @@ async function request<T>(
 ): Promise<T> {
   const url = `${config.apiBaseUrl}${path}`;
   const headers = new Headers(options.headers);
+  const method = options.method ?? "GET";
 
   if (
     options.body !== undefined &&
@@ -98,6 +99,8 @@ async function request<T>(
 
   const response = await fetch(url, {
     ...options,
+    method,
+    cache: method === "GET" ? "no-store" : options.cache,
     headers,
   });
 
@@ -426,6 +429,26 @@ export const apiClient = {
       {
         method: "POST",
         body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateFailedImagePrompts: (projectId: string, data: Record<string, never> = {}) =>
+    request<RegenerateAllImagePromptsResponse>(
+      `/projects/${projectId}/images/regenerate-failed-prompts`,
+      regenerateAllImagePromptsResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateFailedImageFrames: (projectId: string, data: Record<string, never> = {}) =>
+    request<RegenerateAllImagePromptsResponse>(
+      `/projects/${projectId}/images/regenerate-failed-frames`,
+      regenerateAllImagePromptsResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(generateImageFrameRequestSchema.parse(data)),
       },
     ),
 

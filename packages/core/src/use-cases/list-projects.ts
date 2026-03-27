@@ -1,9 +1,7 @@
 import type { ProjectSummary } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
-import { toCurrentImageBatch } from "../domain/shot-image";
 import { toCurrentShotScriptSummary } from "../domain/shot-script";
-import { toCurrentVideoBatchSummary } from "../domain/video";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -11,6 +9,10 @@ import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoRepository } from "../ports/video-repository";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
+import {
+  toCompatibleCurrentImageBatch,
+  toCompatibleCurrentVideoBatchSummary,
+} from "./project-batch-summary-compat";
 import { toProjectSummaryDto } from "./project-summary-dto";
 
 export interface ListProjectsUseCase {
@@ -75,7 +77,7 @@ export function createListProjectsUseCase(
 
             if (batch) {
               const frames = await dependencies.shotImageRepository.listFramesByBatchId(batch.id);
-              currentImageBatch = toCurrentImageBatch(batch, frames);
+              currentImageBatch = toCompatibleCurrentImageBatch(batch, frames);
             }
           }
           if (project.currentVideoBatchId) {
@@ -85,7 +87,7 @@ export function createListProjectsUseCase(
 
             if (batch) {
               const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-              currentVideoBatch = toCurrentVideoBatchSummary(batch, segments);
+              currentVideoBatch = toCompatibleCurrentVideoBatchSummary(batch, segments);
             }
           }
           return toProjectSummaryDto(

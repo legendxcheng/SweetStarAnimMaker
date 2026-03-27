@@ -24,6 +24,8 @@ export type ImagePhaseActionKind =
   | "save"
   | "regenerate"
   | "regenerate-all-prompts"
+  | "regenerate-failed-prompts"
+  | "regenerate-failed-frames"
   | "generate-all-frames"
   | "generate"
   | "approve"

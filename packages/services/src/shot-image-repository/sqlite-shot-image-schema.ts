@@ -85,4 +85,21 @@ export function initializeSqliteShotImageSchema(db: SqliteDatabase) {
       FOREIGN KEY(batch_id) REFERENCES shot_image_batches(id)
     )
   `);
+
+  ensureShotImageBatchesColumn(db, "shot_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureShotImageBatchesColumn(db, "total_required_frame_count", "INTEGER NOT NULL DEFAULT 0");
+}
+
+function ensureShotImageBatchesColumn(
+  db: SqliteDatabase,
+  columnName: string,
+  columnDefinition: string,
+) {
+  const columns = db
+    .prepare("PRAGMA table_info(shot_image_batches)")
+    .all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE shot_image_batches ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
 }

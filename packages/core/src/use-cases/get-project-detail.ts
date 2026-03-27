@@ -1,9 +1,7 @@
 import type { ProjectDetail } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
-import { toCurrentImageBatch } from "../domain/shot-image";
 import { toCurrentShotScriptSummary } from "../domain/shot-script";
-import { toCurrentVideoBatchSummary } from "../domain/video";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
@@ -13,6 +11,10 @@ import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoRepository } from "../ports/video-repository";
 import type { PremiseStorage } from "../ports/script-storage";
 import type { MasterPlotStorage, StoryboardStorage } from "../ports/storyboard-storage";
+import {
+  toCompatibleCurrentImageBatch,
+  toCompatibleCurrentVideoBatchSummary,
+} from "./project-batch-summary-compat";
 import { toProjectDetailDto } from "./project-detail-dto";
 
 export interface GetProjectDetailInput {
@@ -87,7 +89,7 @@ export function createGetProjectDetailUseCase(
 
         if (batch) {
           const frames = await dependencies.shotImageRepository.listFramesByBatchId(batch.id);
-          currentImageBatch = toCurrentImageBatch(batch, frames);
+          currentImageBatch = toCompatibleCurrentImageBatch(batch, frames);
         }
       }
 
@@ -96,7 +98,7 @@ export function createGetProjectDetailUseCase(
 
         if (batch) {
           const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-          currentVideoBatch = toCurrentVideoBatchSummary(batch, segments);
+          currentVideoBatch = toCompatibleCurrentVideoBatchSummary(batch, segments);
         }
       }
 

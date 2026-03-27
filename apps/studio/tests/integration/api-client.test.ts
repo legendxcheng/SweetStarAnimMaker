@@ -50,6 +50,117 @@ describe("API Client", () => {
     await expect(apiClient.getProjectDetail("proj-1")).rejects.toThrow();
   });
 
+  it("disables browser caching for GET polling requests", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "proj-1",
+          name: "Test Project",
+          slug: "test-project",
+          status: "images_in_review",
+          storageDir: "/path/to/project",
+          createdAt: "2024-01-01T00:00:00Z",
+          updatedAt: "2024-01-01T00:00:00Z",
+          premise: {
+            path: "premise/v1.md",
+            bytes: 42,
+            updatedAt: "2024-01-01T00:00:00Z",
+            text: "A washed-up pilot discovers a singing comet above a drowned city.",
+          },
+          currentMasterPlot: null,
+          currentCharacterSheetBatch: null,
+          currentStoryboard: null,
+          currentShotScript: null,
+          currentImageBatch: {
+            id: "image-batch-1",
+            sourceShotScriptId: "shot-script-1",
+            shotCount: 1,
+            totalRequiredFrameCount: 1,
+            approvedShotCount: 0,
+            updatedAt: "2024-01-01T00:00:00Z",
+          },
+          currentVideoBatch: null,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          currentBatch: {
+            id: "image-batch-1",
+            sourceShotScriptId: "shot-script-1",
+            shotCount: 1,
+            totalRequiredFrameCount: 1,
+            approvedShotCount: 0,
+            updatedAt: "2024-01-01T00:00:00Z",
+          },
+          shots: [
+            {
+              id: "shot-ref-1",
+              batchId: "image-batch-1",
+              projectId: "proj-1",
+              sourceShotScriptId: "shot-script-1",
+              shotId: "shot-1",
+              shotCode: "S01-SG01-SH01",
+              frameDependency: "start_frame_only",
+              referenceStatus: "pending",
+              startFrame: {
+                id: "frame-start-1",
+                batchId: "image-batch-1",
+                projectId: "proj-1",
+                sourceShotScriptId: "shot-script-1",
+                segmentId: "segment-1",
+                sceneId: "scene-1",
+                order: 1,
+                frameType: "start_frame",
+                planStatus: "planned",
+                imageStatus: "pending",
+                selectedCharacterIds: [],
+                matchedReferenceImagePaths: [],
+                unmatchedCharacterIds: [],
+                promptTextSeed: "seed",
+                promptTextCurrent: "seed",
+                negativePromptTextCurrent: null,
+                promptUpdatedAt: "2024-01-01T00:00:00Z",
+                imageAssetPath: null,
+                imageWidth: null,
+                imageHeight: null,
+                provider: null,
+                model: null,
+                approvedAt: null,
+                updatedAt: "2024-01-01T00:00:00Z",
+                sourceTaskId: "task-frame-start-1",
+              },
+              endFrame: null,
+              updatedAt: "2024-01-01T00:00:00Z",
+            },
+          ],
+        }),
+      });
+    global.fetch = mockFetch;
+
+    await apiClient.getProjectDetail("proj-1");
+    await apiClient.listImages("proj-1");
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      `${config.apiBaseUrl}/projects/proj-1`,
+      expect.objectContaining({
+        method: "GET",
+        cache: "no-store",
+      }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      `${config.apiBaseUrl}/projects/proj-1/images`,
+      expect.objectContaining({
+        method: "GET",
+        cache: "no-store",
+      }),
+    );
+  });
+
   it("accepts generating shot-script shell responses", async () => {
     const mockFetch = vi
       .fn()
@@ -878,6 +989,16 @@ describe("API Client", () => {
         frameCount: 2,
         taskIds: ["task_frame_prompt_1", "task_frame_prompt_2"],
       },
+      {
+        batchId: "image_batch_1",
+        frameCount: 1,
+        taskIds: ["task_failed_frame_prompt_1"],
+      },
+      {
+        batchId: "image_batch_1",
+        frameCount: 1,
+        taskIds: ["task_failed_frame_image_1"],
+      },
     ];
     const mockFetch = vi
       .fn()
@@ -889,7 +1010,9 @@ describe("API Client", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => responses[5] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[6] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[7] })
-      .mockResolvedValueOnce({ ok: true, json: async () => responses[8] });
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[8] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[9] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[10] });
     global.fetch = mockFetch;
 
     await apiClient.createImagesGenerateTask("proj_1");
@@ -904,6 +1027,8 @@ describe("API Client", () => {
     await apiClient.approveImageFrame("proj_1", "frame_start_1");
     await apiClient.approveAllImageFrames("proj_1");
     await apiClient.regenerateAllImagePrompts("proj_1");
+    await apiClient.regenerateFailedImagePrompts("proj_1");
+    await apiClient.regenerateFailedImageFrames("proj_1");
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -948,6 +1073,16 @@ describe("API Client", () => {
     expect(mockFetch).toHaveBeenNthCalledWith(
       9,
       `${config.apiBaseUrl}/projects/proj_1/images/regenerate-prompts`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      10,
+      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-failed-prompts`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      11,
+      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-failed-frames`,
       expect.objectContaining({ method: "POST" }),
     );
   });

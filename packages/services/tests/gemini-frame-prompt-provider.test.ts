@@ -4,6 +4,7 @@ import { createGeminiFramePromptProvider } from "../src/index";
 
 describe("gemini frame-prompt provider", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -152,5 +153,42 @@ describe("gemini frame-prompt provider", () => {
         characterRoster: [],
       }),
     ).rejects.toThrow("Gemini frame prompt provider returned invalid promptText");
+  });
+
+  it("aborts hung requests with a 300s default timeout when timeoutMs is omitted", async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn().mockImplementation((_url, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        });
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiFramePromptProvider({
+      apiToken: "test-token",
+    });
+
+    const resultPromise = provider.generateFramePrompt({
+      projectId: "proj_20260324_ab12cd",
+      frameType: "start_frame",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        summary: "林在雨夜市场边听见彗星歌声。",
+        shots: [],
+      },
+      characterRoster: [],
+    });
+    const expectation = expect(resultPromise).rejects.toThrow(
+      "Gemini frame prompt provider request timed out",
+    );
+
+    await vi.advanceTimersByTimeAsync(300_001);
+
+    await expectation;
   });
 });

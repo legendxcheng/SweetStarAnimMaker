@@ -47,6 +47,8 @@ export function createProcessImagesGenerateTaskUseCase(
   return {
     async execute(input) {
       const task = await dependencies.taskRepository.findById(input.taskId);
+      let project: Awaited<ReturnType<typeof dependencies.projectRepository.findById>> = null;
+      let didActivateBatch = false;
 
       if (!task) {
         throw new TaskNotFoundError(input.taskId);
@@ -63,7 +65,7 @@ export function createProcessImagesGenerateTaskUseCase(
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
         assertImagesTaskInput(taskInput);
-        const project = await dependencies.projectRepository.findById(task.projectId);
+        project = await dependencies.projectRepository.findById(task.projectId);
 
         if (!project) {
           throw new ProjectNotFoundError(task.projectId);
@@ -186,6 +188,7 @@ export function createProcessImagesGenerateTaskUseCase(
           projectId: project.id,
           batchId: batch.id,
         });
+        didActivateBatch = true;
 
         const finishedAt = dependencies.clock.now();
 
@@ -212,6 +215,14 @@ export function createProcessImagesGenerateTaskUseCase(
 
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
+
+        if (project && !didActivateBatch) {
+          await dependencies.projectRepository.updateStatus({
+            projectId: project.id,
+            status: "shot_script_approved",
+            updatedAt: finishedAt,
+          });
+        }
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,

@@ -15,12 +15,14 @@ export interface CreateGeminiFramePromptProviderOptions {
 
 const DEFAULT_BASE_URL = "https://api.vectorengine.ai";
 const DEFAULT_MODEL = "gemini-3.1-pro-preview";
+const DEFAULT_TIMEOUT_MS = 300_000;
 
 export function createGeminiFramePromptProvider(
   options: CreateGeminiFramePromptProviderOptions,
 ): FramePromptProvider {
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
   const model = options.model?.trim() || DEFAULT_MODEL;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return {
     async generateFramePrompt(
@@ -36,7 +38,7 @@ export function createGeminiFramePromptProvider(
         baseUrl,
         apiToken,
         model,
-        timeoutMs: options.timeoutMs,
+        timeoutMs,
         promptText: buildPromptText(input),
       });
       const promptPlan = normalizeFramePromptPayload(rawText, input);

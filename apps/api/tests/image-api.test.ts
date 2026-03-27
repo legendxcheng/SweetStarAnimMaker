@@ -303,6 +303,88 @@ describe("images api", () => {
     });
   });
 
+  it("creates prompt-regeneration tasks only for frames whose prompt generation failed", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: vi.fn().mockReturnValue("task_failed_prompt_retry_1"),
+      },
+    });
+    const project = await createProject(app);
+
+    await seedImageBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "images_in_review",
+    });
+    await markImageShotFailedForPrompt(tempDir, {
+      projectId: project.id,
+      frameId: "frame_start_1",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/regenerate-failed-prompts`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      batchId: "image_batch_1",
+      frameCount: 1,
+      taskIds: ["task_failed_prompt_retry_1"],
+    });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_failed_prompt_retry_1",
+      queueName: "frame-prompt-generate",
+      taskType: "frame_prompt_generate",
+    });
+  });
+
+  it("creates frame-image tasks only for frames whose image generation failed", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: vi.fn().mockReturnValue("task_failed_frame_retry_1"),
+      },
+    });
+    const project = await createProject(app);
+
+    await seedImageBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "images_in_review",
+    });
+    await markImageShotFailedForFrame(tempDir, {
+      projectId: project.id,
+      frameId: "frame_start_1",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/regenerate-failed-frames`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      batchId: "image_batch_1",
+      frameCount: 1,
+      taskIds: ["task_failed_frame_retry_1"],
+    });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_failed_frame_retry_1",
+      queueName: "frame-image-generate",
+      taskType: "frame_image_generate",
+    });
+  });
+
   it("approves all remaining frames and marks the project as images_approved", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);
@@ -536,5 +618,101 @@ async function seedImageBatch(input: {
     status: input.projectStatus,
     updatedAt: "2026-03-24T13:05:00.000Z",
   });
+  db.close();
+}
+
+async function markImageShotFailedForPrompt(
+  tempDir: string,
+  input: {
+    projectId: string;
+    frameId: "frame_start_1" | "frame_end_1";
+  },
+) {
+  const paths = createLocalDataPaths(tempDir);
+  const db = createSqliteDb({ paths });
+  const shotImageRepository = createSqliteShotImageRepository({ db });
+  const shot = await shotImageRepository.findShotById?.("shot_ref_1");
+
+  if (!shot) {
+    throw new Error("shot_ref_1 not found");
+  }
+
+  const nextShot = {
+    ...shot,
+    startFrame: {
+      ...shot.startFrame,
+      planStatus: input.frameId === "frame_start_1" ? ("plan_failed" as const) : shot.startFrame.planStatus,
+      promptTextSeed: input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextSeed,
+      promptTextCurrent: input.frameId === "frame_start_1" ? "" : shot.startFrame.promptTextCurrent,
+      imageStatus: input.frameId === "frame_start_1" ? ("pending" as const) : shot.startFrame.imageStatus,
+      imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
+      provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
+      model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
+      updatedAt: "2026-03-24T13:10:00.000Z",
+    },
+    endFrame:
+      shot.endFrame === null
+        ? null
+        : {
+            ...shot.endFrame,
+            planStatus: input.frameId === "frame_end_1" ? ("plan_failed" as const) : shot.endFrame.planStatus,
+            promptTextSeed: input.frameId === "frame_end_1" ? "" : shot.endFrame.promptTextSeed,
+            promptTextCurrent: input.frameId === "frame_end_1" ? "" : shot.endFrame.promptTextCurrent,
+            imageStatus: input.frameId === "frame_end_1" ? ("pending" as const) : shot.endFrame.imageStatus,
+            imageAssetPath: input.frameId === "frame_end_1" ? null : shot.endFrame.imageAssetPath,
+            provider: input.frameId === "frame_end_1" ? null : shot.endFrame.provider,
+            model: input.frameId === "frame_end_1" ? null : shot.endFrame.model,
+            updatedAt: "2026-03-24T13:10:00.000Z",
+          },
+    updatedAt: "2026-03-24T13:10:00.000Z",
+  };
+
+  await shotImageRepository.updateShot?.(nextShot);
+  db.close();
+}
+
+async function markImageShotFailedForFrame(
+  tempDir: string,
+  input: {
+    projectId: string;
+    frameId: "frame_start_1" | "frame_end_1";
+  },
+) {
+  const paths = createLocalDataPaths(tempDir);
+  const db = createSqliteDb({ paths });
+  const shotImageRepository = createSqliteShotImageRepository({ db });
+  const shot = await shotImageRepository.findShotById?.("shot_ref_1");
+
+  if (!shot) {
+    throw new Error("shot_ref_1 not found");
+  }
+
+  const nextShot = {
+    ...shot,
+    startFrame: {
+      ...shot.startFrame,
+      planStatus: "planned" as const,
+      imageStatus: input.frameId === "frame_start_1" ? ("failed" as const) : shot.startFrame.imageStatus,
+      imageAssetPath: input.frameId === "frame_start_1" ? null : shot.startFrame.imageAssetPath,
+      provider: input.frameId === "frame_start_1" ? null : shot.startFrame.provider,
+      model: input.frameId === "frame_start_1" ? null : shot.startFrame.model,
+      updatedAt: "2026-03-24T13:10:00.000Z",
+    },
+    endFrame:
+      shot.endFrame === null
+        ? null
+        : {
+            ...shot.endFrame,
+            planStatus: "planned" as const,
+            imageStatus: input.frameId === "frame_end_1" ? ("failed" as const) : shot.endFrame.imageStatus,
+            imageAssetPath: input.frameId === "frame_end_1" ? null : shot.endFrame.imageAssetPath,
+            provider: input.frameId === "frame_end_1" ? null : shot.endFrame.provider,
+            model: input.frameId === "frame_end_1" ? null : shot.endFrame.model,
+            updatedAt: "2026-03-24T13:10:00.000Z",
+          },
+    updatedAt: "2026-03-24T13:10:00.000Z",
+  };
+
+  await shotImageRepository.updateShot?.(nextShot);
   db.close();
 }
