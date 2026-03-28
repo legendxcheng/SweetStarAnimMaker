@@ -52,6 +52,9 @@ function createVideoShot(
     shotId: string;
     shotCode: string;
     sceneId: string;
+    segmentId: string;
+    segmentOrder: number;
+    shotOrder: number;
     frameDependency: "start_frame_only" | "start_and_end_frame";
     status: "generating" | "in_review" | "approved" | "failed";
     promptTextSeed: string;
@@ -76,6 +79,9 @@ function createVideoShot(
     shotId: "shot-1",
     shotCode: "S01-SG01-SH01",
     sceneId: "scene-1",
+    segmentId: "segment-1",
+    segmentOrder: 1,
+    shotOrder: 1,
     frameDependency: "start_and_end_frame" as const,
     status: "in_review" as const,
     promptTextSeed: "雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。",
@@ -295,6 +301,63 @@ describe("VideoPhasePanel", () => {
     });
   });
 
+  it("renders video cards in scene segment shot order when the API returns them unsorted", async () => {
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentVideoBatch,
+        shotCount: 4,
+      },
+      shots: [
+        createVideoShot({
+          id: "video-shot-4",
+          shotId: "shot-2",
+          shotCode: "S02-SG02-SH02",
+          sceneId: "scene-2",
+          segmentId: "segment-2",
+          segmentOrder: 2,
+          shotOrder: 2,
+        }),
+        createVideoShot({
+          id: "video-shot-2",
+          shotId: "shot-1",
+          shotCode: "S01-SG02-SH01",
+          sceneId: "scene-1",
+          segmentId: "segment-2",
+          segmentOrder: 2,
+          shotOrder: 1,
+        }),
+        createVideoShot({
+          id: "video-shot-1",
+          shotId: "shot-2",
+          shotCode: "S01-SG01-SH02",
+          sceneId: "scene-1",
+          segmentId: "segment-1",
+          segmentOrder: 1,
+          shotOrder: 2,
+        }),
+        createVideoShot({
+          id: "video-shot-3",
+          shotId: "shot-1",
+          shotCode: "S02-SG01-SH01",
+          sceneId: "scene-2",
+          segmentId: "segment-1",
+          segmentOrder: 1,
+          shotOrder: 1,
+        }),
+      ],
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(
+      screen.getAllByRole("heading", { level: 4 }).map((heading) => heading.textContent),
+    ).toEqual(["S01-SG01-SH02", "S01-SG02-SH01", "S02-SG01-SH01", "S02-SG02-SH02"]);
+  });
+
   it("shows a prompt-only generate entry when the current video batch does not exist", () => {
     const onGenerate = vi.fn();
 
@@ -349,7 +412,8 @@ describe("VideoPhasePanel", () => {
     await waitFor(() => {
       expect(listVideos).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByText("当前 Shot 还没有可播放视频")).toBeInTheDocument();
+    expect(screen.getByText("视频生成中...")).toBeInTheDocument();
+    expect(document.querySelector("video")).not.toBeInTheDocument();
 
     view.rerender(
       <VideoPhasePanel
@@ -367,5 +431,36 @@ describe("VideoPhasePanel", () => {
       expect(listVideos).toHaveBeenCalledTimes(2);
     });
     expect(screen.getByText("vector-engine")).toBeInTheDocument();
+  });
+
+  it("shows a dedicated generating state on the shot card while a video is rendering", async () => {
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: baseProject.currentVideoBatch,
+      shots: [
+        createVideoShot({
+          status: "generating",
+          videoAssetPath: "videos/batches/video-batch-1/shots/shot-1/previous.mp4",
+          thumbnailAssetPath: "videos/batches/video-batch-1/shots/shot-1/previous.webp",
+        }),
+      ],
+    });
+
+    renderPanel({
+      project: {
+        ...baseProject,
+        status: "videos_generating",
+      },
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByText("视频生成中...")).toBeInTheDocument();
+    expect(document.querySelector("video")).not.toBeInTheDocument();
+    expect(screen.getByTestId("video-shot-card-video-shot-1")).toHaveAttribute(
+      "data-generating-state",
+      "true",
+    );
   });
 });

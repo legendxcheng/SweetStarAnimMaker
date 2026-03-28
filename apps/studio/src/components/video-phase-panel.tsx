@@ -25,6 +25,11 @@ const VIDEO_STATUS_LABELS: Record<ShotVideoRecord["status"], string> = {
   failed: "失败",
 };
 
+const shotHierarchyCollator = new Intl.Collator("zh-CN", {
+  numeric: true,
+  sensitivity: "base",
+});
+
 interface VideoPhasePanelProps {
   project: ProjectDetail;
   task: TaskDetail | null;
@@ -142,7 +147,7 @@ export function VideoPhasePanel({
   }, [batchSummary?.id, project.id, project.status]);
 
   function applyVideoListResponse(response: VideoListResponse) {
-    setShots(response.shots);
+    setShots(sortShotsByHierarchy(response.shots));
     setDrafts((currentDrafts) => {
       const nextDrafts: Record<string, string> = {};
       const previousShotsById = new Map(shots.map((shot) => [shot.id, shot]));
@@ -166,7 +171,9 @@ export function VideoPhasePanel({
 
   function updateShot(nextShot: ShotVideoRecord) {
     setShots((currentShots) =>
-      currentShots.map((shot) => (shot.id === nextShot.id ? nextShot : shot)),
+      sortShotsByHierarchy(
+        currentShots.map((shot) => (shot.id === nextShot.id ? nextShot : shot)),
+      ),
     );
     setDrafts((currentDrafts) => ({
       ...currentDrafts,
@@ -452,6 +459,7 @@ export function VideoPhasePanel({
         const promptDraft = drafts[shot.id] ?? shot.promptTextCurrent;
         const isDirty = promptDraft !== shot.promptTextCurrent;
         const canSavePrompt = promptDraft.trim().length > 0;
+        const isGenerating = shot.status === "generating";
         const isBusy =
           actionBusy?.kind === "approve-all" ||
           actionBusy?.kind === "regenerate-all-prompts" ||
@@ -459,7 +467,12 @@ export function VideoPhasePanel({
           actionBusy?.shotId === shot.id;
 
         return (
-          <article key={shot.id} className={cardClass}>
+          <article
+            key={shot.id}
+            data-testid={`video-shot-card-${shot.id}`}
+            data-generating-state={isGenerating ? "true" : "false"}
+            className={`${cardClass} ${isGenerating ? "border-(--color-accent) ring-1 ring-(--color-accent)/50 shadow-md shadow-(--color-accent)/20 transition-all duration-300" : ""}`}
+          >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h4 className="text-base font-semibold text-(--color-text-primary)">
@@ -469,13 +482,30 @@ export function VideoPhasePanel({
               </div>
               <div className="text-right">
                 <p className={metaLabelClass}>当前状态</p>
-                <p className={metaValueClass}>{VIDEO_STATUS_LABELS[shot.status]}</p>
+                <p className={`${metaValueClass} inline-flex items-center gap-2`}>
+                  {isGenerating && (
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 rounded-full bg-(--color-accent) animate-pulse"
+                    />
+                  )}
+                  <span>{VIDEO_STATUS_LABELS[shot.status]}</span>
+                </p>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
               <div>
-                {shot.videoAssetPath ? (
+                {isGenerating ? (
+                  <div className="flex min-h-56 items-center justify-center rounded-xl border border-(--color-accent)/40 bg-(--color-accent)/8">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="mb-3 h-8 w-8 rounded-full border-4 border-(--color-border-muted) border-t-(--color-accent) animate-spin" />
+                      <p className="text-sm font-medium tracking-wide text-(--color-accent)">
+                        视频生成中...
+                      </p>
+                    </div>
+                  </div>
+                ) : shot.videoAssetPath ? (
                   <video
                     controls
                     preload="metadata"
@@ -605,4 +635,25 @@ function getAssetUrl(projectId: string, assetRelPath: string, updatedAt: string)
   const url = new URL(config.projectAssetContentUrl(projectId, assetRelPath));
   url.searchParams.set("v", updatedAt);
   return url.toString();
+}
+
+function sortShotsByHierarchy(shots: ShotVideoRecord[]) {
+  return [...shots].sort((left, right) => {
+    const sceneCompare = shotHierarchyCollator.compare(left.sceneId, right.sceneId);
+    if (sceneCompare !== 0) {
+      return sceneCompare;
+    }
+
+    const segmentCompare = shotHierarchyCollator.compare(left.segmentId, right.segmentId);
+    if (segmentCompare !== 0) {
+      return segmentCompare;
+    }
+
+    const shotCompare = shotHierarchyCollator.compare(left.shotId, right.shotId);
+    if (shotCompare !== 0) {
+      return shotCompare;
+    }
+
+    return shotHierarchyCollator.compare(left.shotCode, right.shotCode);
+  });
 }

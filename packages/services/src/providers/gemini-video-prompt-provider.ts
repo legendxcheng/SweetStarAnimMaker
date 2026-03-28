@@ -39,7 +39,7 @@ export function createGeminiVideoPromptProvider(
         timeoutMs,
         promptText: buildPromptText(input),
       });
-      const payload = normalizeVideoPromptPayload(rawText);
+      const payload = normalizeVideoPromptPayload(rawText, input);
 
       return {
         ...payload,
@@ -144,6 +144,12 @@ function buildPromptText(input: GenerateVideoPromptInput) {
       : "- 当前镜头只有首帧，动作与镜头只能在首帧基础上自然延展。",
     "- 不要虚构未提供的新角色设定或剧情。",
     "- 必须保留对白、旁白、环境声、拟音和连续性要求；如果没有，也要在 plan 中明确说明。",
+    "- 如果存在人物台词或旁白，必须明确写出是谁说了什么，区分角色对白与旁白/画外音。",
+    "- 如果有可感知语音，必须明确写出是否需要可见口型，以及哪些台词需要被观众听见。",
+    "- 如果没有人物台词、没有旁白、也不需要可感知语音，必须明确写出无人物对白、无旁白、无语音。",
+    "- 禁止自行补充未提供的人声、旁白、台词内容或说话主体。",
+    "- 默认不要背景音乐、BGM、配乐；最终 prompt 和 audioPlan 都要明确写无背景音乐、无BGM、无配乐。",
+    "- 系统会在最终 prompt 中追加一段硬性语音约束和声音约束，你生成的内容必须与这组硬性约束一致。",
     "- 这是单镜头，不要输出分镜列表。",
     "",
     "镜头上下文：",
@@ -166,10 +172,13 @@ function buildPromptText(input: GenerateVideoPromptInput) {
       : "- 尾帧：无",
     "",
     "dialoguePlan 要求：",
-    "- 写清说话主体、可见口型台词、旁白内容、是否需要可见口型、节奏提示。",
+    "- 写清是否存在人物对白、旁白/画外音、其他可感知语音。",
+    "- 如果有语音，必须写清说话主体、逐句台词或旁白内容、是否需要可见口型、节奏提示。",
+    "- 如果没有任何语音，必须明确写无人物对白、无旁白、无语音，不需要口型。",
     "",
     "audioPlan 要求：",
-    "- 写清环境声、拟音、音乐氛围、声场重点。",
+    "- 写清环境声、拟音、音乐氛围、声场重点，以及是否只有环境声而无人声。",
+    "- 必须明确写无背景音乐、无BGM、无配乐。",
     "",
     "visualGuardrails 要求：",
     "- 写清角色一致性、服装道具一致性、镜头运动、空间连续性、时间连续性、首尾帧过渡和明确禁止项。",
@@ -209,6 +218,7 @@ function extractCandidateText(rawResponse: unknown) {
 
 function normalizeVideoPromptPayload(
   rawText: string,
+  input: GenerateVideoPromptInput,
 ): Omit<GenerateVideoPromptResult, "rawResponse" | "provider" | "model"> {
   let payload: unknown;
 
@@ -222,18 +232,24 @@ function normalizeVideoPromptPayload(
     throw new Error("Gemini video prompt provider returned invalid prompt plan JSON");
   }
 
+  const finalPromptBase = readNonEmptyString(
+    (payload as { finalPrompt?: unknown }).finalPrompt,
+    "finalPrompt",
+  );
+  const visualGuardrails = readNonEmptyString(
+    (payload as { visualGuardrails?: unknown }).visualGuardrails,
+    "visualGuardrails",
+  );
+  const rationale = readNonEmptyString((payload as { rationale?: unknown }).rationale, "rationale");
+  const dialoguePlan = buildDialoguePlan(input);
+  const audioPlan = buildAudioPlan(input);
+
   return {
-    finalPrompt: readNonEmptyString((payload as { finalPrompt?: unknown }).finalPrompt, "finalPrompt"),
-    dialoguePlan: readNonEmptyString(
-      (payload as { dialoguePlan?: unknown }).dialoguePlan,
-      "dialoguePlan",
-    ),
-    audioPlan: readNonEmptyString((payload as { audioPlan?: unknown }).audioPlan, "audioPlan"),
-    visualGuardrails: readNonEmptyString(
-      (payload as { visualGuardrails?: unknown }).visualGuardrails,
-      "visualGuardrails",
-    ),
-    rationale: readNonEmptyString((payload as { rationale?: unknown }).rationale, "rationale"),
+    finalPrompt: appendHardConstraints(finalPromptBase, dialoguePlan, buildFinalPromptAudioConstraint(input)),
+    dialoguePlan,
+    audioPlan,
+    visualGuardrails,
+    rationale,
   };
 }
 
@@ -243,4 +259,82 @@ function readNonEmptyString(value: unknown, fieldName: string) {
   }
 
   return value.trim();
+}
+
+function buildDialoguePlan(input: GenerateVideoPromptInput) {
+  const dialogue = normalizeSentence(input.currentShot.dialogue);
+  const narration = normalizeSentence(input.currentShot.os);
+
+  if (!dialogue && !narration) {
+    return "无人物对白，无旁白，无语音，不需要口型。";
+  }
+
+  const parts: string[] = [];
+
+  if (dialogue) {
+    parts.push(`人物对白：${dialogue}`);
+    parts.push("对白需要可见口型。");
+  } else {
+    parts.push("无人物对白。");
+  }
+
+  if (narration) {
+    parts.push(`旁白/画外音：${narration}`);
+  } else {
+    parts.push("无旁白。");
+  }
+
+  return parts.join("");
+}
+
+function buildAudioPlan(input: GenerateVideoPromptInput) {
+  const audioText = normalizeClause(input.currentShot.audio) ?? "无";
+  return `环境声/音效/音乐：${audioText}。无背景音乐、无BGM、无配乐。禁止新增未提供的人声、背景音乐、BGM、配乐或额外音效。`;
+}
+
+function buildFinalPromptAudioConstraint(input: GenerateVideoPromptInput) {
+  const audioText = normalizeClause(input.currentShot.audio) ?? "无";
+  return `声音约束：${audioText}。无背景音乐、无BGM、无配乐。`;
+}
+
+function appendHardConstraints(finalPrompt: string, dialoguePlan: string, audioConstraint: string) {
+  const parts = [finalPrompt.trim()];
+
+  if (!finalPrompt.includes("语音约束：")) {
+    parts.push(`语音约束：${dialoguePlan}`);
+  }
+
+  if (!finalPrompt.includes("声音约束：")) {
+    parts.push(audioConstraint);
+  }
+
+  return parts.join("\n");
+}
+
+function normalizeSentence(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return /[。！？!?]$/.test(trimmed) ? trimmed : `${trimmed}。`;
+}
+
+function normalizeClause(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/[。！？!?]+$/u, "");
 }

@@ -55,6 +55,7 @@ export function createGetProjectAssetContentUseCase(
       if (filePath.endsWith(".png")) mimeType = "image/png";
       else if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) mimeType = "image/jpeg";
       else if (filePath.endsWith(".webp")) mimeType = "image/webp";
+      else if (filePath.endsWith(".mp4")) mimeType = "video/mp4";
 
       return {
         filePath,

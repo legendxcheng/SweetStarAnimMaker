@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createProcessVideosGenerateTaskUseCase } from "../src/index";
 
 describe("process videos generate task use case", () => {
-  it("builds initial shot prompts from the local template without blocking on the video prompt provider", async () => {
+  it("creates empty initial shot prompts and defers prompt text generation to the queued shot task", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -193,18 +193,14 @@ describe("process videos generate task use case", () => {
 
     await useCase.execute({ taskId: "task_videos_1" });
 
-    expect(videoStorage.readPromptTemplate).toHaveBeenCalledWith({
-      storageDir: "projects/proj_1-my-story",
-      promptTemplateKey: "segment_video.generate",
-    });
     expect(videoRepository.insertSegment).toHaveBeenCalledWith(
       expect.objectContaining({
         shotId: "shot_1",
-        promptTextSeed: "Segment summary: Rin arrives.\nShot summary: SC01-SG01-SH01: Rin steps into the flooded market and scans ahead.",
-        promptTextCurrent:
-          "Segment summary: Rin arrives.\nShot summary: SC01-SG01-SH01: Rin steps into the flooded market and scans ahead.",
+        promptTextSeed: "",
+        promptTextCurrent: "",
       }),
     );
+    expect(videoStorage.readPromptTemplate).not.toHaveBeenCalled();
     expect(videoPromptProvider.generateVideoPrompt).not.toHaveBeenCalled();
     expect(videoStorage.writePromptPlan).not.toHaveBeenCalled();
   });
@@ -491,10 +487,8 @@ describe("process videos generate task use case", () => {
         frameDependency: "start_frame_only",
         durationSec: 3,
         status: "generating",
-        promptTextSeed:
-          "Segment summary: Rin arrives.\nShot summary: SC01-SG01-SH01: Rin steps into the flooded market and scans ahead.",
-        promptTextCurrent:
-          "Segment summary: Rin arrives.\nShot summary: SC01-SG01-SH01: Rin steps into the flooded market and scans ahead.",
+        promptTextSeed: "",
+        promptTextCurrent: "",
       }),
     );
     expect(videoRepository.insertSegment).toHaveBeenNthCalledWith(
@@ -548,6 +542,7 @@ describe("process videos generate task use case", () => {
       projectId: "proj_1",
       batchId: "video_batch_task_videos_1",
     });
+    expect(videoStorage.readPromptTemplate).not.toHaveBeenCalled();
     expect(videoPromptProvider.generateVideoPrompt).not.toHaveBeenCalled();
     expect(videoStorage.writePromptPlan).not.toHaveBeenCalled();
   });

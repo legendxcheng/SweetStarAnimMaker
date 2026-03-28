@@ -20,7 +20,6 @@ import type { TaskRepository } from "../ports/task-repository";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoStorage } from "../ports/video-storage";
-import { buildSegmentVideoPrompt } from "./build-segment-video-prompt";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessVideosGenerateTaskInput {
@@ -81,10 +80,6 @@ export function createProcessVideosGenerateTaskUseCase(
         const shots = await dependencies.shotImageRepository.listShotsByBatchId(
           taskInput.sourceImageBatchId,
         );
-        const promptTemplate = await dependencies.videoStorage.readPromptTemplate({
-          storageDir: project.storageDir,
-          promptTemplateKey: taskInput.promptTemplateKey,
-        });
         const batch = createVideoBatchRecord({
           id: `video_batch_${task.id}`,
           projectId: project.id,
@@ -126,10 +121,6 @@ export function createProcessVideosGenerateTaskUseCase(
               throw new Error(`Approved reference missing for shot ${shot.id}`);
             }
 
-            const promptText = buildSegmentVideoPrompt(promptTemplate, {
-              segmentSummary: segment.summary,
-              shotsSummary: `${shot.shotCode}: ${shot.action}`,
-            });
             const videoRecord = createShotVideoRecord({
               id: `video_${batch.id}_${shot.sceneId}_${shot.segmentId}_${shot.id}`,
               batchId: batch.id,
@@ -145,8 +136,8 @@ export function createProcessVideosGenerateTaskUseCase(
               shotOrder: shot.order,
               frameDependency: shot.frameDependency,
               status: "generating",
-              promptTextSeed: promptText,
-              promptTextCurrent: promptText,
+              promptTextSeed: "",
+              promptTextCurrent: "",
               promptUpdatedAt: startedAt,
               durationSec: shot.durationSec ?? null,
               updatedAt: startedAt,
