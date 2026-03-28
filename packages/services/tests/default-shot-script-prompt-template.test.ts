@@ -20,5 +20,16 @@ describe("default shot script prompt template", () => {
     expect(template).toContain("{{characterSheets}}");
     expect(template).toContain("必须使用角色设定中的标准角色名");
     expect(template).toContain("禁止使用未登记简称");
+    expect(template).toContain("不要试图为每个镜头选择唯一策略");
+    expect(template).toContain("请先识别镜头中的关键状态节点");
+    expect(template).toContain("anchors");
+    expect(template).toContain("segments");
+    expect(template).toContain("关键节点");
+    expect(template).toContain("非关键过程");
+    expect(template).toContain("如果两个关键节点之间不可平滑过渡");
+    expect(template).toContain("角色身份或形态变化");
+    expect(template).toContain("空间跳跃");
+    expect(template).toContain("多阶段行为压缩");
+    expect(template).toContain("必须拆镜头 或 改用首帧生成");
   });
 });

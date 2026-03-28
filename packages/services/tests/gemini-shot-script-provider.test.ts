@@ -333,6 +333,315 @@ describe("gemini shot script provider", () => {
     expect(promptText).toContain("Focus only on this one segment.");
   });
 
+  it("requests temporary anchor-planning fields in the Gemini response schema", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    name: "雨市压境",
+                    summary: "林夏在积水集市入口发现退路已被封住。",
+                    anchors: [
+                      {
+                        id: "anchor_1",
+                        label: "林夏站在雨夜市场入口，抬头确认封锁线。",
+                        isRequired: true,
+                      },
+                    ],
+                    segments: [
+                      {
+                        id: "segment_plan_1",
+                        fromAnchorId: "anchor_1",
+                        toAnchorId: "anchor_1",
+                        strategy: "start_frame_only",
+                        transitionSmooth: true,
+                        reason: "只有一个关键节点，其余过程由模型自然补足。",
+                      },
+                    ],
+                    shots: [
+                      {
+                        id: "shot_1",
+                        sceneId: "scene_1",
+                        segmentId: "segment_1",
+                        order: 1,
+                        shotCode: "SC01-SG01-SH01",
+                        durationSec: 6,
+                        purpose: "建立入口状态。",
+                        visual: "林夏站在市场入口，雨线压低前景。",
+                        subject: "林夏",
+                        action: "她停住脚步，抬头看向封锁线。",
+                        frameDependency: "start_frame_only",
+                        dialogue: null,
+                        os: null,
+                        audio: "雨声。",
+                        transitionHint: null,
+                        continuityNotes: null,
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请按关键节点规划后生成中文镜头脚本。",
+      variables: {
+        scene: { id: "scene_1" },
+        segment: { id: "segment_1", order: 1, durationSec: 6 },
+      },
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+
+    expect(request.generationConfig.responseJsonSchema.properties.anchors).toBeDefined();
+    expect(request.generationConfig.responseJsonSchema.properties.segments).toBeDefined();
+    expect(result.segment.shots).toHaveLength(1);
+    expect(result.segment.shots[0]).not.toHaveProperty("anchors");
+    expect(result.segment.shots[0]?.frameDependency).toBe("start_frame_only");
+  });
+
+  it("retries when risky end-frame transitions are returned", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "林逃出楼门",
+                      summary: "林从楼道冲到街外，空间切换过猛。",
+                      anchors: [
+                        {
+                          id: "anchor_1",
+                          label: "林站在昏暗楼道门口。",
+                          isRequired: true,
+                        },
+                        {
+                          id: "anchor_2",
+                          label: "林已经冲到暴雨街道中央。",
+                          isRequired: true,
+                        },
+                      ],
+                      segments: [
+                        {
+                          id: "segment_plan_1",
+                          fromAnchorId: "anchor_1",
+                          toAnchorId: "anchor_2",
+                          strategy: "start_and_end_frame",
+                          transitionSmooth: false,
+                          reason: "室内直接跳到室外，空间变化过大。",
+                        },
+                      ],
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "表现林的仓促逃离。",
+                          visual: "林从楼道门口一瞬间切到暴雨街道中央。",
+                          subject: "林",
+                          action: "她推门冲出，下一刻已经在街心回头。",
+                          frameDependency: "start_and_end_frame",
+                          dialogue: null,
+                          os: null,
+                          audio: "门响后立刻切到暴雨声。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "林逃出楼门",
+                      summary: "林冲出楼门后，先定住门口，再由模型补足后续过程。",
+                      anchors: [
+                        {
+                          id: "anchor_1",
+                          label: "林站在昏暗楼道门口。",
+                          isRequired: true,
+                        },
+                      ],
+                      segments: [
+                        {
+                          id: "segment_plan_1",
+                          fromAnchorId: "anchor_1",
+                          toAnchorId: "anchor_1",
+                          strategy: "start_frame_only",
+                          transitionSmooth: true,
+                          reason: "保留门口关键节点，其余过程自然补足。",
+                        },
+                      ],
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "建立林仓促冲门的起点。",
+                          visual: "林立在楼道门口，雨光从门缝灌进来。",
+                          subject: "林",
+                          action: "她压低重心，准备冲门。",
+                          frameDependency: "start_frame_only",
+                          dialogue: null,
+                          os: null,
+                          audio: "门外暴雨声透进来。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请按关键节点规划后生成中文镜头脚本。",
+      variables: {
+        scene: { id: "scene_1" },
+        segment: { id: "segment_1", order: 1, durationSec: 6 },
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const retryRequest = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
+    expect(retryRequest.contents[0].parts[0].text).toContain("不可平滑过渡");
+    expect(retryRequest.contents[0].parts[0].text).toContain("改用 start_frame_only");
+    expect(result.segment.shots[0]?.frameDependency).toBe("start_frame_only");
+  });
+
+  it("downgrades unsafe end-frame shots after retry exhaustion", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    name: "林冲出楼门",
+                    summary: "林从室内瞬间切到室外暴雨街口，空间跳跃过大。",
+                    anchors: [
+                      {
+                        id: "anchor_1",
+                        label: "林站在狭窄室内楼道尽头。",
+                        isRequired: true,
+                      },
+                      {
+                        id: "anchor_2",
+                        label: "林已经站在室外暴雨街口中央。",
+                        isRequired: true,
+                      },
+                    ],
+                    segments: [
+                      {
+                        id: "segment_plan_1",
+                        fromAnchorId: "anchor_1",
+                        toAnchorId: "anchor_2",
+                        strategy: "start_and_end_frame",
+                        transitionSmooth: true,
+                        reason: "虽然节奏很快，但室内直接切到室外暴雨街口。",
+                      },
+                    ],
+                    shots: [
+                      {
+                        id: "shot_1",
+                        sceneId: "scene_1",
+                        segmentId: "segment_1",
+                        order: 1,
+                        shotCode: "SC01-SG01-SH01",
+                        durationSec: 6,
+                        purpose: "强调林仓促出逃。",
+                        visual: "林从室内楼道一瞬间来到室外暴雨街口。",
+                        subject: "林",
+                        action: "她推门后下一拍已经站到街口中央。",
+                        frameDependency: "start_and_end_frame",
+                        dialogue: null,
+                        os: null,
+                        audio: "门响后立刻叠入暴雨声。",
+                        transitionHint: null,
+                        continuityNotes: "保持林的服装一致。",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请按关键节点规划后生成中文镜头脚本。",
+      variables: {
+        scene: { id: "scene_1" },
+        segment: { id: "segment_1", order: 1, durationSec: 6 },
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.segment.shots[0]?.frameDependency).toBe("start_frame_only");
+    expect(result.segment.shots[0]?.visual).toContain("室外暴雨街口");
+  });
+
   it("rejects clearly English segment output", async () => {
     vi.stubGlobal(
       "fetch",
