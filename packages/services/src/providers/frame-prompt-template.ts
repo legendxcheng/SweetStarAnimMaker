@@ -5,6 +5,7 @@ export function buildFramePromptText(input: GenerateFramePromptInput) {
     projectId: input.projectId,
     frameType: input.frameType,
     currentShot: input.currentShot,
+    startFrameContext: input.startFrameContext,
     segment: {
       segmentId: input.segment.segmentId,
       sceneId: input.segment.sceneId,
@@ -35,6 +36,17 @@ export function buildFramePromptText(input: GenerateFramePromptInput) {
   } else {
     rules.push("这是一个需要 start_frame 和 end_frame 的双关键帧镜头。");
     rules.push("如果当前是 start_frame，就聚焦进入状态；如果当前是 end_frame，就聚焦收束结果。");
+  }
+
+  if (input.frameType === "end_frame") {
+    rules.push(
+      "保持同一 shot 的角色造型、服装、主体数量、镜头逻辑、基础环境和主导光色方向连续。",
+    );
+    rules.push("表达该 shot 的结果状态或情绪落点，而不是复述 start_frame。");
+
+    if (input.startFrameContext?.promptTextCurrent) {
+      rules.push("用 startFrameContext.promptTextCurrent 作为连续性锚点。");
+    }
   }
 
   return [

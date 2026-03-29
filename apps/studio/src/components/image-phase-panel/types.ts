@@ -43,6 +43,8 @@ export interface FrameEditorCardProps {
   frame: ShotReferenceFrame | null;
   draft: FrameDraftState | undefined;
   busy: boolean;
+  generationBlocked: boolean;
+  generationBlockedMessage?: string;
   metaLabelClass: string;
   metaValueClass: string;
   onDraftChange: (frameId: string, nextDraft: FrameDraftState) => void;

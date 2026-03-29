@@ -17,6 +17,8 @@ export function FrameEditorCard({
   frame,
   draft,
   busy,
+  generationBlocked,
+  generationBlockedMessage,
   metaLabelClass,
   metaValueClass,
   onDraftChange,
@@ -43,7 +45,9 @@ export function FrameEditorCard({
   const visiblePromptText = isPromptPending ? "" : draft.promptTextCurrent;
   const canSavePrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
   const canGenerateFrame =
-    frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0;
+    frame.planStatus === "planned" &&
+    frame.promptTextCurrent.trim().length > 0 &&
+    !generationBlocked;
   const finalPromptText = buildFinalImagePrompt(draft.promptTextCurrent, visualStyleText);
   const canPreviewFinalPrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
   const promptStatusLabel = isPromptTimedOut
@@ -238,6 +242,9 @@ export function FrameEditorCard({
         )}
         {isPromptTimedOut && (
           <p className="text-sm text-(--color-warning)">Prompt 生成超时，可重新生成。</p>
+        )}
+        {generationBlockedMessage && (
+          <p className="text-sm text-(--color-text-muted)">{generationBlockedMessage}</p>
         )}
       </div>
 

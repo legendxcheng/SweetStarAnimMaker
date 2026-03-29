@@ -92,17 +92,37 @@ export function createProcessFrameImageGenerateTaskUseCase(
 
         const activeProject = project;
         const activeFrame = frame;
+        const resolveReferenceImagePath = (referenceImagePath: string) =>
+          path.isAbsolute(referenceImagePath)
+            ? referenceImagePath
+            : dependencies.shotImageStorage.resolveProjectAssetPath({
+                projectStorageDir: activeProject.storageDir,
+                assetRelPath: referenceImagePath,
+              });
+
+        if (
+          activeFrame.frameType === "end_frame" &&
+          shot &&
+          !shot.startFrame.imageAssetPath
+        ) {
+          throw new Error(
+            `Cannot generate end frame before start frame image exists: ${activeFrame.id}`,
+          );
+        }
 
         const resolvedReferenceImagePaths = await Promise.all(
-          activeFrame.matchedReferenceImagePaths.map((referenceImagePath) =>
-            path.isAbsolute(referenceImagePath)
-              ? referenceImagePath
-              : dependencies.shotImageStorage.resolveProjectAssetPath({
-                  projectStorageDir: activeProject.storageDir,
-                  assetRelPath: referenceImagePath,
-              }),
-          ),
+          activeFrame.matchedReferenceImagePaths.map(resolveReferenceImagePath),
         );
+
+        if (
+          activeFrame.frameType === "end_frame" &&
+          shot?.startFrame.imageAssetPath
+        ) {
+          resolvedReferenceImagePaths.push(
+            await resolveReferenceImagePath(shot.startFrame.imageAssetPath),
+          );
+        }
+
         await dependencies.taskFileStorage.appendTaskLog({
           task,
           message: `requesting shot image provider for frame ${activeFrame.id} with ${resolvedReferenceImagePaths.length} reference image(s)`,

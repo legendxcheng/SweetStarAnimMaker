@@ -32,6 +32,8 @@ export function ImagePhasePanel({
   onGenerate,
   onProjectRefresh,
 }: ImagePhasePanelProps) {
+  const endFrameDependencyMessage =
+    "请先生成首帧，尾帧会自动引用首帧结果图以保持一致性。";
   const [shots, setShots] = useState<ShotReferenceRecord[]>([]);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(false);
@@ -55,8 +57,28 @@ export function ImagePhasePanel({
     (frame) => frame.planStatus === "planned" && frame.imageStatus === "failed",
   );
   const canGenerateAllFrames =
-    frames.length > 0 &&
-    frames.every((frame) => frame.planStatus === "planned" && frame.promptTextCurrent.trim().length > 0);
+    shots.length > 0 &&
+    shots.every((shot) => {
+      const canGenerateStartFrame =
+        shot.startFrame.planStatus === "planned" &&
+        shot.startFrame.promptTextCurrent.trim().length > 0;
+
+      if (!canGenerateStartFrame) {
+        return false;
+      }
+
+      if (!shot.endFrame) {
+        return true;
+      }
+
+      if (shot.frameDependency === "start_and_end_frame" && !shot.startFrame.imageAssetPath) {
+        return true;
+      }
+
+      return (
+        shot.endFrame.planStatus === "planned" && shot.endFrame.promptTextCurrent.trim().length > 0
+      );
+    });
   const generationStatusSummary = getFrameGenerationStatusSummary(shots);
 
   useEffect(() => {
@@ -398,8 +420,18 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "generate-all-frames" });
 
-      for (const frame of frames) {
-        await apiClient.generateImageFrame(project.id, frame.id);
+      for (const shot of shots) {
+        await apiClient.generateImageFrame(project.id, shot.startFrame.id);
+
+        if (!shot.endFrame) {
+          continue;
+        }
+
+        if (shot.frameDependency === "start_and_end_frame" && !shot.startFrame.imageAssetPath) {
+          continue;
+        }
+
+        await apiClient.generateImageFrame(project.id, shot.endFrame.id);
       }
 
       await refreshProject();
@@ -639,6 +671,8 @@ export function ImagePhasePanel({
                 (actionBusy?.kind === "approve" && actionBusy.shotId === shot.id);
               const canApproveShot =
                 shot.referenceStatus !== "approved" && isShotReadyForApproval(shot);
+              const isEndFrameGenerationBlocked =
+                shot.frameDependency === "start_and_end_frame" && !shot.startFrame.imageAssetPath;
 
               return (
                 <section
@@ -677,6 +711,7 @@ export function ImagePhasePanel({
                             actionBusy.kind === "regenerate" ||
                             actionBusy.kind === "generate"))
                       }
+                      generationBlocked={false}
                       metaLabelClass={metaLabelClass}
                       metaValueClass={metaValueClass}
                       onDraftChange={(frameId, nextDraft) => {
@@ -701,6 +736,10 @@ export function ImagePhasePanel({
                             (actionBusy.kind === "save" ||
                               actionBusy.kind === "regenerate" ||
                               actionBusy.kind === "generate"))
+                        }
+                        generationBlocked={isEndFrameGenerationBlocked}
+                        generationBlockedMessage={
+                          isEndFrameGenerationBlocked ? endFrameDependencyMessage : undefined
                         }
                         metaLabelClass={metaLabelClass}
                         metaValueClass={metaValueClass}

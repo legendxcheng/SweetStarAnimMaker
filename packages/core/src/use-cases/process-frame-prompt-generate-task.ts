@@ -125,6 +125,15 @@ export function createProcessFramePromptGenerateTaskUseCase(
           characterSheetRepository: dependencies.characterSheetRepository,
           characterSheetStorage: dependencies.characterSheetStorage,
         });
+        const startFrameContext =
+          taskInput.frameType === "end_frame" && shot
+            ? {
+                promptTextCurrent: shot.startFrame.promptTextCurrent,
+                selectedCharacterIds: shot.startFrame.selectedCharacterIds,
+                imageStatus: shot.startFrame.imageStatus,
+                imageAssetPath: shot.startFrame.imageAssetPath,
+              }
+            : undefined;
 
         const promptPlan = await dependencies.framePromptProvider.generateFramePrompt({
           projectId: project.id,
@@ -137,6 +146,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
             shots: segment.shots,
           },
           currentShot,
+          startFrameContext,
           characterRoster: characterRoster.map((character) => ({
             characterId: character.id,
             characterName: character.characterName,

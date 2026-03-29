@@ -196,4 +196,73 @@ describe("grok frame-prompt provider", () => {
       }),
     ).rejects.toThrow("Grok frame prompt provider returned invalid promptText");
   });
+
+  it("includes startFrameContext and continuity rules in end-frame requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                frameType: "end_frame",
+                selectedCharacterIds: [],
+                promptText: "尾帧定格在出口前。",
+                negativePromptText: null,
+                rationale: "延续首帧并落到结果状态。",
+              }),
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGrokFramePromptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "grok-4.2",
+    });
+
+    await provider.generateFramePrompt({
+      projectId: "proj_20260324_ab12cd",
+      frameType: "end_frame",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        summary: "林在雨夜市场边确认出口被堵住。",
+        shots: [],
+      },
+      currentShot: {
+        id: "shot_1",
+        shotCode: "SC01-SG01-SH01",
+        purpose: "表现尾帧结果。",
+        visual: "雨夜积水市场，冷白霓虹横穿积水。",
+        subject: "林",
+        action: "她停在出口前回望。",
+        frameDependency: "start_and_end_frame",
+        dialogue: null,
+        os: null,
+        audio: "雨声渐弱。",
+        transitionHint: null,
+        continuityNotes: "林的左肩背包保持不变。",
+      },
+      startFrameContext: {
+        promptTextCurrent: "首帧里林站在雨夜市场入口，银色飞行夹克沾着雨水。",
+        selectedCharacterIds: ["char_rin"],
+        imageStatus: "approved",
+        imageAssetPath: "images/frame-start/current.png",
+      },
+      characterRoster: [],
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const requestText = request.messages[1].content as string;
+
+    expect(requestText).toContain('"startFrameContext"');
+    expect(requestText).toContain("保持同一 shot 的角色造型、服装、主体数量、镜头逻辑、基础环境和主导光色方向连续");
+    expect(requestText).toContain("用 startFrameContext.promptTextCurrent 作为连续性锚点");
+    expect(requestText).toContain("表达该 shot 的结果状态或情绪落点，而不是复述 start_frame");
+  });
 });

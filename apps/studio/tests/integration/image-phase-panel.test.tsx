@@ -366,6 +366,44 @@ describe("ImagePhasePanel", () => {
     expect(screen.queryByText("当前 Shot 缺少帧记录。")).not.toBeInTheDocument();
   });
 
+  it("blocks end-frame image generation until the shot has a start-frame image", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: baseProject.currentImageBatch,
+      shots: [
+        createShot({
+          startFrame: createFrame({
+            id: "frame-start-missing-image",
+            imageStatus: "pending",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+          }),
+          endFrame: createFrame({
+            id: "frame-end-blocked",
+            frameType: "end_frame",
+            imageStatus: "pending",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+          }),
+        }),
+      ],
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "生成结束帧图片" })).toBeDisabled();
+    expect(
+      screen.getByText("请先生成首帧，尾帧会自动引用首帧结果图以保持一致性。"),
+    ).toBeInTheDocument();
+  });
+
   it("saves prompt edits, regenerates prompt, generates image, and approves one shot", async () => {
     const refreshProject = vi.fn();
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
@@ -677,6 +715,116 @@ describe("ImagePhasePanel", () => {
     });
     await waitFor(() => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("skips end-frame batch generation when the loaded shot has no start-frame image", async () => {
+    const refreshProject = vi.fn();
+
+    vi.spyOn(apiModule.apiClient, "listImages")
+      .mockResolvedValueOnce({
+        currentBatch: baseProject.currentImageBatch,
+        shots: [
+          createShot({
+            startFrame: createFrame({
+              id: "frame-start-batch-only",
+              imageStatus: "pending",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+            endFrame: createFrame({
+              id: "frame-end-batch-skipped",
+              frameType: "end_frame",
+              imageStatus: "pending",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+          }),
+        ],
+      })
+      .mockResolvedValueOnce({
+        currentBatch: baseProject.currentImageBatch,
+        shots: [
+          createShot({
+            startFrame: createFrame({
+              id: "frame-start-batch-only",
+              imageStatus: "generating",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+            endFrame: createFrame({
+              id: "frame-end-batch-skipped",
+              frameType: "end_frame",
+              imageStatus: "pending",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+            }),
+          }),
+        ],
+      });
+    vi.spyOn(apiModule.apiClient, "generateImageFrame").mockResolvedValue({
+      id: "task-frame-image-start-only",
+      projectId: "proj-1",
+      type: "frame_image_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:10Z",
+      updatedAt: "2024-01-01T00:00:10Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-frame-image-start-only/input.json",
+        outputPath: "tasks/task-frame-image-start-only/output.json",
+        logPath: "tasks/task-frame-image-start-only/log.txt",
+      },
+    });
+
+    render(
+      <ImagePhasePanel
+        project={baseProject}
+        task={null}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={refreshProject}
+      />,
+    );
+
+    const batchButton = await screen.findByRole("button", {
+      name: "重新生成全部帧",
+    });
+
+    fireEvent.click(batchButton);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.generateImageFrame).toHaveBeenCalledWith(
+        "proj-1",
+        "frame-start-batch-only",
+      );
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.generateImageFrame).toHaveBeenCalledTimes(1);
+    });
+    expect(apiModule.apiClient.generateImageFrame).not.toHaveBeenCalledWith(
+      "proj-1",
+      "frame-end-batch-skipped",
+    );
+    await waitFor(() => {
+      expect(refreshProject).toHaveBeenCalledTimes(1);
     });
   });
 

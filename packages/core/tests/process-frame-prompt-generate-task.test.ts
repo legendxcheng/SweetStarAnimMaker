@@ -653,6 +653,252 @@ describe("process frame prompt generate task use case", () => {
     );
   });
 
+  it("passes start-frame continuity context when generating an end-frame prompt", async () => {
+    const shot = createShotReferenceRecord({
+      id: "shot_ref_prompt_end_context",
+      batchId: "image_batch_prompt_end_context",
+      projectId: "proj_prompt_end_context",
+      projectStorageDir: "projects/proj_prompt_end_context-story",
+      sourceShotScriptId: "shot_script_prompt_end_context",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_and_end_frame",
+      updatedAt: "2026-03-24T00:12:00.000Z",
+      startFrame: {
+        id: "frame_start_prompt_context",
+        planStatus: "planned",
+        imageStatus: "approved",
+        selectedCharacterIds: ["char_rin", "char_ivo"],
+        promptTextCurrent: "首帧 Prompt，林夏站在雨夜市场入口。",
+        imageAssetPath:
+          "images/batches/image_batch_prompt_end_context/shots/scene_1/segment_1/shot_1/start-frame/current.png",
+      },
+      endFrame: {
+        id: "frame_end_prompt_context",
+        planStatus: "pending",
+        imageStatus: "pending",
+      },
+    });
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_frame_prompt_end_context",
+        projectId: "proj_prompt_end_context",
+        type: "frame_prompt_generate",
+        status: "pending",
+        queueName: "frame-prompt-generate",
+        storageDir: "projects/proj_prompt_end_context-story/tasks/task_frame_prompt_end_context",
+        inputRelPath: "tasks/task_frame_prompt_end_context/input.json",
+        outputRelPath: "tasks/task_frame_prompt_end_context/output.json",
+        logRelPath: "tasks/task_frame_prompt_end_context/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:12:00.000Z",
+        updatedAt: "2026-03-24T00:12:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_prompt_end_context",
+        name: "Prompt Context Story",
+        slug: "prompt-context-story",
+        storageDir: "projects/proj_prompt_end_context-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "master_plot_prompt_end_context",
+        currentCharacterSheetBatchId: null,
+        currentStoryboardId: "storyboard_prompt_end_context",
+        currentShotScriptId: "shot_script_prompt_end_context",
+        currentImageBatchId: "image_batch_prompt_end_context",
+        status: "images_generating",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:12:00.000Z",
+        premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_frame_prompt_end_context",
+        projectId: "proj_prompt_end_context",
+        taskType: "frame_prompt_generate",
+        batchId: "image_batch_prompt_end_context",
+        shotId: "shot_1",
+        frameId: "frame_end_prompt_context",
+        sourceShotScriptId: "shot_script_prompt_end_context",
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        frameType: "end_frame",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn().mockResolvedValue([shot]),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn(),
+      findFrameById: vi.fn().mockResolvedValue(null),
+      findShotById: vi.fn(),
+      updateFrame: vi.fn(),
+      updateShot: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
+    };
+    const shotScriptStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeShotScriptVersion: vi.fn(),
+      readShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_prompt_end_context",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_prompt_end_context",
+        sourceTaskId: "task_shot_script_prompt_end_context",
+        updatedAt: "2026-03-24T00:10:00.000Z",
+        approvedAt: "2026-03-24T00:10:00.000Z",
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 4,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "雨夜市场",
+            summary: "林夏在市场入口确认对手堵住出口。",
+            durationSec: 4,
+            status: "approved",
+            lastGeneratedAt: "2026-03-24T00:09:00.000Z",
+            approvedAt: "2026-03-24T00:10:00.000Z",
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 4,
+                purpose: "展现尾帧收束。",
+                visual: "雨夜市场入口，霓虹在积水里拉成长条。",
+                subject: "林夏、伊沃",
+                action: "林夏停在出口前，伊沃在后景看向她。",
+                frameDependency: "start_and_end_frame",
+                dialogue: null,
+                os: "结束了。",
+                audio: "雨声渐弱。",
+                transitionHint: "切到下一镜近景。",
+                continuityNotes: "林夏左肩背包不能丢。",
+              },
+            ],
+          },
+        ],
+      }),
+    };
+    const characterSheetRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      listCharactersByBatchId: vi.fn().mockResolvedValue([]),
+      insertCharacter: vi.fn(),
+      findCharacterById: vi.fn(),
+      updateCharacter: vi.fn(),
+    };
+    const characterSheetStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writeBatchManifest: vi.fn(),
+      writeGeneratedPrompt: vi.fn(),
+      writeImageVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      readCurrentCharacterSheet: vi.fn(),
+      listReferenceImages: vi.fn(),
+      saveReferenceImages: vi.fn(),
+      deleteReferenceImage: vi.fn(),
+      getReferenceImageContent: vi.fn(),
+      getImageContent: vi.fn(),
+      resolveReferenceImagePaths: vi.fn(),
+    };
+    const framePromptProvider = {
+      generateFramePrompt: vi.fn().mockResolvedValue({
+        frameType: "end_frame",
+        selectedCharacterIds: [],
+        promptText: "尾帧 Prompt。",
+        negativePromptText: null,
+        rationale: "基于首帧连续性推进。",
+        rawResponse: "{}",
+        provider: "gemini",
+        model: "gemini-3.1-pro-preview",
+      }),
+    };
+
+    const useCase = createProcessFramePromptGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotScriptStorage,
+      characterSheetRepository,
+      characterSheetStorage,
+      framePromptProvider,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:14:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:15:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_frame_prompt_end_context" });
+
+    expect(framePromptProvider.generateFramePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameType: "end_frame",
+        startFrameContext: {
+          promptTextCurrent: "首帧 Prompt，林夏站在雨夜市场入口。",
+          selectedCharacterIds: ["char_rin", "char_ivo"],
+          imageStatus: "approved",
+          imageAssetPath:
+            "images/batches/image_batch_prompt_end_context/shots/scene_1/segment_1/shot_1/start-frame/current.png",
+        },
+      }),
+    );
+  });
+
   it("marks the frame plan as failed when prompt generation fails so regeneration stays available", async () => {
     const taskRepository = {
       insert: vi.fn(),

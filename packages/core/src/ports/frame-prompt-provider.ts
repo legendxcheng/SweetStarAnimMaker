@@ -26,6 +26,12 @@ export interface GenerateFramePromptInput {
     shots: Array<GenerateFramePromptShotContext>;
   };
   currentShot: GenerateFramePromptShotContext;
+  startFrameContext?: {
+    promptTextCurrent: string;
+    selectedCharacterIds: string[];
+    imageStatus: "pending" | "generating" | "in_review" | "approved" | "failed";
+    imageAssetPath: string | null;
+  };
   characterRoster: Array<{
     characterId: string;
     characterName: string;

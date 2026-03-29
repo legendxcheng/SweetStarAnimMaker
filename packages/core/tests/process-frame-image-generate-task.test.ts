@@ -200,6 +200,314 @@ describe("process frame image generate task use case", () => {
     });
   });
 
+  it("rejects end-frame generation when the owning shot has no start-frame image", async () => {
+    const shot = createShotReferenceRecord({
+      id: "shot_ref_guard",
+      batchId: "image_batch_guard",
+      projectId: "proj_guard",
+      projectStorageDir: "projects/proj_guard-story",
+      sourceShotScriptId: "shot_script_guard",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_and_end_frame",
+      updatedAt: "2026-03-24T00:15:00.000Z",
+      startFrame: {
+        id: "frame_start_guard",
+        planStatus: "planned",
+        imageStatus: "pending",
+        promptTextCurrent: "首帧 Prompt",
+        imageAssetPath: null,
+      },
+      endFrame: {
+        id: "frame_end_guard",
+        planStatus: "planned",
+        imageStatus: "pending",
+        promptTextCurrent: "尾帧 Prompt",
+      },
+    });
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_frame_image_guard",
+        projectId: "proj_guard",
+        type: "frame_image_generate",
+        status: "pending",
+        queueName: "frame-image-generate",
+        storageDir: "projects/proj_guard-story/tasks/task_frame_image_guard",
+        inputRelPath: "tasks/task_frame_image_guard/input.json",
+        outputRelPath: "tasks/task_frame_image_guard/output.json",
+        logRelPath: "tasks/task_frame_image_guard/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:16:00.000Z",
+        updatedAt: "2026-03-24T00:16:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_guard",
+        name: "Guard Story",
+        slug: "guard-story",
+        storageDir: "projects/proj_guard-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        visualStyleText: "赛璐璐动画",
+        currentMasterPlotId: "master_plot_guard",
+        currentCharacterSheetBatchId: "char_batch_guard",
+        currentStoryboardId: "storyboard_guard",
+        currentShotScriptId: "shot_script_guard",
+        currentImageBatchId: "image_batch_guard",
+        status: "images_generating",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:16:00.000Z",
+        premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_frame_image_guard",
+        projectId: "proj_guard",
+        taskType: "frame_image_generate",
+        batchId: "image_batch_guard",
+        frameId: "frame_end_guard",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn().mockResolvedValue([shot]),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn(),
+      findFrameById: vi.fn().mockResolvedValue(null),
+      findShotById: vi.fn(),
+      updateFrame: vi.fn(),
+      updateShot: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
+    };
+    const shotImageProvider = {
+      generateShotImage: vi.fn(),
+    };
+
+    const useCase = createProcessFrameImageGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotImageProvider,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:17:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:18:00.000Z"),
+      },
+    });
+
+    await expect(useCase.execute({ taskId: "task_frame_image_guard" })).rejects.toThrow(
+      "Cannot generate end frame before start frame image exists: frame_end_guard",
+    );
+
+    expect(shotImageProvider.generateShotImage).not.toHaveBeenCalled();
+  });
+
+  it("appends the owning shot start-frame image after matched references for end-frame generation", async () => {
+    const shot = createShotReferenceRecord({
+      id: "shot_ref_end_reference",
+      batchId: "image_batch_end_reference",
+      projectId: "proj_end_reference",
+      projectStorageDir: "projects/proj_end_reference-story",
+      sourceShotScriptId: "shot_script_end_reference",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_and_end_frame",
+      updatedAt: "2026-03-24T00:15:00.000Z",
+      startFrame: {
+        id: "frame_start_end_reference",
+        planStatus: "planned",
+        imageStatus: "in_review",
+        promptTextCurrent: "首帧 Prompt",
+        imageAssetPath:
+          "images/batches/image_batch_end_reference/shots/scene_1/segment_1/shot_1/start-frame/current.png",
+      },
+      endFrame: {
+        id: "frame_end_end_reference",
+        planStatus: "planned",
+        imageStatus: "pending",
+        promptTextCurrent: "尾帧 Prompt",
+        matchedReferenceImagePaths: [
+          "E:/refs/char-rin.png",
+          "character-sheets/char-ivo/current.png",
+        ],
+      },
+    });
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_frame_image_end_reference",
+        projectId: "proj_end_reference",
+        type: "frame_image_generate",
+        status: "pending",
+        queueName: "frame-image-generate",
+        storageDir: "projects/proj_end_reference-story/tasks/task_frame_image_end_reference",
+        inputRelPath: "tasks/task_frame_image_end_reference/input.json",
+        outputRelPath: "tasks/task_frame_image_end_reference/output.json",
+        logRelPath: "tasks/task_frame_image_end_reference/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:16:00.000Z",
+        updatedAt: "2026-03-24T00:16:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_end_reference",
+        name: "Reference Story",
+        slug: "reference-story",
+        storageDir: "projects/proj_end_reference-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        visualStyleText: "赛璐璐动画",
+        currentMasterPlotId: "master_plot_end_reference",
+        currentCharacterSheetBatchId: "char_batch_end_reference",
+        currentStoryboardId: "storyboard_end_reference",
+        currentShotScriptId: "shot_script_end_reference",
+        currentImageBatchId: "image_batch_end_reference",
+        status: "images_generating",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:16:00.000Z",
+        premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_frame_image_end_reference",
+        projectId: "proj_end_reference",
+        taskType: "frame_image_generate",
+        batchId: "image_batch_end_reference",
+        frameId: "frame_end_end_reference",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn().mockResolvedValue([shot]),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn(),
+      findFrameById: vi.fn().mockResolvedValue(null),
+      findShotById: vi.fn(),
+      updateFrame: vi.fn(),
+      updateShot: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi
+        .fn()
+        .mockImplementation(({ assetRelPath }: { assetRelPath: string }) => `E:/resolved/${assetRelPath}`),
+    };
+    const shotImageProvider = {
+      generateShotImage: vi.fn().mockResolvedValue({
+        imageBytes: new Uint8Array([1, 2, 3]),
+        rawResponse: '{"ok":true}',
+        provider: "vector-engine",
+        model: "doubao-seedream-5-0-260128",
+        width: 1024,
+        height: 1024,
+      }),
+    };
+
+    const useCase = createProcessFrameImageGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotImageRepository,
+      shotImageStorage,
+      shotImageProvider,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:17:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:18:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_frame_image_end_reference" });
+
+    expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImagePaths: [
+          "E:/refs/char-rin.png",
+          "E:/resolved/character-sheets/char-ivo/current.png",
+          "E:/resolved/images/batches/image_batch_end_reference/shots/scene_1/segment_1/shot_1/start-frame/current.png",
+        ],
+      }),
+    );
+  });
+
   it("restores an existing frame image to in review when regeneration fails", async () => {
     const taskRepository = {
       insert: vi.fn(),
