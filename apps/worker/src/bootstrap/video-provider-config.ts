@@ -19,20 +19,40 @@ export function createConfiguredVideoProvider(
   const apiToken = env.VECTORENGINE_API_TOKEN;
 
   if (providerName === "kling") {
+    const modelName = readPreferredModel(env, "KLING_VIDEO_MODEL");
+    const durationSeconds = readPositiveInteger(env.KLING_VIDEO_DURATION) ?? 10;
+
+    console.info("[video-provider-config] selected", {
+      providerName,
+      modelName,
+      durationSeconds,
+      baseUrlConfigured: Boolean(baseUrl?.trim()),
+      apiTokenConfigured: Boolean(apiToken?.trim()),
+    });
+
     return createKlingOmniStageVideoProvider({
       baseUrl,
       apiToken,
-      modelName: readPreferredModel(env, "KLING_VIDEO_MODEL"),
-      durationSeconds: readPositiveInteger(env.KLING_VIDEO_DURATION) ?? 10,
+      modelName,
+      durationSeconds,
       referenceImageUploader: options.referenceImageUploader,
     });
   }
 
   if (providerName === "sora") {
+    const modelName = readPreferredModel(env, "SORA_VIDEO_MODEL");
+
+    console.info("[video-provider-config] selected", {
+      providerName,
+      modelName,
+      baseUrlConfigured: Boolean(baseUrl?.trim()),
+      apiTokenConfigured: Boolean(apiToken?.trim()),
+    });
+
     return createSoraStageVideoProvider({
       baseUrl,
       apiToken,
-      modelName: readPreferredModel(env, "SORA_VIDEO_MODEL"),
+      modelName,
       referenceImageUploader: options.referenceImageUploader,
     });
   }

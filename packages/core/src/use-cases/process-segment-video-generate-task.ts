@@ -112,6 +112,19 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         };
         const promptText = currentSegment.promptTextCurrent;
 
+        console.info("[video-generate] starting", {
+          taskId: task.id,
+          projectId: project.id,
+          shotId: taskInput.shotId,
+          shotCode: taskInput.shotCode,
+          frameDependency: taskInput.frameDependency,
+          durationSec: taskInput.shot.durationSec ?? null,
+          hasEndFrame: Boolean(taskInput.endFrame),
+          shotAudioProvided: Boolean(taskInput.shot.audio?.trim()),
+          promptHasSoundConstraint: promptText.includes("声音约束："),
+          promptLength: promptText.length,
+        });
+
         await dependencies.videoStorage.writePromptSnapshot({
           taskStorageDir: task.storageDir,
           promptText,

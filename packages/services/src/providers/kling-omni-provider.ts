@@ -517,6 +517,17 @@ async function submitOmniVideoRequest(
     requestBody.image_list = input.imageList;
   }
 
+  console.info("[video-provider:kling-omni] submit", {
+    modelName: input.modelName,
+    mode: input.mode,
+    duration: requestBody.duration,
+    sound: input.sound ?? null,
+    aspectRatio: input.aspectRatio ?? null,
+    imageCount: input.imageList?.length ?? 0,
+    hasEndFrame: Boolean(input.imageList?.some((image) => image.type === "end_frame")),
+    promptLength: requestBody.prompt.length,
+  });
+
   return requestJson({
     apiToken: request.apiToken,
     baseUrl: request.baseUrl,
@@ -728,7 +739,7 @@ async function waitForOmniTask(
   input: { taskId: string; pollIntervalMs?: number; timeoutMs?: number },
 ) {
   const startedAt = Date.now();
-  const timeoutMs = input.timeoutMs ?? 300_000;
+  const timeoutMs = input.timeoutMs ?? 600_000;
   const pollIntervalMs = input.pollIntervalMs ?? 5_000;
 
   while (true) {

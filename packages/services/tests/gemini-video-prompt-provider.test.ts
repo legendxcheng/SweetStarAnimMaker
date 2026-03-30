@@ -81,9 +81,11 @@ describe("gemini video prompt provider", () => {
     expect(result.finalPrompt).toContain("语音约束：人物对白：有人先到了");
     expect(result.finalPrompt).toContain("旁白/画外音：这次不能再慢一步。");
     expect(result.finalPrompt).toContain("声音约束：雨声、摊布拍打声、远处人群骚动。");
+    expect(result.finalPrompt).toContain("必须输出可听音轨，不允许静音或无声成片。");
     expect(result.dialoguePlan).toContain("人物对白：有人先到了");
     expect(result.dialoguePlan).toContain("旁白/画外音：这次不能再慢一步。");
     expect(result.audioPlan).toContain("环境声/音效/音乐：雨声、摊布拍打声、远处人群骚动。");
+    expect(result.audioPlan).toContain("必须输出可听音轨，不允许静音或无声成片。");
     expect(result.visualGuardrails).toContain("首尾帧");
     expect(result.provider).toBe("gemini");
     expect(result.model).toBe("gemini-3.1-pro-preview");
@@ -169,6 +171,7 @@ describe("gemini video prompt provider", () => {
     expect(promptText).toContain("如果没有人物台词、没有旁白、也不需要可感知语音，必须明确写出无人物对白、无旁白、无语音");
     expect(promptText).toContain("禁止自行补充未提供的人声、旁白、台词内容");
     expect(promptText).toContain("默认不要背景音乐、BGM、配乐");
+    expect(promptText).toContain("必须输出可听音轨，不允许静音或无声成片");
     expect(promptText).toContain("系统会在最终 prompt 中追加一段硬性语音约束");
   });
 
@@ -237,10 +240,11 @@ describe("gemini video prompt provider", () => {
 
     expect(result.finalPrompt).toContain("语音约束：无人物对白，无旁白，无语音，不需要口型。");
     expect(result.finalPrompt).toContain("声音约束：雨声、远处摊布拍打声。");
+    expect(result.finalPrompt).toContain("必须输出可听音轨，不允许静音或无声成片。");
     expect(result.finalPrompt).toContain("无背景音乐、无BGM、无配乐。");
     expect(result.dialoguePlan).toBe("无人物对白，无旁白，无语音，不需要口型。");
     expect(result.audioPlan).toBe(
-      "环境声/音效/音乐：雨声、远处摊布拍打声。无背景音乐、无BGM、无配乐。禁止新增未提供的人声、背景音乐、BGM、配乐或额外音效。",
+      "环境声/音效/音乐：雨声、远处摊布拍打声。必须输出可听音轨，不允许静音或无声成片。无背景音乐、无BGM、无配乐。禁止新增未提供的人声、背景音乐、BGM、配乐或额外音效。",
     );
   });
 });

@@ -9,6 +9,7 @@ describe("sora video provider", () => {
   });
 
   it("submits a double-image sora task with the expected payload", async () => {
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -59,6 +60,15 @@ describe("sora video provider", () => {
     expect(request.duration).toBe(15);
     expect(request.watermark).toBe(false);
     expect(request.private).toBe(true);
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "[video-provider:sora] submit",
+      expect.objectContaining({
+        modelName: "sora-2-all",
+        duration: 15,
+        imagesCount: 2,
+        supportsSoundParam: false,
+      }),
+    );
     expect(result.taskId).toBe("sora-2:task_123");
     expect(result.status).toBe("pending");
     expect(result.modelName).toBe("sora-2-all");

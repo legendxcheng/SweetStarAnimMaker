@@ -382,6 +382,7 @@ describe("kling omni provider", () => {
   });
 
   it("uses Omni stage defaults with sound enabled for production video generation", async () => {
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -432,6 +433,16 @@ describe("kling omni provider", () => {
     expect(request.model_name).toBe("kling-v3-omni");
     expect(request.sound).toBe("on");
     expect(request.duration).toBe("6");
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "[video-provider:kling-omni] submit",
+      expect.objectContaining({
+        modelName: "kling-v3-omni",
+        duration: "6",
+        sound: "on",
+        imageCount: 2,
+        hasEndFrame: true,
+      }),
+    );
     expect(request.image_list).toEqual([
       {
         image_url: "https://cdn.example/start.png",

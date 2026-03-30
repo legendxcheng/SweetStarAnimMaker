@@ -4,6 +4,7 @@ import { createProcessSegmentVideoGenerateTaskUseCase } from "../src/index";
 
 describe("process segment video generate task use case", () => {
   it("renders the prompt, submits the provider job with only a start frame when the shot does not need an end frame, persists current assets, and moves the project into videos_in_review", async () => {
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -196,6 +197,17 @@ describe("process segment video generate task use case", () => {
 
     await useCase.execute({ taskId: "task_segment_video_1" });
 
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "[video-generate] starting",
+      expect.objectContaining({
+        taskId: "task_segment_video_1",
+        projectId: "proj_1",
+        shotId: "shot_1",
+        frameDependency: "start_frame_only",
+        hasEndFrame: false,
+        shotAudioProvided: false,
+      }),
+    );
     const providerCall = videoProvider.generateSegmentVideo.mock.calls[0]?.[0];
     expect(providerCall).toMatchObject({
       projectId: "proj_1",

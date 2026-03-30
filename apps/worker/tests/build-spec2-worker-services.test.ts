@@ -27,6 +27,7 @@ describe("createConfiguredVideoProvider", () => {
   });
 
   it("defaults to Kling with production Kling defaults", () => {
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const referenceImageUploader = {
       uploadReferenceImage: vi.fn(),
     };
@@ -46,10 +47,19 @@ describe("createConfiguredVideoProvider", () => {
       durationSeconds: 10,
       referenceImageUploader,
     });
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "[video-provider-config] selected",
+      expect.objectContaining({
+        providerName: "kling",
+        modelName: undefined,
+        durationSeconds: 10,
+      }),
+    );
     expect(createSoraStageVideoProvider).not.toHaveBeenCalled();
   });
 
   it("selects Sora when VIDEO_PROVIDER is set to sora", () => {
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const referenceImageUploader = {
       uploadReferenceImage: vi.fn(),
     };
@@ -70,6 +80,13 @@ describe("createConfiguredVideoProvider", () => {
       modelName: "sora-custom",
       referenceImageUploader,
     });
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "[video-provider-config] selected",
+      expect.objectContaining({
+        providerName: "sora",
+        modelName: "sora-custom",
+      }),
+    );
     expect(createKlingOmniStageVideoProvider).not.toHaveBeenCalled();
   });
 

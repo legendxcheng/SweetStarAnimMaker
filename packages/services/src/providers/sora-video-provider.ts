@@ -122,6 +122,16 @@ export function createSoraVideoProvider(
         requestBody.private = input.private;
       }
 
+      console.info("[video-provider:sora] submit", {
+        modelName,
+        orientation: requestBody.orientation,
+        size: requestBody.size,
+        duration: requestBody.duration,
+        imagesCount: Array.isArray(requestBody.images) ? requestBody.images.length : 0,
+        promptLength: promptText.length,
+        supportsSoundParam: false,
+      });
+
       const payload = await requestJson({
         apiToken,
         baseUrl,

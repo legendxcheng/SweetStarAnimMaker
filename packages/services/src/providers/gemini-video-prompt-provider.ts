@@ -148,6 +148,8 @@ function buildPromptText(input: GenerateVideoPromptInput) {
     "- 如果有可感知语音，必须明确写出是否需要可见口型，以及哪些台词需要被观众听见。",
     "- 如果没有人物台词、没有旁白、也不需要可感知语音，必须明确写出无人物对白、无旁白、无语音。",
     "- 禁止自行补充未提供的人声、旁白、台词内容或说话主体。",
+    "- 必须输出可听音轨，不允许静音或无声成片。",
+    "- 即使不要背景音乐、BGM、配乐，也必须保留已提供的环境声、拟音、对白或旁白。",
     "- 默认不要背景音乐、BGM、配乐；最终 prompt 和 audioPlan 都要明确写无背景音乐、无BGM、无配乐。",
     "- 系统会在最终 prompt 中追加一段硬性语音约束和声音约束，你生成的内容必须与这组硬性约束一致。",
     "- 这是单镜头，不要输出分镜列表。",
@@ -178,6 +180,7 @@ function buildPromptText(input: GenerateVideoPromptInput) {
     "",
     "audioPlan 要求：",
     "- 写清环境声、拟音、音乐氛围、声场重点，以及是否只有环境声而无人声。",
+    "- 必须明确写必须输出可听音轨，不允许静音或无声成片。",
     "- 必须明确写无背景音乐、无BGM、无配乐。",
     "",
     "visualGuardrails 要求：",
@@ -289,12 +292,12 @@ function buildDialoguePlan(input: GenerateVideoPromptInput) {
 
 function buildAudioPlan(input: GenerateVideoPromptInput) {
   const audioText = normalizeClause(input.currentShot.audio) ?? "无";
-  return `环境声/音效/音乐：${audioText}。无背景音乐、无BGM、无配乐。禁止新增未提供的人声、背景音乐、BGM、配乐或额外音效。`;
+  return `环境声/音效/音乐：${audioText}。必须输出可听音轨，不允许静音或无声成片。无背景音乐、无BGM、无配乐。禁止新增未提供的人声、背景音乐、BGM、配乐或额外音效。`;
 }
 
 function buildFinalPromptAudioConstraint(input: GenerateVideoPromptInput) {
   const audioText = normalizeClause(input.currentShot.audio) ?? "无";
-  return `声音约束：${audioText}。无背景音乐、无BGM、无配乐。`;
+  return `声音约束：${audioText}。必须输出可听音轨，不允许静音或无声成片。无背景音乐、无BGM、无配乐。`;
 }
 
 function appendHardConstraints(finalPrompt: string, dialoguePlan: string, audioConstraint: string) {
