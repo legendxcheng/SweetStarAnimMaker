@@ -73,6 +73,7 @@ export function createRegenerateShotScriptUseCase(
 
       return dependencies.createShotScriptGenerateTask.execute({
         projectId: project.id,
+        preserveApprovedSegments: false,
       });
     },
   };

@@ -14,6 +14,12 @@
 - 不要输出 imagePrompt、negativePrompt、motionHint 等出图字段
 - 不要补写当前 segment 之外的剧情
 - 保持角色造型、服装、道具、机位连续性
+- 对白 + 旁白/OS 属于可说出的口播文本，必须严格受镜头时长约束
+- 口播文本预算统一按 1 秒 3 字估算
+- {{spokenTextBudgetRule}}
+- 所有 shots 的 dialogue + os 累计字数，必须 <= {{segmentMaxSpokenChars}}
+- {{shotSpokenTextBudgetRule}}
+- 如果口播文本超出可说完范围，优先压缩 dialogue / os；必要时拆成更多 shots，禁止把过长旁白硬塞进短镜头
 
 请结合以下上下文生成结构化 JSON：
 

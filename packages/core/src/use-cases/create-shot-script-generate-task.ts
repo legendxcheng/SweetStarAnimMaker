@@ -20,6 +20,7 @@ import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface CreateShotScriptGenerateTaskInput {
   projectId: string;
+  preserveApprovedSegments?: boolean;
 }
 
 export interface CreateShotScriptGenerateTaskUseCase {
@@ -101,6 +102,7 @@ export function createCreateShotScriptGenerateTaskUseCase(
         projectId: project.id,
         taskType: "shot_script_generate",
         sourceStoryboardId: currentStoryboard.id,
+        preserveApprovedSegments: input.preserveApprovedSegments ?? true,
         storyboard: {
           id: currentStoryboard.id,
           title: currentStoryboard.title,

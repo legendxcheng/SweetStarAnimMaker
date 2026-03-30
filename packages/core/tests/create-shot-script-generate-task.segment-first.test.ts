@@ -92,6 +92,7 @@ describe("create shot script generate task use case - segment first", () => {
       input: expect.objectContaining({
         taskType: "shot_script_generate",
         sourceStoryboardId: "storyboard_1",
+        preserveApprovedSegments: true,
         promptTemplateKey: "shot_script.segment.generate",
         storyboard: expect.objectContaining({
           id: "storyboard_1",

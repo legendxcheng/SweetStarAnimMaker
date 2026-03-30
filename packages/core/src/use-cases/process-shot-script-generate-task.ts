@@ -75,6 +75,7 @@ export function createProcessShotScriptGenerateTaskUseCase(
             storageDir: project.storageDir,
           });
           const reusableShotScript =
+            taskInput.preserveApprovedSegments !== false &&
             existingShotScript?.sourceStoryboardId === taskInput.sourceStoryboardId
               ? existingShotScript
               : null;
@@ -297,6 +298,7 @@ function assertShotScriptTaskInput(input: {
   projectId: string;
   taskType: "shot_script_generate";
   sourceStoryboardId: string;
+  preserveApprovedSegments?: boolean;
   sourceMasterPlotId?: string;
   sourceCharacterSheetBatchId?: string;
   storyboard: {

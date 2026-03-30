@@ -79,6 +79,7 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           segment: taskInput.segment,
           masterPlot: taskInput.masterPlot,
           characterSheets: taskInput.characterSheets ?? [],
+          ...buildSpokenTextBudgetPromptVariables(taskInput.segment.durationSec),
         };
         const promptText = renderTemplate(promptTemplate, promptVariables);
 
@@ -277,6 +278,18 @@ function assertShotScriptSegmentTaskInput(input: {
   if (input.taskType !== "shot_script_segment_generate") {
     throw new Error(`Unsupported task input for shot script segment processing: ${input.taskType}`);
   }
+}
+
+function buildSpokenTextBudgetPromptVariables(durationSec: number | null) {
+  const safeDurationSec = Math.max(0, Math.floor(durationSec ?? 0));
+  const segmentMaxSpokenChars = safeDurationSec * 3;
+
+  return {
+    segmentMaxSpokenChars,
+    spokenTextBudgetRule: `当前 segment 的 dialogue + os 总字数上限 = ${segmentMaxSpokenChars} 字（按 1 秒 3 字计算）。`,
+    shotSpokenTextBudgetRule:
+      "每个 shot 的 dialogue + os 字数也必须 <= 该 shot.durationSec × 3；如果超出，就压缩文案或拆分更多 shots。",
+  };
 }
 
 function renderTemplate(template: string, variables: Record<string, unknown>) {

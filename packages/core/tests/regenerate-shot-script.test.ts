@@ -70,6 +70,7 @@ describe("regenerate shot script use case", () => {
     });
     expect(createShotScriptGenerateTask.execute).toHaveBeenCalledWith({
       projectId: "proj_20260324_ab12cd",
+      preserveApprovedSegments: false,
     });
     expect(result.id).toBe("task_shot_script_restart");
   });

@@ -101,6 +101,7 @@ export interface ShotScriptGenerateTaskInput {
   projectId: string;
   taskType: "shot_script_generate";
   sourceStoryboardId: string;
+  preserveApprovedSegments?: boolean;
   sourceMasterPlotId?: string;
   sourceCharacterSheetBatchId?: string;
   storyboard: {

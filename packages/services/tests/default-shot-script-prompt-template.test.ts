@@ -16,6 +16,11 @@ describe("default shot script prompt template", () => {
     expect(template).toContain("不要输出 imagePrompt、negativePrompt、motionHint 等出图字段");
     expect(template).toContain("{{storyboardTitle}}");
     expect(template).toContain("{{segment.visual}}");
+    expect(template).toContain("{{segmentMaxSpokenChars}}");
+    expect(template).toContain("{{spokenTextBudgetRule}}");
+    expect(template).toContain("{{shotSpokenTextBudgetRule}}");
+    expect(template).toContain("对白 + 旁白/OS");
+    expect(template).toContain("1 秒 3 字");
     expect(template).toContain("已批准角色设定");
     expect(template).toContain("{{characterSheets}}");
     expect(template).toContain("必须使用角色设定中的标准角色名");
