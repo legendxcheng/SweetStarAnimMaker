@@ -31,6 +31,7 @@ interface ShotScriptPhasePanelProps {
   creatingTask: boolean;
   disableGenerate: boolean;
   onGenerate: () => void;
+  onProjectRefresh?: () => void | Promise<void>;
 }
 
 function formatDuration(durationSec: number | null) {
@@ -44,16 +45,26 @@ export function ShotScriptPhasePanel({
   creatingTask,
   disableGenerate,
   onGenerate,
+  onProjectRefresh,
 }: ShotScriptPhasePanelProps) {
   const [currentShotScript, setCurrentShotScript] = useState<CurrentShotScript | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<Error | null>(null);
+  const [promptActionLoading, setPromptActionLoading] = useState(false);
+  const [promptActionError, setPromptActionError] = useState<Error | null>(null);
   const [detailRequestVersion, setDetailRequestVersion] = useState(0);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
+  const canCreateInitialImageBatch =
+    project.currentShotScript?.approvedAt != null && project.currentImageBatch == null;
+  const canRegenerateUnfinishedPrompts =
+    project.currentImageBatch != null || canCreateInitialImageBatch;
+  const unfinishedPromptActionTitle = canRegenerateUnfinishedPrompts
+    ? undefined
+    : "镜头脚本全部通过后才能首次进入画面环节。";
 
   const sceneIds = useMemo(() => {
     if (!currentShotScript) return [];
@@ -131,6 +142,31 @@ export function ShotScriptPhasePanel({
     };
   }, [project.id, project.currentShotScript?.id, detailRequestVersion]);
 
+  async function handleRegenerateUnfinishedPrompts() {
+    if (!project.currentShotScript) {
+      return;
+    }
+
+    if (!canRegenerateUnfinishedPrompts) {
+      return;
+    }
+
+    try {
+      setPromptActionLoading(true);
+      if (project.currentImageBatch) {
+        await apiClient.regenerateUnfinishedImagePrompts(project.id);
+      } else {
+        await apiClient.createImagesGenerateTask(project.id);
+      }
+      setPromptActionError(null);
+      await onProjectRefresh?.();
+    } catch (error) {
+      setPromptActionError(error as Error);
+    } finally {
+      setPromptActionLoading(false);
+    }
+  }
+
   return (
     <section aria-label="镜头脚本工作区">
       <div className={cardClass}>
@@ -141,16 +177,37 @@ export function ShotScriptPhasePanel({
               基于已通过的分镜逐段生成镜头级拍摄脚本，作为后续视频阶段的输入。
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onGenerate}
-            disabled={disableGenerate}
-            className={getButtonClassName()}
-          >
-            {creatingTask ? "启动中..." : "重新生成"}
-          </button>
+          <div className="flex flex-wrap justify-end gap-3">
+            {project.currentShotScript && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleRegenerateUnfinishedPrompts();
+                }}
+                disabled={promptActionLoading || !canRegenerateUnfinishedPrompts}
+                title={unfinishedPromptActionTitle}
+                className={getButtonClassName({ variant: "warning" })}
+              >
+                {promptActionLoading ? "处理中..." : "重新生成所有未完成的Prompt"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={disableGenerate || promptActionLoading}
+              className={getButtonClassName()}
+            >
+              {creatingTask ? "启动中..." : "重新生成"}
+            </button>
+          </div>
         </div>
       </div>
+
+      {promptActionError && (
+        <div className="mb-4">
+          <ErrorState error={promptActionError} />
+        </div>
+      )}
 
       {task && (
         <div className={cardClass}>

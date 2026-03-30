@@ -14,6 +14,13 @@ export const storyboardGenerateQueueName = "storyboard-generate";
 export const shotScriptGenerateQueueName = "shot-script-generate";
 export const shotScriptSegmentGenerateQueueName = "shot-script-segment-generate";
 export const imagesGenerateQueueName = "images-generate";
+export const imageBatchGenerateAllFramesQueueName = "image-batch-generate-all-frames";
+export const imageBatchRegenerateFailedFramesQueueName =
+  "image-batch-regenerate-failed-frames";
+export const imageBatchRegenerateAllPromptsQueueName =
+  "image-batch-regenerate-all-prompts";
+export const imageBatchRegenerateFailedPromptsQueueName =
+  "image-batch-regenerate-failed-prompts";
 export const framePromptGenerateQueueName = "frame-prompt-generate";
 export const frameImageGenerateQueueName = "frame-image-generate";
 export const videosGenerateQueueName = "videos-generate";
@@ -182,6 +189,34 @@ export interface ImagesGenerateTaskInput {
   projectId: string;
   taskType: "images_generate";
   sourceShotScriptId: string;
+}
+
+export interface ImageBatchGenerateAllFramesTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "image_batch_generate_all_frames";
+  batchId: string;
+}
+
+export interface ImageBatchRegenerateFailedFramesTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "image_batch_regenerate_failed_frames";
+  batchId: string;
+}
+
+export interface ImageBatchRegenerateAllPromptsTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "image_batch_regenerate_all_prompts";
+  batchId: string;
+}
+
+export interface ImageBatchRegenerateFailedPromptsTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "image_batch_regenerate_failed_prompts";
+  batchId: string;
 }
 
 export interface FramePromptGenerateTaskInput {

@@ -131,7 +131,7 @@ describe("images api", () => {
     );
   });
 
-  it("creates batch, prompt-regeneration, and image-generation tasks from image routes", async () => {
+  it("creates image batch orchestration, prompt-regeneration, and image-generation tasks from image routes", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
       taskQueue: { enqueue },
@@ -139,6 +139,10 @@ describe("images api", () => {
         generateTaskId: vi
           .fn()
           .mockReturnValueOnce("task_images_generate_1")
+          .mockReturnValueOnce("task_image_batch_generate_all_frames_1")
+          .mockReturnValueOnce("task_image_batch_regenerate_all_prompts_1")
+          .mockReturnValueOnce("task_image_batch_regenerate_failed_prompts_1")
+          .mockReturnValueOnce("task_image_batch_regenerate_failed_frames_1")
           .mockReturnValueOnce("task_frame_prompt_1")
           .mockReturnValueOnce("task_frame_image_1"),
       },
@@ -171,6 +175,62 @@ describe("images api", () => {
       projectStorageDir: project.storageDir,
       projectStatus: "images_in_review",
     });
+
+    const generateAllFramesResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/batch/generate-all-frames`,
+      payload: {},
+    });
+
+    expect(generateAllFramesResponse.statusCode).toBe(201);
+    expect(generateAllFramesResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "task_image_batch_generate_all_frames_1",
+        type: "image_batch_generate_all_frames",
+      }),
+    );
+
+    const regenerateAllPromptsResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/batch/regenerate-all-prompts`,
+      payload: {},
+    });
+
+    expect(regenerateAllPromptsResponse.statusCode).toBe(201);
+    expect(regenerateAllPromptsResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "task_image_batch_regenerate_all_prompts_1",
+        type: "image_batch_regenerate_all_prompts",
+      }),
+    );
+
+    const regenerateFailedPromptsResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/batch/regenerate-failed-prompts`,
+      payload: {},
+    });
+
+    expect(regenerateFailedPromptsResponse.statusCode).toBe(201);
+    expect(regenerateFailedPromptsResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "task_image_batch_regenerate_failed_prompts_1",
+        type: "image_batch_regenerate_failed_prompts",
+      }),
+    );
+
+    const regenerateFailedFramesResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/batch/regenerate-failed-frames`,
+      payload: {},
+    });
+
+    expect(regenerateFailedFramesResponse.statusCode).toBe(201);
+    expect(regenerateFailedFramesResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "task_image_batch_regenerate_failed_frames_1",
+        type: "image_batch_regenerate_failed_frames",
+      }),
+    );
 
     const regeneratePromptResponse = await app.inject({
       method: "POST",
@@ -206,15 +266,62 @@ describe("images api", () => {
       taskType: "images_generate",
     });
     expect(enqueue).toHaveBeenNthCalledWith(2, {
+      taskId: "task_image_batch_generate_all_frames_1",
+      queueName: "image-batch-generate-all-frames",
+      taskType: "image_batch_generate_all_frames",
+    });
+    expect(enqueue).toHaveBeenNthCalledWith(3, {
+      taskId: "task_image_batch_regenerate_all_prompts_1",
+      queueName: "image-batch-regenerate-all-prompts",
+      taskType: "image_batch_regenerate_all_prompts",
+    });
+    expect(enqueue).toHaveBeenNthCalledWith(4, {
+      taskId: "task_image_batch_regenerate_failed_prompts_1",
+      queueName: "image-batch-regenerate-failed-prompts",
+      taskType: "image_batch_regenerate_failed_prompts",
+    });
+    expect(enqueue).toHaveBeenNthCalledWith(5, {
+      taskId: "task_image_batch_regenerate_failed_frames_1",
+      queueName: "image-batch-regenerate-failed-frames",
+      taskType: "image_batch_regenerate_failed_frames",
+    });
+    expect(enqueue).toHaveBeenNthCalledWith(6, {
       taskId: "task_frame_prompt_1",
       queueName: "frame-prompt-generate",
       taskType: "frame_prompt_generate",
     });
-    expect(enqueue).toHaveBeenNthCalledWith(3, {
+    expect(enqueue).toHaveBeenNthCalledWith(7, {
       taskId: "task_frame_image_1",
       queueName: "frame-image-generate",
       taskType: "frame_image_generate",
     });
+  });
+
+  it("rejects image batch creation from an in-review shot script", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_images_generate_in_review_1",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedShotScript({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      approved: false,
+    });
+
+    const generateBatchResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/generate`,
+      payload: {},
+    });
+
+    expect(generateBatchResponse.statusCode).toBe(400);
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it("regenerates the current image batch while images are generating", async () => {
@@ -339,6 +446,47 @@ describe("images api", () => {
     expect(enqueue).toHaveBeenCalledTimes(1);
     expect(enqueue).toHaveBeenCalledWith({
       taskId: "task_failed_prompt_retry_1",
+      queueName: "frame-prompt-generate",
+      taskType: "frame_prompt_generate",
+    });
+  });
+
+  it("creates prompt-regeneration tasks for unfinished prompts without touching completed frames", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: vi.fn().mockReturnValue("task_unfinished_prompt_retry_1"),
+      },
+    });
+    const project = await createProject(app);
+
+    await seedImageBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "images_in_review",
+    });
+    await markImageShotFailedForPrompt(tempDir, {
+      projectId: project.id,
+      frameId: "frame_start_1",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/images/regenerate-unfinished-prompts`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      batchId: "image_batch_1",
+      frameCount: 1,
+      taskIds: ["task_unfinished_prompt_retry_1"],
+    });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_unfinished_prompt_retry_1",
       queueName: "frame-prompt-generate",
       taskType: "frame_prompt_generate",
     });
@@ -470,10 +618,20 @@ async function seedApprovedShotScript(input: {
   projectId: string;
   projectStorageDir: string;
 }) {
+  await seedShotScript({ ...input, approved: true });
+}
+
+async function seedShotScript(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+  approved: boolean;
+}) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
   const projectRepository = createSqliteProjectRepository({ db });
   const shotScriptStorage = createShotScriptStorage({ paths });
+  const approvedAt = input.approved ? "2026-03-24T12:05:00.000Z" : null;
 
   const shotScript: CurrentShotScript = {
     id: "shot_script_1",
@@ -481,7 +639,7 @@ async function seedApprovedShotScript(input: {
     sourceStoryboardId: "storyboard_1",
     sourceTaskId: "task_shot_script_1",
     updatedAt: "2026-03-24T12:00:00.000Z",
-    approvedAt: "2026-03-24T12:05:00.000Z",
+    approvedAt,
     segmentCount: 1,
     shotCount: 1,
     totalDurationSec: 6,
@@ -493,9 +651,9 @@ async function seedApprovedShotScript(input: {
         name: "雨夜开场",
         summary: "林在雨夜市场边停下，抬头望向天际。",
         durationSec: 6,
-        status: "approved",
+        status: input.approved ? "approved" : "in_review",
         lastGeneratedAt: "2026-03-24T12:00:00.000Z",
-        approvedAt: "2026-03-24T12:05:00.000Z",
+        approvedAt,
         shots: [
           {
             id: "shot_1",
@@ -530,7 +688,7 @@ async function seedApprovedShotScript(input: {
   });
   projectRepository.updateStatus({
     projectId: input.projectId,
-    status: "shot_script_approved",
+    status: input.approved ? "shot_script_approved" : "shot_script_in_review",
     updatedAt: shotScript.approvedAt ?? shotScript.updatedAt,
   });
   db.close();

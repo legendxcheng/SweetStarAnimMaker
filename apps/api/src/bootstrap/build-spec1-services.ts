@@ -11,6 +11,10 @@ import {
   createApproveShotScriptSegmentUseCase,
   createApproveStoryboardUseCase,
   createCreateImagesGenerateTaskUseCase,
+  createCreateImageBatchGenerateAllFramesTaskUseCase,
+  createCreateImageBatchRegenerateAllPromptsTaskUseCase,
+  createCreateImageBatchRegenerateFailedFramesTaskUseCase,
+  createCreateImageBatchRegenerateFailedPromptsTaskUseCase,
   createCreateMasterPlotGenerateTaskUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
   createCreateShotScriptGenerateTaskUseCase,
@@ -41,6 +45,7 @@ import {
   createRegenerateAllFramePromptsUseCase,
   createRegenerateFailedFrameImagesUseCase,
   createRegenerateFailedFramePromptsUseCase,
+  createRegenerateUnfinishedFramePromptsUseCase,
   createRegenerateAllVideoPromptsUseCase,
   createRegenerateCharacterSheetsUseCase,
   createRegenerateShotScriptSegmentUseCase,
@@ -243,6 +248,42 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     taskIdGenerator,
     clock,
   });
+  const createImageBatchGenerateAllFramesTask =
+    createCreateImageBatchGenerateAllFramesTaskUseCase({
+      projectRepository: repository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    });
+  const createImageBatchRegenerateFailedFramesTask =
+    createCreateImageBatchRegenerateFailedFramesTaskUseCase({
+      projectRepository: repository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    });
+  const createImageBatchRegenerateAllPromptsTask =
+    createCreateImageBatchRegenerateAllPromptsTaskUseCase({
+      projectRepository: repository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    });
+  const createImageBatchRegenerateFailedPromptsTask =
+    createCreateImageBatchRegenerateFailedPromptsTaskUseCase({
+      projectRepository: repository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    });
   return {
     db,
     async close() {
@@ -548,6 +589,15 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       taskIdGenerator,
       clock,
     }),
+    regenerateUnfinishedFramePrompts: createRegenerateUnfinishedFramePromptsUseCase({
+      projectRepository: repository,
+      shotImageRepository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
     regenerateFailedFrameImages: createRegenerateFailedFrameImagesUseCase({
       projectRepository: repository,
       shotImageRepository,
@@ -596,6 +646,10 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     createStoryboardGenerateTask,
     createShotScriptGenerateTask,
     createImagesGenerateTask,
+    createImageBatchGenerateAllFramesTask,
+    createImageBatchRegenerateFailedFramesTask,
+    createImageBatchRegenerateAllPromptsTask,
+    createImageBatchRegenerateFailedPromptsTask,
     createVideosGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,

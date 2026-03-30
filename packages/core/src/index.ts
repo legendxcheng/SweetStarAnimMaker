@@ -205,6 +205,10 @@ export {
   createTaskRecord,
   frameImageGenerateQueueName,
   framePromptGenerateQueueName,
+  imageBatchGenerateAllFramesQueueName,
+  imageBatchRegenerateAllPromptsQueueName,
+  imageBatchRegenerateFailedFramesQueueName,
+  imageBatchRegenerateFailedPromptsQueueName,
   imagesGenerateQueueName,
   masterPlotGenerateQueueName,
   segmentVideoPromptGenerateQueueName,
@@ -226,6 +230,10 @@ export {
   type CharacterSheetsGenerateTaskInput,
   type FrameImageGenerateTaskInput,
   type FramePromptGenerateTaskInput,
+  type ImageBatchGenerateAllFramesTaskInput,
+  type ImageBatchRegenerateAllPromptsTaskInput,
+  type ImageBatchRegenerateFailedFramesTaskInput,
+  type ImageBatchRegenerateFailedPromptsTaskInput,
   type ImagesGenerateTaskInput,
   type MasterPlotGenerateTaskInput,
   type SegmentVideoGenerateTaskInput,
@@ -572,6 +580,30 @@ export {
   type ListProjectsUseCaseDependencies,
 } from "./use-cases/list-projects";
 export {
+  createCreateImageBatchGenerateAllFramesTaskUseCase,
+  type CreateImageBatchGenerateAllFramesTaskInput,
+  type CreateImageBatchGenerateAllFramesTaskUseCase,
+  type CreateImageBatchGenerateAllFramesTaskUseCaseDependencies,
+} from "./use-cases/create-image-batch-generate-all-frames-task";
+export {
+  createCreateImageBatchRegenerateFailedFramesTaskUseCase,
+  type CreateImageBatchRegenerateFailedFramesTaskInput,
+  type CreateImageBatchRegenerateFailedFramesTaskUseCase,
+  type CreateImageBatchRegenerateFailedFramesTaskUseCaseDependencies,
+} from "./use-cases/create-image-batch-regenerate-failed-frames-task";
+export {
+  createCreateImageBatchRegenerateAllPromptsTaskUseCase,
+  type CreateImageBatchRegenerateAllPromptsTaskInput,
+  type CreateImageBatchRegenerateAllPromptsTaskUseCase,
+  type CreateImageBatchRegenerateAllPromptsTaskUseCaseDependencies,
+} from "./use-cases/create-image-batch-regenerate-all-prompts-task";
+export {
+  createCreateImageBatchRegenerateFailedPromptsTaskUseCase,
+  type CreateImageBatchRegenerateFailedPromptsTaskInput,
+  type CreateImageBatchRegenerateFailedPromptsTaskUseCase,
+  type CreateImageBatchRegenerateFailedPromptsTaskUseCaseDependencies,
+} from "./use-cases/create-image-batch-regenerate-failed-prompts-task";
+export {
   createGenerateFrameImageUseCase,
   type GenerateFrameImageInput,
   type GenerateFrameImageUseCase,
@@ -619,6 +651,30 @@ export {
   type ProcessSegmentVideoGenerateTaskUseCase,
   type ProcessSegmentVideoGenerateTaskUseCaseDependencies,
 } from "./use-cases/process-segment-video-generate-task";
+export {
+  createProcessImageBatchGenerateAllFramesTaskUseCase,
+  type ProcessImageBatchGenerateAllFramesTaskInput,
+  type ProcessImageBatchGenerateAllFramesTaskUseCase,
+  type ProcessImageBatchGenerateAllFramesTaskUseCaseDependencies,
+} from "./use-cases/process-image-batch-generate-all-frames-task";
+export {
+  createProcessImageBatchRegenerateAllPromptsTaskUseCase,
+  type ProcessImageBatchRegenerateAllPromptsTaskInput,
+  type ProcessImageBatchRegenerateAllPromptsTaskUseCase,
+  type ProcessImageBatchRegenerateAllPromptsTaskUseCaseDependencies,
+} from "./use-cases/process-image-batch-regenerate-all-prompts-task";
+export {
+  createProcessImageBatchRegenerateFailedPromptsTaskUseCase,
+  type ProcessImageBatchRegenerateFailedPromptsTaskInput,
+  type ProcessImageBatchRegenerateFailedPromptsTaskUseCase,
+  type ProcessImageBatchRegenerateFailedPromptsTaskUseCaseDependencies,
+} from "./use-cases/process-image-batch-regenerate-failed-prompts-task";
+export {
+  createProcessImageBatchRegenerateFailedFramesTaskUseCase,
+  type ProcessImageBatchRegenerateFailedFramesTaskInput,
+  type ProcessImageBatchRegenerateFailedFramesTaskUseCase,
+  type ProcessImageBatchRegenerateFailedFramesTaskUseCaseDependencies,
+} from "./use-cases/process-image-batch-regenerate-failed-frames-task";
 export {
   createProcessFramePromptGenerateTaskUseCase,
   type ProcessFramePromptGenerateTaskInput,
@@ -735,6 +791,13 @@ export {
   type RegenerateFailedFramePromptsUseCase,
   type RegenerateFailedFramePromptsUseCaseDependencies,
 } from "./use-cases/regenerate-failed-frame-prompts";
+export {
+  createRegenerateUnfinishedFramePromptsUseCase,
+  type RegenerateUnfinishedFramePromptsInput,
+  type RegenerateUnfinishedFramePromptsResult,
+  type RegenerateUnfinishedFramePromptsUseCase,
+  type RegenerateUnfinishedFramePromptsUseCaseDependencies,
+} from "./use-cases/regenerate-unfinished-frame-prompts";
 export {
   createRegenerateFailedFrameImagesUseCase,
   type RegenerateFailedFrameImagesInput,

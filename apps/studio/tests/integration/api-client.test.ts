@@ -985,19 +985,73 @@ describe("API Client", () => {
         ],
       },
       {
-        batchId: "image_batch_1",
-        frameCount: 2,
-        taskIds: ["task_frame_prompt_1", "task_frame_prompt_2"],
+        id: "task_image_batch_generate_all_frames_1",
+        projectId: "proj_1",
+        type: "image_batch_generate_all_frames",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:06.000Z",
+        updatedAt: "2026-03-24T00:00:06.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_image_batch_generate_all_frames_1/input.json",
+          outputPath: "tasks/task_image_batch_generate_all_frames_1/output.json",
+          logPath: "tasks/task_image_batch_generate_all_frames_1/log.txt",
+        },
+      },
+      {
+        id: "task_image_batch_regenerate_all_prompts_1",
+        projectId: "proj_1",
+        type: "image_batch_regenerate_all_prompts",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:07.000Z",
+        updatedAt: "2026-03-24T00:00:07.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_image_batch_regenerate_all_prompts_1/input.json",
+          outputPath: "tasks/task_image_batch_regenerate_all_prompts_1/output.json",
+          logPath: "tasks/task_image_batch_regenerate_all_prompts_1/log.txt",
+        },
+      },
+      {
+        id: "task_image_batch_regenerate_failed_prompts_1",
+        projectId: "proj_1",
+        type: "image_batch_regenerate_failed_prompts",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:08.000Z",
+        updatedAt: "2026-03-24T00:00:08.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_image_batch_regenerate_failed_prompts_1/input.json",
+          outputPath: "tasks/task_image_batch_regenerate_failed_prompts_1/output.json",
+          logPath: "tasks/task_image_batch_regenerate_failed_prompts_1/log.txt",
+        },
+      },
+      {
+        id: "task_image_batch_regenerate_failed_frames_1",
+        projectId: "proj_1",
+        type: "image_batch_regenerate_failed_frames",
+        status: "pending",
+        createdAt: "2026-03-24T00:00:09.000Z",
+        updatedAt: "2026-03-24T00:00:09.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_image_batch_regenerate_failed_frames_1/input.json",
+          outputPath: "tasks/task_image_batch_regenerate_failed_frames_1/output.json",
+          logPath: "tasks/task_image_batch_regenerate_failed_frames_1/log.txt",
+        },
       },
       {
         batchId: "image_batch_1",
         frameCount: 1,
-        taskIds: ["task_failed_frame_prompt_1"],
-      },
-      {
-        batchId: "image_batch_1",
-        frameCount: 1,
-        taskIds: ["task_failed_frame_image_1"],
+        taskIds: ["task_unfinished_frame_prompt_1"],
       },
     ];
     const mockFetch = vi
@@ -1012,7 +1066,9 @@ describe("API Client", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => responses[7] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[8] })
       .mockResolvedValueOnce({ ok: true, json: async () => responses[9] })
-      .mockResolvedValueOnce({ ok: true, json: async () => responses[10] });
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[10] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[11] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[12] });
     global.fetch = mockFetch;
 
     await apiClient.createImagesGenerateTask("proj_1");
@@ -1026,9 +1082,11 @@ describe("API Client", () => {
     await apiClient.generateImageFrame("proj_1", "frame_start_1");
     await apiClient.approveImageFrame("proj_1", "frame_start_1");
     await apiClient.approveAllImageFrames("proj_1");
+    await apiClient.generateAllImageFrames("proj_1");
     await apiClient.regenerateAllImagePrompts("proj_1");
     await apiClient.regenerateFailedImagePrompts("proj_1");
     await apiClient.regenerateFailedImageFrames("proj_1");
+    await apiClient.regenerateUnfinishedImagePrompts("proj_1");
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -1072,17 +1130,27 @@ describe("API Client", () => {
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       9,
-      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-prompts`,
+      `${config.apiBaseUrl}/projects/proj_1/images/batch/generate-all-frames`,
       expect.objectContaining({ method: "POST" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       10,
-      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-failed-prompts`,
+      `${config.apiBaseUrl}/projects/proj_1/images/batch/regenerate-all-prompts`,
       expect.objectContaining({ method: "POST" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       11,
-      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-failed-frames`,
+      `${config.apiBaseUrl}/projects/proj_1/images/batch/regenerate-failed-prompts`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      12,
+      `${config.apiBaseUrl}/projects/proj_1/images/batch/regenerate-failed-frames`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      13,
+      `${config.apiBaseUrl}/projects/proj_1/images/regenerate-unfinished-prompts`,
       expect.objectContaining({ method: "POST" }),
     );
   });

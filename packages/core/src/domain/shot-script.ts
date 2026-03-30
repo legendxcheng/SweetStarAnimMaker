@@ -24,11 +24,21 @@ export function createShotScriptShell(
     id: string;
     sourceTaskId: string;
     updatedAt: string;
+    currentShotScript?: CurrentShotScript | null;
   },
 ): CurrentShotScript {
-  const segments = input.storyboard.scenes.flatMap((scene) =>
-    scene.segments.map((segment) => createPendingShotScriptSegment(scene.id, segment)),
+  const approvedSegments = new Map(
+    (input.currentShotScript?.segments ?? [])
+      .filter((segment) => segment.status === "approved")
+      .map((segment) => [`${segment.sceneId}:${segment.segmentId}`, segment] as const),
   );
+  const segments = input.storyboard.scenes.flatMap((scene) =>
+    scene.segments.map((segment) => {
+      const approvedSegment = approvedSegments.get(`${scene.id}:${segment.id}`);
+      return approvedSegment ?? createPendingShotScriptSegment(scene.id, segment);
+    }),
+  );
+  const summary = summarizeShotScriptSegments(segments);
 
   return {
     id: input.id,
@@ -36,10 +46,12 @@ export function createShotScriptShell(
     sourceStoryboardId: input.sourceStoryboardId,
     sourceTaskId: input.sourceTaskId,
     updatedAt: input.updatedAt,
-    approvedAt: null,
+    approvedAt: segments.length > 0 && segments.every((segment) => segment.status === "approved")
+      ? input.updatedAt
+      : null,
     segmentCount: segments.length,
-    shotCount: 0,
-    totalDurationSec: null,
+    shotCount: summary.shotCount,
+    totalDurationSec: summary.totalDurationSec,
     segments,
   };
 }

@@ -39,6 +39,10 @@ interface NormalizedShotScriptSegmentPayload {
   segment: GenerateShotScriptSegmentResult["segment"];
 }
 
+type GeminiShotScriptProviderError = Error & {
+  rawResponse?: string;
+};
+
 export function createGeminiShotScriptProvider(
   options: CreateGeminiShotScriptProviderOptions,
 ): ShotScriptProvider {
@@ -72,41 +76,45 @@ export function createGeminiShotScriptProvider(
           promptText,
           responseJsonSchema: shotScriptSegmentResponseJsonSchema,
         });
-        const normalizedPayload = normalizeShotScriptSegmentPayload(
-          parseShotScriptPayload(rawText),
-          input.variables,
-        );
-        const violations = validator.validateShots(normalizedPayload.segment.shots);
-        const unsafeIssues = findUnsafeFrameDependencyIssues(normalizedPayload);
+        try {
+          const normalizedPayload = normalizeShotScriptSegmentPayload(
+            parseShotScriptPayload(rawText),
+            input.variables,
+          );
+          const violations = validator.validateShots(normalizedPayload.segment.shots);
+          const unsafeIssues = findUnsafeFrameDependencyIssues(normalizedPayload);
 
-        if (violations.length === 0 && unsafeIssues.length === 0) {
-          return {
-            rawResponse: rawText,
-            segment: normalizedPayload.segment,
-          };
-        }
-
-        lastViolationsMessage = violations.map((violation) => violation.message).join("\n");
-        const unsafeIssuesMessage = unsafeIssues.join("\n");
-
-        if (attempt === maxAttempts) {
-          if (violations.length === 0 && unsafeIssues.length > 0) {
+          if (violations.length === 0 && unsafeIssues.length === 0) {
             return {
               rawResponse: rawText,
-              segment: downgradeUnsafeFrameDependencies(normalizedPayload.segment),
+              segment: normalizedPayload.segment,
             };
           }
 
-          throw new Error(
-            `Gemini shot script provider failed canonical character validation after ${attempt} attempts: ${lastViolationsMessage}`,
-          );
-        }
+          lastViolationsMessage = violations.map((violation) => violation.message).join("\n");
+          const unsafeIssuesMessage = unsafeIssues.join("\n");
 
-        promptText = buildCorrectionPrompt(
-          input.promptText,
-          lastViolationsMessage,
-          unsafeIssuesMessage,
-        );
+          if (attempt === maxAttempts) {
+            if (violations.length === 0 && unsafeIssues.length > 0) {
+              return {
+                rawResponse: rawText,
+                segment: downgradeUnsafeFrameDependencies(normalizedPayload.segment),
+              };
+            }
+
+            throw new Error(
+              `Gemini shot script provider failed canonical character validation after ${attempt} attempts: ${lastViolationsMessage}`,
+            );
+          }
+
+          promptText = buildCorrectionPrompt(
+            input.promptText,
+            lastViolationsMessage,
+            unsafeIssuesMessage,
+          );
+        } catch (error) {
+          throw attachRawResponse(error, rawText);
+        }
       }
 
       throw new Error(
@@ -114,6 +122,19 @@ export function createGeminiShotScriptProvider(
       );
     },
   };
+}
+
+function attachRawResponse(error: unknown, rawResponse: string): GeminiShotScriptProviderError {
+  if (error instanceof Error) {
+    const providerError = error as GeminiShotScriptProviderError;
+    providerError.rawResponse = rawResponse;
+    return providerError;
+  }
+
+  return Object.assign(new Error("Gemini shot script provider failed"), {
+    cause: error,
+    rawResponse,
+  });
 }
 
 async function requestGeminiJson(input: {
@@ -209,7 +230,10 @@ const shotScriptSegmentResponseJsonSchema = {
           id: { type: "string" },
           fromAnchorId: { type: "string" },
           toAnchorId: { type: "string" },
-          strategy: { type: "string" },
+          strategy: {
+            type: "string",
+            enum: ["start_frame_only", "start_and_end_frame"],
+          },
           transitionSmooth: { type: "boolean" },
           reason: { type: "string" },
         },

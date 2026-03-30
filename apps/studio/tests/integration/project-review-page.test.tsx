@@ -144,6 +144,23 @@ const refreshedShotScriptWorkspace = {
   },
 };
 
+const runningShotScriptTask = {
+  id: "task-shot-script-running",
+  projectId: "proj-1",
+  type: "shot_script_generate" as const,
+  status: "pending" as const,
+  createdAt: "2024-01-01T00:00:03Z",
+  updatedAt: "2024-01-01T00:00:03Z",
+  startedAt: null,
+  finishedAt: null,
+  errorMessage: null,
+  files: {
+    inputPath: "tasks/task-shot-script-running/input.json",
+    outputPath: "tasks/task-shot-script-running/output.json",
+    logPath: "tasks/task-shot-script-running/log.txt",
+  },
+};
+
 const multiSceneStoryboardWorkspace = {
   ...workspace,
   currentStoryboard: {
@@ -297,6 +314,7 @@ function renderShotScriptPage() {
           path="/projects/:projectId/shot-script/review"
           element={<ShotScriptReviewPage />}
         />
+        <Route path="/projects/:projectId" element={<div>Project Detail</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -373,12 +391,17 @@ describe("Project Review Page", () => {
       expect(screen.getByRole("heading", { name: "镜头脚本审核" })).toBeInTheDocument();
     });
 
+    await waitFor(() => {
+      expect(screen.getByLabelText("段落 1 标题")).toHaveValue("雨夜码头");
+    });
     expect(screen.getByText("Episode 1 Shot Script")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
     expect(screen.getByDisplayValue("S01-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("暴雨中的码头反着冷蓝色灯牌。")).toBeInTheDocument();
     expect(screen.getByLabelText("镜头 1 画面依赖")).toHaveValue("start_frame_only");
     expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "重新生成未通过段落" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps shot-script scene navigation as a non-shrinking single-row scroller", async () => {
@@ -532,7 +555,7 @@ describe("Project Review Page", () => {
     renderShotScriptPage();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
+      expect(screen.getByLabelText("段落 1 标题")).toHaveValue("雨夜码头");
     });
 
     fireEvent.change(screen.getByLabelText("段落 1 标题"), {
@@ -580,7 +603,7 @@ describe("Project Review Page", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("雨夜码头加强版")).toBeInTheDocument();
+      expect(screen.getByLabelText("段落 1 标题")).toHaveValue("雨夜码头加强版");
     });
   });
 
@@ -592,7 +615,7 @@ describe("Project Review Page", () => {
     renderShotScriptPage();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("雨夜码头")).toBeInTheDocument();
+      expect(screen.getByLabelText("段落 1 标题")).toHaveValue("雨夜码头");
     });
 
     const regenerateButton = screen.getByRole("button", { name: "重新生成" });
@@ -603,5 +626,50 @@ describe("Project Review Page", () => {
     });
 
     expect(screen.getByRole("button", { name: "重新生成" })).toBeDisabled();
+  });
+
+  it("starts batch shot-script regenerate for unapproved segments from the review page", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
+      shotScriptWorkspace,
+    );
+    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue(
+      runningShotScriptTask,
+    );
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderShotScriptPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "镜头脚本审核" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成未通过段落" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+    expect(screen.getByText("Project Detail")).toBeInTheDocument();
+  });
+
+  it("uses full shot-script reset for the top regenerate action on the review page", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
+      shotScriptWorkspace,
+    );
+    vi.spyOn(apiModule.apiClient, "regenerateShotScript").mockResolvedValue(
+      runningShotScriptTask,
+    );
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderShotScriptPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "镜头脚本审核" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateShotScript).toHaveBeenCalledWith("proj-1");
+    });
   });
 });

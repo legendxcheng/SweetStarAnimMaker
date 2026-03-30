@@ -5,7 +5,7 @@ import {
   frameImageGenerateQueueName,
   type FrameImageGenerateTaskInput,
 } from "../domain/task";
-import { ProjectNotFoundError } from "../errors/project-errors";
+import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -14,6 +14,7 @@ import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
 import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
+import { resolveShotFrameRecord } from "./shot-reference-frame-helpers";
 import { toTaskDetailDto } from "./task-detail-dto";
 
 export interface GenerateFrameImageInput {
@@ -50,6 +51,20 @@ export function createGenerateFrameImageUseCase(
 
       if (!frame || frame.projectId !== project.id) {
         throw new ShotImageNotFoundError(input.frameId);
+      }
+
+      if (frame.frameType === "end_frame") {
+        const resolvedShotFrame = await resolveShotFrameRecord({
+          repository: dependencies.shotImageRepository,
+          batchId: frame.batchId,
+          frameId: frame.id,
+        });
+
+        if (resolvedShotFrame?.shot && !resolvedShotFrame.shot.startFrame.imageAssetPath) {
+          throw new ProjectValidationError(
+            `Cannot generate end frame before start frame image exists: ${frame.id}`,
+          );
+        }
       }
 
       const timestamp = dependencies.clock.now();

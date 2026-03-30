@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 
 import {
   createProcessFrameImageGenerateTaskUseCase,
+  createProcessImageBatchGenerateAllFramesTaskUseCase,
+  createProcessImageBatchRegenerateAllPromptsTaskUseCase,
+  createProcessImageBatchRegenerateFailedFramesTaskUseCase,
+  createProcessImageBatchRegenerateFailedPromptsTaskUseCase,
   createProcessFramePromptGenerateTaskUseCase,
   createProcessImagesGenerateTaskUseCase,
   createProcessMasterPlotGenerateTaskUseCase,
@@ -28,6 +32,10 @@ import {
   type ProcessCharacterSheetsGenerateTaskUseCase,
   type ProcessFrameImageGenerateTaskUseCase,
   type ProcessFramePromptGenerateTaskUseCase,
+  type ProcessImageBatchGenerateAllFramesTaskUseCase,
+  type ProcessImageBatchRegenerateAllPromptsTaskUseCase,
+  type ProcessImageBatchRegenerateFailedFramesTaskUseCase,
+  type ProcessImageBatchRegenerateFailedPromptsTaskUseCase,
   type ProcessImagesGenerateTaskUseCase,
   type ProcessSegmentVideoPromptGenerateTaskUseCase,
   type ProcessSegmentVideoGenerateTaskUseCase,
@@ -49,6 +57,10 @@ import {
   type TaskIdGenerator,
   type TaskQueue,
   type TaskRepository,
+  createGenerateFrameImageUseCase,
+  createRegenerateAllFramePromptsUseCase,
+  createRegenerateFailedFrameImagesUseCase,
+  createRegenerateFailedFramePromptsUseCase,
 } from "@sweet-star/core";
 import {
   createBullMqTaskQueue,
@@ -121,6 +133,10 @@ export interface Spec2WorkerServices {
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
   processImagesGenerateTask: ProcessImagesGenerateTaskUseCase;
+  processImageBatchGenerateAllFramesTask: ProcessImageBatchGenerateAllFramesTaskUseCase;
+  processImageBatchRegenerateFailedFramesTask: ProcessImageBatchRegenerateFailedFramesTaskUseCase;
+  processImageBatchRegenerateAllPromptsTask: ProcessImageBatchRegenerateAllPromptsTaskUseCase;
+  processImageBatchRegenerateFailedPromptsTask: ProcessImageBatchRegenerateFailedPromptsTaskUseCase;
   processVideosGenerateTask: ProcessVideosGenerateTaskUseCase;
   processSegmentVideoPromptGenerateTask: ProcessSegmentVideoPromptGenerateTaskUseCase;
   processSegmentVideoGenerateTask: ProcessSegmentVideoGenerateTaskUseCase;
@@ -425,6 +441,87 @@ export function buildSpec2WorkerServices(
         now: () => new Date().toISOString(),
       },
     }),
+    processImageBatchGenerateAllFramesTask:
+      createProcessImageBatchGenerateAllFramesTaskUseCase({
+        taskRepository,
+        projectRepository,
+        taskFileStorage,
+        shotImageRepository,
+        generateFrameImage: createGenerateFrameImageUseCase({
+          projectRepository,
+          shotImageRepository,
+          taskRepository,
+          taskFileStorage,
+          taskQueue,
+          taskIdGenerator,
+          clock: options.clock ?? {
+            now: () => new Date().toISOString(),
+          },
+        }),
+        clock: options.clock ?? {
+          now: () => new Date().toISOString(),
+        },
+      }),
+    processImageBatchRegenerateFailedFramesTask:
+      createProcessImageBatchRegenerateFailedFramesTaskUseCase({
+        taskRepository,
+        projectRepository,
+        taskFileStorage,
+        regenerateFailedFrameImages: createRegenerateFailedFrameImagesUseCase({
+          projectRepository,
+          shotImageRepository,
+          taskRepository,
+          taskFileStorage,
+          taskQueue,
+          taskIdGenerator,
+          clock: options.clock ?? {
+            now: () => new Date().toISOString(),
+          },
+        }),
+        clock: options.clock ?? {
+          now: () => new Date().toISOString(),
+        },
+      }),
+    processImageBatchRegenerateAllPromptsTask:
+      createProcessImageBatchRegenerateAllPromptsTaskUseCase({
+        taskRepository,
+        projectRepository,
+        taskFileStorage,
+        regenerateAllFramePrompts: createRegenerateAllFramePromptsUseCase({
+          projectRepository,
+          shotImageRepository,
+          taskRepository,
+          taskFileStorage,
+          taskQueue,
+          taskIdGenerator,
+          clock: options.clock ?? {
+            now: () => new Date().toISOString(),
+          },
+        }),
+        clock: options.clock ?? {
+          now: () => new Date().toISOString(),
+        },
+      }),
+    processImageBatchRegenerateFailedPromptsTask:
+      createProcessImageBatchRegenerateFailedPromptsTaskUseCase({
+        taskRepository,
+        projectRepository,
+        taskFileStorage,
+        regenerateFailedFramePrompts: createRegenerateFailedFramePromptsUseCase({
+          projectRepository,
+          shotImageRepository,
+          taskRepository,
+          taskFileStorage,
+          taskQueue,
+          taskIdGenerator,
+          clock: options.clock ?? {
+            now: () => new Date().toISOString(),
+          },
+        }),
+        clock: options.clock ?? {
+          now: () => new Date().toISOString(),
+        },
+      }),
     processVideosGenerateTask: createProcessVideosGenerateTaskUseCase({
       taskRepository,
       projectRepository,

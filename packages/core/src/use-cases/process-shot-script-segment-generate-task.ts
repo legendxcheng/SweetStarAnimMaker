@@ -29,6 +29,8 @@ export interface ProcessShotScriptSegmentGenerateTaskUseCaseDependencies {
   clock: Clock;
 }
 
+const shotScriptRecoveryQueues = new Map<string, Promise<void>>();
+
 export function createProcessShotScriptSegmentGenerateTaskUseCase(
   dependencies: ProcessShotScriptSegmentGenerateTaskUseCaseDependencies,
 ): ProcessShotScriptSegmentGenerateTaskUseCase {
@@ -106,47 +108,68 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           rawResponse: providerResult.rawResponse,
         });
 
-        const existingSegment = currentShotScript.segments.find((segment) =>
-          matchesShotScriptSegmentSelector(segment, {
-            sceneId: taskInput.sceneId,
-            segmentId: taskInput.segmentId,
-          }),
-        );
+        const recovered = await withSerializedShotScriptRecovery(project.storageDir, async () => {
+          if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+            return false;
+          }
 
-        if (!existingSegment) {
-          throw new Error(`Shot script segment not found: ${taskInput.segmentId}`);
+          const latestShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
+            storageDir: project.storageDir,
+          });
+
+          if (!latestShotScript) {
+            throw new CurrentShotScriptNotFoundError(project.id);
+          }
+
+          const existingSegment = latestShotScript.segments.find((segment) =>
+            matchesShotScriptSegmentSelector(segment, {
+              sceneId: taskInput.sceneId,
+              segmentId: taskInput.segmentId,
+            }),
+          );
+
+          if (!existingSegment) {
+            throw new Error(`Shot script segment not found: ${taskInput.segmentId}`);
+          }
+
+          const updatedSegment = toInReviewShotScriptSegment({
+            baseSegment: existingSegment,
+            shots: providerResult.segment.shots,
+            updatedAt: finishedAt,
+            name: providerResult.segment.name,
+            summary: providerResult.segment.summary,
+          });
+          const updatedShotScript = mergeShotScriptSegment(
+            latestShotScript,
+            updatedSegment,
+            finishedAt,
+          );
+
+          await dependencies.shotScriptStorage.writeCurrentShotScript({
+            storageDir: project.storageDir,
+            shotScript: updatedShotScript,
+          });
+          await dependencies.projectRepository.updateStatus({
+            projectId: project.id,
+            status: "shot_script_in_review",
+            updatedAt: finishedAt,
+          });
+          await dependencies.taskFileStorage.writeTaskOutput({
+            task,
+            output: {
+              shotScriptId: updatedShotScript.id,
+              segmentId: updatedSegment.segmentId,
+              shotCount: updatedSegment.shots.length,
+            },
+          });
+
+          return true;
+        });
+
+        if (!recovered) {
+          return;
         }
 
-        const updatedSegment = toInReviewShotScriptSegment({
-          baseSegment: existingSegment,
-          shots: providerResult.segment.shots,
-          updatedAt: finishedAt,
-          name: providerResult.segment.name,
-          summary: providerResult.segment.summary,
-        });
-        const updatedShotScript = mergeShotScriptSegment(
-          currentShotScript,
-          updatedSegment,
-          finishedAt,
-        );
-
-        await dependencies.shotScriptStorage.writeCurrentShotScript({
-          storageDir: project.storageDir,
-          shotScript: updatedShotScript,
-        });
-        await dependencies.projectRepository.updateStatus({
-          projectId: project.id,
-          status: "shot_script_in_review",
-          updatedAt: finishedAt,
-        });
-        await dependencies.taskFileStorage.writeTaskOutput({
-          task,
-          output: {
-            shotScriptId: updatedShotScript.id,
-            segmentId: updatedSegment.segmentId,
-            shotCount: updatedSegment.shots.length,
-          },
-        });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
           message: "shot script segment generation succeeded",
@@ -164,6 +187,13 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
         const finishedAt = dependencies.clock.now();
         const errorMessage = error instanceof Error ? error.message : "Task failed";
 
+        if (hasRawResponse(error)) {
+          await dependencies.shotScriptStorage.writeRawResponse({
+            taskStorageDir: task.storageDir,
+            rawResponse: error.rawResponse,
+          });
+        }
+
         await dependencies.taskFileStorage.appendTaskLog({
           task,
           message: `shot script segment generation failed: ${errorMessage}`,
@@ -178,6 +208,37 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
       }
     },
   };
+}
+
+async function withSerializedShotScriptRecovery<T>(storageDir: string, action: () => Promise<T>) {
+  const previous = shotScriptRecoveryQueues.get(storageDir) ?? Promise.resolve();
+  let releaseCurrent!: () => void;
+  const current = new Promise<void>((resolve) => {
+    releaseCurrent = resolve;
+  });
+  const next = previous.finally(() => current);
+
+  shotScriptRecoveryQueues.set(storageDir, next);
+  await previous;
+
+  try {
+    return await action();
+  } finally {
+    releaseCurrent();
+
+    if (shotScriptRecoveryQueues.get(storageDir) === next) {
+      shotScriptRecoveryQueues.delete(storageDir);
+    }
+  }
+}
+
+function hasRawResponse(error: unknown): error is { rawResponse: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "rawResponse" in error &&
+    typeof (error as { rawResponse?: unknown }).rawResponse === "string"
+  );
 }
 
 function assertShotScriptSegmentTaskInput(input: {

@@ -36,6 +36,55 @@ export function registerImageRoutes(
     return reply.status(201).send(task);
   });
 
+  app.post("/projects/:projectId/images/batch/generate-all-frames", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    generateImageFrameRequestSchema.parse(request.body ?? {});
+    const task = await services.createImageBatchGenerateAllFramesTask.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
+  app.post(
+    "/projects/:projectId/images/batch/regenerate-all-prompts",
+    async (request, reply) => {
+      const params = request.params as { projectId: string };
+      regenerateImageFramePromptRequestSchema.parse(request.body ?? {});
+      const task = await services.createImageBatchRegenerateAllPromptsTask.execute({
+        projectId: params.projectId,
+      });
+
+      return reply.status(201).send(task);
+    },
+  );
+
+  app.post(
+    "/projects/:projectId/images/batch/regenerate-failed-prompts",
+    async (request, reply) => {
+      const params = request.params as { projectId: string };
+      regenerateImageFramePromptRequestSchema.parse(request.body ?? {});
+      const task = await services.createImageBatchRegenerateFailedPromptsTask.execute({
+        projectId: params.projectId,
+      });
+
+      return reply.status(201).send(task);
+    },
+  );
+
+  app.post(
+    "/projects/:projectId/images/batch/regenerate-failed-frames",
+    async (request, reply) => {
+      const params = request.params as { projectId: string };
+      generateImageFrameRequestSchema.parse(request.body ?? {});
+      const task = await services.createImageBatchRegenerateFailedFramesTask.execute({
+        projectId: params.projectId,
+      });
+
+      return reply.status(201).send(task);
+    },
+  );
+
   app.post("/projects/:projectId/images/regenerate-prompts", async (request, reply) => {
     const params = request.params as { projectId: string };
     regenerateImageFramePromptRequestSchema.parse(request.body ?? {});
@@ -50,6 +99,16 @@ export function registerImageRoutes(
     const params = request.params as { projectId: string };
     regenerateImageFramePromptRequestSchema.parse(request.body ?? {});
     const response = await services.regenerateFailedFramePrompts.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(response);
+  });
+
+  app.post("/projects/:projectId/images/regenerate-unfinished-prompts", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    regenerateImageFramePromptRequestSchema.parse(request.body ?? {});
+    const response = await services.regenerateUnfinishedFramePrompts.execute({
       projectId: params.projectId,
     });
 

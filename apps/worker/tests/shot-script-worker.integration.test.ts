@@ -1,4 +1,7 @@
-import { shotScriptGenerateQueueName } from "@sweet-star/core";
+import {
+  shotScriptGenerateQueueName,
+  shotScriptSegmentGenerateQueueName,
+} from "@sweet-star/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { buildSpec2WorkerServices } from "../src/bootstrap/build-spec2-worker-services";
@@ -21,6 +24,9 @@ describe("shot script worker integration", () => {
     const processShotScriptGenerateTask = {
       execute: vi.fn(),
     };
+    const processShotScriptSegmentGenerateTask = {
+      execute: vi.fn(),
+    };
     const close = vi.fn();
     const workerFactory = vi.fn(({ processor }) => ({
       processor,
@@ -34,6 +40,7 @@ describe("shot script worker integration", () => {
         processCharacterSheetsGenerateTask,
         processCharacterSheetGenerateTask,
         processShotScriptGenerateTask,
+        processShotScriptSegmentGenerateTask,
       },
       workerFactory,
     });
@@ -41,7 +48,14 @@ describe("shot script worker integration", () => {
     const shotScriptWorkerIndex = workerFactory.mock.calls.findIndex(
       ([input]) => input.queueName === shotScriptGenerateQueueName,
     );
+    const shotScriptSegmentWorkerIndex = workerFactory.mock.calls.findIndex(
+      ([input]) => input.queueName === shotScriptSegmentGenerateQueueName,
+    );
     const shotScriptWorker = workerFactory.mock.results[shotScriptWorkerIndex]?.value as {
+      processor(job: { data: { taskId: string } }): Promise<void>;
+    };
+    const shotScriptSegmentWorker = workerFactory.mock.results[shotScriptSegmentWorkerIndex]
+      ?.value as {
       processor(job: { data: { taskId: string } }): Promise<void>;
     };
 
@@ -50,18 +64,32 @@ describe("shot script worker integration", () => {
         taskId: "task_20260322_shot_script",
       },
     });
+    await shotScriptSegmentWorker.processor({
+      data: {
+        taskId: "task_20260322_shot_script_segment",
+      },
+    });
 
     expect(workerFactory).toHaveBeenCalledWith(
       expect.objectContaining({ queueName: shotScriptGenerateQueueName }),
     );
+    expect(workerFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queueName: shotScriptSegmentGenerateQueueName,
+        concurrency: 20,
+      }),
+    );
     expect(processShotScriptGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_20260322_shot_script",
+    });
+    expect(processShotScriptSegmentGenerateTask.execute).toHaveBeenCalledWith({
+      taskId: "task_20260322_shot_script_segment",
     });
 
     await worker.close();
 
-    expect(workerFactory).toHaveBeenCalledTimes(5);
-    expect(close).toHaveBeenCalledTimes(5);
+    expect(workerFactory).toHaveBeenCalledTimes(6);
+    expect(close).toHaveBeenCalledTimes(6);
   });
 
   it("forwards shot script task input into the configured shot script provider", async () => {

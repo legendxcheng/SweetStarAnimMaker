@@ -71,13 +71,26 @@ export function createProcessShotScriptGenerateTaskUseCase(
             throw new Error("Segment-first shot script processing requires taskQueue and taskIdGenerator");
           }
 
+          const existingShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
+            storageDir: project.storageDir,
+          });
+          const reusableShotScript =
+            existingShotScript?.sourceStoryboardId === taskInput.sourceStoryboardId
+              ? existingShotScript
+              : null;
           const shotScript = createShotScriptShell({
             id: `shot_script_${task.id}`,
             sourceStoryboardId: taskInput.sourceStoryboardId,
             sourceTaskId: task.id,
             storyboard: taskInput.storyboard,
             updatedAt: startedAt,
+            currentShotScript: reusableShotScript,
           });
+          const preservedApprovedSegments = new Set(
+            shotScript.segments
+              .filter((segment) => segment.status === "approved")
+              .map((segment) => `${segment.sceneId}:${segment.segmentId}`),
+          );
 
           if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
             return;
@@ -94,6 +107,10 @@ export function createProcessShotScriptGenerateTaskUseCase(
 
           for (const scene of taskInput.storyboard.scenes) {
             for (const segment of scene.segments) {
+              if (preservedApprovedSegments.has(`${scene.id}:${segment.id}`)) {
+                continue;
+              }
+
               if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
                 return;
               }

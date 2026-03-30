@@ -63,6 +63,7 @@ export function ShotScriptReviewPage() {
   const [submittingActionId, setSubmittingActionId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
   const [regeneratingAll, setRegeneratingAll] = useState(false);
+  const [regeneratingUnapproved, setRegeneratingUnapproved] = useState(false);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
 
   const loadWorkspace = async () => {
@@ -109,6 +110,11 @@ export function ShotScriptReviewPage() {
       ).length,
     [unapprovedSegments],
   );
+  const regenerateUnapprovedDisabled =
+    regeneratingUnapproved ||
+    regeneratingAll ||
+    approvingAll ||
+    hasDirtySegments;
 
   const sceneIds = useMemo(() => {
     const seen = new Set<string>();
@@ -278,12 +284,36 @@ export function ShotScriptReviewPage() {
 
     try {
       setRegeneratingAll(true);
-      await apiClient.createShotScriptGenerateTask(projectId);
+      await apiClient.regenerateShotScript(projectId);
       navigate(`/projects/${projectId}`);
     } catch (err) {
       alert(`重新生成失败：${(err as Error).message}`);
     } finally {
       setRegeneratingAll(false);
+    }
+  };
+
+  const handleRegenerateUnapprovedSegments = async () => {
+    if (!projectId) {
+      return;
+    }
+
+    if (unapprovedSegments.length === 0) {
+      return;
+    }
+
+    if (!confirm("确认要重新生成所有未通过段落吗？已通过段落会保持不变。")) {
+      return;
+    }
+
+    try {
+      setRegeneratingUnapproved(true);
+      await apiClient.createShotScriptGenerateTask(projectId);
+      navigate(`/projects/${projectId}`);
+    } catch (err) {
+      alert(`重新生成失败：${(err as Error).message}`);
+    } finally {
+      setRegeneratingUnapproved(false);
     }
   };
 
@@ -313,9 +343,26 @@ export function ShotScriptReviewPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
+                    void handleRegenerateUnapprovedSegments();
+                  }}
+                  disabled={regenerateUnapprovedDisabled}
+                  className={getButtonClassName({
+                    variant: "warning",
+                    size: "compact",
+                  })}
+                >
+                  {regeneratingUnapproved ? "处理中..." : "重新生成未通过段落"}
+                </button>
+                <button
+                  onClick={() => {
                     void handleRegenerateAll();
                   }}
-                  disabled={regeneratingAll || approvingAll || hasDirtySegments}
+                  disabled={
+                    regeneratingAll ||
+                    regeneratingUnapproved ||
+                    approvingAll ||
+                    hasDirtySegments
+                  }
                   className={getButtonClassName({
                     variant: "warning",
                     size: "compact",
@@ -328,7 +375,12 @@ export function ShotScriptReviewPage() {
                     onClick={() => {
                       void handleApproveAll();
                     }}
-                    disabled={approvingAll || regeneratingAll || hasDirtySegments}
+                    disabled={
+                      approvingAll ||
+                      regeneratingAll ||
+                      regeneratingUnapproved ||
+                      hasDirtySegments
+                    }
                     className={getButtonClassName({
                       variant: "success",
                       size: "compact",

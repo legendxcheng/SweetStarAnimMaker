@@ -1,6 +1,10 @@
 import {
   frameImageGenerateQueueName,
   framePromptGenerateQueueName,
+  imageBatchGenerateAllFramesQueueName,
+  imageBatchRegenerateAllPromptsQueueName,
+  imageBatchRegenerateFailedFramesQueueName,
+  imageBatchRegenerateFailedPromptsQueueName,
   imagesGenerateQueueName,
 } from "@sweet-star/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +27,10 @@ describe("image worker integration", () => {
       processShotScriptGenerateTask: { execute: vi.fn() },
       processShotScriptSegmentGenerateTask: { execute: vi.fn() },
       processImagesGenerateTask: { execute: vi.fn() },
+      processImageBatchGenerateAllFramesTask: { execute: vi.fn() },
+      processImageBatchRegenerateFailedFramesTask: { execute: vi.fn() },
+      processImageBatchRegenerateAllPromptsTask: { execute: vi.fn() },
+      processImageBatchRegenerateFailedPromptsTask: { execute: vi.fn() },
       processFramePromptGenerateTask: { execute: vi.fn() },
       processFrameImageGenerateTask: { execute: vi.fn() },
     };
@@ -41,6 +49,39 @@ describe("image worker integration", () => {
     await imageBatchWorker.processor({ data: { taskId: "task_images_generate_1" } });
     expect(services.processImagesGenerateTask.execute).toHaveBeenCalledWith({
       taskId: "task_images_generate_1",
+    });
+
+    const generateAllFramesWorker = getWorker(workerFactory, imageBatchGenerateAllFramesQueueName);
+    await generateAllFramesWorker.processor({ data: { taskId: "task_image_batch_generate_all_frames_1" } });
+    expect(services.processImageBatchGenerateAllFramesTask.execute).toHaveBeenCalledWith({
+      taskId: "task_image_batch_generate_all_frames_1",
+    });
+
+    const failedFramesWorker = getWorker(workerFactory, imageBatchRegenerateFailedFramesQueueName);
+    await failedFramesWorker.processor({
+      data: { taskId: "task_image_batch_regenerate_failed_frames_1" },
+    });
+    expect(services.processImageBatchRegenerateFailedFramesTask.execute).toHaveBeenCalledWith({
+      taskId: "task_image_batch_regenerate_failed_frames_1",
+    });
+
+    const allPromptsWorker = getWorker(workerFactory, imageBatchRegenerateAllPromptsQueueName);
+    await allPromptsWorker.processor({
+      data: { taskId: "task_image_batch_regenerate_all_prompts_1" },
+    });
+    expect(services.processImageBatchRegenerateAllPromptsTask.execute).toHaveBeenCalledWith({
+      taskId: "task_image_batch_regenerate_all_prompts_1",
+    });
+
+    const failedPromptsWorker = getWorker(
+      workerFactory,
+      imageBatchRegenerateFailedPromptsQueueName,
+    );
+    await failedPromptsWorker.processor({
+      data: { taskId: "task_image_batch_regenerate_failed_prompts_1" },
+    });
+    expect(services.processImageBatchRegenerateFailedPromptsTask.execute).toHaveBeenCalledWith({
+      taskId: "task_image_batch_regenerate_failed_prompts_1",
     });
 
     const framePromptWorker = getWorker(workerFactory, framePromptGenerateQueueName);
@@ -69,8 +110,8 @@ describe("image worker integration", () => {
 
     await worker.close();
 
-    expect(workerFactory).toHaveBeenCalledTimes(9);
-    expect(close).toHaveBeenCalledTimes(9);
+    expect(workerFactory).toHaveBeenCalledTimes(13);
+    expect(close).toHaveBeenCalledTimes(13);
   });
 
   it("forwards frame prompt and frame image task input into the configured providers", async () => {
@@ -694,6 +735,5 @@ function getWorker(
     processor(job: { data: { taskId: string } }): Promise<void>;
   };
 }
-
 
 

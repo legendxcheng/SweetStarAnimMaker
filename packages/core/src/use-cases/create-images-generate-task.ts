@@ -16,6 +16,8 @@ import type { TaskQueue } from "../ports/task-queue";
 import type { TaskRepository } from "../ports/task-repository";
 import { toTaskDetailDto } from "./task-detail-dto";
 
+const imageGenerationAllowedStatuses = new Set(["shot_script_approved"]);
+
 export interface CreateImagesGenerateTaskInput {
   projectId: string;
 }
@@ -45,15 +47,17 @@ export function createCreateImagesGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      if (project.status !== "shot_script_approved") {
-        throw new ProjectValidationError("Image generation requires shot_script_approved");
+      if (!imageGenerationAllowedStatuses.has(project.status)) {
+        throw new ProjectValidationError(
+          "Image generation requires shot_script_approved",
+        );
       }
 
       const currentShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
         storageDir: project.storageDir,
       });
 
-      if (!currentShotScript || !currentShotScript.approvedAt) {
+      if (!currentShotScript) {
         throw new CurrentShotScriptNotFoundError(project.id);
       }
 

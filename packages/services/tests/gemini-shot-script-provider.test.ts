@@ -410,6 +410,12 @@ describe("gemini shot script provider", () => {
 
     expect(request.generationConfig.responseJsonSchema.properties.anchors).toBeDefined();
     expect(request.generationConfig.responseJsonSchema.properties.segments).toBeDefined();
+    expect(
+      request.generationConfig.responseJsonSchema.properties.segments.items.properties.strategy,
+    ).toEqual({
+      type: "string",
+      enum: ["start_frame_only", "start_and_end_frame"],
+    });
     expect(result.segment.shots).toHaveLength(1);
     expect(result.segment.shots[0]).not.toHaveProperty("anchors");
     expect(result.segment.shots[0]?.frameDependency).toBe("start_frame_only");
@@ -1011,5 +1017,93 @@ describe("gemini shot script provider", () => {
       }),
     ).rejects.toThrow("Gemini shot script provider failed canonical character validation after 3 attempts");
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("attaches raw response text when segment planning metadata is invalid", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "雨市压境",
+                      summary: "林夏在积水集市入口发现退路已被封住。",
+                      anchors: [
+                        {
+                          id: "anchor_1",
+                          label: "林夏站在积水入口。",
+                          isRequired: true,
+                        },
+                      ],
+                      segments: [
+                        {
+                          id: "segment_plan_1",
+                          fromAnchorId: "anchor_1",
+                          toAnchorId: "anchor_1",
+                          strategy: "single_anchor",
+                          transitionSmooth: true,
+                          reason: "只需要一个关键节点。",
+                        },
+                      ],
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_1",
+                          segmentId: "segment_1",
+                          order: 1,
+                          shotCode: "SC01-SG01-SH01",
+                          durationSec: 6,
+                          purpose: "建立入口状态。",
+                          visual: "积水集市入口。",
+                          subject: "林夏",
+                          action: "停住脚步。",
+                          frameDependency: "start_frame_only",
+                          dialogue: null,
+                          os: null,
+                          audio: "雨声。",
+                          transitionHint: null,
+                          continuityNotes: null,
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    let capturedError: unknown;
+
+    try {
+      await provider.generateShotScriptSegment({
+        promptText: "请生成中文镜头脚本。",
+        variables: {
+          scene: { id: "scene_1" },
+          segment: { id: "segment_1", order: 1, durationSec: 6 },
+        },
+      });
+    } catch (error) {
+      capturedError = error;
+    }
+
+    expect(capturedError).toBeInstanceOf(Error);
+    expect((capturedError as Error).message).toContain("invalid segments[0].strategy");
+    expect(capturedError).toMatchObject({
+      rawResponse: expect.stringContaining('"strategy":"single_anchor"'),
+    });
   });
 });

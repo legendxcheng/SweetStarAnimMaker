@@ -373,4 +373,377 @@ describe("process shot script segment generate task use case", () => {
       }),
     });
   });
+
+  it("serializes segment result recovery so concurrent completions do not overwrite each other", async () => {
+    const currentShotScriptState = {
+      value: {
+        id: "shot_script_task_batch_1",
+        title: "第1集",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_batch_1",
+        updatedAt: "2026-03-23T12:03:00.000Z",
+        approvedAt: null,
+        segmentCount: 2,
+        shotCount: 0,
+        totalDurationSec: null,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: null,
+            summary: "第一段待生成。",
+            durationSec: 6,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+          {
+            segmentId: "segment_2",
+            sceneId: "scene_1",
+            order: 2,
+            name: null,
+            summary: "第二段待生成。",
+            durationSec: 5,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      },
+    };
+    const taskRepository = {
+      findById: vi.fn(async (taskId: string) => ({
+        id: taskId,
+        projectId: "proj_1",
+        type: "shot_script_segment_generate",
+        queueName: "shot-script-segment-generate",
+        storageDir: `projects/proj_1-my-story/tasks/${taskId}`,
+      })),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        status: "shot_script_generating",
+      }),
+      updateStatus: vi.fn(),
+    };
+    const taskFileStorage = {
+      readTaskInput: vi.fn(async ({ task }: { task: { id: string } }) => {
+        if (task.id === "task_segment_1") {
+          return {
+            taskId: "task_segment_1",
+            projectId: "proj_1",
+            taskType: "shot_script_segment_generate",
+            sourceStoryboardId: "storyboard_1",
+            sourceShotScriptId: "shot_script_task_batch_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            scene: {
+              id: "scene_1",
+              order: 1,
+              name: "集市入口",
+              dramaticPurpose: "封死主角退路。",
+            },
+            segment: {
+              id: "segment_1",
+              order: 1,
+              durationSec: 6,
+              visual: "第一段原始分镜。",
+              characterAction: "林夏停住脚步。",
+              dialogue: "",
+              voiceOver: "",
+              audio: "雨声。",
+              purpose: "更新第一段。",
+            },
+            storyboardTitle: "第1集",
+            episodeTitle: "暴雨封路",
+            promptTemplateKey: "shot_script.segment.generate" as const,
+          };
+        }
+
+        return {
+          taskId: "task_segment_2",
+          projectId: "proj_1",
+          taskType: "shot_script_segment_generate",
+          sourceStoryboardId: "storyboard_1",
+          sourceShotScriptId: "shot_script_task_batch_1",
+          sceneId: "scene_1",
+          segmentId: "segment_2",
+          scene: {
+            id: "scene_1",
+            order: 1,
+            name: "集市入口",
+            dramaticPurpose: "封死主角退路。",
+          },
+          segment: {
+            id: "segment_2",
+            order: 2,
+            durationSec: 5,
+            visual: "第二段原始分镜。",
+            characterAction: "对手逼近。",
+            dialogue: "",
+            voiceOver: "",
+            audio: "脚步踩水。",
+            purpose: "更新第二段。",
+          },
+          storyboardTitle: "第1集",
+          episodeTitle: "暴雨封路",
+          promptTemplateKey: "shot_script.segment.generate" as const,
+        };
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      readPromptTemplate: vi.fn().mockResolvedValue("{{segment.id}}"),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      readCurrentShotScript: vi.fn(async () => structuredClone(currentShotScriptState.value)),
+      writeCurrentShotScript: vi.fn(
+        async ({ shotScript }: { shotScript: typeof currentShotScriptState.value }) => {
+          currentShotScriptState.value = structuredClone(shotScript);
+        },
+      ),
+    };
+    const shotScriptProvider = {
+      generateShotScriptSegment: vi.fn(
+        async ({ variables }: { variables: { segment: { id: string } } }) => {
+          if (variables.segment.id === "segment_1") {
+            await new Promise((resolve) => setTimeout(resolve, 25));
+            return {
+              rawResponse: "{\"segmentId\":\"segment_1\"}",
+              segment: {
+                segmentId: "segment_1",
+                sceneId: "scene_1",
+                order: 1,
+                name: "第一段新稿",
+                summary: "只更新第一段。",
+                durationSec: 6,
+                status: "in_review",
+                lastGeneratedAt: null,
+                approvedAt: null,
+                shots: [
+                  {
+                    id: "shot_segment_1",
+                    sceneId: "scene_1",
+                    segmentId: "segment_1",
+                    order: 1,
+                    shotCode: "S01-SG01-SH01",
+                    durationSec: 3,
+                    purpose: "第一段镜头。",
+                    visual: "第一段新镜头。",
+                    subject: "林夏",
+                    action: "停住脚步。",
+                    dialogue: null,
+                    os: null,
+                    audio: "雨声。",
+                    transitionHint: null,
+                    continuityNotes: null,
+                  },
+                ],
+              },
+            };
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          return {
+            rawResponse: "{\"segmentId\":\"segment_2\"}",
+            segment: {
+              segmentId: "segment_2",
+              sceneId: "scene_1",
+              order: 2,
+              name: "第二段新稿",
+              summary: "只更新第二段。",
+              durationSec: 5,
+              status: "in_review",
+              lastGeneratedAt: null,
+              approvedAt: null,
+              shots: [
+                {
+                  id: "shot_segment_2",
+                  sceneId: "scene_1",
+                  segmentId: "segment_2",
+                  order: 1,
+                  shotCode: "S01-SG02-SH01",
+                  durationSec: 2,
+                  purpose: "第二段镜头。",
+                  visual: "第二段新镜头。",
+                  subject: "对手",
+                  action: "逼近。",
+                  dialogue: null,
+                  os: null,
+                  audio: "脚步踩水。",
+                  transitionHint: null,
+                  continuityNotes: null,
+                },
+              ],
+            },
+          };
+        },
+      ),
+    };
+
+    const useCase = createProcessShotScriptSegmentGenerateTaskUseCase({
+      taskRepository: taskRepository as never,
+      projectRepository: projectRepository as never,
+      taskFileStorage: taskFileStorage as never,
+      shotScriptProvider: shotScriptProvider as never,
+      shotScriptStorage: shotScriptStorage as never,
+      clock: {
+        now: vi.fn().mockReturnValue("2026-03-23T12:05:00.000Z"),
+      },
+    });
+
+    await Promise.all([
+      useCase.execute({ taskId: "task_segment_1" }),
+      useCase.execute({ taskId: "task_segment_2" }),
+    ]);
+
+    expect(currentShotScriptState.value.segments).toEqual([
+      expect.objectContaining({
+        segmentId: "segment_1",
+        status: "in_review",
+        name: "第一段新稿",
+        shots: [expect.objectContaining({ shotCode: "S01-SG01-SH01" })],
+      }),
+      expect.objectContaining({
+        segmentId: "segment_2",
+        status: "in_review",
+        name: "第二段新稿",
+        shots: [expect.objectContaining({ shotCode: "S01-SG02-SH01" })],
+      }),
+    ]);
+  });
+
+  it("writes raw response artifacts when segment generation fails after provider parsing", async () => {
+    const taskRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "task_segment_failed_raw",
+        projectId: "proj_1",
+        type: "shot_script_segment_generate",
+        queueName: "shot-script-segment-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_segment_failed_raw",
+      }),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        status: "shot_script_generating",
+      }),
+      updateStatus: vi.fn(),
+    };
+    const taskFileStorage = {
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_segment_failed_raw",
+        projectId: "proj_1",
+        taskType: "shot_script_segment_generate",
+        sourceStoryboardId: "storyboard_1",
+        sourceShotScriptId: "shot_script_task_batch_1",
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        scene: {
+          id: "scene_1",
+          order: 1,
+          name: "集市入口",
+          dramaticPurpose: "封死主角退路。",
+        },
+        segment: {
+          id: "segment_1",
+          order: 1,
+          durationSec: 6,
+          visual: "积水集市口被杂乱摊棚堵住。",
+          characterAction: "林夏停住脚步。",
+          dialogue: "",
+          voiceOver: "来得真快。",
+          audio: "雨声和水声混在一起。",
+          purpose: "确认对手先一步堵路。",
+        },
+        storyboardTitle: "第1集",
+        episodeTitle: "暴雨封路",
+        promptTemplateKey: "shot_script.segment.generate",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      readPromptTemplate: vi.fn().mockResolvedValue("{{segment.visual}}"),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_task_batch_1",
+        title: "第1集",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_batch_1",
+        updatedAt: "2026-03-23T12:03:00.000Z",
+        approvedAt: null,
+        segmentCount: 1,
+        shotCount: 0,
+        totalDurationSec: null,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: null,
+            summary: "确认对手先一步堵路。",
+            durationSec: 6,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      }),
+      writeCurrentShotScript: vi.fn(),
+    };
+    const providerError = Object.assign(
+      new Error("Gemini shot script provider returned invalid segments[0].strategy"),
+      {
+        rawResponse: '{"segments":[{"strategy":"single_anchor"}]}',
+      },
+    );
+    const shotScriptProvider = {
+      generateShotScriptSegment: vi.fn().mockRejectedValue(providerError),
+    };
+
+    const useCase = createProcessShotScriptSegmentGenerateTaskUseCase({
+      taskRepository: taskRepository as never,
+      projectRepository: projectRepository as never,
+      taskFileStorage: taskFileStorage as never,
+      shotScriptProvider: shotScriptProvider as never,
+      shotScriptStorage: shotScriptStorage as never,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-23T12:04:00.000Z")
+          .mockReturnValueOnce("2026-03-23T12:05:00.000Z"),
+      },
+    });
+
+    await expect(useCase.execute({ taskId: "task_segment_failed_raw" })).rejects.toThrow(
+      "Gemini shot script provider returned invalid segments[0].strategy",
+    );
+
+    expect(shotScriptStorage.writeRawResponse).toHaveBeenCalledWith({
+      taskStorageDir: "projects/proj_1-my-story/tasks/task_segment_failed_raw",
+      rawResponse: '{"segments":[{"strategy":"single_anchor"}]}',
+    });
+    expect(taskRepository.markFailed).toHaveBeenCalledWith({
+      taskId: "task_segment_failed_raw",
+      errorMessage: "Gemini shot script provider returned invalid segments[0].strategy",
+      updatedAt: "2026-03-23T12:05:00.000Z",
+      finishedAt: "2026-03-23T12:05:00.000Z",
+    });
+  });
 });

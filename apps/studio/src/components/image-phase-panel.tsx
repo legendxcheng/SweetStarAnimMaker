@@ -71,10 +71,6 @@ export function ImagePhasePanel({
         return true;
       }
 
-      if (shot.frameDependency === "start_and_end_frame" && !shot.startFrame.imageAssetPath) {
-        return true;
-      }
-
       return (
         shot.endFrame.planStatus === "planned" && shot.endFrame.promptTextCurrent.trim().length > 0
       );
@@ -270,11 +266,16 @@ export function ImagePhasePanel({
     await onProjectRefresh?.();
   }
 
-  async function refreshShots() {
+  async function loadImageList() {
     const response = await apiClient.listImages(project.id);
 
     applyImageListResponse(response);
     setListError(null);
+    return response;
+  }
+
+  async function refreshShots() {
+    await loadImageList();
   }
 
   async function handleSavePrompt(frame: ShotReferenceFrame) {
@@ -419,21 +420,7 @@ export function ImagePhasePanel({
 
     try {
       setActionBusy({ kind: "generate-all-frames" });
-
-      for (const shot of shots) {
-        await apiClient.generateImageFrame(project.id, shot.startFrame.id);
-
-        if (!shot.endFrame) {
-          continue;
-        }
-
-        if (shot.frameDependency === "start_and_end_frame" && !shot.startFrame.imageAssetPath) {
-          continue;
-        }
-
-        await apiClient.generateImageFrame(project.id, shot.endFrame.id);
-      }
-
+      await apiClient.generateAllImageFrames(project.id);
       await refreshProject();
       await refreshShots();
       setActionError(null);

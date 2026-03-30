@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createGenerateFrameImageUseCase } from "../src/index";
+import { createGenerateFrameImageUseCase, createShotReferenceRecord } from "../src/index";
 
 describe("generate frame image use case", () => {
   it("marks the frame and project as generating before enqueuing the task", async () => {
@@ -139,5 +139,115 @@ describe("generate frame image use case", () => {
       status: "images_generating",
       updatedAt: "2026-03-24T10:30:00.000Z",
     });
+  });
+
+  it("rejects end-frame generation before creating a task when the owning shot has no start-frame image", async () => {
+    const shot = createShotReferenceRecord({
+      id: "shot_ref_guard",
+      batchId: "image_batch_1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceShotScriptId: "shot_script_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      shotOrder: 1,
+      durationSec: 4,
+      frameDependency: "start_and_end_frame",
+      updatedAt: "2026-03-24T10:00:00.000Z",
+      startFrame: {
+        id: "frame_start_1",
+        planStatus: "planned",
+        imageStatus: "pending",
+        promptTextCurrent: "首帧 Prompt",
+        imageAssetPath: null,
+      },
+      endFrame: {
+        id: "frame_end_1",
+        planStatus: "planned",
+        imageStatus: "pending",
+        promptTextCurrent: "尾帧 Prompt",
+        imageAssetPath: null,
+      },
+    });
+    const shotImageRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn().mockResolvedValue([shot]),
+      insertFrame: vi.fn(),
+      findFrameById: vi.fn().mockResolvedValue(shot.endFrame),
+      updateFrame: vi.fn(),
+    };
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn(),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn(),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const taskQueue = { enqueue: vi.fn() };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        name: "My Story",
+        slug: "my-story",
+        storageDir: "projects/proj_1-my-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "mp_1",
+        currentCharacterSheetBatchId: "char_batch_1",
+        currentStoryboardId: "storyboard_1",
+        currentShotScriptId: "shot_script_1",
+        currentImageBatchId: "image_batch_1",
+        status: "images_in_review",
+        createdAt: "2026-03-24T10:00:00.000Z",
+        updatedAt: "2026-03-24T10:00:00.000Z",
+        premiseUpdatedAt: "2026-03-24T10:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+
+    const useCase = createGenerateFrameImageUseCase({
+      projectRepository,
+      shotImageRepository,
+      taskRepository,
+      taskFileStorage,
+      taskQueue,
+      taskIdGenerator: { generateTaskId: vi.fn().mockReturnValue("task_frame_image_2") },
+      clock: { now: vi.fn().mockReturnValue("2026-03-24T10:30:00.000Z") },
+    });
+
+    await expect(
+      useCase.execute({
+        projectId: "proj_1",
+        frameId: "frame_end_1",
+      }),
+    ).rejects.toThrow("Cannot generate end frame before start frame image exists: frame_end_1");
+
+    expect(taskRepository.insert).not.toHaveBeenCalled();
+    expect(taskFileStorage.createTaskArtifacts).not.toHaveBeenCalled();
+    expect(shotImageRepository.updateFrame).not.toHaveBeenCalled();
+    expect(taskQueue.enqueue).not.toHaveBeenCalled();
+    expect(projectRepository.updateStatus).not.toHaveBeenCalled();
   });
 });

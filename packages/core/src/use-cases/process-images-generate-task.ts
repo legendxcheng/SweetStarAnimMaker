@@ -48,6 +48,9 @@ export function createProcessImagesGenerateTaskUseCase(
     async execute(input) {
       const task = await dependencies.taskRepository.findById(input.taskId);
       let project: Awaited<ReturnType<typeof dependencies.projectRepository.findById>> = null;
+      let currentShotScript: Awaited<
+        ReturnType<typeof dependencies.shotScriptStorage.readCurrentShotScript>
+      > | null = null;
       let didActivateBatch = false;
 
       if (!task) {
@@ -71,7 +74,7 @@ export function createProcessImagesGenerateTaskUseCase(
           throw new ProjectNotFoundError(task.projectId);
         }
 
-        const currentShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
+        currentShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
           storageDir: project.storageDir,
         });
 
@@ -219,7 +222,7 @@ export function createProcessImagesGenerateTaskUseCase(
         if (project && !didActivateBatch) {
           await dependencies.projectRepository.updateStatus({
             projectId: project.id,
-            status: "shot_script_approved",
+            status: currentShotScript?.approvedAt ? "shot_script_approved" : "shot_script_in_review",
             updatedAt: finishedAt,
           });
         }

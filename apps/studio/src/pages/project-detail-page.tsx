@@ -483,6 +483,7 @@ export function ProjectDetailPage() {
                     onGenerate={() => {
                       void handleRegenerateShotScript();
                     }}
+                    onProjectRefresh={loadProject}
                   />
                 ) : selectedPhase === "images" ? (
                   <ImagePhasePanel

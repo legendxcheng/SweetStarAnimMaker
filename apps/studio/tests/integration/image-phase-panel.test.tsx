@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImagePhasePanel } from "../../src/components/image-phase-panel";
 import * as apiModule from "../../src/services/api-client";
@@ -178,7 +178,11 @@ function renderPanel() {
 
 describe("ImagePhasePanel", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders scene tabs and shows only the active scene's shot cards", async () => {
@@ -450,19 +454,52 @@ describe("ImagePhasePanel", () => {
       approvedAt: "2024-01-01T00:00:11Z",
     });
     vi.spyOn(apiModule.apiClient, "regenerateAllImagePrompts").mockResolvedValue({
-      batchId: "image-batch-1",
-      frameCount: 2,
-      taskIds: ["task-frame-prompt-1", "task-frame-prompt-2"],
+      id: "task-image-batch-regenerate-all-prompts",
+      projectId: "proj-1",
+      type: "image_batch_regenerate_all_prompts",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-image-batch-regenerate-all-prompts/input.json",
+        outputPath: "tasks/task-image-batch-regenerate-all-prompts/output.json",
+        logPath: "tasks/task-image-batch-regenerate-all-prompts/log.txt",
+      },
     });
     vi.spyOn(apiModule.apiClient, "regenerateFailedImagePrompts").mockResolvedValue({
-      batchId: "image-batch-1",
-      frameCount: 1,
-      taskIds: ["task-frame-prompt-failed-1"],
+      id: "task-image-batch-regenerate-failed-prompts",
+      projectId: "proj-1",
+      type: "image_batch_regenerate_failed_prompts",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-image-batch-regenerate-failed-prompts/input.json",
+        outputPath: "tasks/task-image-batch-regenerate-failed-prompts/output.json",
+        logPath: "tasks/task-image-batch-regenerate-failed-prompts/log.txt",
+      },
     });
     vi.spyOn(apiModule.apiClient, "regenerateFailedImageFrames").mockResolvedValue({
-      batchId: "image-batch-1",
-      frameCount: 1,
-      taskIds: ["task-frame-image-failed-1"],
+      id: "task-image-batch-regenerate-failed-frames",
+      projectId: "proj-1",
+      type: "image_batch_regenerate_failed_frames",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-image-batch-regenerate-failed-frames/input.json",
+        outputPath: "tasks/task-image-batch-regenerate-failed-frames/output.json",
+        logPath: "tasks/task-image-batch-regenerate-failed-frames/log.txt",
+      },
     });
 
     render(
@@ -551,12 +588,23 @@ describe("ImagePhasePanel", () => {
     vi.spyOn(apiModule.apiClient, "regenerateAllImagePrompts").mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolveBatchRequest = () =>
-            resolve({
-              batchId: "image-batch-1",
-              frameCount: 2,
-              taskIds: ["task-a", "task-b"],
-            });
+            resolveBatchRequest = () =>
+              resolve({
+                id: "task-image-batch-regenerate-all-prompts",
+                projectId: "proj-1",
+                type: "image_batch_regenerate_all_prompts",
+                status: "pending",
+                createdAt: "2024-01-01T00:00:12Z",
+                updatedAt: "2024-01-01T00:00:12Z",
+                startedAt: null,
+                finishedAt: null,
+                errorMessage: null,
+                files: {
+                  inputPath: "tasks/task-image-batch-regenerate-all-prompts/input.json",
+                  outputPath: "tasks/task-image-batch-regenerate-all-prompts/output.json",
+                  logPath: "tasks/task-image-batch-regenerate-all-prompts/log.txt",
+                },
+              });
         }),
     );
 
@@ -588,10 +636,9 @@ describe("ImagePhasePanel", () => {
     ).toBe(true);
   });
 
-  it("submits batch frame regeneration requests and disables image actions while pending", async () => {
+  it("submits one backend batch frame regeneration request and disables image actions while pending", async () => {
     const refreshProject = vi.fn();
-    let resolveFirstFrame: (() => void) | undefined;
-    let resolveSecondFrame: (() => void) | undefined;
+    let resolveBatchRequest: (() => void) | undefined;
 
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce(imageListResponse)
@@ -611,51 +658,28 @@ describe("ImagePhasePanel", () => {
             : null,
         })),
       });
-    vi.spyOn(apiModule.apiClient, "generateImageFrame")
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveFirstFrame = () =>
-              resolve({
-                id: "task-frame-image-1",
-                projectId: "proj-1",
-                type: "frame_image_generate",
-                status: "pending",
-                createdAt: "2024-01-01T00:00:10Z",
-                updatedAt: "2024-01-01T00:00:10Z",
-                startedAt: null,
-                finishedAt: null,
-                errorMessage: null,
-                files: {
-                  inputPath: "tasks/task-frame-image-1/input.json",
-                  outputPath: "tasks/task-frame-image-1/output.json",
-                  logPath: "tasks/task-frame-image-1/log.txt",
-                },
-              });
-          }),
-      )
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveSecondFrame = () =>
-              resolve({
-                id: "task-frame-image-2",
-                projectId: "proj-1",
-                type: "frame_image_generate",
-                status: "pending",
-                createdAt: "2024-01-01T00:00:11Z",
-                updatedAt: "2024-01-01T00:00:11Z",
-                startedAt: null,
-                finishedAt: null,
-                errorMessage: null,
-                files: {
-                  inputPath: "tasks/task-frame-image-2/input.json",
-                  outputPath: "tasks/task-frame-image-2/output.json",
-                  logPath: "tasks/task-frame-image-2/log.txt",
-                },
-              });
-          }),
-      );
+    vi.spyOn(apiModule.apiClient, "generateAllImageFrames").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveBatchRequest = () =>
+            resolve({
+              id: "task-image-batch-generate-all-frames",
+              projectId: "proj-1",
+              type: "image_batch_generate_all_frames",
+              status: "pending",
+              createdAt: "2024-01-01T00:00:10Z",
+              updatedAt: "2024-01-01T00:00:10Z",
+              startedAt: null,
+              finishedAt: null,
+              errorMessage: null,
+              files: {
+                inputPath: "tasks/task-image-batch-generate-all-frames/input.json",
+                outputPath: "tasks/task-image-batch-generate-all-frames/output.json",
+                logPath: "tasks/task-image-batch-generate-all-frames/log.txt",
+              },
+            });
+        }),
+    );
 
     render(
       <ImagePhasePanel
@@ -677,35 +701,15 @@ describe("ImagePhasePanel", () => {
     fireEvent.click(batchButton);
 
     await waitFor(() => {
-      expect(apiModule.apiClient.generateImageFrame).toHaveBeenNthCalledWith(
-        1,
-        "proj-1",
-        "frame-start-1",
-      );
+      expect(apiModule.apiClient.generateAllImageFrames).toHaveBeenCalledWith("proj-1");
     });
 
     expect(batchButton).toBeDisabled();
     expect(singleFrameButton).toBeDisabled();
+    expect(apiModule.apiClient.generateImageFrame).not.toHaveBeenCalled();
 
     await act(async () => {
-      resolveFirstFrame?.();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.generateImageFrame).toHaveBeenNthCalledWith(
-        2,
-        "proj-1",
-        "frame-end-1",
-      );
-    });
-
-    expect(batchButton).toBeDisabled();
-    expect(singleFrameButton).toBeDisabled();
-
-    await act(async () => {
-      resolveSecondFrame?.();
+      resolveBatchRequest?.();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -715,116 +719,6 @@ describe("ImagePhasePanel", () => {
     });
     await waitFor(() => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it("skips end-frame batch generation when the loaded shot has no start-frame image", async () => {
-    const refreshProject = vi.fn();
-
-    vi.spyOn(apiModule.apiClient, "listImages")
-      .mockResolvedValueOnce({
-        currentBatch: baseProject.currentImageBatch,
-        shots: [
-          createShot({
-            startFrame: createFrame({
-              id: "frame-start-batch-only",
-              imageStatus: "pending",
-              imageAssetPath: null,
-              imageWidth: null,
-              imageHeight: null,
-              provider: null,
-              model: null,
-            }),
-            endFrame: createFrame({
-              id: "frame-end-batch-skipped",
-              frameType: "end_frame",
-              imageStatus: "pending",
-              imageAssetPath: null,
-              imageWidth: null,
-              imageHeight: null,
-              provider: null,
-              model: null,
-            }),
-          }),
-        ],
-      })
-      .mockResolvedValueOnce({
-        currentBatch: baseProject.currentImageBatch,
-        shots: [
-          createShot({
-            startFrame: createFrame({
-              id: "frame-start-batch-only",
-              imageStatus: "generating",
-              imageAssetPath: null,
-              imageWidth: null,
-              imageHeight: null,
-              provider: null,
-              model: null,
-            }),
-            endFrame: createFrame({
-              id: "frame-end-batch-skipped",
-              frameType: "end_frame",
-              imageStatus: "pending",
-              imageAssetPath: null,
-              imageWidth: null,
-              imageHeight: null,
-              provider: null,
-              model: null,
-            }),
-          }),
-        ],
-      });
-    vi.spyOn(apiModule.apiClient, "generateImageFrame").mockResolvedValue({
-      id: "task-frame-image-start-only",
-      projectId: "proj-1",
-      type: "frame_image_generate",
-      status: "pending",
-      createdAt: "2024-01-01T00:00:10Z",
-      updatedAt: "2024-01-01T00:00:10Z",
-      startedAt: null,
-      finishedAt: null,
-      errorMessage: null,
-      files: {
-        inputPath: "tasks/task-frame-image-start-only/input.json",
-        outputPath: "tasks/task-frame-image-start-only/output.json",
-        logPath: "tasks/task-frame-image-start-only/log.txt",
-      },
-    });
-
-    render(
-      <ImagePhasePanel
-        project={baseProject}
-        task={null}
-        taskError={null}
-        creatingTask={false}
-        disableGenerate={false}
-        onGenerate={vi.fn()}
-        onProjectRefresh={refreshProject}
-      />,
-    );
-
-    const batchButton = await screen.findByRole("button", {
-      name: "重新生成全部帧",
-    });
-
-    fireEvent.click(batchButton);
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.generateImageFrame).toHaveBeenCalledWith(
-        "proj-1",
-        "frame-start-batch-only",
-      );
-    });
-
-    await waitFor(() => {
-      expect(apiModule.apiClient.generateImageFrame).toHaveBeenCalledTimes(1);
-    });
-    expect(apiModule.apiClient.generateImageFrame).not.toHaveBeenCalledWith(
-      "proj-1",
-      "frame-end-batch-skipped",
-    );
-    await waitFor(() => {
-      expect(refreshProject).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -931,14 +825,36 @@ describe("ImagePhasePanel", () => {
         shots: [createShot()],
       });
     vi.spyOn(apiModule.apiClient, "regenerateFailedImagePrompts").mockResolvedValue({
-      batchId: "image-batch-1",
-      frameCount: 1,
-      taskIds: ["task-failed-prompt-1"],
+      id: "task-image-batch-regenerate-failed-prompts",
+      projectId: "proj-1",
+      type: "image_batch_regenerate_failed_prompts",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-image-batch-regenerate-failed-prompts/input.json",
+        outputPath: "tasks/task-image-batch-regenerate-failed-prompts/output.json",
+        logPath: "tasks/task-image-batch-regenerate-failed-prompts/log.txt",
+      },
     });
     vi.spyOn(apiModule.apiClient, "regenerateFailedImageFrames").mockResolvedValue({
-      batchId: "image-batch-1",
-      frameCount: 1,
-      taskIds: ["task-failed-frame-1"],
+      id: "task-image-batch-regenerate-failed-frames",
+      projectId: "proj-1",
+      type: "image_batch_regenerate_failed_frames",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:12Z",
+      updatedAt: "2024-01-01T00:00:12Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-image-batch-regenerate-failed-frames/input.json",
+        outputPath: "tasks/task-image-batch-regenerate-failed-frames/output.json",
+        logPath: "tasks/task-image-batch-regenerate-failed-frames/log.txt",
+      },
     });
 
     render(
@@ -960,8 +876,10 @@ describe("ImagePhasePanel", () => {
       name: "重新生成失败的帧",
     });
 
-    expect(failedPromptButton).toBeEnabled();
-    expect(failedFrameButton).toBeEnabled();
+    await waitFor(() => {
+      expect(failedPromptButton).toBeEnabled();
+      expect(failedFrameButton).toBeEnabled();
+    });
 
     fireEvent.click(failedPromptButton);
     await waitFor(() => {
@@ -981,81 +899,81 @@ describe("ImagePhasePanel", () => {
 
     renderPanel();
 
-    expect(
-      await screen.findByRole("button", { name: "重新生成失败的Prompt" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "重新生成失败的帧" })).toBeDisabled();
+    const failedPromptButton = await screen.findByRole("button", {
+      name: "重新生成失败的Prompt",
+    });
+    const failedFrameButton = screen.getByRole("button", { name: "重新生成失败的帧" });
+
+    await waitFor(() => {
+      expect(failedPromptButton).toBeDisabled();
+      expect(failedFrameButton).toBeDisabled();
+    });
   });
 
   it("polls pending frame prompts and keeps image generation disabled until prompts are ready", async () => {
-    let refreshTimer: (() => void) | undefined;
+    vi.useFakeTimers();
     const pendingUpdatedAt = new Date(Date.now() - 60_000).toISOString();
-    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
-      refreshTimer = callback as () => void;
-      return 1 as unknown as ReturnType<typeof setInterval>;
-    }) as typeof setInterval);
+    try {
+      vi.spyOn(apiModule.apiClient, "listImages")
+        .mockResolvedValueOnce({
+          currentBatch: imageListResponse.currentBatch,
+          shots: imageListResponse.shots.map((shot) => ({
+            ...shot,
+            startFrame: {
+              ...shot.startFrame,
+              planStatus: "pending" as const,
+              imageStatus: "pending" as const,
+              promptTextSeed: "",
+              promptTextCurrent: "",
+              imageAssetPath: null,
+              imageWidth: null,
+              imageHeight: null,
+              provider: null,
+              model: null,
+              updatedAt: pendingUpdatedAt,
+              sourceTaskId: "task-frame-prompt-pending",
+            },
+            endFrame: shot.endFrame
+              ? {
+                  ...shot.endFrame,
+                  planStatus: "pending" as const,
+                  imageStatus: "pending" as const,
+                  promptTextSeed: "",
+                  promptTextCurrent: "",
+                  imageAssetPath: null,
+                  imageWidth: null,
+                  imageHeight: null,
+                  provider: null,
+                  model: null,
+                  updatedAt: pendingUpdatedAt,
+                  sourceTaskId: "task-frame-prompt-pending",
+                }
+              : null,
+          })),
+        })
+        .mockResolvedValueOnce(imageListResponse);
 
-    vi.spyOn(apiModule.apiClient, "listImages")
-      .mockResolvedValueOnce({
-        currentBatch: imageListResponse.currentBatch,
-        shots: imageListResponse.shots.map((shot) => ({
-          ...shot,
-          startFrame: {
-            ...shot.startFrame,
-            planStatus: "pending" as const,
-            imageStatus: "pending" as const,
-            promptTextSeed: "",
-            promptTextCurrent: "",
-            imageAssetPath: null,
-            imageWidth: null,
-            imageHeight: null,
-            provider: null,
-            model: null,
-            updatedAt: pendingUpdatedAt,
-            sourceTaskId: "task-frame-prompt-pending",
-          },
-          endFrame: shot.endFrame
-            ? {
-                ...shot.endFrame,
-                planStatus: "pending" as const,
-                imageStatus: "pending" as const,
-                promptTextSeed: "",
-                promptTextCurrent: "",
-                imageAssetPath: null,
-                imageWidth: null,
-                imageHeight: null,
-                provider: null,
-                model: null,
-                updatedAt: pendingUpdatedAt,
-                sourceTaskId: "task-frame-prompt-pending",
-              }
-            : null,
-        })),
-      })
-      .mockResolvedValueOnce(imageListResponse);
+      renderPanel();
 
-    renderPanel();
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
-    await waitFor(() => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(1);
-    });
+      expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "生成结束帧图片" })).toBeDisabled();
 
-    expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "生成结束帧图片" })).toBeDisabled();
-    expect(refreshTimer).toBeDefined();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000);
+      });
 
-    await act(async () => {
-      refreshTimer?.();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
-    });
-
-    expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
+      expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("treats stale pending frame prompts as timed out and re-enables prompt regeneration", async () => {
@@ -1107,10 +1025,12 @@ describe("ImagePhasePanel", () => {
         expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(1);
       });
 
-      expect(screen.getByRole("button", { name: "重新生成起始帧 Prompt" })).toBeEnabled();
-      expect(screen.getByRole("button", { name: "重新生成结束帧 Prompt" })).toBeEnabled();
-      expect(screen.queryByText("Prompt 仍在生成，完成前不能生成图片。")).not.toBeInTheDocument();
-      expect(screen.getAllByText("Prompt 生成超时，可重新生成。")).toHaveLength(2);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "重新生成起始帧 Prompt" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "重新生成结束帧 Prompt" })).toBeEnabled();
+        expect(screen.queryByText("Prompt 仍在生成，完成前不能生成图片。")).not.toBeInTheDocument();
+        expect(screen.getAllByText("Prompt 生成超时，可重新生成。")).toHaveLength(2);
+      });
     } finally {
       dateNowSpy.mockRestore();
     }
@@ -1179,12 +1099,14 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(2);
     });
 
-    expect(
-      new URL(
-        screen.getByAltText("起始帧结果图").getAttribute("src")!,
-        "http://localhost",
-      ).searchParams.get("v"),
-    ).toBe("2024-01-01T00:00:30Z");
+    await waitFor(() => {
+      expect(
+        new URL(
+          screen.getByAltText("起始帧结果图").getAttribute("src")!,
+          "http://localhost",
+        ).searchParams.get("v"),
+      ).toBe("2024-01-01T00:00:30Z");
+    });
   });
 
   it("clears visible prompt text while frame prompts are pending", async () => {
@@ -1221,8 +1143,10 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.queryByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("尾帧定格在林与天际冷白尾光的对视。")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Prompt 仍在生成，完成前不能生成图片。")).toHaveLength(2);
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue("尾帧定格在林与天际冷白尾光的对视。")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Prompt 仍在生成，完成前不能生成图片。")).toHaveLength(2);
+    });
   });
 });

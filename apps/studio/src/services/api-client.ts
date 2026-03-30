@@ -50,7 +50,6 @@ import {
   type MasterPlotReviewWorkspace,
   type ProjectDetail,
   type ProjectSummary,
-  type RegenerateAllImagePromptsResponse,
   type SaveShotScriptSegmentRequest,
   type SaveMasterPlotRequest,
   type ShotReferenceFrame,
@@ -423,18 +422,38 @@ export const apiClient = {
     ),
 
   regenerateAllImagePrompts: (projectId: string, data: Record<string, never> = {}) =>
-    request<RegenerateAllImagePromptsResponse>(
-      `/projects/${projectId}/images/regenerate-prompts`,
-      regenerateAllImagePromptsResponseSchema,
+    request<TaskDetail>(
+      `/projects/${projectId}/images/batch/regenerate-all-prompts`,
+      taskDetailResponseSchema,
       {
         method: "POST",
         body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
       },
     ),
 
+  generateAllImageFrames: (projectId: string, data: Record<string, never> = {}) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/images/batch/generate-all-frames`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(generateImageFrameRequestSchema.parse(data)),
+      },
+    ),
+
   regenerateFailedImagePrompts: (projectId: string, data: Record<string, never> = {}) =>
-    request<RegenerateAllImagePromptsResponse>(
-      `/projects/${projectId}/images/regenerate-failed-prompts`,
+    request<TaskDetail>(
+      `/projects/${projectId}/images/batch/regenerate-failed-prompts`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(regenerateImageFramePromptRequestSchema.parse(data)),
+      },
+    ),
+
+  regenerateUnfinishedImagePrompts: (projectId: string, data: Record<string, never> = {}) =>
+    request(
+      `/projects/${projectId}/images/regenerate-unfinished-prompts`,
       regenerateAllImagePromptsResponseSchema,
       {
         method: "POST",
@@ -443,9 +462,9 @@ export const apiClient = {
     ),
 
   regenerateFailedImageFrames: (projectId: string, data: Record<string, never> = {}) =>
-    request<RegenerateAllImagePromptsResponse>(
-      `/projects/${projectId}/images/regenerate-failed-frames`,
-      regenerateAllImagePromptsResponseSchema,
+    request<TaskDetail>(
+      `/projects/${projectId}/images/batch/regenerate-failed-frames`,
+      taskDetailResponseSchema,
       {
         method: "POST",
         body: JSON.stringify(generateImageFrameRequestSchema.parse(data)),

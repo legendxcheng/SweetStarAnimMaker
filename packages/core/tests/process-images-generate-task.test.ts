@@ -1126,4 +1126,179 @@ describe("process images generate task use case", () => {
       finishedAt: "2026-03-24T00:13:00.000Z",
     });
   });
+
+  it("restores project status to shot_script_in_review when the current shot script is not approved", async () => {
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_20260324_images_insert_fail_in_review",
+        projectId: "proj_20260324_ab12cd",
+        type: "images_generate",
+        status: "pending",
+        queueName: "images-generate",
+        storageDir:
+          "projects/proj_20260324_ab12cd-my-story/tasks/task_20260324_images_insert_fail_in_review",
+        inputRelPath: "tasks/task_20260324_images_insert_fail_in_review/input.json",
+        outputRelPath: "tasks/task_20260324_images_insert_fail_in_review/output.json",
+        logRelPath: "tasks/task_20260324_images_insert_fail_in_review/log.txt",
+        errorMessage: null,
+        createdAt: "2026-03-24T00:11:00.000Z",
+        updatedAt: "2026-03-24T00:11:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_20260324_ab12cd",
+        name: "My Story",
+        slug: "my-story",
+        storageDir: "projects/proj_20260324_ab12cd-my-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 88,
+        currentMasterPlotId: "master_plot_v1",
+        currentCharacterSheetBatchId: "char_batch_v1",
+        currentStoryboardId: "storyboard_v1",
+        currentShotScriptId: "shot_script_v1",
+        currentImageBatchId: null,
+        status: "images_generating",
+        createdAt: "2026-03-24T00:00:00.000Z",
+        updatedAt: "2026-03-24T00:11:00.000Z",
+        premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_20260324_images_insert_fail_in_review",
+        projectId: "proj_20260324_ab12cd",
+        taskType: "images_generate",
+        sourceShotScriptId: "shot_script_v1",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeShotScriptVersion: vi.fn(),
+      readShotScriptVersion: vi.fn(),
+      writeCurrentShotScript: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_v1",
+        title: "Episode 1 Shot Script",
+        sourceStoryboardId: "storyboard_v1",
+        sourceTaskId: "task_shot_script",
+        updatedAt: "2026-03-24T00:10:00.000Z",
+        approvedAt: null,
+        segmentCount: 1,
+        shotCount: 1,
+        totalDurationSec: 6,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: "第一场",
+            summary: "第一场。",
+            durationSec: 6,
+            status: "in_review",
+            lastGeneratedAt: "2026-03-24T00:10:00.000Z",
+            approvedAt: null,
+            shots: [
+              {
+                id: "shot_1",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 1,
+                shotCode: "S01-SG01-SH01",
+                durationSec: 6,
+                purpose: "第一镜头。",
+                visual: "第一场。",
+                subject: "林夏",
+                action: "她抬头。",
+                frameDependency: "start_frame_only",
+                dialogue: null,
+                os: null,
+                audio: "雨声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
+          },
+        ],
+      }),
+    };
+    const shotImageRepository = {
+      insertBatch: vi.fn().mockImplementation(() => {
+        throw new Error("batch insert failed");
+      }),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listFramesByBatchId: vi.fn(),
+      listShotsByBatchId: vi.fn(),
+      insertFrame: vi.fn(),
+      insertShot: vi.fn(),
+      findFrameById: vi.fn(),
+      findShotById: vi.fn(),
+      updateFrame: vi.fn(),
+      updateShot: vi.fn(),
+    };
+    const shotImageStorage = {
+      writeBatchManifest: vi.fn(),
+      writeFramePlanning: vi.fn(),
+      writeFramePromptFiles: vi.fn(),
+      writeFramePromptVersion: vi.fn(),
+      writeCurrentImage: vi.fn(),
+      writeImageVersion: vi.fn(),
+      readCurrentFrame: vi.fn(),
+      resolveProjectAssetPath: vi.fn(),
+    };
+    const taskQueue = { enqueue: vi.fn() };
+
+    const useCase = createProcessImagesGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      shotScriptStorage,
+      shotImageRepository,
+      shotImageStorage,
+      taskQueue,
+      taskIdGenerator: {
+        generateTaskId: vi.fn(),
+      },
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-24T00:12:00.000Z")
+          .mockReturnValueOnce("2026-03-24T00:13:00.000Z"),
+      },
+    });
+
+    await expect(
+      useCase.execute({ taskId: "task_20260324_images_insert_fail_in_review" }),
+    ).rejects.toThrow("batch insert failed");
+
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_20260324_ab12cd",
+      status: "shot_script_in_review",
+      updatedAt: "2026-03-24T00:13:00.000Z",
+    });
+  });
 });

@@ -5,6 +5,10 @@ import {
   characterSheetsGenerateQueueName,
   frameImageGenerateQueueName,
   framePromptGenerateQueueName,
+  imageBatchGenerateAllFramesQueueName,
+  imageBatchRegenerateAllPromptsQueueName,
+  imageBatchRegenerateFailedFramesQueueName,
+  imageBatchRegenerateFailedPromptsQueueName,
   imagesGenerateQueueName,
   masterPlotGenerateQueueName,
   segmentVideoPromptGenerateQueueName,
@@ -61,6 +65,18 @@ export interface StartWorkerOptions {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processImagesGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processImageBatchGenerateAllFramesTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processImageBatchRegenerateFailedFramesTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processImageBatchRegenerateAllPromptsTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processImageBatchRegenerateFailedPromptsTask?: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processVideosGenerateTask?: {
@@ -174,7 +190,7 @@ export async function startWorker(
   if (shotScriptSegmentTaskProcessor) {
     processors.splice(3, 0, {
       queueName: shotScriptSegmentGenerateQueueName,
-      concurrency: 1,
+      concurrency: 20,
       processor: async (job: WorkerJob) => {
         await shotScriptSegmentTaskProcessor.execute({
           taskId: job.data.taskId,
@@ -190,6 +206,62 @@ export async function startWorker(
       concurrency: 1,
       processor: async (job: WorkerJob) => {
         await imagesTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const imageBatchGenerateAllFramesTaskProcessor =
+    services.processImageBatchGenerateAllFramesTask;
+
+  if (imageBatchGenerateAllFramesTaskProcessor) {
+    processors.push({
+      queueName: imageBatchGenerateAllFramesQueueName,
+      concurrency: 1,
+      processor: async (job: WorkerJob) => {
+        await imageBatchGenerateAllFramesTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const imageBatchRegenerateFailedFramesTaskProcessor =
+    services.processImageBatchRegenerateFailedFramesTask;
+
+  if (imageBatchRegenerateFailedFramesTaskProcessor) {
+    processors.push({
+      queueName: imageBatchRegenerateFailedFramesQueueName,
+      concurrency: 1,
+      processor: async (job: WorkerJob) => {
+        await imageBatchRegenerateFailedFramesTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const imageBatchRegenerateAllPromptsTaskProcessor =
+    services.processImageBatchRegenerateAllPromptsTask;
+
+  if (imageBatchRegenerateAllPromptsTaskProcessor) {
+    processors.push({
+      queueName: imageBatchRegenerateAllPromptsQueueName,
+      concurrency: 1,
+      processor: async (job: WorkerJob) => {
+        await imageBatchRegenerateAllPromptsTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const imageBatchRegenerateFailedPromptsTaskProcessor =
+    services.processImageBatchRegenerateFailedPromptsTask;
+
+  if (imageBatchRegenerateFailedPromptsTaskProcessor) {
+    processors.push({
+      queueName: imageBatchRegenerateFailedPromptsQueueName,
+      concurrency: 1,
+      processor: async (job: WorkerJob) => {
+        await imageBatchRegenerateFailedPromptsTaskProcessor.execute({
           taskId: job.data.taskId,
         });
       },
@@ -308,4 +380,3 @@ function createBullMqWorker(input: {
     },
   };
 }
-

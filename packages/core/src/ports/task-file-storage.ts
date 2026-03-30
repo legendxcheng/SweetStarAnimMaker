@@ -3,6 +3,10 @@ import type {
   CharacterSheetsGenerateTaskInput,
   FrameImageGenerateTaskInput,
   FramePromptGenerateTaskInput,
+  ImageBatchGenerateAllFramesTaskInput,
+  ImageBatchRegenerateAllPromptsTaskInput,
+  ImageBatchRegenerateFailedFramesTaskInput,
+  ImageBatchRegenerateFailedPromptsTaskInput,
   ImagesGenerateTaskInput,
   MasterPlotGenerateTaskInput,
   SegmentVideoGenerateTaskInput,
@@ -22,6 +26,10 @@ export type SupportedTaskInput =
   | ShotScriptGenerateTaskInput
   | ShotScriptSegmentGenerateTaskInput
   | ImagesGenerateTaskInput
+  | ImageBatchGenerateAllFramesTaskInput
+  | ImageBatchRegenerateFailedFramesTaskInput
+  | ImageBatchRegenerateAllPromptsTaskInput
+  | ImageBatchRegenerateFailedPromptsTaskInput
   | FramePromptGenerateTaskInput
   | FrameImageGenerateTaskInput
   | VideosGenerateTaskInput
