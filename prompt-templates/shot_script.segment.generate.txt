@@ -20,6 +20,10 @@
 - 所有 shots 的 dialogue + os 累计字数，必须 <= {{segmentMaxSpokenChars}}
 - {{shotSpokenTextBudgetRule}}
 - 如果口播文本超出可说完范围，优先压缩 dialogue / os；必要时拆成更多 shots，禁止把过长旁白硬塞进短镜头
+- 如果 previousSegment 存在，第一条 shot 不要重新建立场景，不要把已经明确的空间、角色站位、动作结果重新从零讲一遍
+- 如果 nextSegment 存在，最后一个 shot 必须落到可被下一段直接承接的状态
+- summary 必须描述状态变化，不能只写氛围、姿态或美感
+- purpose 必须服务事件推进，不能只写装饰性气氛
 
 请结合以下上下文生成结构化 JSON：
 
@@ -43,6 +47,35 @@ Storyboard 标题：{{storyboardTitle}}
 - 音频: {{segment.audio}}
 - 段落目的: {{segment.purpose}}
 
+段落连续性位置：
+- 本场第 {{sceneSegmentIndex}} / {{sceneSegmentCount}} 段
+
+上一 storyboard 段信息：
+- segmentId: {{previousSegment.id}}
+- 视觉描述: {{previousSegment.visual}}
+- 角色动作: {{previousSegment.characterAction}}
+- 对白: {{previousSegment.dialogue}}
+- 旁白: {{previousSegment.voiceOver}}
+- 音频: {{previousSegment.audio}}
+- 段落目的: {{previousSegment.purpose}}
+
+下一 storyboard 段信息：
+- segmentId: {{nextSegment.id}}
+- 视觉描述: {{nextSegment.visual}}
+- 角色动作: {{nextSegment.characterAction}}
+- 对白: {{nextSegment.dialogue}}
+- 旁白: {{nextSegment.voiceOver}}
+- 音频: {{nextSegment.audio}}
+- 段落目的: {{nextSegment.purpose}}
+
+上一版镜头脚本承接摘要（如有）：
+- summary: {{previousShotScriptSummary.summary}}
+- lastShotVisual: {{previousShotScriptSummary.lastShotVisual}}
+- lastShotAction: {{previousShotScriptSummary.lastShotAction}}
+
+本段连续性目标：
+{{continuityGoal}}
+
 已批准角色设定：
 {{characterSheets}}
 
@@ -60,6 +93,21 @@ Storyboard 标题：{{storyboardTitle}}
 - anchors: 关键帧列表，只写必须精确到达的关键状态节点
 - segments: 相邻关键节点之间的生成策略列表
 - shots: 数组，至少 1 条
+
+在写 anchors / segments / shots 之前，你必须先在脑中明确以下三件事：
+- 承接状态：本段继承了上一段或当前场景的什么已建立状态
+- 事件推进句：本段必须完成的单一可观察事件
+- 交接状态：本段结尾要交给下一段继续使用的状态
+
+连续性规划硬规则：
+- 如果 previousSegment 存在，先承接上一段已经建立的空间、角色朝向、动作结果和信息状态，再展开本段 shots
+- 不允许把本段写成新的独立小场景；它必须是场内动作链条的一环
+- 第一条 shot 优先延续前一段的结果，而不是重新做环境介绍
+- 最后一条 shot 优先交代下一段可以直接接手的姿态、位置、目标或压力状态
+- 如果某个 shot 既不能帮助承接状态，也不能推进事件，也不能交接下一段，就删掉或压缩
+- atmosphere 只允许作为辅助，不能替代事件推进
+- summary 必须写清楚“谁在什么压力下做了什么，从而把状态推进到哪里”
+- 每个 shot 的 purpose 必须描述推进，不要只写氛围、节奏或镜头美感
 
 请先识别镜头中的关键状态节点（必须精确到达的画面）。
 

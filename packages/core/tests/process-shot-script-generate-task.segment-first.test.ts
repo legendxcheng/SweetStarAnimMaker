@@ -133,6 +133,159 @@ describe("process shot script generate task use case - segment first", () => {
     });
   });
 
+  it("includes previous and next storyboard context in each enqueued segment task", async () => {
+    const taskRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "task_batch_context",
+        projectId: "proj_1",
+        type: "shot_script_generate",
+        queueName: "shot-script-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_batch_context",
+      }),
+      markRunning: vi.fn(),
+      insert: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        status: "shot_script_generating",
+      }),
+      updateCurrentShotScript: vi.fn(),
+      updateStatus: vi.fn(),
+    };
+    const segments = [
+      {
+        id: "segment_1",
+        order: 1,
+        durationSec: 6,
+        visual: "积水集市口被杂乱摊棚堵住。",
+        characterAction: "林夏停住脚步。",
+        dialogue: "",
+        voiceOver: "来得真快。",
+        audio: "雨声和水声混在一起。",
+        purpose: "确认对手先一步堵路。",
+      },
+      {
+        id: "segment_2",
+        order: 2,
+        durationSec: 5,
+        visual: "对手从摊棚后逼近。",
+        characterAction: "堵住出口。",
+        dialogue: "",
+        voiceOver: "",
+        audio: "脚步踩水。",
+        purpose: "压迫主角做出反应。",
+      },
+      {
+        id: "segment_3",
+        order: 3,
+        durationSec: 4,
+        visual: "林夏侧身寻找新的出口。",
+        characterAction: "压低重心往棚架间穿过去。",
+        dialogue: "",
+        voiceOver: "",
+        audio: "布棚被掀动。",
+        purpose: "把主角推进下一段逃脱动作。",
+      },
+    ];
+    const taskFileStorage = {
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_batch_context",
+        projectId: "proj_1",
+        taskType: "shot_script_generate",
+        sourceStoryboardId: "storyboard_1",
+        storyboard: {
+          id: "storyboard_1",
+          title: "第1集",
+          episodeTitle: "暴雨封路",
+          scenes: [
+            {
+              id: "scene_1",
+              order: 1,
+              name: "集市入口",
+              dramaticPurpose: "封死主角退路。",
+              segments,
+            },
+          ],
+        },
+        promptTemplateKey: "shot_script.segment.generate",
+      }),
+      createTaskArtifacts: vi.fn(),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      readCurrentShotScript: vi.fn().mockResolvedValue(null),
+      writeCurrentShotScript: vi.fn(),
+    };
+    const taskQueue = {
+      enqueue: vi.fn(),
+    };
+
+    const useCase = createProcessShotScriptGenerateTaskUseCase({
+      taskRepository: taskRepository as never,
+      projectRepository: projectRepository as never,
+      taskFileStorage: taskFileStorage as never,
+      shotScriptStorage: shotScriptStorage as never,
+      taskQueue: taskQueue as never,
+      taskIdGenerator: {
+        generateTaskId: vi
+          .fn()
+          .mockReturnValueOnce("task_segment_1")
+          .mockReturnValueOnce("task_segment_2")
+          .mockReturnValueOnce("task_segment_3"),
+      },
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-23T12:20:00.000Z")
+          .mockReturnValueOnce("2026-03-23T12:21:00.000Z"),
+      },
+    } as never);
+
+    await useCase.execute({ taskId: "task_batch_context" });
+
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          segmentId: "segment_1",
+          previousSegment: null,
+          nextSegment: expect.objectContaining(segments[1]),
+          sceneSegmentIndex: 1,
+          sceneSegmentCount: 3,
+        }),
+      }),
+    );
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          segmentId: "segment_2",
+          previousSegment: expect.objectContaining(segments[0]),
+          nextSegment: expect.objectContaining(segments[2]),
+          sceneSegmentIndex: 2,
+          sceneSegmentCount: 3,
+        }),
+      }),
+    );
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          segmentId: "segment_3",
+          previousSegment: expect.objectContaining(segments[1]),
+          nextSegment: null,
+          sceneSegmentIndex: 3,
+          sceneSegmentCount: 3,
+        }),
+      }),
+    );
+  });
+
   it("preserves approved segments and only enqueues unapproved ones during batch regenerate", async () => {
     const taskRepository = {
       findById: vi.fn().mockResolvedValue({
@@ -336,6 +489,11 @@ describe("process shot script generate task use case - segment first", () => {
       task: expect.objectContaining({ id: "task_segment_2" }),
       input: expect.objectContaining({
         segmentId: "segment_2",
+        previousShotScriptSummary: {
+          summary: "已通过段落保留原内容。",
+          lastShotVisual: "保留画面",
+          lastShotAction: "停步",
+        },
       }),
     });
   });

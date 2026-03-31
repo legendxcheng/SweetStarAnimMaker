@@ -16,6 +16,11 @@ describe("default shot script prompt template", () => {
     expect(template).toContain("不要输出 imagePrompt、negativePrompt、motionHint 等出图字段");
     expect(template).toContain("{{storyboardTitle}}");
     expect(template).toContain("{{segment.visual}}");
+    expect(template).toContain("{{previousSegment.visual}}");
+    expect(template).toContain("{{nextSegment.visual}}");
+    expect(template).toContain("{{sceneSegmentIndex}}");
+    expect(template).toContain("{{sceneSegmentCount}}");
+    expect(template).toContain("{{continuityGoal}}");
     expect(template).toContain("{{segmentMaxSpokenChars}}");
     expect(template).toContain("{{spokenTextBudgetRule}}");
     expect(template).toContain("{{shotSpokenTextBudgetRule}}");
@@ -25,6 +30,13 @@ describe("default shot script prompt template", () => {
     expect(template).toContain("{{characterSheets}}");
     expect(template).toContain("必须使用角色设定中的标准角色名");
     expect(template).toContain("禁止使用未登记简称");
+    expect(template).toContain("承接状态");
+    expect(template).toContain("事件推进句");
+    expect(template).toContain("交接状态");
+    expect(template).toContain("如果 previousSegment 存在，第一条 shot 不要重新建立场景");
+    expect(template).toContain("summary 必须描述状态变化");
+    expect(template).toContain("不能只写氛围");
+    expect(template).toContain("purpose 必须服务事件推进");
     expect(template).toContain("不要试图为每个镜头选择唯一策略");
     expect(template).toContain("请先识别镜头中的关键状态节点");
     expect(template).toContain("anchors");

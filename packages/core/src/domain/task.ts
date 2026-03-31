@@ -182,6 +182,15 @@ export interface ShotScriptSegmentGenerateTaskInput {
   masterPlot?: ShotScriptGenerateTaskInput["masterPlot"];
   sourceCharacterSheetBatchId?: string;
   characterSheets?: ShotScriptGenerateTaskInput["characterSheets"];
+  previousSegment?: ShotScriptSegmentSnapshot | null;
+  nextSegment?: ShotScriptSegmentSnapshot | null;
+  sceneSegmentIndex?: number;
+  sceneSegmentCount?: number;
+  previousShotScriptSummary?: {
+    summary: string;
+    lastShotVisual: string | null;
+    lastShotAction: string | null;
+  } | null;
   promptTemplateKey: "shot_script.segment.generate";
 }
 

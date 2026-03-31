@@ -107,7 +107,9 @@ export function createProcessShotScriptGenerateTaskUseCase(
           });
 
           for (const scene of taskInput.storyboard.scenes) {
-            for (const segment of scene.segments) {
+            const sceneSegmentCount = scene.segments.length;
+
+            for (const [segmentIndex, segment] of scene.segments.entries()) {
               if (preservedApprovedSegments.has(`${scene.id}:${segment.id}`)) {
                 continue;
               }
@@ -132,19 +134,34 @@ export function createProcessShotScriptGenerateTaskUseCase(
                 sourceShotScriptId: shotScript.id,
                 sceneId: scene.id,
                 segmentId: segment.id,
+                segment: toShotScriptSegmentSnapshot(segment),
                 scene: {
                   id: scene.id,
                   order: scene.order,
                   name: scene.name,
                   dramaticPurpose: scene.dramaticPurpose,
                 },
-                segment,
                 storyboardTitle: taskInput.storyboard.title,
                 episodeTitle: taskInput.storyboard.episodeTitle,
                 sourceMasterPlotId: taskInput.sourceMasterPlotId,
                 masterPlot: taskInput.masterPlot,
                 sourceCharacterSheetBatchId: taskInput.sourceCharacterSheetBatchId,
                 characterSheets: taskInput.characterSheets,
+                previousSegment:
+                  scene.segments[segmentIndex - 1] === undefined
+                    ? null
+                    : toShotScriptSegmentSnapshot(scene.segments[segmentIndex - 1]),
+                nextSegment:
+                  scene.segments[segmentIndex + 1] === undefined
+                    ? null
+                    : toShotScriptSegmentSnapshot(scene.segments[segmentIndex + 1]),
+                sceneSegmentIndex: segmentIndex + 1,
+                sceneSegmentCount,
+                previousShotScriptSummary: buildPreviousShotScriptSummary({
+                  shotScript: reusableShotScript,
+                  sceneId: scene.id,
+                  previousStoryboardSegmentId: scene.segments[segmentIndex - 1]?.id ?? null,
+                }),
                 promptTemplateKey: "shot_script.segment.generate",
               };
 
@@ -288,6 +305,57 @@ export function createProcessShotScriptGenerateTaskUseCase(
         throw error;
       }
     },
+  };
+}
+
+function toShotScriptSegmentSnapshot(segment: {
+  id: string;
+  order: number;
+  durationSec: number | null;
+  visual: string;
+  characterAction: string;
+  dialogue: string;
+  voiceOver: string;
+  audio: string;
+  purpose: string;
+}) {
+  return {
+    id: segment.id,
+    order: segment.order,
+    durationSec: segment.durationSec,
+    visual: segment.visual,
+    characterAction: segment.characterAction,
+    dialogue: segment.dialogue,
+    voiceOver: segment.voiceOver,
+    audio: segment.audio,
+    purpose: segment.purpose,
+  };
+}
+
+function buildPreviousShotScriptSummary(input: {
+  shotScript: CurrentShotScript | null;
+  sceneId: string;
+  previousStoryboardSegmentId: string | null;
+}) {
+  if (!input.shotScript || !input.previousStoryboardSegmentId) {
+    return null;
+  }
+
+  const previousSegment = input.shotScript.segments.find(
+    (segment) =>
+      segment.sceneId === input.sceneId && segment.segmentId === input.previousStoryboardSegmentId,
+  );
+
+  if (!previousSegment) {
+    return null;
+  }
+
+  const lastShot = previousSegment.shots.at(-1) ?? null;
+
+  return {
+    summary: previousSegment.summary,
+    lastShotVisual: lastShot?.visual ?? null,
+    lastShotAction: lastShot?.action ?? null,
   };
 }
 
