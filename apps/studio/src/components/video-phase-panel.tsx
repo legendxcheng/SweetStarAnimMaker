@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type {
+  FinalCutRecord,
   ProjectDetail,
   ShotVideoRecord,
   TaskDetail,
@@ -67,12 +68,20 @@ export function VideoPhasePanel({
       }
     | null
   >(null);
+  const [finalCut, setFinalCut] = useState<FinalCutRecord | null>(null);
+  const [finalCutLoading, setFinalCutLoading] = useState(false);
+  const [finalCutError, setFinalCutError] = useState<Error | null>(null);
+  const [finalCutTask, setFinalCutTask] = useState<TaskDetail | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
   const metaValueClass = "text-sm text-(--color-text-primary)";
   const batchSummary = project.currentVideoBatch;
+  const allShotsApproved =
+    batchSummary !== null &&
+    batchSummary.shotCount > 0 &&
+    batchSummary.approvedShotCount === batchSummary.shotCount;
 
   useEffect(() => {
     if (!batchSummary) {
@@ -80,6 +89,10 @@ export function VideoPhasePanel({
       setDrafts({});
       setListError(null);
       setListLoading(false);
+      setFinalCut(null);
+      setFinalCutError(null);
+      setFinalCutLoading(false);
+      setFinalCutTask(null);
       return;
     }
 
@@ -116,6 +129,48 @@ export function VideoPhasePanel({
   }, [batchSummary?.id, project.id, project.updatedAt]);
 
   useEffect(() => {
+    if (!batchSummary) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadFinalCut() {
+      setFinalCutLoading(true);
+
+      try {
+        const response = await apiClient.getFinalCut(project.id);
+
+        if (cancelled) {
+          return;
+        }
+
+        setFinalCut(response.currentFinalCut);
+        setFinalCutError(null);
+      } catch (error) {
+        if (!cancelled) {
+          setFinalCutError(error as Error);
+        }
+      } finally {
+        if (!cancelled) {
+          setFinalCutLoading(false);
+        }
+      }
+    }
+
+    void loadFinalCut();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    batchSummary?.id,
+    batchSummary?.approvedShotCount,
+    batchSummary?.updatedAt,
+    project.id,
+  ]);
+
+  useEffect(() => {
     if (!batchSummary || project.status !== "videos_generating") {
       return;
     }
@@ -145,6 +200,48 @@ export function VideoPhasePanel({
       clearInterval(intervalId);
     };
   }, [batchSummary?.id, project.id, project.status]);
+
+  useEffect(() => {
+    if (!finalCutTask || finalCutTask.status === "succeeded" || finalCutTask.status === "failed") {
+      return;
+    }
+
+    let cancelled = false;
+    const intervalId = setInterval(() => {
+      void (async () => {
+        try {
+          const nextTask = await apiClient.getTaskDetail(finalCutTask.id);
+
+          if (cancelled) {
+            return;
+          }
+
+          setFinalCutTask(nextTask);
+
+          if (nextTask.status === "succeeded") {
+            const response = await apiClient.getFinalCut(project.id);
+
+            if (cancelled) {
+              return;
+            }
+
+            setFinalCut(response.currentFinalCut);
+            setFinalCutError(null);
+            await onProjectRefresh?.();
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setFinalCutError(error as Error);
+          }
+        }
+      })();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [finalCutTask, onProjectRefresh, project.id]);
 
   function applyVideoListResponse(response: VideoListResponse) {
     setShots(sortShotsByHierarchy(response.shots));
@@ -189,6 +286,12 @@ export function VideoPhasePanel({
     const response = await apiClient.listVideos(project.id);
     applyVideoListResponse(response);
     setListError(null);
+  }
+
+  async function refreshFinalCut() {
+    const response = await apiClient.getFinalCut(project.id);
+    setFinalCut(response.currentFinalCut);
+    setFinalCutError(null);
   }
 
   async function handleRegenerate(shotId: string) {
@@ -309,12 +412,30 @@ export function VideoPhasePanel({
     }
   }
 
+  async function handleGenerateFinalCut() {
+    if (!allShotsApproved) {
+      return;
+    }
+
+    try {
+      setFinalCutTask(await apiClient.createFinalCutGenerateTask(project.id));
+      setFinalCutError(null);
+      await refreshFinalCut();
+    } catch (error) {
+      setFinalCutError(error as Error);
+    }
+  }
+
   const canApproveAll =
     shots.length > 0 &&
     shots.every((shot) => shot.status === "in_review" || shot.status === "approved");
   const hasDirtyPrompts = shots.some(
     (shot) => (drafts[shot.id] ?? shot.promptTextCurrent) !== shot.promptTextCurrent,
   );
+  const finalCutVideoUrl =
+    finalCut?.status === "ready" && finalCut.videoAssetPath
+      ? getAssetUrl(project.id, finalCut.videoAssetPath, finalCut.updatedAt)
+      : null;
 
   return (
     <section aria-label="视频工作区">
@@ -402,6 +523,82 @@ export function VideoPhasePanel({
         )}
       </div>
 
+      {batchSummary && (
+        <div className={cardClass}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 className="text-base font-semibold text-(--color-text-primary)">成片导出</h3>
+              <p className="mt-1 text-sm text-(--color-text-muted)">
+                按 scene、segment、shot 固定顺序拼接当前批次全部已通过镜头，生成项目级 MP4。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleGenerateFinalCut();
+              }}
+              disabled={!allShotsApproved || finalCutTask?.status === "pending" || finalCutTask?.status === "running"}
+              className={getButtonClassName()}
+            >
+              {finalCutTask?.status === "pending" || finalCutTask?.status === "running"
+                ? "生成中..."
+                : "生成成片"}
+            </button>
+          </div>
+
+          {!allShotsApproved && (
+            <p className="mt-3 text-sm text-(--color-text-muted)">
+              需先审核通过全部镜头片段后才能生成成片。
+            </p>
+          )}
+
+          {finalCutTask && (
+            <div className="mt-4 grid gap-2 rounded-xl border border-(--color-border) bg-(--color-bg-base) p-4">
+              <div>
+                <p className={metaLabelClass}>成片任务状态</p>
+                <p className={metaValueClass}>{TASK_STATUS_LABELS[finalCutTask.status]}</p>
+              </div>
+              {finalCutTask.errorMessage && (
+                <p className="text-sm text-(--color-danger)">{finalCutTask.errorMessage}</p>
+              )}
+            </div>
+          )}
+
+          {finalCutLoading && (
+            <p className="mt-4 text-sm text-(--color-text-muted)">正在加载成片状态...</p>
+          )}
+
+          {finalCutVideoUrl && (
+            <div className="mt-4 grid gap-4">
+              <video
+                data-testid="final-cut-player"
+                controls
+                preload="metadata"
+                className="w-full rounded-xl border border-(--color-border) bg-black"
+              >
+                <source src={finalCutVideoUrl} type="video/mp4" />
+              </video>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--color-border) bg-(--color-bg-base) px-4 py-3">
+                <div>
+                  <p className={metaLabelClass}>当前成片</p>
+                  <p className={metaValueClass}>
+                    {finalCut?.shotCount ?? 0} 个镜头，更新于{" "}
+                    {finalCut ? new Date(finalCut.updatedAt).toLocaleString("zh-CN") : "-"}
+                  </p>
+                </div>
+                <a
+                  href={finalCutVideoUrl}
+                  download
+                  className={getButtonClassName({ variant: "success" })}
+                >
+                  下载 MP4
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {task && (
         <div className={cardClass}>
           <h4 className="text-base font-semibold text-(--color-text-primary) mb-3">任务状态</h4>
@@ -440,6 +637,12 @@ export function VideoPhasePanel({
       {actionError && (
         <div className="mb-4">
           <ErrorState error={actionError} />
+        </div>
+      )}
+
+      {finalCutError && (
+        <div className="mb-4">
+          <ErrorState error={finalCutError} />
         </div>
       )}
 

@@ -417,7 +417,7 @@ describe("Review Actions", () => {
   });
 
   it("regenerates the whole shot-script stage and redirects back to the project detail page", async () => {
-    vi.spyOn(apiModule.apiClient, "regenerateShotScript").mockResolvedValue({
+    vi.spyOn(apiModule.apiClient, "createShotScriptGenerateTask").mockResolvedValue({
       id: "task-4",
       projectId: "proj-1",
       type: "shot_script_generate",
@@ -439,7 +439,7 @@ describe("Review Actions", () => {
     fireEvent.click(await screen.findByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
-      expect(apiModule.apiClient.regenerateShotScript).toHaveBeenCalledWith("proj-1");
+      expect(apiModule.apiClient.createShotScriptGenerateTask).toHaveBeenCalledWith("proj-1");
     });
 
     expect(navigate).toHaveBeenCalledWith("/projects/proj-1");

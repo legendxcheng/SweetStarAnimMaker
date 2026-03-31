@@ -1,6 +1,7 @@
 import type {
   CharacterSheetGenerateTaskInput,
   CharacterSheetsGenerateTaskInput,
+  FinalCutGenerateTaskInput,
   FrameImageGenerateTaskInput,
   FramePromptGenerateTaskInput,
   ImageBatchGenerateAllFramesTaskInput,
@@ -22,6 +23,7 @@ export type SupportedTaskInput =
   | MasterPlotGenerateTaskInput
   | CharacterSheetsGenerateTaskInput
   | CharacterSheetGenerateTaskInput
+  | FinalCutGenerateTaskInput
   | StoryboardGenerateTaskInput
   | ShotScriptGenerateTaskInput
   | ShotScriptSegmentGenerateTaskInput

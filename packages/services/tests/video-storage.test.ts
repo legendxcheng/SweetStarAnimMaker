@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  createFinalCutRecord,
   createSegmentVideoRecord,
   createVideoBatchRecord,
 } from "@sweet-star/core";
@@ -223,5 +224,57 @@ describe("video storage", () => {
         "utf8",
       ),
     ).resolves.toContain('"dialoguePlan": "说话主体：林；台词：有人先到了。"');
+  });
+
+  it("writes stable and versioned final cut assets plus the concat manifest", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-final-cut-"));
+    tempDirs.push(tempDir);
+    const paths = createLocalDataPaths(tempDir);
+    const storage = createVideoStorage({ paths });
+    const finalCut = createFinalCutRecord({
+      id: "final_cut_1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceVideoBatchId: "video_batch_1",
+      status: "ready",
+      shotCount: 3,
+      createdAt: "2026-03-31T00:00:00.000Z",
+      updatedAt: "2026-03-31T00:01:00.000Z",
+    });
+
+    await storage.writeFinalCutManifest?.({
+      finalCut,
+      lines: ["file 'shot-1.mp4'", "file 'shot-2.mp4'"],
+    });
+    await storage.writeFinalCutFiles?.({
+      finalCut,
+      videoContent: Uint8Array.from([1, 2, 3, 4]),
+    });
+
+    await expect(
+      fs.readFile(
+        path.join(
+          tempDir,
+          ".local-data",
+          "projects",
+          "proj_1-my-story",
+          "final-cut",
+          "manifests",
+          "final_cut_1.txt",
+        ),
+        "utf8",
+      ),
+    ).resolves.toContain("file 'shot-1.mp4'");
+    await expect(
+      fs.readFile(
+        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "final-cut", "current.json"),
+        "utf8",
+      ),
+    ).resolves.toContain('"sourceVideoBatchId": "video_batch_1"');
+    await expect(
+      fs.readFile(
+        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "final-cut", "versions", "final_cut_1.mp4"),
+      ),
+    ).resolves.toEqual(Buffer.from([1, 2, 3, 4]));
   });
 });

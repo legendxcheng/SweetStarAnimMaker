@@ -459,4 +459,55 @@ describe("kling omni provider", () => {
     expect(result.thumbnailUrl).toBeNull();
     expect(result.durationSec).toBe(6);
   });
+
+  it("clamps short stage video durations up to 3 seconds before submitting Kling Omni jobs", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "omni_task_short_duration",
+            task_status: "submitted",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            task_id: "omni_task_short_duration",
+            task_status: "succeed",
+            task_result: {
+              videos: [
+                {
+                  url: "https://cdn.example/omni-short-duration.mp4",
+                },
+              ],
+            },
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createKlingOmniStageVideoProvider({
+      apiToken: "test-token",
+    });
+
+    const result = await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_short",
+      shotCode: "SC01-SG01-SH02",
+      frameDependency: "start_frame_only",
+      promptText: "让<<<image_1>>>中的角色保持轻微动作。",
+      startFramePath: "https://cdn.example/start.png",
+      durationSec: 2,
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.duration).toBe("3");
+    expect(result.durationSec).toBe(3);
+  });
 });

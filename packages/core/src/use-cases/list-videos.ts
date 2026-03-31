@@ -51,19 +51,23 @@ export function createListVideosUseCase(
 
       const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
       const repairedSegments = await Promise.all(
-        segments.map((segment) =>
-          repairSegmentVideoPromptsIfMissing(
-            {
-              shotScriptStorage: dependencies.shotScriptStorage,
-              shotImageRepository: dependencies.shotImageRepository,
-              videoStorage: dependencies.videoStorage,
-              videoPromptProvider: dependencies.videoPromptProvider,
-              videoRepository: dependencies.videoRepository,
-            },
-            project,
-            segment,
-          ),
-        ),
+        segments.map(async (segment) => {
+          try {
+            return await repairSegmentVideoPromptsIfMissing(
+              {
+                shotScriptStorage: dependencies.shotScriptStorage,
+                shotImageRepository: dependencies.shotImageRepository,
+                videoStorage: dependencies.videoStorage,
+                videoPromptProvider: dependencies.videoPromptProvider,
+                videoRepository: dependencies.videoRepository,
+              },
+              project,
+              segment,
+            );
+          } catch {
+            return segment;
+          }
+        }),
       );
 
       return {

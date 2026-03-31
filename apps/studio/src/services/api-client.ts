@@ -14,6 +14,8 @@ import {
   currentMasterPlotResponseSchema,
   currentShotScriptResponseSchema,
   currentStoryboardResponseSchema,
+  finalCutResponseSchema,
+  generateFinalCutRequestSchema,
   generateImageFrameRequestSchema,
   imageFrameListResponseSchema,
   imageFrameResponseSchema,
@@ -46,6 +48,7 @@ import {
   type CurrentMasterPlot,
   type CurrentShotScript,
   type CurrentStoryboard,
+  type FinalCutResponse,
   type ImageFrameListResponse,
   type MasterPlotReviewWorkspace,
   type ProjectDetail,
@@ -217,6 +220,25 @@ export const apiClient = {
       {
         method: "POST",
         body: JSON.stringify(regenerateVideoSegmentRequestSchema.parse({})),
+      },
+    ),
+
+  createFinalCutGenerateTask: (projectId: string) =>
+    request<TaskDetail>(
+      `/projects/${projectId}/final-cut/generate`,
+      taskDetailResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(generateFinalCutRequestSchema.parse({})),
+      },
+    ),
+
+  getFinalCut: (projectId: string) =>
+    request<FinalCutResponse>(
+      `/projects/${projectId}/final-cut`,
+      finalCutResponseSchema,
+      {
+        method: "GET",
       },
     ),
 

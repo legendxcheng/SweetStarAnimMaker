@@ -17,6 +17,12 @@ export {
   type RegenerateAllVideoPromptsUseCaseDependencies,
 } from "../use-cases/regenerate-all-video-prompts";
 export {
+  createCreateFinalCutGenerateTaskUseCase,
+  type CreateFinalCutGenerateTaskInput,
+  type CreateFinalCutGenerateTaskUseCase,
+  type CreateFinalCutGenerateTaskUseCaseDependencies,
+} from "../use-cases/create-final-cut-generate-task";
+export {
   createCreateProjectUseCase,
   type CreateProjectInput,
   type CreateProjectUseCase,
@@ -94,6 +100,12 @@ export {
   type GetCharacterSheetReferenceImageContentUseCase,
   type GetCharacterSheetReferenceImageContentUseCaseDependencies,
 } from "../use-cases/get-character-sheet-reference-image-content";
+export {
+  createGetFinalCutUseCase,
+  type GetFinalCutInput,
+  type GetFinalCutUseCase,
+  type GetFinalCutUseCaseDependencies,
+} from "../use-cases/get-final-cut";
 export {
   createGetCurrentShotScriptUseCase,
   type GetCurrentShotScriptInput,
@@ -219,6 +231,12 @@ export {
   type ProcessImagesGenerateTaskUseCase,
   type ProcessImagesGenerateTaskUseCaseDependencies,
 } from "../use-cases/process-images-generate-task";
+export {
+  createProcessFinalCutGenerateTaskUseCase,
+  type ProcessFinalCutGenerateTaskInput,
+  type ProcessFinalCutGenerateTaskUseCase,
+  type ProcessFinalCutGenerateTaskUseCaseDependencies,
+} from "../use-cases/process-final-cut-generate-task";
 export {
   createProcessVideosGenerateTaskUseCase,
   type ProcessVideosGenerateTaskInput,

@@ -203,238 +203,7 @@ describe("process shot script segment generate task use case", () => {
     });
   });
 
-  it("renders continuity context and a continuity goal into the segment prompt", async () => {
-    const previousSegment = {
-      id: "segment_1",
-      order: 1,
-      durationSec: 6,
-      visual: "林夏在积水里停住脚步，抬头确认出口方向。",
-      characterAction: "她被迫刹住脚，盯住前方被堵的棚口。",
-      dialogue: "",
-      voiceOver: "来得真快。",
-      audio: "雨水砸棚布。",
-      purpose: "确认主角已经被逼停。",
-    };
-    const nextSegment = {
-      id: "segment_3",
-      order: 3,
-      durationSec: 4,
-      visual: "林夏侧身钻向棚架缝隙，准备改走侧路。",
-      characterAction: "她压低身体，试探另一条窄路。",
-      dialogue: "",
-      voiceOver: "",
-      audio: "棚布摩擦声。",
-      purpose: "把主角送入下一步逃脱动作。",
-    };
-    const taskRepository = {
-      findById: vi.fn().mockResolvedValue({
-        id: "task_segment_continuity",
-        projectId: "proj_1",
-        type: "shot_script_segment_generate",
-        queueName: "shot-script-segment-generate",
-        storageDir: "projects/proj_1-my-story/tasks/task_segment_continuity",
-      }),
-      markRunning: vi.fn(),
-      markSucceeded: vi.fn(),
-      markFailed: vi.fn(),
-    };
-    const projectRepository = {
-      findById: vi.fn().mockResolvedValue({
-        id: "proj_1",
-        storageDir: "projects/proj_1-my-story",
-        status: "shot_script_generating",
-      }),
-      updateStatus: vi.fn(),
-    };
-    const taskFileStorage = {
-      readTaskInput: vi.fn().mockResolvedValue({
-        taskId: "task_segment_continuity",
-        projectId: "proj_1",
-        taskType: "shot_script_segment_generate",
-        sourceStoryboardId: "storyboard_1",
-        sourceShotScriptId: "shot_script_task_batch_1",
-        sceneId: "scene_1",
-        segmentId: "segment_2",
-        scene: {
-          id: "scene_1",
-          order: 1,
-          name: "集市入口",
-          dramaticPurpose: "封死主角退路。",
-        },
-        segment: {
-          id: "segment_2",
-          order: 2,
-          durationSec: 5,
-          visual: "对手从摊棚后逼近，逼得林夏侧身贴到积水边。",
-          characterAction: "对手堵住出口，林夏被迫寻找新路径。",
-          dialogue: "",
-          voiceOver: "",
-          audio: "脚步踩水声逼近。",
-          purpose: "压迫主角做出改道决定。",
-        },
-        previousSegment,
-        nextSegment,
-        sceneSegmentIndex: 2,
-        sceneSegmentCount: 3,
-        previousShotScriptSummary: {
-          summary: "上一版里林夏已经确认正门被堵死。",
-          lastShotVisual: "林夏站在积水边，视线锁住被堵住的棚口。",
-          lastShotAction: "她把身体重心压向左侧，准备转身。",
-        },
-        storyboardTitle: "第1集",
-        episodeTitle: "暴雨封路",
-        promptTemplateKey: "shot_script.segment.generate",
-      }),
-      writeTaskOutput: vi.fn(),
-      appendTaskLog: vi.fn(),
-    };
-    const shotScriptStorage = {
-      readPromptTemplate: vi.fn().mockResolvedValue(
-        [
-          "上一段：{{previousSegment.visual}}",
-          "上一段动作：{{previousSegment.characterAction}}",
-          "下一段：{{nextSegment.visual}}",
-          "下一段动作：{{nextSegment.characterAction}}",
-          "位置：{{sceneSegmentIndex}}/{{sceneSegmentCount}}",
-          "上一版摘要：{{previousShotScriptSummary.summary}}",
-          "上一版最后画面：{{previousShotScriptSummary.lastShotVisual}}",
-          "上一版最后动作：{{previousShotScriptSummary.lastShotAction}}",
-          "连续性目标：{{continuityGoal}}",
-        ].join("\n"),
-      ),
-      writePromptSnapshot: vi.fn(),
-      writeRawResponse: vi.fn(),
-      readCurrentShotScript: vi.fn().mockResolvedValue({
-        id: "shot_script_task_batch_1",
-        title: "第1集",
-        sourceStoryboardId: "storyboard_1",
-        sourceTaskId: "task_batch_1",
-        updatedAt: "2026-03-23T12:03:00.000Z",
-        approvedAt: null,
-        segmentCount: 3,
-        shotCount: 0,
-        totalDurationSec: null,
-        segments: [
-          {
-            segmentId: "segment_1",
-            sceneId: "scene_1",
-            order: 1,
-            name: null,
-            summary: "确认对手先一步堵路。",
-            durationSec: 6,
-            status: "approved",
-            lastGeneratedAt: "2026-03-23T12:01:00.000Z",
-            approvedAt: "2026-03-23T12:02:00.000Z",
-            shots: [],
-          },
-          {
-            segmentId: "segment_2",
-            sceneId: "scene_1",
-            order: 2,
-            name: null,
-            summary: "压迫主角做出反应。",
-            durationSec: 5,
-            status: "pending",
-            lastGeneratedAt: null,
-            approvedAt: null,
-            shots: [],
-          },
-          {
-            segmentId: "segment_3",
-            sceneId: "scene_1",
-            order: 3,
-            name: null,
-            summary: "主角改走侧路。",
-            durationSec: 4,
-            status: "pending",
-            lastGeneratedAt: null,
-            approvedAt: null,
-            shots: [],
-          },
-        ],
-      }),
-      writeCurrentShotScript: vi.fn(),
-    };
-    const shotScriptProvider = {
-      generateShotScriptSegment: vi.fn().mockResolvedValue({
-        rawResponse: '{"segmentId":"segment_2"}',
-        segment: {
-          segmentId: "segment_2",
-          sceneId: "scene_1",
-          order: 2,
-          name: "被迫改道",
-          summary: "林夏被逼得放弃正门，转向侧边棚架间的窄路。",
-          durationSec: 5,
-          status: "in_review",
-          lastGeneratedAt: null,
-          approvedAt: null,
-          shots: [
-            {
-              id: "shot_2_1",
-              sceneId: "scene_1",
-              segmentId: "segment_2",
-              order: 1,
-              shotCode: "S01-SG02-SH01",
-              durationSec: 5,
-              purpose: "完成主角被压迫后改走侧路的决定。",
-              visual: "林夏紧贴积水边后撤半步，瞥向侧面棚架缝隙。",
-              subject: "林夏",
-              action: "她快速转身，决定改走侧路。",
-              dialogue: null,
-              os: null,
-              audio: "脚步踩水声和棚布震动声。",
-              transitionHint: null,
-              continuityNotes: null,
-            },
-          ],
-        },
-      }),
-    };
-
-    const useCase = createProcessShotScriptSegmentGenerateTaskUseCase({
-      taskRepository: taskRepository as never,
-      projectRepository: projectRepository as never,
-      taskFileStorage: taskFileStorage as never,
-      shotScriptProvider: shotScriptProvider as never,
-      shotScriptStorage: shotScriptStorage as never,
-      clock: {
-        now: vi
-          .fn()
-          .mockReturnValueOnce("2026-03-23T12:04:00.000Z")
-          .mockReturnValueOnce("2026-03-23T12:05:00.000Z"),
-      },
-    });
-
-    await useCase.execute({ taskId: "task_segment_continuity" });
-
-    expect(shotScriptProvider.generateShotScriptSegment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptText: expect.stringContaining("上一段：林夏在积水里停住脚步，抬头确认出口方向。"),
-        variables: expect.objectContaining({
-          previousSegment: expect.objectContaining({ id: "segment_1" }),
-          nextSegment: expect.objectContaining({ id: "segment_3" }),
-          sceneSegmentIndex: 2,
-          sceneSegmentCount: 3,
-          previousShotScriptSummary: expect.objectContaining({
-            summary: "上一版里林夏已经确认正门被堵死。",
-          }),
-          continuityGoal: expect.stringContaining("压迫主角做出改道决定。"),
-        }),
-      }),
-    );
-    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptText: expect.stringContaining("下一段：林夏侧身钻向棚架缝隙，准备改走侧路。"),
-      }),
-    );
-    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptText: expect.stringContaining("连续性目标："),
-      }),
-    );
-  });
-
-  it("renders fallback continuity text when adjacent segments are absent and preserves spoken text budgets", async () => {
+  it("injects duration-based spoken text budgets into the rendered prompt", async () => {
     const taskRepository = {
       findById: vi.fn().mockResolvedValue({
         id: "task_segment_prompt_budget",
@@ -483,10 +252,6 @@ describe("process shot script segment generate task use case", () => {
         },
         storyboardTitle: "第1集",
         episodeTitle: "暴雨封路",
-        previousSegment: null,
-        nextSegment: null,
-        sceneSegmentIndex: 1,
-        sceneSegmentCount: 1,
         promptTemplateKey: "shot_script.segment.generate",
       }),
       writeTaskOutput: vi.fn(),
@@ -495,9 +260,6 @@ describe("process shot script segment generate task use case", () => {
     const shotScriptStorage = {
       readPromptTemplate: vi.fn().mockResolvedValue(
         [
-          "上一段：{{previousSegment.visual}}",
-          "下一段：{{nextSegment.visual}}",
-          "连续性目标：{{continuityGoal}}",
           "总预算：{{segmentMaxSpokenChars}}",
           "规则：{{spokenTextBudgetRule}}",
           "shot规则：{{shotSpokenTextBudgetRule}}",
@@ -586,32 +348,13 @@ describe("process shot script segment generate task use case", () => {
 
     expect(shotScriptProvider.generateShotScriptSegment).toHaveBeenCalledWith(
       expect.objectContaining({
+        promptText: expect.stringContaining("总预算：18"),
         variables: expect.objectContaining({
-          previousSegment: null,
-          nextSegment: null,
-          sceneSegmentIndex: 1,
-          sceneSegmentCount: 1,
-          continuityGoal: expect.stringContaining("确认对手先一步堵路。"),
           segmentMaxSpokenChars: 18,
           spokenTextBudgetRule: "当前 segment 的 dialogue + os 总字数上限 = 18 字（按 1 秒 3 字计算）。",
           shotSpokenTextBudgetRule:
             "每个 shot 的 dialogue + os 字数也必须 <= 该 shot.durationSec × 3；如果超出，就压缩文案或拆分更多 shots。",
         }),
-      }),
-    );
-    expect(shotScriptProvider.generateShotScriptSegment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptText: expect.stringContaining("上一段：无上一段"),
-      }),
-    );
-    expect(shotScriptProvider.generateShotScriptSegment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptText: expect.stringContaining("总预算：18"),
-      }),
-    );
-    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        promptText: expect.stringContaining("下一段：无下一段"),
       }),
     );
     expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(

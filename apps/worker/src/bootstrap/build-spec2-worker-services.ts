@@ -6,6 +6,7 @@ import {
   createProcessImageBatchRegenerateAllPromptsTaskUseCase,
   createProcessImageBatchRegenerateFailedFramesTaskUseCase,
   createProcessImageBatchRegenerateFailedPromptsTaskUseCase,
+  createProcessFinalCutGenerateTaskUseCase,
   createProcessFramePromptGenerateTaskUseCase,
   createProcessImagesGenerateTaskUseCase,
   createProcessMasterPlotGenerateTaskUseCase,
@@ -25,11 +26,13 @@ import {
   type CharacterSheetRepository,
   type CharacterSheetStorage,
   type Clock,
+  type FinalCutRenderer,
   type MasterPlotProvider,
   type MasterPlotStorage,
   type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessCharacterSheetGenerateTaskUseCase,
   type ProcessCharacterSheetsGenerateTaskUseCase,
+  type ProcessFinalCutGenerateTaskUseCase,
   type ProcessFrameImageGenerateTaskUseCase,
   type ProcessFramePromptGenerateTaskUseCase,
   type ProcessImageBatchGenerateAllFramesTaskUseCase,
@@ -74,6 +77,7 @@ import {
   createGrokFramePromptProvider,
   createGrokShotScriptProvider,
   createGrokStoryboardProvider,
+  createGrokVideoPromptProvider,
   createLocalDataPaths,
   createReferenceImageUploader,
   createSqliteCharacterSheetRepository,
@@ -87,9 +91,11 @@ import {
   createTaskFileStorage,
   createTurnaroundImageProvider,
   createVideoStorage,
+  createFfmpegFinalCutRenderer,
+  createVideoPromptProviderWithGrokFallback,
   initializeSqliteSchema,
   createSqliteVideoRepository,
-  } from "@sweet-star/services";
+} from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 import { createConfiguredVideoProvider } from "./video-provider-config";
@@ -119,6 +125,7 @@ export interface BuildSpec2WorkerServicesOptions {
   videoPromptProvider?: VideoPromptProvider;
   shotImageProvider?: ShotImageProvider;
   videoProvider?: VideoProvider;
+  finalCutRenderer?: FinalCutRenderer;
   taskQueue?: TaskQueue;
   taskIdGenerator?: TaskIdGenerator;
   redisUrl?: string;
@@ -138,6 +145,7 @@ export interface Spec2WorkerServices {
   processImageBatchRegenerateAllPromptsTask: ProcessImageBatchRegenerateAllPromptsTaskUseCase;
   processImageBatchRegenerateFailedPromptsTask: ProcessImageBatchRegenerateFailedPromptsTaskUseCase;
   processVideosGenerateTask: ProcessVideosGenerateTaskUseCase;
+  processFinalCutGenerateTask: ProcessFinalCutGenerateTaskUseCase;
   processSegmentVideoPromptGenerateTask: ProcessSegmentVideoPromptGenerateTaskUseCase;
   processSegmentVideoGenerateTask: ProcessSegmentVideoGenerateTaskUseCase;
   processFramePromptGenerateTask: ProcessFramePromptGenerateTaskUseCase;
@@ -279,11 +287,18 @@ export function buildSpec2WorkerServices(
     );
   const videoPromptProvider =
     options.videoPromptProvider ??
-    createGeminiVideoPromptProvider({
-      baseUrl: process.env.VECTORENGINE_BASE_URL,
-      apiToken: process.env.VECTORENGINE_API_TOKEN,
-      model: process.env.VIDEO_PROMPT_MODEL,
-    });
+    createVideoPromptProviderWithGrokFallback(
+      createGeminiVideoPromptProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.VIDEO_PROMPT_MODEL,
+      }),
+      createGrokVideoPromptProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.VIDEO_PROMPT_GROK_MODEL,
+      }),
+    );
   const shotImageProvider =
     options.shotImageProvider ??
     createTurnaroundImageProvider({
@@ -299,6 +314,8 @@ export function buildSpec2WorkerServices(
       env: process.env,
       referenceImageUploader,
     });
+  const finalCutRenderer =
+    options.finalCutRenderer ?? createFfmpegFinalCutRenderer();
   const taskIdGenerator =
     options.taskIdGenerator ??
     ({
@@ -532,6 +549,17 @@ export function buildSpec2WorkerServices(
       videoPromptProvider,
       taskQueue,
       taskIdGenerator,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processFinalCutGenerateTask: createProcessFinalCutGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      videoRepository,
+      videoStorage,
+      finalCutRenderer,
       clock: options.clock ?? {
         now: () => new Date().toISOString(),
       },
@@ -810,6 +838,12 @@ function createUnsupportedVideoRepository(): VideoRepository {
     updateSegment() {
       throw new Error("Video repository is not configured");
     },
+    findCurrentFinalCutByProjectId() {
+      throw new Error("Video repository is not configured");
+    },
+    upsertFinalCut() {
+      throw new Error("Video repository is not configured");
+    },
   };
 }
 
@@ -837,6 +871,12 @@ function createUnsupportedVideoStorage(): VideoStorage {
       throw new Error("Video storage is not configured");
     },
     async writeVideoVersion() {
+      throw new Error("Video storage is not configured");
+    },
+    async writeFinalCutManifest() {
+      throw new Error("Video storage is not configured");
+    },
+    async writeFinalCutFiles() {
       throw new Error("Video storage is not configured");
     },
     resolveProjectAssetPath() {

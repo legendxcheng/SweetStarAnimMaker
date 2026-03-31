@@ -26,6 +26,7 @@ export const frameImageGenerateQueueName = "frame-image-generate";
 export const videosGenerateQueueName = "videos-generate";
 export const segmentVideoPromptGenerateQueueName = "segment-video-prompt-generate";
 export const segmentVideoGenerateQueueName = "segment-video-generate";
+export const finalCutGenerateQueueName = "final-cut-generate";
 export const taskArtifactsDirectoryName = "tasks";
 export const taskInputFileName = "input.json";
 export const taskOutputFileName = "output.json";
@@ -175,22 +176,17 @@ export interface ShotScriptSegmentGenerateTaskInput {
   sceneId: string;
   segmentId: string;
   segment: ShotScriptSegmentSnapshot;
+  previousSegment?: ShotScriptSegmentSnapshot | null;
+  nextSegment?: ShotScriptSegmentSnapshot | null;
   scene: Omit<ShotScriptSceneSnapshot, "segments">;
+  sceneSegmentIndex?: number;
+  sceneSegmentCount?: number;
   storyboardTitle: string | null;
   episodeTitle: string | null;
   sourceMasterPlotId?: string;
   masterPlot?: ShotScriptGenerateTaskInput["masterPlot"];
   sourceCharacterSheetBatchId?: string;
   characterSheets?: ShotScriptGenerateTaskInput["characterSheets"];
-  previousSegment?: ShotScriptSegmentSnapshot | null;
-  nextSegment?: ShotScriptSegmentSnapshot | null;
-  sceneSegmentIndex?: number;
-  sceneSegmentCount?: number;
-  previousShotScriptSummary?: {
-    summary: string;
-    lastShotVisual: string | null;
-    lastShotAction: string | null;
-  } | null;
   promptTemplateKey: "shot_script.segment.generate";
 }
 
@@ -334,6 +330,13 @@ export interface SegmentVideoPromptGenerateTaskInput {
     imageHeight?: number | null;
   } | null;
   promptTemplateKey: "segment_video.generate";
+}
+
+export interface FinalCutGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "final_cut_generate";
+  sourceVideoBatchId: string;
 }
 
 export interface CreateTaskRecordInput {

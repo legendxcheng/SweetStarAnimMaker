@@ -1,4 +1,5 @@
 import type {
+  FinalCutRecordEntity,
   SegmentVideoRecordEntity,
   VideoBatchRecord,
   VideoRepository,
@@ -181,6 +182,48 @@ export function createSqliteVideoRepository(
         )
         .run(toSegmentRow(segment));
     },
+    findCurrentFinalCutByProjectId(projectId) {
+      const row = options.db
+        .prepare("SELECT * FROM final_cuts WHERE project_id = ?")
+        .get(projectId) as FinalCutRow | undefined;
+
+      return row ? fromFinalCutRow(row) : null;
+    },
+    upsertFinalCut(finalCut) {
+      options.db
+        .prepare(
+          `
+            INSERT INTO final_cuts (
+              id, project_id, project_storage_dir, source_video_batch_id, status, video_asset_path,
+              manifest_asset_path, shot_count, created_at, updated_at, error_message, storage_dir,
+              current_video_rel_path, current_metadata_rel_path, manifest_storage_rel_path,
+              versions_storage_dir
+            ) VALUES (
+              @id, @project_id, @project_storage_dir, @source_video_batch_id, @status, @video_asset_path,
+              @manifest_asset_path, @shot_count, @created_at, @updated_at, @error_message, @storage_dir,
+              @current_video_rel_path, @current_metadata_rel_path, @manifest_storage_rel_path,
+              @versions_storage_dir
+            )
+            ON CONFLICT(project_id) DO UPDATE SET
+              id = excluded.id,
+              project_storage_dir = excluded.project_storage_dir,
+              source_video_batch_id = excluded.source_video_batch_id,
+              status = excluded.status,
+              video_asset_path = excluded.video_asset_path,
+              manifest_asset_path = excluded.manifest_asset_path,
+              shot_count = excluded.shot_count,
+              created_at = excluded.created_at,
+              updated_at = excluded.updated_at,
+              error_message = excluded.error_message,
+              storage_dir = excluded.storage_dir,
+              current_video_rel_path = excluded.current_video_rel_path,
+              current_metadata_rel_path = excluded.current_metadata_rel_path,
+              manifest_storage_rel_path = excluded.manifest_storage_rel_path,
+              versions_storage_dir = excluded.versions_storage_dir
+          `,
+        )
+        .run(toFinalCutRow(finalCut));
+    },
   };
 }
 
@@ -228,6 +271,25 @@ interface SegmentVideoRow {
   current_video_rel_path: string;
   current_metadata_rel_path: string;
   thumbnail_rel_path: string;
+  versions_storage_dir: string;
+}
+
+interface FinalCutRow {
+  id: string;
+  project_id: string;
+  project_storage_dir: string;
+  source_video_batch_id: string;
+  status: FinalCutRecordEntity["status"];
+  video_asset_path: string | null;
+  manifest_asset_path: string | null;
+  shot_count: number;
+  created_at: string;
+  updated_at: string;
+  error_message: string | null;
+  storage_dir: string;
+  current_video_rel_path: string;
+  current_metadata_rel_path: string;
+  manifest_storage_rel_path: string;
   versions_storage_dir: string;
 }
 
@@ -331,6 +393,48 @@ function fromSegmentRow(row: SegmentVideoRow): SegmentVideoRecordEntity {
     currentVideoRelPath: row.current_video_rel_path,
     currentMetadataRelPath: row.current_metadata_rel_path,
     thumbnailRelPath: row.thumbnail_rel_path,
+    versionsStorageDir: row.versions_storage_dir,
+  };
+}
+
+function toFinalCutRow(finalCut: FinalCutRecordEntity): FinalCutRow {
+  return {
+    id: finalCut.id,
+    project_id: finalCut.projectId,
+    project_storage_dir: finalCut.projectStorageDir,
+    source_video_batch_id: finalCut.sourceVideoBatchId,
+    status: finalCut.status,
+    video_asset_path: finalCut.videoAssetPath,
+    manifest_asset_path: finalCut.manifestAssetPath,
+    shot_count: finalCut.shotCount,
+    created_at: finalCut.createdAt,
+    updated_at: finalCut.updatedAt,
+    error_message: finalCut.errorMessage,
+    storage_dir: finalCut.storageDir,
+    current_video_rel_path: finalCut.currentVideoRelPath,
+    current_metadata_rel_path: finalCut.currentMetadataRelPath,
+    manifest_storage_rel_path: finalCut.manifestStorageRelPath,
+    versions_storage_dir: finalCut.versionsStorageDir,
+  };
+}
+
+function fromFinalCutRow(row: FinalCutRow): FinalCutRecordEntity {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    projectStorageDir: row.project_storage_dir,
+    sourceVideoBatchId: row.source_video_batch_id,
+    status: row.status,
+    videoAssetPath: row.video_asset_path,
+    manifestAssetPath: row.manifest_asset_path,
+    shotCount: row.shot_count,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    errorMessage: row.error_message,
+    storageDir: row.storage_dir,
+    currentVideoRelPath: row.current_video_rel_path,
+    currentMetadataRelPath: row.current_metadata_rel_path,
+    manifestStorageRelPath: row.manifest_storage_rel_path,
     versionsStorageDir: row.versions_storage_dir,
   };
 }

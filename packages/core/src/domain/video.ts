@@ -1,5 +1,6 @@
 import type {
   CurrentVideoBatchSummary,
+  FinalCutRecord,
   ShotFrameDependency,
   ShotVideoRecord,
   ShotVideoStatus,
@@ -16,6 +17,34 @@ export const videoCurrentMetadataFileName = "current.json";
 export const videoThumbnailFileName = "thumbnail.webp";
 export const videoVersionsDirectoryName = "versions";
 export const videoPromptPlanFileName = "prompt.plan.json";
+export const finalCutDirectoryName = "final-cut";
+export const finalCutCurrentFileName = "current.mp4";
+export const finalCutCurrentMetadataFileName = "current.json";
+export const finalCutVersionsDirectoryName = "versions";
+export const finalCutManifestsDirectoryName = "manifests";
+
+export interface FinalCutRecordEntity extends FinalCutRecord {
+  projectStorageDir: string;
+  storageDir: string;
+  currentVideoRelPath: string;
+  currentMetadataRelPath: string;
+  manifestStorageRelPath: string;
+  versionsStorageDir: string;
+}
+
+export interface CreateFinalCutRecordInput {
+  id: string;
+  projectId: string;
+  projectStorageDir: string;
+  sourceVideoBatchId: string;
+  status: FinalCutRecord["status"];
+  videoAssetPath?: string | null;
+  manifestAssetPath?: string | null;
+  shotCount: number;
+  createdAt: string;
+  updatedAt: string;
+  errorMessage?: string | null;
+}
 
 export interface VideoBatchRecord {
   id: string;
@@ -183,6 +212,40 @@ export function createSegmentVideoRecord(
   input: CreateSegmentVideoRecordInput,
 ): SegmentVideoRecordEntity {
   return createShotVideoRecord(input);
+}
+
+export function toFinalCutStorageDir(projectStorageDir: string) {
+  return `${projectStorageDir}/${finalCutDirectoryName}`;
+}
+
+export function createFinalCutRecord(input: CreateFinalCutRecordInput): FinalCutRecordEntity {
+  const storageDir = toFinalCutStorageDir(input.projectStorageDir);
+  const versionsStorageDir = `${finalCutDirectoryName}/${finalCutVersionsDirectoryName}`;
+  const manifestAssetPath =
+    input.manifestAssetPath ??
+    `${finalCutDirectoryName}/${finalCutManifestsDirectoryName}/${input.id}.txt`;
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    sourceVideoBatchId: input.sourceVideoBatchId,
+    status: input.status,
+    videoAssetPath:
+      input.videoAssetPath === undefined
+        ? `${finalCutDirectoryName}/${finalCutCurrentFileName}`
+        : input.videoAssetPath,
+    manifestAssetPath,
+    shotCount: input.shotCount,
+    createdAt: input.createdAt,
+    updatedAt: input.updatedAt,
+    errorMessage: input.errorMessage ?? null,
+    projectStorageDir: input.projectStorageDir,
+    storageDir,
+    currentVideoRelPath: `${finalCutDirectoryName}/${finalCutCurrentFileName}`,
+    currentMetadataRelPath: `${finalCutDirectoryName}/${finalCutCurrentMetadataFileName}`,
+    manifestStorageRelPath: manifestAssetPath,
+    versionsStorageDir,
+  };
 }
 
 export function toCurrentVideoBatchSummary(

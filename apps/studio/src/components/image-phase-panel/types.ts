@@ -56,6 +56,6 @@ export interface FrameEditorCardProps {
 export interface SegmentShotGroup {
   segmentId: string;
   sceneId: string;
-  order: number;
+  segmentOrder?: number;
   shots: ShotReferenceRecord[];
 }

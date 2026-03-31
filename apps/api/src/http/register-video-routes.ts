@@ -3,6 +3,8 @@ import type { FastifyInstance } from "fastify";
 import {
   approveAllVideoSegmentsRequestSchema,
   approveVideoSegmentRequestSchema,
+  finalCutResponseSchema,
+  generateFinalCutRequestSchema,
   regenerateAllVideoPromptsRequestSchema,
   regenerateVideoPromptRequestSchema,
   regenerateVideoSegmentRequestSchema,
@@ -23,6 +25,25 @@ export function registerVideoRoutes(
     });
 
     return reply.status(201).send(task);
+  });
+
+  app.post("/projects/:projectId/final-cut/generate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    generateFinalCutRequestSchema.parse(request.body ?? {});
+    const task = await services.createFinalCutGenerateTask.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
+  app.get("/projects/:projectId/final-cut", async (request) => {
+    const params = request.params as { projectId: string };
+    const response = await services.getFinalCut.execute({
+      projectId: params.projectId,
+    });
+
+    return finalCutResponseSchema.parse(response);
   });
 
   app.get("/projects/:projectId/videos", async (request) => {

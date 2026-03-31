@@ -463,4 +463,62 @@ describe("VideoPhasePanel", () => {
       "true",
     );
   });
+
+  it("disables final cut generation until all shots are approved, then renders playback and download when ready", async () => {
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue(videoListResponse);
+    vi.spyOn(apiModule.apiClient, "getFinalCut").mockResolvedValue({
+      currentFinalCut: null,
+    });
+
+    const { rerender } = renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.getFinalCut).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByRole("button", { name: "生成成片" })).toBeDisabled();
+    expect(screen.getByText("需先审核通过全部镜头片段后才能生成成片。")).toBeInTheDocument();
+
+    vi.mocked(apiModule.apiClient.getFinalCut).mockResolvedValue({
+      currentFinalCut: {
+        id: "final_cut_1",
+        projectId: "proj-1",
+        sourceVideoBatchId: "video-batch-1",
+        status: "ready",
+        videoAssetPath: "final-cut/current.mp4",
+        manifestAssetPath: "final-cut/manifests/final_cut_1.txt",
+        shotCount: 1,
+        createdAt: "2024-01-01T00:00:20Z",
+        updatedAt: "2024-01-01T00:00:21Z",
+        errorMessage: null,
+      },
+    });
+
+    rerender(
+      <VideoPhasePanel
+        project={{
+          ...baseProject,
+          currentVideoBatch: {
+            ...baseProject.currentVideoBatch,
+            approvedShotCount: 1,
+          },
+        }}
+        task={null}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "生成成片" })).toBeEnabled();
+    });
+    expect(screen.getByTestId("final-cut-player")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "下载 MP4" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("final-cut/current.mp4"),
+    );
+  });
 });

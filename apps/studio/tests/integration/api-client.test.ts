@@ -732,6 +732,10 @@ describe("API Client", () => {
             batchId: "image_batch_1",
             projectId: "proj_1",
             sourceShotScriptId: "shot_script_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            segmentOrder: 1,
+            shotOrder: 1,
             shotId: "shot_1",
             shotCode: "S01-SG01-SH01",
             frameDependency: "start_and_end_frame",
@@ -1168,15 +1172,19 @@ describe("API Client", () => {
           updatedAt: "2026-03-24T00:00:01.000Z",
         },
         shots: [
-          {
-            id: "shot_ref_1",
-            batchId: "image_batch_1",
-            projectId: "proj_1",
-            sourceShotScriptId: "shot_script_1",
-            shotId: "shot_1",
-            shotCode: "S01-SG01-SH01",
-            frameDependency: "start_frame_only",
-            referenceStatus: "pending",
+            {
+              id: "shot_ref_1",
+              batchId: "image_batch_1",
+              projectId: "proj_1",
+              sourceShotScriptId: "shot_script_1",
+              sceneId: "scene_1",
+              segmentId: "segment_1",
+              segmentOrder: 1,
+              shotOrder: 1,
+              shotId: "shot_1",
+              shotCode: "S01-SG01-SH01",
+              frameDependency: "start_frame_only",
+              referenceStatus: "pending",
             startFrame: {
               id: "frame_start_1",
               batchId: "image_batch_1",
@@ -1213,6 +1221,10 @@ describe("API Client", () => {
 
     const response = await apiClient.listImages("proj_1");
 
+    expect(response.shots[0]?.sceneId).toBe("scene_1");
+    expect(response.shots[0]?.segmentId).toBe("segment_1");
+    expect(response.shots[0]?.segmentOrder).toBe(1);
+    expect(response.shots[0]?.shotOrder).toBe(1);
     expect(response.shots[0]?.startFrame.planStatus).toBe("pending");
     expect(response.shots[0]?.startFrame.promptTextSeed).toBe("");
     expect(response.shots[0]?.startFrame.promptTextCurrent).toBe("");
@@ -1549,6 +1561,60 @@ describe("API Client", () => {
       9,
       `${config.apiBaseUrl}/projects/proj_1/videos/approve-all`,
       expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("calls the final cut endpoints with the expected methods", async () => {
+    const responses = [
+      {
+        id: "task_final_cut_1",
+        projectId: "proj_1",
+        type: "final_cut_generate",
+        status: "pending",
+        createdAt: "2026-03-31T00:00:00.000Z",
+        updatedAt: "2026-03-31T00:00:00.000Z",
+        startedAt: null,
+        finishedAt: null,
+        errorMessage: null,
+        files: {
+          inputPath: "tasks/task_final_cut_1/input.json",
+          outputPath: "tasks/task_final_cut_1/output.json",
+          logPath: "tasks/task_final_cut_1/log.txt",
+        },
+      },
+      {
+        currentFinalCut: {
+          id: "final_cut_1",
+          projectId: "proj_1",
+          sourceVideoBatchId: "video_batch_1",
+          status: "ready",
+          videoAssetPath: "final-cut/current.mp4",
+          manifestAssetPath: "final-cut/manifests/final_cut_1.txt",
+          shotCount: 3,
+          createdAt: "2026-03-31T00:00:00.000Z",
+          updatedAt: "2026-03-31T00:01:00.000Z",
+          errorMessage: null,
+        },
+      },
+    ];
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[0] })
+      .mockResolvedValueOnce({ ok: true, json: async () => responses[1] });
+    global.fetch = mockFetch;
+
+    await apiClient.createFinalCutGenerateTask("proj_1");
+    await apiClient.getFinalCut("proj_1");
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      `${config.apiBaseUrl}/projects/proj_1/final-cut/generate`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      `${config.apiBaseUrl}/projects/proj_1/final-cut`,
+      expect.objectContaining({ method: "GET", cache: "no-store" }),
     );
   });
 

@@ -76,6 +76,73 @@ describe("videos api", () => {
     });
   });
 
+  it("creates a final cut task when all current shot videos are approved", async () => {
+    const enqueue = vi.fn();
+    const { app, tempDir } = await createTempApp({
+      taskQueue: { enqueue },
+      taskIdGenerator: {
+        generateTaskId: () => "task_final_cut_generate_1",
+      },
+    });
+    const project = await createProject(app);
+
+    await seedApprovedFinalCutSourceBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/final-cut/generate`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "task_final_cut_generate_1",
+        type: "final_cut_generate",
+      }),
+    );
+    expect(enqueue).toHaveBeenCalledWith({
+      taskId: "task_final_cut_generate_1",
+      queueName: "final-cut-generate",
+      taskType: "final_cut_generate",
+    });
+  });
+
+  it("returns the current final cut state", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedApprovedFinalCutSourceBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedFinalCutRecord({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}/final-cut`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      currentFinalCut: expect.objectContaining({
+        id: "final_cut_1",
+        sourceVideoBatchId: "video_batch_1",
+        status: "ready",
+        videoAssetPath: "final-cut/current.mp4",
+      }),
+    });
+  });
+
   it("lists the current video batch, loads one segment, and regenerates it independently", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
@@ -595,6 +662,65 @@ async function seedVideoBatch(input: {
     projectId: input.projectId,
     status: input.projectStatus,
     updatedAt: "2026-03-25T01:06:00.000Z",
+  });
+  db.close();
+}
+
+async function seedApprovedFinalCutSourceBatch(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+}) {
+  await seedVideoBatch({
+    ...input,
+    projectStatus: "videos_approved",
+  });
+
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const videoRepository = createSqliteVideoRepository({ db });
+
+  const approvedSegment = await videoRepository.findSegmentById("video_segment_1");
+
+  if (!approvedSegment) {
+    throw new Error("Expected seeded video segment to exist");
+  }
+
+  videoRepository.updateSegment({
+    ...approvedSegment,
+    status: "approved",
+    approvedAt: "2026-03-25T01:07:00.000Z",
+    updatedAt: "2026-03-25T01:07:00.000Z",
+  });
+  db.close();
+}
+
+async function seedFinalCutRecord(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+}) {
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const videoRepository = createSqliteVideoRepository({ db });
+
+  videoRepository.upsertFinalCut?.({
+    id: "final_cut_1",
+    projectId: input.projectId,
+    projectStorageDir: input.projectStorageDir,
+    sourceVideoBatchId: "video_batch_1",
+    status: "ready",
+    videoAssetPath: "final-cut/current.mp4",
+    manifestAssetPath: "final-cut/manifests/final_cut_1.txt",
+    shotCount: 1,
+    createdAt: "2026-03-31T00:00:00.000Z",
+    updatedAt: "2026-03-31T00:01:00.000Z",
+    errorMessage: null,
+    storageDir: `${input.projectStorageDir}/final-cut`,
+    currentVideoRelPath: "final-cut/current.mp4",
+    currentMetadataRelPath: "final-cut/current.json",
+    manifestStorageRelPath: "final-cut/manifests/final_cut_1.txt",
+    versionsStorageDir: "final-cut/versions",
   });
   db.close();
 }

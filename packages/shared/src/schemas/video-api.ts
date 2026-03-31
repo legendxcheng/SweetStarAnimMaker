@@ -3,6 +3,7 @@ import { z } from "zod";
 const requiredTextSchema = z.string().trim().min(1);
 const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
 const shotVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
+const finalCutStatuses = ["generating", "ready", "failed"] as const;
 
 export const currentVideoBatchSummaryResponseSchema = z.object({
   id: z.string(),
@@ -42,6 +43,23 @@ export const shotVideoResponseSchema = z.object({
 
 export const segmentVideoResponseSchema = shotVideoResponseSchema;
 
+export const finalCutRecordResponseSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  sourceVideoBatchId: z.string(),
+  status: z.enum(finalCutStatuses),
+  videoAssetPath: z.string().nullable(),
+  manifestAssetPath: z.string().nullable(),
+  shotCount: z.number().int().nonnegative(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  errorMessage: z.string().nullable(),
+});
+
+export const finalCutResponseSchema = z.object({
+  currentFinalCut: finalCutRecordResponseSchema.nullable(),
+});
+
 export const videoListResponseSchema = z.object({
   currentBatch: currentVideoBatchSummaryResponseSchema,
   shots: z.array(shotVideoResponseSchema),
@@ -60,3 +78,4 @@ export const regenerateVideoSegmentRequestSchema = z.object({});
 export const regenerateAllVideoPromptsRequestSchema = z.object({});
 
 export const approveAllVideoSegmentsRequestSchema = z.object({});
+export const generateFinalCutRequestSchema = z.object({});

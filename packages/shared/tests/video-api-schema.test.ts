@@ -147,4 +147,24 @@ describe("video api schema", () => {
     expect(regeneratePrompt).toEqual({});
     expect(regenerateAllPrompts).toEqual({});
   });
+
+  it("accepts final cut response payloads", () => {
+    const parsed = shared.finalCutResponseSchema.parse({
+      currentFinalCut: {
+        id: "final_cut_1",
+        projectId: "proj_1",
+        sourceVideoBatchId: "video_batch_1",
+        status: "ready",
+        videoAssetPath: "final-cut/current.mp4",
+        manifestAssetPath: "final-cut/manifests/final_cut_1.txt",
+        shotCount: 3,
+        createdAt: "2026-03-31T00:00:00.000Z",
+        updatedAt: "2026-03-31T00:01:00.000Z",
+        errorMessage: null,
+      },
+    });
+
+    expect(parsed.currentFinalCut?.status).toBe("ready");
+    expect(parsed.currentFinalCut?.videoAssetPath).toBe("final-cut/current.mp4");
+  });
 });

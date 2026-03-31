@@ -53,6 +53,10 @@ interface ShotReferenceRecordBase {
   batchId: string;
   projectId: string;
   sourceShotScriptId: string;
+  sceneId?: string;
+  segmentId?: string;
+  segmentOrder?: number;
+  shotOrder?: number;
   shotId: string;
   shotCode: string;
   referenceStatus: ShotReferenceStatus;

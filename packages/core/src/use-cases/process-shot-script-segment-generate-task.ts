@@ -72,28 +72,11 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           storageDir: project.storageDir,
           promptTemplateKey: taskInput.promptTemplateKey,
         });
-        const previousSegment = taskInput.previousSegment ?? null;
-        const nextSegment = taskInput.nextSegment ?? null;
-        const sceneSegmentIndex = taskInput.sceneSegmentIndex ?? taskInput.segment.order;
-        const sceneSegmentCount = taskInput.sceneSegmentCount ?? sceneSegmentIndex;
-        const previousShotScriptSummary = taskInput.previousShotScriptSummary ?? null;
         const promptVariables = {
           storyboardTitle: taskInput.storyboardTitle,
           episodeTitle: taskInput.episodeTitle,
           scene: taskInput.scene,
           segment: taskInput.segment,
-          previousSegment,
-          nextSegment,
-          sceneSegmentIndex,
-          sceneSegmentCount,
-          previousShotScriptSummary,
-          continuityGoal: buildContinuityGoal({
-            segment: taskInput.segment,
-            previousSegment,
-            nextSegment,
-            sceneSegmentIndex,
-            sceneSegmentCount,
-          }),
           masterPlot: taskInput.masterPlot,
           characterSheets: taskInput.characterSheets ?? [],
           ...buildSpokenTextBudgetPromptVariables(taskInput.segment.durationSec),
@@ -288,35 +271,6 @@ function assertShotScriptSegmentTaskInput(input: {
   };
   storyboardTitle: string | null;
   episodeTitle: string | null;
-  previousSegment?: {
-    id: string;
-    order: number;
-    durationSec: number | null;
-    visual: string;
-    characterAction: string;
-    dialogue: string;
-    voiceOver: string;
-    audio: string;
-    purpose: string;
-  } | null;
-  nextSegment?: {
-    id: string;
-    order: number;
-    durationSec: number | null;
-    visual: string;
-    characterAction: string;
-    dialogue: string;
-    voiceOver: string;
-    audio: string;
-    purpose: string;
-  } | null;
-  sceneSegmentIndex?: number;
-  sceneSegmentCount?: number;
-  previousShotScriptSummary?: {
-    summary: string;
-    lastShotVisual: string | null;
-    lastShotAction: string | null;
-  } | null;
   masterPlot?: unknown;
   characterSheets?: unknown[];
   promptTemplateKey: "shot_script.segment.generate";
@@ -338,54 +292,13 @@ function buildSpokenTextBudgetPromptVariables(durationSec: number | null) {
   };
 }
 
-function buildContinuityGoal(input: {
-  segment: {
-    purpose: string;
-  };
-  previousSegment: {
-    purpose: string;
-  } | null;
-  nextSegment: {
-    purpose: string;
-  } | null;
-  sceneSegmentIndex: number;
-  sceneSegmentCount: number;
-}) {
-  const scenePosition =
-    input.sceneSegmentCount <= 1
-      ? "本段是本场唯一段落，"
-      : `本段位于本场第 ${input.sceneSegmentIndex}/${input.sceneSegmentCount} 段，`;
-  const inheritedState = input.previousSegment
-    ? `必须承接上一段“${input.previousSegment.purpose}”已建立的状态，`
-    : "需要自行建立当前场景的起始状态，";
-  const handoffState = input.nextSegment
-    ? `并在结尾落到“${input.nextSegment.purpose}”的可接续状态。`
-    : "并在结尾明确交代本段完成后的结果状态。";
-
-  return `${scenePosition}${inheritedState}推进“${input.segment.purpose}”这一事件，${handoffState}`;
-}
-
 function renderTemplate(template: string, variables: Record<string, unknown>) {
   return template.replaceAll(/\{\{([^}]+)\}\}/g, (_, rawPath: string) => {
     if (rawPath.trim() === "characterSheets") {
       return renderCharacterSheets(variables.characterSheets);
     }
 
-    const trimmedPath = rawPath.trim();
-    const path = trimmedPath.split(".");
-
-    if (path[0] === "previousSegment" && variables.previousSegment == null) {
-      return readContinuityFallback("previousSegment");
-    }
-
-    if (path[0] === "nextSegment" && variables.nextSegment == null) {
-      return readContinuityFallback("nextSegment");
-    }
-
-    if (path[0] === "previousShotScriptSummary" && variables.previousShotScriptSummary == null) {
-      return readContinuityFallback("previousShotScriptSummary");
-    }
-
+    const path = rawPath.trim().split(".");
     let current: unknown = variables;
 
     for (const segment of path) {
@@ -421,19 +334,6 @@ function renderTemplate(template: string, variables: Record<string, unknown>) {
 
     return String(current);
   });
-}
-
-function readContinuityFallback(
-  key: "previousSegment" | "nextSegment" | "previousShotScriptSummary",
-) {
-  switch (key) {
-    case "previousSegment":
-      return "无上一段";
-    case "nextSegment":
-      return "无下一段";
-    case "previousShotScriptSummary":
-      return "无上一版镜头脚本承接摘要";
-  }
 }
 
 function renderCharacterSheets(value: unknown) {

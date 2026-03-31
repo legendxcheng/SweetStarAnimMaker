@@ -13,14 +13,19 @@ import type {
   SegmentShotGroup,
 } from "./image-phase-panel/types";
 import {
+  buildShotDisplayLabel,
   createFrameDraft,
   getFrameGenerationStatusSummary,
   getRequiredFrames,
+  getShotSceneId,
+  getShotSegmentId,
+  getShotSegmentOrder,
   isFramePromptFailed,
   isFramePromptPending,
   isShotReadyForApproval,
   normalizeOptionalText,
   replaceFrameOnShot,
+  sortShotsByHierarchy,
 } from "./image-phase-panel/utils";
 
 export function ImagePhasePanel({
@@ -160,10 +165,10 @@ export function ImagePhasePanel({
     const groups = new Map<string, SegmentShotGroup>();
 
     for (const shot of shots) {
-      const sceneId = shot.startFrame.sceneId;
-      const segmentId = shot.startFrame.segmentId;
-      const order = shot.startFrame.order;
-      const key = `${sceneId}:${segmentId}:${order}`;
+      const sceneId = getShotSceneId(shot);
+      const segmentId = getShotSegmentId(shot);
+      const segmentOrder = getShotSegmentOrder(shot);
+      const key = `${sceneId}:${segmentId}`;
       const group = groups.get(key);
 
       if (group) {
@@ -174,12 +179,25 @@ export function ImagePhasePanel({
       groups.set(key, {
         segmentId,
         sceneId,
-        order,
+        segmentOrder: segmentOrder ?? undefined,
         shots: [shot],
       });
     }
 
-    return Array.from(groups.values()).sort((left, right) => left.order - right.order);
+    return Array.from(groups.values()).sort((left, right) => {
+      if (
+        left.segmentOrder !== undefined &&
+        right.segmentOrder !== undefined &&
+        left.segmentOrder !== right.segmentOrder
+      ) {
+        return left.segmentOrder - right.segmentOrder;
+      }
+
+      return left.segmentId.localeCompare(right.segmentId, "zh-CN", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    });
   }, [shots]);
 
   const sceneIds = useMemo(() => {
@@ -227,7 +245,7 @@ export function ImagePhasePanel({
   );
 
   function applyImageListResponse(response: ImageFrameListResponse) {
-    const nextShots = response.shots;
+    const nextShots = sortShotsByHierarchy(response.shots);
     const nextFrames = nextShots.flatMap((shot) => getRequiredFrames(shot));
 
     setShots(nextShots);
@@ -636,11 +654,11 @@ export function ImagePhasePanel({
         </nav>
       )}
 
-      {activeSegmentGroups.map((segment) => (
-        <article key={`${segment.sceneId}:${segment.segmentId}:${segment.order}`} className={cardClass}>
+      {activeSegmentGroups.map((segment, index) => (
+        <article key={`${segment.sceneId}:${segment.segmentId}`} className={cardClass}>
           <div className="mb-4">
             <h4 className="text-base font-semibold text-(--color-text-primary)">
-              Segment {segment.order}
+              Segment {segment.segmentOrder ?? index + 1}
             </h4>
             <p className="text-sm text-(--color-text-muted) mt-1">
               {segment.sceneId} / {segment.segmentId}
@@ -669,9 +687,12 @@ export function ImagePhasePanel({
                   <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
                       <h5 className="text-base font-semibold text-(--color-text-primary)">
-                        {shot.shotCode}
+                        {buildShotDisplayLabel(shot)}
                       </h5>
                       <p className="text-sm text-(--color-text-muted) mt-1">
+                        Shot Code: {shot.shotCode}
+                      </p>
+                      <p className="text-sm text-(--color-text-muted)">
                         Shot ID: {shot.shotId}
                       </p>
                     </div>

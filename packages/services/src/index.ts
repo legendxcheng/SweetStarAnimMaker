@@ -27,6 +27,10 @@ export {
   createVideoStorage,
   type CreateVideoStorageOptions,
 } from "./storage/video-storage";
+export {
+  createFfmpegFinalCutRenderer,
+  type CreateFfmpegFinalCutRendererOptions,
+} from "./video/final-cut-renderer";
 export { createLocalDataPaths, type LocalDataPaths } from "./storage/local-data-paths";
 export { createSqliteDb, type CreateSqliteDbOptions, type SqliteDatabase } from "./project-repository/sqlite-db";
 export { createSqliteProjectRepository, type CreateSqliteProjectRepositoryOptions } from "./project-repository/sqlite-project-repository";
@@ -126,9 +130,14 @@ export {
   type CreateGeminiVideoPromptProviderOptions,
 } from "./providers/gemini-video-prompt-provider";
 export {
+  createGrokVideoPromptProvider,
+  type CreateGrokVideoPromptProviderOptions,
+} from "./providers/grok-video-prompt-provider";
+export {
   createGrokFramePromptProvider,
   type CreateGrokFramePromptProviderOptions,
 } from "./providers/grok-frame-prompt-provider";
+export { createVideoPromptProviderWithGrokFallback } from "./providers/video-prompt-provider-with-grok-fallback";
 export {
   createReferenceImageUploader,
   type CreateReferenceImageUploaderOptions,

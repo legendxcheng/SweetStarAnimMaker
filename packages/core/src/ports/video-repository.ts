@@ -1,4 +1,8 @@
-import type { ShotVideoRecordEntity, VideoBatchRecord } from "../domain/video";
+import type {
+  FinalCutRecordEntity,
+  ShotVideoRecordEntity,
+  VideoBatchRecord,
+} from "../domain/video";
 
 export interface VideoRepository {
   insertBatch(batch: VideoBatchRecord): Promise<void> | void;
@@ -29,4 +33,8 @@ export interface VideoRepository {
     shotId: string,
   ): Promise<ShotVideoRecordEntity | null> | ShotVideoRecordEntity | null;
   updateSegment(segment: ShotVideoRecordEntity): Promise<void> | void;
+  findCurrentFinalCutByProjectId?(
+    projectId: string,
+  ): Promise<FinalCutRecordEntity | null> | FinalCutRecordEntity | null;
+  upsertFinalCut?(finalCut: FinalCutRecordEntity): Promise<void> | void;
 }

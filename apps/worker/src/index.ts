@@ -5,6 +5,7 @@ import {
   characterSheetsGenerateQueueName,
   frameImageGenerateQueueName,
   framePromptGenerateQueueName,
+  finalCutGenerateQueueName,
   imageBatchGenerateAllFramesQueueName,
   imageBatchRegenerateAllPromptsQueueName,
   imageBatchRegenerateFailedFramesQueueName,
@@ -80,6 +81,9 @@ export interface StartWorkerOptions {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processVideosGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processFinalCutGenerateTask?: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
     processSegmentVideoPromptGenerateTask?: {
@@ -301,6 +305,19 @@ export async function startWorker(
       concurrency: 1,
       processor: async (job: WorkerJob) => {
         await videosTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const finalCutTaskProcessor = services.processFinalCutGenerateTask;
+
+  if (finalCutTaskProcessor) {
+    processors.push({
+      queueName: finalCutGenerateQueueName,
+      concurrency: 1,
+      processor: async (job: WorkerJob) => {
+        await finalCutTaskProcessor.execute({
           taskId: job.data.taskId,
         });
       },

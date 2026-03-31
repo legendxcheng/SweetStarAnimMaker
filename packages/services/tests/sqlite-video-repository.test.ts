@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  createFinalCutRecord,
   createProjectRecord,
   createSegmentVideoRecord,
   createVideoBatchRecord,
@@ -305,6 +306,34 @@ describe("sqlite video repository", () => {
         "shot_1",
       ),
     ).toEqual(secondShot);
+  });
+
+  it("persists and returns the current final cut for a project", async () => {
+    const { projectRepository, repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_video_final_1",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-31T00:00:00.000Z",
+      updatedAt: "2026-03-31T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-31T00:00:00.000Z",
+      premiseBytes: 7,
+    });
+    const finalCut = createFinalCutRecord({
+      id: "final_cut_1",
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceVideoBatchId: "video_batch_1",
+      status: "ready",
+      shotCount: 3,
+      createdAt: "2026-03-31T00:00:00.000Z",
+      updatedAt: "2026-03-31T00:01:00.000Z",
+    });
+
+    projectRepository.insert(project);
+    repository.upsertFinalCut?.(finalCut);
+
+    expect(repository.findCurrentFinalCutByProjectId?.(project.id)).toEqual(finalCut);
   });
 });
 

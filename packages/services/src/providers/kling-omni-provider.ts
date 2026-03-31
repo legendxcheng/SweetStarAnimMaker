@@ -144,6 +144,7 @@ const DEFAULT_MODEL_NAME = "kling-v3-omni";
 const DEFAULT_MODE = "pro";
 const DEFAULT_DURATION_SECONDS = 5;
 const DEFAULT_STAGE_DURATION_SECONDS = 10;
+const MIN_STAGE_DURATION_SECONDS = 3;
 const DEFAULT_STAGE_SOUND = "on";
 const SUCCESS_STATUSES = new Set(["succeed", "succeeded", "success", "completed", "done"]);
 const FAILURE_STATUSES = new Set(["failed", "fail", "error", "canceled", "cancelled", "rejected"]);
@@ -401,19 +402,23 @@ export function createKlingOmniStageVideoProvider(
 
   return {
     async generateSegmentVideo(input) {
+      const submittedDurationSeconds = normalizeStageDurationSeconds(
+        input.durationSec,
+        durationSeconds,
+      );
       const submitted = input.endFramePath
         ? await provider.submitOmniVideoWithFrames({
             promptText: input.promptText,
             startImage: input.startFramePath,
             endImage: input.endFramePath,
-            durationSeconds: input.durationSec ?? durationSeconds,
+            durationSeconds: submittedDurationSeconds,
             aspectRatio,
             sound,
           })
         : await provider.submitOmniVideoWithStartFrame({
             promptText: input.promptText,
             startImage: input.startFramePath,
-            durationSeconds: input.durationSec ?? durationSeconds,
+            durationSeconds: submittedDurationSeconds,
             aspectRatio,
             sound,
           });
@@ -446,10 +451,21 @@ export function createKlingOmniStageVideoProvider(
           submit: JSON.parse(submitted.rawResponse),
           result: JSON.parse(completed.rawResponse),
         }),
-        durationSec: input.durationSec ?? durationSeconds,
+        durationSec: submittedDurationSeconds,
       };
     },
   };
+}
+
+function normalizeStageDurationSeconds(
+  requestedDurationSeconds: number | null | undefined,
+  fallbackDurationSeconds: number,
+) {
+  if (!isPositiveNumber(requestedDurationSeconds)) {
+    return fallbackDurationSeconds;
+  }
+
+  return Math.max(MIN_STAGE_DURATION_SECONDS, Number(requestedDurationSeconds));
 }
 
 function normalizeSubmitResult(

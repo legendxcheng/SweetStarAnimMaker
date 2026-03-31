@@ -15,6 +15,7 @@ export const taskTypes = [
   "videos_generate",
   "segment_video_prompt_generate",
   "segment_video_generate",
+  "final_cut_generate",
 ] as const;
 
 export type TaskType = (typeof taskTypes)[number];

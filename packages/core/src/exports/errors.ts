@@ -19,6 +19,7 @@ export {
 } from "../errors/shot-image-errors";
 export {
   CurrentVideoBatchNotFoundError,
+  FinalCutApprovalRequiredError,
   SegmentVideoNotFoundError,
 } from "../errors/video-errors";
 export {

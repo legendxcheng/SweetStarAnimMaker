@@ -11,3 +11,10 @@ export class SegmentVideoNotFoundError extends Error {
     this.name = "SegmentVideoNotFoundError";
   }
 }
+
+export class FinalCutApprovalRequiredError extends Error {
+  constructor(projectId: string) {
+    super(`All shot videos must be approved before generating the final cut for project: ${projectId}`);
+    this.name = "FinalCutApprovalRequiredError";
+  }
+}

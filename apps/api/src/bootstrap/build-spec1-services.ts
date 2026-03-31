@@ -17,6 +17,7 @@ import {
   createCreateImageBatchRegenerateFailedPromptsTaskUseCase,
   createCreateMasterPlotGenerateTaskUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
+  createCreateFinalCutGenerateTaskUseCase,
   createCreateShotScriptGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
   createCreateProjectUseCase,
@@ -26,6 +27,7 @@ import {
   createGetCharacterSheetImageContentUseCase,
   createGetCharacterSheetUseCase,
   createGetCharacterSheetReferenceImageContentUseCase,
+  createGetFinalCutUseCase,
   createGetImageFrameUseCase,
   createGetImageFrameContentUseCase,
   createGetProjectAssetContentUseCase,
@@ -87,9 +89,11 @@ import {
   createStoryboardStorage,
   createTaskFileStorage,
   createVideoStorage,
+  createVideoPromptProviderWithGrokFallback,
   initializeSqliteSchema,
   createSqliteVideoRepository,
   createGeminiVideoPromptProvider,
+  createGrokVideoPromptProvider,
 } from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
@@ -123,11 +127,18 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const videoStorage = createVideoStorage({ paths });
   const videoPromptProvider =
     options.videoPromptProvider ??
-    createGeminiVideoPromptProvider({
-      baseUrl: process.env.VECTORENGINE_BASE_URL,
-      apiToken: process.env.VECTORENGINE_API_TOKEN,
-      model: process.env.VIDEO_PROMPT_MODEL,
-    });
+    createVideoPromptProviderWithGrokFallback(
+      createGeminiVideoPromptProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.VIDEO_PROMPT_MODEL,
+      }),
+      createGrokVideoPromptProvider({
+        baseUrl: process.env.VECTORENGINE_BASE_URL,
+        apiToken: process.env.VECTORENGINE_API_TOKEN,
+        model: process.env.VIDEO_PROMPT_GROK_MODEL,
+      }),
+    );
   const masterPlotStorage = storyboardStorage;
   const clock = {
     now: () => new Date().toISOString(),
@@ -242,6 +253,15 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     storyboardStorage,
     masterPlotStorage,
     characterSheetRepository,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: queuedTaskGateway,
+    taskIdGenerator,
+    clock,
+  });
+  const createFinalCutGenerateTask = createCreateFinalCutGenerateTaskUseCase({
+    projectRepository: repository,
+    videoRepository,
     taskRepository,
     taskFileStorage,
     taskQueue: queuedTaskGateway,
@@ -373,6 +393,10 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       shotImageRepository,
       videoStorage,
       videoPromptProvider,
+      videoRepository,
+    }),
+    getFinalCut: createGetFinalCutUseCase({
+      projectRepository: repository,
       videoRepository,
     }),
     getImageFrame: createGetImageFrameUseCase({
@@ -651,6 +675,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     createImageBatchRegenerateAllPromptsTask,
     createImageBatchRegenerateFailedPromptsTask,
     createVideosGenerateTask,
+    createFinalCutGenerateTask,
     getTaskDetail: createGetTaskDetailUseCase({
       repository: taskRepository,
     }),

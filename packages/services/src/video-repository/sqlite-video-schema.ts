@@ -55,6 +55,28 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS final_cuts (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL UNIQUE,
+      project_storage_dir TEXT NOT NULL,
+      source_video_batch_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      video_asset_path TEXT NULL,
+      manifest_asset_path TEXT NULL,
+      shot_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      error_message TEXT NULL,
+      storage_dir TEXT NOT NULL,
+      current_video_rel_path TEXT NOT NULL,
+      current_metadata_rel_path TEXT NOT NULL,
+      manifest_storage_rel_path TEXT NOT NULL,
+      versions_storage_dir TEXT NOT NULL,
+      FOREIGN KEY(project_id) REFERENCES projects(id)
+    )
+  `);
+
   ensureVideoBatchesColumn(db, "shot_count", "INTEGER NOT NULL DEFAULT 0");
   ensureVideoBatchesColumn(db, "segment_count", "INTEGER NOT NULL DEFAULT 0");
   ensureSegmentVideosColumn(db, "shot_id", "TEXT NOT NULL DEFAULT ''");
@@ -69,6 +91,7 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
   ensureSegmentVideosColumn(db, "prompt_text_seed", "TEXT NOT NULL DEFAULT ''");
   ensureSegmentVideosColumn(db, "prompt_text_current", "TEXT NOT NULL DEFAULT ''");
   ensureSegmentVideosColumn(db, "prompt_updated_at", "TEXT NOT NULL DEFAULT ''");
+  ensureFinalCutsColumn(db, "error_message", "TEXT NULL");
 }
 
 function ensureVideoBatchesColumn(
@@ -92,5 +115,17 @@ function ensureSegmentVideosColumn(
 
   if (!columns.some((column) => column.name === columnName)) {
     db.exec(`ALTER TABLE segment_videos ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
+}
+
+function ensureFinalCutsColumn(
+  db: SqliteDatabase,
+  columnName: string,
+  columnDefinition: string,
+) {
+  const columns = db.prepare("PRAGMA table_info(final_cuts)").all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE final_cuts ADD COLUMN ${columnName} ${columnDefinition}`);
   }
 }

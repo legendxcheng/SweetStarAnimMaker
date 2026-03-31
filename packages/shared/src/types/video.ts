@@ -1,6 +1,7 @@
 import type { ShotFrameDependency } from "./shot-script";
 
 export type ShotVideoStatus = "generating" | "in_review" | "approved" | "failed";
+export type FinalCutStatus = "generating" | "ready" | "failed";
 
 export interface CurrentVideoBatchSummary {
   id: string;
@@ -40,6 +41,23 @@ export interface ShotVideoRecord {
 
 export type SegmentVideoRecord = ShotVideoRecord;
 
+export interface FinalCutRecord {
+  id: string;
+  projectId: string;
+  sourceVideoBatchId: string;
+  status: FinalCutStatus;
+  videoAssetPath: string | null;
+  manifestAssetPath: string | null;
+  shotCount: number;
+  createdAt: string;
+  updatedAt: string;
+  errorMessage: string | null;
+}
+
+export interface FinalCutResponse {
+  currentFinalCut: FinalCutRecord | null;
+}
+
 export interface VideoListResponse {
   currentBatch: CurrentVideoBatchSummary;
   shots: ShotVideoRecord[];
@@ -58,3 +76,5 @@ export interface RegenerateVideoSegmentRequest {}
 export interface RegenerateAllVideoPromptsRequest {}
 
 export interface ApproveAllVideoSegmentsRequest {}
+
+export interface GenerateFinalCutRequest {}

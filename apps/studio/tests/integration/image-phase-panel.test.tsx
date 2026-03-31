@@ -109,6 +109,10 @@ function createShot(
     batchId: string;
     projectId: string;
     sourceShotScriptId: string;
+    sceneId: string;
+    segmentId: string;
+    segmentOrder: number;
+    shotOrder: number;
     shotId: string;
     shotCode: string;
     frameDependency: "start_frame_only" | "start_and_end_frame";
@@ -146,6 +150,10 @@ function createShot(
     batchId: "image-batch-1",
     projectId: "proj-1",
     sourceShotScriptId: "shot-script-1",
+    sceneId: startFrame.sceneId,
+    segmentId: startFrame.segmentId,
+    segmentOrder: 1,
+    shotOrder: startFrame.order,
     shotId: "shot-1",
     shotCode: "S01-SG01-SH01",
     frameDependency,
@@ -244,16 +252,16 @@ describe("ImagePhasePanel", () => {
     expect(screen.getByRole("button", { name: /scene-1/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /scene-2/ })).toBeInTheDocument();
 
-    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 1 start")).toBeInTheDocument();
-    expect(screen.queryByText("S02-SG01-SH01")).not.toBeInTheDocument();
+    expect(screen.queryByText("scene-2_segment-1_shot_1")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("scene 2 start")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /scene-2/ }));
 
-    expect(screen.getByText("S02-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByText("scene-2_segment-1_shot_1")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 2 start")).toBeInTheDocument();
-    expect(screen.queryByText("S01-SG01-SH01")).not.toBeInTheDocument();
+    expect(screen.queryByText("scene-1_segment-1_shot_1")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("scene 1 start")).not.toBeInTheDocument();
   });
 
@@ -267,7 +275,8 @@ describe("ImagePhasePanel", () => {
     });
 
     expect(screen.getByText("Segment 1")).toBeInTheDocument();
-    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
+    expect(screen.getByText("Shot Code: S01-SG01-SH01")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
@@ -276,6 +285,104 @@ describe("ImagePhasePanel", () => {
     expect(screen.queryByLabelText("结束帧负面提示词")).not.toBeInTheDocument();
     expect(screen.getByText(/未匹配角色/i)).toBeInTheDocument();
     expect(screen.getAllByText("current.png")[0]).toBeInTheDocument();
+  });
+
+  it("groups unsorted shots by segment order and shows a stable scene/segment/shot label", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentImageBatch,
+        shotCount: 3,
+        totalRequiredFrameCount: 4,
+      },
+      shots: [
+        createShot({
+          id: "shot-ref-scene-1-segment-2",
+          sceneId: "scene_1",
+          segmentId: "segment_2",
+          segmentOrder: 2,
+          shotOrder: 1,
+          shotId: "shot_seg2_02",
+          shotCode: "sc1_seg2_s2",
+          frameDependency: "start_frame_only",
+          startFrame: createFrame({
+            id: "frame-scene-1-segment-2-start",
+            sceneId: "scene_1",
+            segmentId: "segment_2",
+            order: 1,
+            promptTextSeed: "scene 1 segment 2 start",
+            promptTextCurrent: "scene 1 segment 2 start",
+          }),
+          endFrame: null,
+        }),
+        createShot({
+          id: "shot-ref-scene-1-segment-1-shot-2",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          segmentOrder: 1,
+          shotOrder: 2,
+          shotId: "shot_1_1_2",
+          shotCode: "s1_seg1_shot2",
+          frameDependency: "start_frame_only",
+          startFrame: createFrame({
+            id: "frame-scene-1-segment-1-shot-2-start",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 2,
+            promptTextSeed: "scene 1 segment 1 shot 2 start",
+            promptTextCurrent: "scene 1 segment 1 shot 2 start",
+          }),
+          endFrame: null,
+        }),
+        createShot({
+          id: "shot-ref-scene-1-segment-1-shot-1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          segmentOrder: 1,
+          shotOrder: 1,
+          shotId: "shot_legacy_001",
+          shotCode: "legacy_weird_name",
+          frameDependency: "start_frame_only",
+          startFrame: createFrame({
+            id: "frame-scene-1-segment-1-shot-1-start",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            order: 1,
+            promptTextSeed: "scene 1 segment 1 shot 1 start",
+            promptTextCurrent: "scene 1 segment 1 shot 1 start",
+          }),
+          endFrame: null,
+        }),
+      ],
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getAllByRole("heading", { level: 4 }).map((node) => node.textContent)).toEqual([
+      "Segment 1",
+      "Segment 2",
+    ]);
+    expect(screen.getByText("scene_1_segment_1_shot_1")).toBeInTheDocument();
+    expect(screen.getByText("scene_1_segment_1_shot_2")).toBeInTheDocument();
+    expect(screen.getByText("scene_1_segment_2_shot_1")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("scene_1_segment_1_shot_1")
+        .compareDocumentPosition(screen.getByText("scene_1_segment_1_shot_2")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByText("scene_1_segment_1_shot_2")
+        .compareDocumentPosition(screen.getByText("scene_1_segment_2_shot_1")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByText("Shot Code: legacy_weird_name")).toBeInTheDocument();
+    expect(screen.getByText("Shot Code: s1_seg1_shot2")).toBeInTheDocument();
+    expect(screen.getByText("Shot Code: sc1_seg2_s2")).toBeInTheDocument();
   });
 
   it("shows the failed frame locator in the top workspace summary", async () => {
@@ -317,7 +424,9 @@ describe("ImagePhasePanel", () => {
 
     expect(await screen.findByText("当前生成状态")).toBeInTheDocument();
     expect(screen.getByText("Prompt 失败 1/2")).toBeInTheDocument();
-    expect(screen.getByText("scene-1 / segment-1 / S01-SG01-SH01 / 结束帧")).toBeInTheDocument();
+    expect(
+      screen.getByText("scene-1 / segment-1 / scene-1_segment-1_shot_1 / 结束帧"),
+    ).toBeInTheDocument();
   });
 
   it("opens a per-frame dialog to preview the final positive prompt", async () => {
@@ -364,7 +473,7 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
     });
 
-    expect(screen.getByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "结束帧" })).not.toBeInTheDocument();
     expect(screen.queryByText("当前 Shot 缺少帧记录。")).not.toBeInTheDocument();
@@ -400,7 +509,7 @@ describe("ImagePhasePanel", () => {
 
     renderPanel();
 
-    expect(await screen.findByText("S01-SG01-SH01")).toBeInTheDocument();
+    expect(await screen.findByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "生成结束帧图片" })).toBeDisabled();
     expect(

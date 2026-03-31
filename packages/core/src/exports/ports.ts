@@ -41,6 +41,7 @@ export type {
   GenerateSegmentVideoResult,
   VideoProvider,
 } from "../ports/video-provider";
+export type { FinalCutRenderer, RenderFinalCutInput } from "../ports/final-cut-renderer";
 export type {
   GenerateVideoPromptFrameContext,
   GenerateVideoPromptInput,
@@ -54,6 +55,8 @@ export type {
   ReadVideoPromptTemplateInput,
   ResolveProjectAssetPathInput as ResolveVideoProjectAssetPathInput,
   VideoStorage,
+  WriteFinalCutFilesInput,
+  WriteFinalCutManifestInput,
   WriteCurrentVideoInput,
   WriteVideoBatchManifestInput,
   WriteVideoPromptPlanInput,

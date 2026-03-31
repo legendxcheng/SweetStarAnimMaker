@@ -495,4 +495,197 @@ describe("list videos use case", () => {
       }),
     );
   });
+
+  it("returns the original shots when prompt repair is blocked by the provider", async () => {
+    const blockedShot = {
+      id: "video_shot_1",
+      projectId: "proj_1",
+      batchId: "video_batch_1",
+      sourceImageBatchId: "image_batch_1",
+      sourceShotScriptId: "shot_script_1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotOrder: 1,
+      frameDependency: "start_frame_only" as const,
+      status: "failed" as const,
+      promptTextSeed: "",
+      promptTextCurrent: "",
+      promptUpdatedAt: "",
+      videoAssetPath: null,
+      thumbnailAssetPath: null,
+      durationSec: 3,
+      provider: null,
+      model: null,
+      updatedAt: "2026-03-25T01:00:00.000Z",
+      approvedAt: null,
+      sourceTaskId: null,
+      projectStorageDir: "projects/proj_1-my-story",
+      storageDir: "ignored",
+      currentVideoRelPath: "ignored",
+      currentMetadataRelPath: "ignored",
+      thumbnailRelPath: "ignored",
+      versionsStorageDir: "ignored",
+    };
+    const videoRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn().mockResolvedValue({
+        id: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        shotCount: 1,
+        updatedAt: "2026-03-25T01:00:00.000Z",
+      }),
+      findCurrentBatchByProjectId: vi.fn(),
+      listSegmentsByBatchId: vi.fn().mockResolvedValue([blockedShot]),
+      insertSegment: vi.fn(),
+      findSegmentById: vi.fn(),
+      findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+      findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
+      updateSegment: vi.fn(),
+    };
+    const videoPromptProvider = {
+      generateVideoPrompt: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "Gemini video prompt provider request failed with status 500; code=request_body_blocked; message=request blocked by Google Gemini (PROHIBITED_CONTENT)",
+          ),
+        ),
+    };
+    const useCase = createListVideosUseCase({
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_1",
+          storageDir: "projects/proj_1-my-story",
+          currentVideoBatchId: "video_batch_1",
+        }),
+        listAll: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
+        updateCurrentVideoBatch: vi.fn(),
+        updateStatus: vi.fn(),
+      },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn().mockResolvedValue({
+          id: "shot_script_1",
+          title: "Episode 1",
+          sourceStoryboardId: "storyboard_1",
+          sourceTaskId: "task_shot_script_1",
+          updatedAt: "2026-03-25T00:17:00.000Z",
+          approvedAt: "2026-03-25T00:18:00.000Z",
+          segmentCount: 1,
+          shotCount: 1,
+          totalDurationSec: 3,
+          segments: [
+            {
+              segmentId: "segment_1",
+              sceneId: "scene_1",
+              order: 1,
+              name: "Arrival",
+              summary: "Rin arrives at the flooded market.",
+              durationSec: 3,
+              status: "approved",
+              lastGeneratedAt: "2026-03-25T00:17:00.000Z",
+              approvedAt: "2026-03-25T00:18:00.000Z",
+              shots: [
+                {
+                  id: "shot_1",
+                  sceneId: "scene_1",
+                  segmentId: "segment_1",
+                  order: 1,
+                  shotCode: "SC01-SG01-SH01",
+                  durationSec: 3,
+                  frameDependency: "start_frame_only",
+                  purpose: "Arrival",
+                  visual: "Rin enters the market.",
+                  subject: "Rin",
+                  action: "Rin steps into the flooded market and looks ahead.",
+                  dialogue: null,
+                  os: null,
+                  audio: null,
+                  transitionHint: null,
+                  continuityNotes: null,
+                },
+              ],
+            },
+          ],
+        }),
+      },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listFramesByBatchId: vi.fn(),
+        listShotsByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "shot_ref_1",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            shotId: "shot_1",
+            storageDir: "ignored",
+            manifestRelPath: "ignored",
+            updatedAt: "2026-03-25T00:18:00.000Z",
+            startFrame: {
+              id: "frame_start_1",
+              promptTextSeed: "seed",
+              promptTextCurrent: "current",
+              imageAssetPath: "images/start.png",
+              imageWidth: 1024,
+              imageHeight: 576,
+              provider: null,
+              model: null,
+              updatedAt: "2026-03-25T00:18:00.000Z",
+              currentImageRelPath: "ignored",
+              currentMetadataRelPath: "ignored",
+              promptSeedRelPath: "ignored",
+              promptCurrentRelPath: "ignored",
+              planningRelPath: "ignored",
+              versionsStorageDir: "ignored",
+              promptVersionsStorageDir: "ignored",
+            },
+            endFrame: null,
+          },
+        ]),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn(),
+        updateFrame: vi.fn(),
+      },
+      videoStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writePromptPlan: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeCurrentVideo: vi.fn(),
+        writeVideoVersion: vi.fn(),
+        resolveProjectAssetPath: vi.fn(),
+      },
+      videoPromptProvider,
+      videoRepository,
+    });
+
+    const result = await useCase.execute({ projectId: "proj_1" });
+
+    expect(videoPromptProvider.generateVideoPrompt).toHaveBeenCalledTimes(1);
+    expect(videoRepository.updateSegment).not.toHaveBeenCalled();
+    expect(result.shots).toEqual([blockedShot]);
+  });
 });

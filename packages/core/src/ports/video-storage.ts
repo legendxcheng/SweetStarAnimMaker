@@ -1,4 +1,8 @@
-import type { ShotVideoRecordEntity, VideoBatchRecord } from "../domain/video";
+import type {
+  FinalCutRecordEntity,
+  ShotVideoRecordEntity,
+  VideoBatchRecord,
+} from "../domain/video";
 
 export interface InitializeVideoPromptTemplateInput {
   storageDir: string;
@@ -41,6 +45,16 @@ export interface WriteVideoVersionInput extends WriteCurrentVideoInput {
   versionTag: string;
 }
 
+export interface WriteFinalCutManifestInput {
+  finalCut: FinalCutRecordEntity;
+  lines: string[];
+}
+
+export interface WriteFinalCutFilesInput {
+  finalCut: FinalCutRecordEntity;
+  videoContent: Uint8Array;
+}
+
 export interface ResolveProjectAssetPathInput {
   projectStorageDir: string;
   assetRelPath: string;
@@ -55,5 +69,7 @@ export interface VideoStorage {
   writeBatchManifest(input: WriteVideoBatchManifestInput): Promise<void> | void;
   writeCurrentVideo(input: WriteCurrentVideoInput): Promise<void> | void;
   writeVideoVersion(input: WriteVideoVersionInput): Promise<void> | void;
+  writeFinalCutManifest?(input: WriteFinalCutManifestInput): Promise<void> | void;
+  writeFinalCutFiles?(input: WriteFinalCutFilesInput): Promise<void> | void;
   resolveProjectAssetPath(input: ResolveProjectAssetPathInput): Promise<string> | string;
 }

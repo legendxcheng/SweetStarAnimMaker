@@ -21,6 +21,7 @@ describe("image api schema", () => {
       "videos_generate",
       "segment_video_prompt_generate",
       "segment_video_generate",
+      "final_cut_generate",
     ]);
   });
 
@@ -91,6 +92,10 @@ describe("image api schema", () => {
           batchId: "image_batch_20260323_ab12cd",
           projectId: "proj_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          segmentOrder: 1,
+          shotOrder: 1,
           shotId: "shot_script_20260323_ab12cd_SC01",
           shotCode: "SC01-SG01-SH01",
           frameDependency: "start_frame_only",
@@ -130,6 +135,10 @@ describe("image api schema", () => {
           batchId: "image_batch_20260323_ab12cd",
           projectId: "proj_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          segmentOrder: 1,
+          shotOrder: 2,
           shotId: "shot_script_20260323_ab12cd_SC01-SH02",
           shotCode: "SC01-SG01-SH02",
           frameDependency: "start_and_end_frame",
@@ -194,6 +203,10 @@ describe("image api schema", () => {
     });
 
     expect(parsed.shots[0]?.startFrame.imageStatus).toBe("approved");
+    expect(parsed.shots[0]?.sceneId).toBe("scene_1");
+    expect(parsed.shots[0]?.segmentId).toBe("segment_1");
+    expect(parsed.shots[0]?.segmentOrder).toBe(1);
+    expect(parsed.shots[1]?.shotOrder).toBe(2);
     expect(parsed.currentBatch.shotCount).toBe(2);
     expect(parsed.currentBatch.totalRequiredFrameCount).toBe(3);
     expect(parsed.currentBatch.approvedShotCount).toBe(1);

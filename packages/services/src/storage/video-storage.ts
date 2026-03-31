@@ -171,6 +171,49 @@ export function createVideoStorage(options: CreateVideoStorageOptions): VideoSto
         );
       }
     },
+    async writeFinalCutManifest(input) {
+      const manifestPath = toProjectAssetPath(
+        options.paths,
+        input.finalCut.projectStorageDir,
+        input.finalCut.manifestStorageRelPath,
+      );
+
+      await ensureParentDirectory(manifestPath);
+      await fs.writeFile(manifestPath, `${input.lines.join("\n")}\n`, "utf8");
+    },
+    async writeFinalCutFiles(input) {
+      const currentVideoPath = toProjectAssetPath(
+        options.paths,
+        input.finalCut.projectStorageDir,
+        input.finalCut.currentVideoRelPath,
+      );
+      const currentMetadataPath = toProjectAssetPath(
+        options.paths,
+        input.finalCut.projectStorageDir,
+        input.finalCut.currentMetadataRelPath,
+      );
+      const versionVideoPath = toProjectAssetPath(
+        options.paths,
+        input.finalCut.projectStorageDir,
+        `${input.finalCut.versionsStorageDir}/${input.finalCut.id}.mp4`,
+      );
+      const versionMetadataPath = toProjectAssetPath(
+        options.paths,
+        input.finalCut.projectStorageDir,
+        `${input.finalCut.versionsStorageDir}/${input.finalCut.id}.json`,
+      );
+
+      await ensureParentDirectory(currentVideoPath);
+      await ensureParentDirectory(currentMetadataPath);
+      await ensureParentDirectory(versionVideoPath);
+      await ensureParentDirectory(versionMetadataPath);
+      await fs.writeFile(currentVideoPath, input.videoContent);
+      await fs.writeFile(versionVideoPath, input.videoContent);
+
+      const payload = JSON.stringify(input.finalCut, null, 2);
+      await fs.writeFile(currentMetadataPath, payload, "utf8");
+      await fs.writeFile(versionMetadataPath, payload, "utf8");
+    },
     resolveProjectAssetPath(input) {
       return toProjectAssetPath(options.paths, input.projectStorageDir, input.assetRelPath);
     },

@@ -4,6 +4,11 @@ import { config } from "../../services/config";
 import { FRAME_PROMPT_PENDING_TIMEOUT_MS } from "./constants";
 import type { FrameDraftState } from "./types";
 
+const shotHierarchyCollator = new Intl.Collator("zh-CN", {
+  numeric: true,
+  sensitivity: "base",
+});
+
 export function createFrameDraft(frame: ShotReferenceFrame): FrameDraftState {
   return {
     promptTextCurrent: frame.promptTextCurrent,
@@ -42,19 +47,89 @@ export function getRequiredFrames(
   return shot.endFrame ? [shot.startFrame, shot.endFrame] : [shot.startFrame];
 }
 
+export function getShotSceneId(
+  shot: Pick<ShotReferenceRecord, "sceneId" | "startFrame">,
+) {
+  return shot.sceneId ?? shot.startFrame.sceneId;
+}
+
+export function getShotSegmentId(
+  shot: Pick<ShotReferenceRecord, "segmentId" | "startFrame">,
+) {
+  return shot.segmentId ?? shot.startFrame.segmentId;
+}
+
+export function getShotSegmentOrder(
+  shot: Pick<ShotReferenceRecord, "segmentOrder">,
+) {
+  return shot.segmentOrder ?? null;
+}
+
+export function getShotOrder(
+  shot: Pick<ShotReferenceRecord, "shotOrder" | "startFrame">,
+) {
+  return shot.shotOrder ?? shot.startFrame.order;
+}
+
+export function buildShotDisplayLabel(
+  shot: Pick<ShotReferenceRecord, "sceneId" | "segmentId" | "shotOrder" | "startFrame">,
+) {
+  return `${getShotSceneId(shot)}_${getShotSegmentId(shot)}_shot_${getShotOrder(shot)}`;
+}
+
+export function sortShotsByHierarchy(shots: ShotReferenceRecord[]) {
+  return [...shots].sort((left, right) => {
+    const sceneCompare = shotHierarchyCollator.compare(getShotSceneId(left), getShotSceneId(right));
+    if (sceneCompare !== 0) {
+      return sceneCompare;
+    }
+
+    const leftSegmentOrder = getShotSegmentOrder(left);
+    const rightSegmentOrder = getShotSegmentOrder(right);
+    if (leftSegmentOrder !== null && rightSegmentOrder !== null && leftSegmentOrder !== rightSegmentOrder) {
+      return leftSegmentOrder - rightSegmentOrder;
+    }
+
+    const segmentCompare = shotHierarchyCollator.compare(
+      getShotSegmentId(left),
+      getShotSegmentId(right),
+    );
+    if (segmentCompare !== 0) {
+      return segmentCompare;
+    }
+
+    const shotOrderCompare = getShotOrder(left) - getShotOrder(right);
+    if (shotOrderCompare !== 0) {
+      return shotOrderCompare;
+    }
+
+    const shotIdCompare = shotHierarchyCollator.compare(left.shotId, right.shotId);
+    if (shotIdCompare !== 0) {
+      return shotIdCompare;
+    }
+
+    return shotHierarchyCollator.compare(left.shotCode, right.shotCode);
+  });
+}
+
 export interface FrameGenerationStatusSummary {
   summary: string;
   detail: string | null;
 }
 
 export function getFrameGenerationStatusSummary(
-  shots: Array<Pick<ShotReferenceRecord, "shotCode" | "startFrame" | "endFrame">>,
+  shots: Array<
+    Pick<
+      ShotReferenceRecord,
+      "sceneId" | "segmentId" | "shotOrder" | "shotCode" | "startFrame" | "endFrame"
+    >
+  >,
 ): FrameGenerationStatusSummary {
   const orderedEntries = shots.flatMap((shot) =>
     getRequiredFrames(shot).map((frame) => ({
-      shotCode: shot.shotCode,
-      sceneId: frame.sceneId,
-      segmentId: frame.segmentId,
+      shotLabel: buildShotDisplayLabel(shot),
+      sceneId: getShotSceneId(shot),
+      segmentId: getShotSegmentId(shot),
       frameLabel: frame.frameType === "start_frame" ? "起始帧" : "结束帧",
       frame,
     })),
@@ -79,7 +154,7 @@ export function getFrameGenerationStatusSummary(
     return {
       summary: `Prompt 失败 ${promptFailedCount}/${totalFrameCount}`,
       detail: firstPromptFailure
-        ? `${firstPromptFailure.sceneId} / ${firstPromptFailure.segmentId} / ${firstPromptFailure.shotCode} / ${firstPromptFailure.frameLabel}`
+        ? `${firstPromptFailure.sceneId} / ${firstPromptFailure.segmentId} / ${firstPromptFailure.shotLabel} / ${firstPromptFailure.frameLabel}`
         : null,
     };
   }
@@ -95,7 +170,7 @@ export function getFrameGenerationStatusSummary(
     return {
       summary: `图片失败 ${imageFailedCount}/${totalFrameCount}`,
       detail: firstImageFailure
-        ? `${firstImageFailure.sceneId} / ${firstImageFailure.segmentId} / ${firstImageFailure.shotCode} / ${firstImageFailure.frameLabel}`
+        ? `${firstImageFailure.sceneId} / ${firstImageFailure.segmentId} / ${firstImageFailure.shotLabel} / ${firstImageFailure.frameLabel}`
         : null,
     };
   }
