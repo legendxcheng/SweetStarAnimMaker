@@ -5,5 +5,17 @@ coverage/
 .local-data/
 .worktrees/
 worktrees/
+.claude/
+.codex-runtime/
+.playwright-mcp/
+.superpowers/
+deliverables/
+temp/
+docs/superpowers/
+.env
+package-lock.json
+character-preview*.png
+storyboard-review*.png
+playwright-network*.txt
 .DS_Store
 Thumbs.db
