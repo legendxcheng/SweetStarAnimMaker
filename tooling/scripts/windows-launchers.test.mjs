@@ -16,3 +16,13 @@ test("backend launcher pins the studio origin for the local smoke frontend", () 
     /set "STUDIO_ORIGIN=http:\/\/127\.0\.0\.1:14273,http:\/\/localhost:5173"/,
   );
 });
+
+test("runtime launcher delegates to the existing backend and frontend launchers", () => {
+  const contents = fs.readFileSync(
+    path.join(workspaceRoot, "run-sweetstar.bat"),
+    "utf8",
+  );
+
+  assert.match(contents, /start-backend\.bat/);
+  assert.match(contents, /start-frontend\.bat/);
+});

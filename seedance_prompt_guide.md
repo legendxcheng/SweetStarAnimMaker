@@ -1,0 +1,142 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e10]:
+      - link [ref=e12] [cursor=pointer]:
+        - /url: //www.volcengine.com
+      - generic [ref=e148]:
+        - img [ref=e149] [cursor=pointer]
+        - generic [ref=e152]:
+          - generic [ref=e153]: ArkClaw
+          - generic [ref=e154]: 节省计划
+          - generic [ref=e155]: API网关
+          - generic [ref=e156]: 火山方舟大模型服务平台
+          - generic [ref=e157]: AI咨询
+          - generic [ref=e158]: ArkClaw
+          - generic [ref=e159]: 节省计划
+          - generic [ref=e160]: API网关
+          - generic [ref=e161]: 火山方舟大模型服务平台
+          - generic [ref=e162]: AI咨询
+      - generic [ref=e22]:
+        - combobox [ref=e24] [cursor=pointer]:
+          - generic "简体" [ref=e25]
+        - img [ref=e164] [cursor=pointer]
+        - img [ref=e30] [cursor=pointer]
+    - generic [ref=e34]:
+      - generic:
+        - generic:
+          - generic
+      - generic [ref=e45]:
+        - generic [ref=e52]:
+          - paragraph [ref=e53]: 火山方舟
+          - img [ref=e54]
+        - generic [ref=e62]:
+          - generic [ref=e63]
+          - generic [ref=e103]: Seedance 2.0 系列提示词指南
+          - generic [ref=e179]
+          - generic [ref=e113]
+          - generic [ref=e131]
+    - generic [ref=e1409]:
+      - generic [ref=e1410]:
+        - generic [ref=e1412] [cursor=pointer]:
+          - img [ref=e1414]
+          - generic [ref=e1419]: 售前客服
+        - generic [ref=e1421] [cursor=pointer]:
+          - img [ref=e1423]
+          - generic [ref=e1425]: 售后客服
+      - generic [ref=e1426] [cursor=pointer]: 购买咨询
+    - generic [ref=e1428]:
+      - generic [ref=e1429]:
+        - generic [ref=e1431]: 全天候售后服务
+        - generic [ref=e1433]: 极速服务应答
+        - generic [ref=e1435]: 客户价值为先
+        - generic [ref=e1437]: 全方位安全保障
+      - generic [ref=e1438]:
+        - generic [ref=e1439] [cursor=pointer]: 关于我们
+        - generic:
+          - link "为什么选火山" [ref=e1441] [cursor=pointer]:
+            - /url: https://www.volcengine.com/about
+          - link "文档中心" [ref=e1442] [cursor=pointer]:
+            - /url: https://www.volcengine.com/docs
+          - link "联系我们" [ref=e1443] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/contact
+          - link "人才招聘" [ref=e1444] [cursor=pointer]:
+            - /url: https://www.volcengine.com/jobs
+          - link "云信任中心" [ref=e1445] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/trust
+          - link "友情链接" [ref=e1446] [cursor=pointer]:
+            - /url: https://www.volcengine.com/friend_links
+        - generic [ref=e1447] [cursor=pointer]: 产品
+        - generic:
+          - link "云服务器" [ref=e1449] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/ecs
+          - link "GPU云服务器" [ref=e1450] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/gpu
+          - link "机器学习平台" [ref=e1451] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/ml-platform
+          - link "客户数据平台 VeCDP" [ref=e1452] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/veCDP
+          - link "飞连" [ref=e1453] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/feilian
+          - link "视频直播" [ref=e1454] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/live
+          - link "全部产品" [ref=e1455] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/list
+        - generic [ref=e1456] [cursor=pointer]: 解决方案
+        - generic:
+          - link "汽车行业" [ref=e1458] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/automotive
+          - link "金融行业" [ref=e1459] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/finance
+          - link "文娱行业" [ref=e1460] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/social
+          - link "医疗健康行业" [ref=e1461] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/Bio-OS-genomics
+          - link "传媒行业" [ref=e1462] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/smart-media
+          - link "智慧文旅" [ref=e1463] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/cultural-tourism-group
+          - link "大消费" [ref=e1464] [cursor=pointer]:
+            - /url: https://www.volcengine.com/solutions/GeneralConsumption
+        - generic [ref=e1465] [cursor=pointer]: 服务与支持
+        - generic:
+          - link "备案服务" [ref=e1467] [cursor=pointer]:
+            - /url: https://www.volcengine.com/beian
+          - link "服务咨询" [ref=e1468] [cursor=pointer]:
+            - /url: https://www.volcengine.com/contact/product
+          - link "建议与反馈" [ref=e1469] [cursor=pointer]:
+            - /url: https://console.volcengine.com/workorder/create?step=3&SubProductID=P90000696&FlowKey=RvTCxYTCdeIhAKMzebqS
+          - link "廉洁舞弊举报" [ref=e1470] [cursor=pointer]:
+            - /url: https://compliance.bytedance.com/report/pcReport
+          - link "举报平台" [ref=e1471] [cursor=pointer]:
+            - /url: https://www.volcengine.com/product/report-platform
+        - generic [ref=e1472]:
+          - generic [ref=e1473]: 联系我们
+          - generic [ref=e1474]
+          - generic [ref=e1487]
+      - generic [ref=e1498]:
+        - generic [ref=e1499]:
+          - generic [ref=e1500]: © 北京火山引擎科技有限公司 2026 版权所有
+          - generic [ref=e1501]: 代理域名注册服务机构：新网数码 商中在线
+          - link "服务条款" [ref=e1502] [cursor=pointer]:
+            - /url: https://www.volcengine.com/docs/6256/64903
+          - link "隐私政策" [ref=e1503] [cursor=pointer]:
+            - /url: https://www.volcengine.com/docs/6256/64902
+          - link "更多协议" [ref=e1504] [cursor=pointer]:
+            - /url: https://www.volcengine.com/docs/6256/68938
+        - generic [ref=e1505]:
+          - link "京公网安备11010802032137号" [ref=e1507] [cursor=pointer]:
+            - /url: https://beian.mps.gov.cn/#/query/webSearch?code=11010802032137
+          - link "京ICP备20018813号-3" [ref=e1509] [cursor=pointer]:
+            - /url: https://beian.miit.gov.cn
+          - link "营业执照" [ref=e1511] [cursor=pointer]:
+            - /url: https://www.volcengine.com/business_license
+          - link "增值电信业务经营许可证京B2-20202418，A2.B1.B2-20202637" [ref=e1513] [cursor=pointer]:
+            - /url: https://dxzhgl.miit.gov.cn/#/home
+          - generic [ref=e1515]: 网络文化经营许可证：京网文（2023）4872-140号
+  - generic: rangeDom
+  - generic:
+    - generic:
+      - generic:
+        - document
+  - iframe [ref=e1517]:
+    

@@ -1,0 +1,13 @@
+export const shotImagesDirectoryName = "images";
+export const shotImageBatchesDirectoryName = "batches";
+export const shotImageShotsDirectoryName = "shots";
+export const shotImageSegmentsDirectoryName = "segments";
+export const shotImageCurrentBatchFileName = "current-batch.json";
+export const shotImageManifestFileName = "manifest.json";
+export const shotImagePlanningFileName = "planning.json";
+export const shotImagePromptSeedFileName = "prompt.seed.txt";
+export const shotImagePromptCurrentFileName = "prompt.current.txt";
+export const shotImageCurrentImageFileName = "current.png";
+export const shotImageCurrentMetadataFileName = "current.json";
+export const shotImagePromptVersionsDirectoryName = "prompt.versions";
+export const shotImageVersionsDirectoryName = "versions";

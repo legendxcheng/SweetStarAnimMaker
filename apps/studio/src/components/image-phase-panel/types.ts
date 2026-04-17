@@ -20,6 +20,15 @@ export interface FrameDraftState {
   negativePromptTextCurrent: string;
 }
 
+export type FrameDraftMap = Record<string, FrameDraftState>;
+
+export type ImageBatchSummary = NonNullable<ProjectDetail["currentImageBatch"]>;
+
+export interface ImageGenerationStatusSummary {
+  summary: string;
+  detail: string | null;
+}
+
 export type ImagePhaseActionKind =
   | "save"
   | "regenerate"

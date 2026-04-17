@@ -82,6 +82,35 @@ describe("CharacterSheetsPhasePanel", () => {
     vi.clearAllMocks();
   });
 
+  it("exposes decomposed support modules for the panel split", async () => {
+    const [
+      constantsModule,
+      utilsModule,
+      batchSummaryModule,
+      taskStatusModule,
+      listCardModule,
+      detailCardModule,
+      imagePreviewModule,
+    ] = await Promise.all([
+      import("../../src/components/character-sheets-phase-panel/constants"),
+      import("../../src/components/character-sheets-phase-panel/utils"),
+      import("../../src/components/character-sheets-phase-panel/batch-summary-card"),
+      import("../../src/components/character-sheets-phase-panel/task-status-card"),
+      import("../../src/components/character-sheets-phase-panel/character-list-card"),
+      import("../../src/components/character-sheets-phase-panel/character-detail-card"),
+      import("../../src/components/character-sheets-phase-panel/image-preview-modal"),
+    ]);
+
+    expect(constantsModule.TASK_STATUS_LABELS.pending).toBe("排队中");
+    expect(constantsModule.CHARACTER_STATUS_LABELS.in_review).toBe("待审核");
+    expect(typeof utilsModule.normalizeCharacter).toBe("function");
+    expect(batchSummaryModule.CharacterSheetBatchSummaryCard).toBeTypeOf("function");
+    expect(taskStatusModule.CharacterSheetTaskStatusCard).toBeTypeOf("function");
+    expect(listCardModule.CharacterSheetListCard).toBeTypeOf("function");
+    expect(detailCardModule.CharacterSheetDetailCard).toBeTypeOf("function");
+    expect(imagePreviewModule.CharacterSheetImagePreviewModal).toBeTypeOf("function");
+  });
+
   it("loads character cards and lets the user open a character detail", async () => {
     vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
       currentBatch: baseProject.currentCharacterSheetBatch,

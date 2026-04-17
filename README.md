@@ -10,6 +10,24 @@ Current scope:
 
 This commit establishes only the repository structure. React, Tauri, and runtime tooling are intentionally not initialized yet.
 
+## Windows Quick Start
+
+If the repository is already present on a Windows machine and that machine does not have Node.js installed yet:
+
+1. Right-click `install-windows.bat` and run it.
+2. Allow the administrator prompt.
+3. Wait for the script to install Node.js LTS, enable Corepack, activate `pnpm@10.6.5`, install workspace dependencies, and create a default `.env` if one does not exist yet.
+4. Double-click `run-sweetstar.bat`.
+
+What the installer does:
+
+- installs official Windows x64 Node.js LTS if the machine is missing Node.js or the installed major version is older than the repository baseline
+- enables Corepack and activates the repository `pnpm` version
+- runs `corepack pnpm install`
+- creates a local-safe `.env` without a `VECTORENGINE_API_TOKEN`
+
+The generated `.env` is intentionally smoke-mode safe. If you want real generation instead of smoke mode, add your own `VECTORENGINE_API_TOKEN` to `.env` after installation.
+
 ## Backend API And Worker
 
 Install dependencies:

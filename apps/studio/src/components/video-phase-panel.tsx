@@ -8,28 +8,14 @@ import type {
 } from "@sweet-star/shared";
 
 import { apiClient } from "../services/api-client";
-import { config } from "../services/config";
 import { getButtonClassName } from "../styles/button-styles";
 import { ErrorState } from "./error-state";
-
-const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
-  pending: "排队中",
-  running: "执行中",
-  succeeded: "已完成",
-  failed: "失败",
-};
-
-const VIDEO_STATUS_LABELS: Record<ShotVideoRecord["status"], string> = {
-  generating: "生成中",
-  in_review: "待审核",
-  approved: "已通过",
-  failed: "失败",
-};
-
-const shotHierarchyCollator = new Intl.Collator("zh-CN", {
-  numeric: true,
-  sensitivity: "base",
-});
+import { CARD_CLASS, META_LABEL_CLASS, META_VALUE_CLASS } from "./video-phase-panel/constants";
+import { FinalCutCard } from "./video-phase-panel/final-cut-card";
+import { TaskStatusCard } from "./video-phase-panel/task-status-card";
+import type { VideoPhaseActionBusy } from "./video-phase-panel/types";
+import { sortShotsByHierarchy } from "./video-phase-panel/utils";
+import { VideoShotCard } from "./video-phase-panel/video-shot-card";
 
 interface VideoPhasePanelProps {
   project: ProjectDetail;
@@ -54,29 +40,12 @@ export function VideoPhasePanel({
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<Error | null>(null);
   const [actionError, setActionError] = useState<Error | null>(null);
-  const [actionBusy, setActionBusy] = useState<
-    | {
-        kind:
-          | "save-prompt"
-          | "regenerate-prompt"
-          | "regenerate-all-prompts"
-          | "regenerate"
-          | "regenerate-all-videos"
-          | "approve"
-          | "approve-all";
-        shotId?: string;
-      }
-    | null
-  >(null);
+  const [actionBusy, setActionBusy] = useState<VideoPhaseActionBusy>(null);
   const [finalCut, setFinalCut] = useState<FinalCutRecord | null>(null);
   const [finalCutLoading, setFinalCutLoading] = useState(false);
   const [finalCutError, setFinalCutError] = useState<Error | null>(null);
   const [finalCutTask, setFinalCutTask] = useState<TaskDetail | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const cardClass =
-    "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
-  const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
-  const metaValueClass = "text-sm text-(--color-text-primary)";
   const batchSummary = project.currentVideoBatch;
   const allShotsApproved =
     batchSummary !== null &&
@@ -432,14 +401,10 @@ export function VideoPhasePanel({
   const hasDirtyPrompts = shots.some(
     (shot) => (drafts[shot.id] ?? shot.promptTextCurrent) !== shot.promptTextCurrent,
   );
-  const finalCutVideoUrl =
-    finalCut?.status === "ready" && finalCut.videoAssetPath
-      ? getAssetUrl(project.id, finalCut.videoAssetPath, finalCut.updatedAt)
-      : null;
 
   return (
     <section aria-label="视频工作区">
-      <div className={cardClass}>
+      <div className={CARD_CLASS}>
         <div className="flex items-start justify-between gap-3 mb-5">
           <div>
             <h3 className="text-lg font-semibold text-(--color-text-primary)">视频工作区</h3>
@@ -500,18 +465,18 @@ export function VideoPhasePanel({
         {batchSummary ? (
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <p className={metaLabelClass}>Shot 数量</p>
-              <p className={metaValueClass}>{batchSummary.shotCount}</p>
+              <p className={META_LABEL_CLASS}>Shot 数量</p>
+              <p className={META_VALUE_CLASS}>{batchSummary.shotCount}</p>
             </div>
             <div>
-              <p className={metaLabelClass}>已通过镜头</p>
-              <p className={metaValueClass}>
+              <p className={META_LABEL_CLASS}>已通过镜头</p>
+              <p className={META_VALUE_CLASS}>
                 {batchSummary.approvedShotCount}/{batchSummary.shotCount}
               </p>
             </div>
             <div>
-              <p className={metaLabelClass}>更新时间</p>
-              <p className={metaValueClass}>
+              <p className={META_LABEL_CLASS}>更新时间</p>
+              <p className={META_VALUE_CLASS}>
                 {new Date(batchSummary.updatedAt).toLocaleString("zh-CN")}
               </p>
             </div>
@@ -524,96 +489,27 @@ export function VideoPhasePanel({
       </div>
 
       {batchSummary && (
-        <div className={cardClass}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h3 className="text-base font-semibold text-(--color-text-primary)">成片导出</h3>
-              <p className="mt-1 text-sm text-(--color-text-muted)">
-                按 scene、segment、shot 固定顺序拼接当前批次全部已通过镜头，生成项目级 MP4。
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                void handleGenerateFinalCut();
-              }}
-              disabled={!allShotsApproved || finalCutTask?.status === "pending" || finalCutTask?.status === "running"}
-              className={getButtonClassName()}
-            >
-              {finalCutTask?.status === "pending" || finalCutTask?.status === "running"
-                ? "生成中..."
-                : "生成成片"}
-            </button>
-          </div>
-
-          {!allShotsApproved && (
-            <p className="mt-3 text-sm text-(--color-text-muted)">
-              需先审核通过全部镜头片段后才能生成成片。
-            </p>
-          )}
-
-          {finalCutTask && (
-            <div className="mt-4 grid gap-2 rounded-xl border border-(--color-border) bg-(--color-bg-base) p-4">
-              <div>
-                <p className={metaLabelClass}>成片任务状态</p>
-                <p className={metaValueClass}>{TASK_STATUS_LABELS[finalCutTask.status]}</p>
-              </div>
-              {finalCutTask.errorMessage && (
-                <p className="text-sm text-(--color-danger)">{finalCutTask.errorMessage}</p>
-              )}
-            </div>
-          )}
-
-          {finalCutLoading && (
-            <p className="mt-4 text-sm text-(--color-text-muted)">正在加载成片状态...</p>
-          )}
-
-          {finalCutVideoUrl && (
-            <div className="mt-4 grid gap-4">
-              <video
-                data-testid="final-cut-player"
-                controls
-                preload="metadata"
-                className="w-full rounded-xl border border-(--color-border) bg-black"
-              >
-                <source src={finalCutVideoUrl} type="video/mp4" />
-              </video>
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--color-border) bg-(--color-bg-base) px-4 py-3">
-                <div>
-                  <p className={metaLabelClass}>当前成片</p>
-                  <p className={metaValueClass}>
-                    {finalCut?.shotCount ?? 0} 个镜头，更新于{" "}
-                    {finalCut ? new Date(finalCut.updatedAt).toLocaleString("zh-CN") : "-"}
-                  </p>
-                </div>
-                <a
-                  href={finalCutVideoUrl}
-                  download
-                  className={getButtonClassName({ variant: "success" })}
-                >
-                  下载 MP4
-                </a>
-              </div>
-            </div>
-          )}
-        </div>
+        <FinalCutCard
+          allShotsApproved={allShotsApproved}
+          batchSummary={batchSummary}
+          cardClass={CARD_CLASS}
+          finalCut={finalCut}
+          finalCutLoading={finalCutLoading}
+          finalCutTask={finalCutTask}
+          onGenerateFinalCut={() => {
+            void handleGenerateFinalCut();
+          }}
+          projectId={project.id}
+        />
       )}
 
       {task && (
-        <div className={cardClass}>
-          <h4 className="text-base font-semibold text-(--color-text-primary) mb-3">任务状态</h4>
-          <div className="grid gap-2">
-            <div>
-              <p className={metaLabelClass}>任务 ID</p>
-              <p className={`${metaValueClass} font-mono text-xs`}>{task.id}</p>
-            </div>
-            <div>
-              <p className={metaLabelClass}>状态</p>
-              <p className={metaValueClass}>{TASK_STATUS_LABELS[task.status]}</p>
-            </div>
-            {task.errorMessage && <p className="text-sm text-(--color-danger)">{task.errorMessage}</p>}
-          </div>
-        </div>
+        <TaskStatusCard
+          cardClass={CARD_CLASS}
+          metaLabelClass={META_LABEL_CLASS}
+          metaValueClass={META_VALUE_CLASS}
+          task={task}
+        />
       )}
 
       {taskError && task && (
@@ -647,13 +543,13 @@ export function VideoPhasePanel({
       )}
 
       {batchSummary && listLoading && (
-        <div className={cardClass}>
+        <div className={CARD_CLASS}>
           <p className="text-sm text-(--color-text-muted)">正在加载当前视频批次...</p>
         </div>
       )}
 
       {batchSummary && !listLoading && shots.length === 0 && !listError && (
-        <div className={cardClass}>
+        <div className={CARD_CLASS}>
           <p className="text-sm text-(--color-text-muted)">当前批次还没有可审核的视频镜头。</p>
         </div>
       )}
@@ -661,8 +557,6 @@ export function VideoPhasePanel({
       {shots.map((shot) => {
         const promptDraft = drafts[shot.id] ?? shot.promptTextCurrent;
         const isDirty = promptDraft !== shot.promptTextCurrent;
-        const canSavePrompt = promptDraft.trim().length > 0;
-        const isGenerating = shot.status === "generating";
         const isBusy =
           actionBusy?.kind === "approve-all" ||
           actionBusy?.kind === "regenerate-all-prompts" ||
@@ -670,193 +564,37 @@ export function VideoPhasePanel({
           actionBusy?.shotId === shot.id;
 
         return (
-          <article
+          <VideoShotCard
             key={shot.id}
-            data-testid={`video-shot-card-${shot.id}`}
-            data-generating-state={isGenerating ? "true" : "false"}
-            className={`${cardClass} ${isGenerating ? "border-(--color-accent) ring-1 ring-(--color-accent)/50 shadow-md shadow-(--color-accent)/20 transition-all duration-300" : ""}`}
-          >
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h4 className="text-base font-semibold text-(--color-text-primary)">
-                  {shot.shotCode}
-                </h4>
-                <p className="text-sm text-(--color-text-muted) mt-1">{shot.sceneId}</p>
-              </div>
-              <div className="text-right">
-                <p className={metaLabelClass}>当前状态</p>
-                <p className={`${metaValueClass} inline-flex items-center gap-2`}>
-                  {isGenerating && (
-                    <span
-                      aria-hidden="true"
-                      className="h-2 w-2 rounded-full bg-(--color-accent) animate-pulse"
-                    />
-                  )}
-                  <span>{VIDEO_STATUS_LABELS[shot.status]}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
-              <div>
-                {isGenerating ? (
-                  <div className="flex min-h-56 items-center justify-center rounded-xl border border-(--color-accent)/40 bg-(--color-accent)/8">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="mb-3 h-8 w-8 rounded-full border-4 border-(--color-border-muted) border-t-(--color-accent) animate-spin" />
-                      <p className="text-sm font-medium tracking-wide text-(--color-accent)">
-                        视频生成中...
-                      </p>
-                    </div>
-                  </div>
-                ) : shot.videoAssetPath ? (
-                  <video
-                    controls
-                    preload="metadata"
-                    className="w-full rounded-xl border border-(--color-border) bg-black"
-                    poster={
-                      shot.thumbnailAssetPath
-                        ? getAssetUrl(project.id, shot.thumbnailAssetPath, shot.updatedAt)
-                        : undefined
-                    }
-                  >
-                    <source
-                      src={getAssetUrl(project.id, shot.videoAssetPath, shot.updatedAt)}
-                      type="video/mp4"
-                    />
-                  </video>
-                ) : (
-                  <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-(--color-border-muted) bg-(--color-bg-base) text-sm text-(--color-text-muted)">
-                    当前 Shot 还没有可播放视频
-                  </div>
-                )}
-              </div>
-
-              <div className="grid gap-3">
-                <div>
-                  <p className={metaLabelClass}>视频提示词</p>
-                  <textarea
-                    value={promptDraft}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setDrafts((currentDrafts) => ({
-                        ...currentDrafts,
-                        [shot.id]: value,
-                      }));
-                    }}
-                    rows={6}
-                    className="w-full rounded-xl border border-(--color-border) bg-(--color-bg-base) px-3 py-2 text-sm text-(--color-text-primary) outline-none focus:border-(--color-primary)"
-                  />
-                </div>
-                <div>
-                  <p className={metaLabelClass}>Shot ID</p>
-                  <p className={metaValueClass}>{shot.shotId}</p>
-                </div>
-                <div>
-                  <p className={metaLabelClass}>镜头依赖</p>
-                  <p className={metaValueClass}>
-                    {shot.frameDependency === "start_frame_only"
-                      ? "仅起始帧"
-                      : "起始帧 + 结束帧"}
-                  </p>
-                </div>
-                <div>
-                  <p className={metaLabelClass}>模型</p>
-                  <p className={metaValueClass}>{shot.model ?? "未生成"}</p>
-                </div>
-                <div>
-                  <p className={metaLabelClass}>Provider</p>
-                  <p className={metaValueClass}>{shot.provider ?? "未生成"}</p>
-                </div>
-                <div>
-                  <p className={metaLabelClass}>时长</p>
-                  <p className={metaValueClass}>
-                    {shot.durationSec !== null ? `${shot.durationSec}s` : "未知"}
-                  </p>
-                </div>
-                <div>
-                  <p className={metaLabelClass}>更新时间</p>
-                  <p className={metaValueClass}>
-                    {new Date(shot.updatedAt).toLocaleString("zh-CN")}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3 pt-2">
-                  {isDirty && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleSavePrompt(shot);
-                      }}
-                      disabled={isBusy || !canSavePrompt}
-                      className={getButtonClassName()}
-                    >
-                      保存提示词
-                    </button>
-                  )}
-                  {!isDirty && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleRegeneratePrompt(shot);
-                      }}
-                      disabled={isBusy}
-                      className={getButtonClassName({ variant: "warning" })}
-                    >
-                      重新生成当前镜头提示词
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleRegenerate(shot.id);
-                    }}
-                    disabled={isBusy || isDirty}
-                    className={getButtonClassName({ variant: "warning" })}
-                  >
-                    重新生成当前镜头视频
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleApprove(shot.id);
-                    }}
-                    disabled={isBusy || shot.status !== "in_review"}
-                    className={getButtonClassName({ variant: "success" })}
-                  >
-                    审核通过当前镜头
-                  </button>
-                </div>
-              </div>
-            </div>
-          </article>
+            cardClass={CARD_CLASS}
+            isBusy={isBusy}
+            isDirty={isDirty}
+            metaLabelClass={META_LABEL_CLASS}
+            metaValueClass={META_VALUE_CLASS}
+            onApprove={() => {
+              void handleApprove(shot.id);
+            }}
+            onDraftChange={(value) => {
+              setDrafts((currentDrafts) => ({
+                ...currentDrafts,
+                [shot.id]: value,
+              }));
+            }}
+            onRegenerate={() => {
+              void handleRegenerate(shot.id);
+            }}
+            onRegeneratePrompt={() => {
+              void handleRegeneratePrompt(shot);
+            }}
+            onSavePrompt={() => {
+              void handleSavePrompt(shot);
+            }}
+            projectId={project.id}
+            promptDraft={promptDraft}
+            shot={shot}
+          />
         );
       })}
     </section>
   );
-}
-
-function getAssetUrl(projectId: string, assetRelPath: string, updatedAt: string) {
-  const url = new URL(config.projectAssetContentUrl(projectId, assetRelPath));
-  url.searchParams.set("v", updatedAt);
-  return url.toString();
-}
-
-function sortShotsByHierarchy(shots: ShotVideoRecord[]) {
-  return [...shots].sort((left, right) => {
-    const sceneCompare = shotHierarchyCollator.compare(left.sceneId, right.sceneId);
-    if (sceneCompare !== 0) {
-      return sceneCompare;
-    }
-
-    const segmentCompare = shotHierarchyCollator.compare(left.segmentId, right.segmentId);
-    if (segmentCompare !== 0) {
-      return segmentCompare;
-    }
-
-    const shotCompare = shotHierarchyCollator.compare(left.shotId, right.shotId);
-    if (shotCompare !== 0) {
-      return shotCompare;
-    }
-
-    return shotHierarchyCollator.compare(left.shotCode, right.shotCode);
-  });
 }
