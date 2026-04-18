@@ -10,6 +10,7 @@
     "dev:studio": "corepack pnpm --filter @sweet-star/studio dev",
     "postinstall": "node tooling/scripts/ensure-better-sqlite3-build.mjs",
     "smoke:kling-video": "node ./apps/worker/node_modules/tsx/dist/cli.mjs ./tooling/scripts/test-kling-video-provider.ts",
+    "smoke:seedance-video": "node ./apps/worker/node_modules/tsx/dist/cli.mjs ./tooling/scripts/test-seedance-video-provider.ts",
     "smoke:sora-video": "node ./apps/worker/node_modules/tsx/dist/cli.mjs ./tooling/scripts/test-sora-video-provider.ts",
     "smoke:wan-video": "node ./apps/worker/node_modules/tsx/dist/cli.mjs ./tooling/scripts/test-wan-video-provider.ts",
     "test": "corepack pnpm -r test",

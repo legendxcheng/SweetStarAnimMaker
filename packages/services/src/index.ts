@@ -122,6 +122,18 @@ export {
   type WanVideoProvider,
 } from "./providers/wan-video-provider";
 export {
+  createSeedanceVideoProvider,
+  createSeedanceStageVideoProvider,
+  type CreateSeedanceStageVideoProviderOptions,
+  type CreateSeedanceVideoProviderOptions,
+  type GetSeedanceVideoGenerationTaskInput,
+  type GetSeedanceVideoGenerationTaskResult,
+  type SeedanceVideoProvider,
+  type SubmitSeedanceVideoGenerationTaskInput,
+  type SubmitSeedanceVideoGenerationTaskResult,
+  type WaitForSeedanceVideoGenerationTaskInput,
+} from "./providers/seedance-video-provider";
+export {
   createGeminiFramePromptProvider,
   type CreateGeminiFramePromptProviderOptions,
 } from "./providers/gemini-frame-prompt-provider";

@@ -1,6 +1,7 @@
 import type { VideoProvider } from "@sweet-star/core";
 import {
   createKlingOmniStageVideoProvider,
+  createSeedanceStageVideoProvider,
   createSoraStageVideoProvider,
   type ReferenceImageUploader,
 } from "@sweet-star/services";
@@ -15,8 +16,8 @@ export function createConfiguredVideoProvider(
 ): VideoProvider {
   const env = options.env ?? process.env;
   const providerName = env.VIDEO_PROVIDER?.trim().toLowerCase() || "kling";
-  const baseUrl = env.VECTORENGINE_BASE_URL;
-  const apiToken = env.VECTORENGINE_API_TOKEN;
+  const vectorEngineBaseUrl = env.VECTORENGINE_BASE_URL;
+  const vectorEngineApiToken = env.VECTORENGINE_API_TOKEN;
 
   if (providerName === "kling") {
     const modelName = readPreferredModel(env, "KLING_VIDEO_MODEL");
@@ -26,13 +27,13 @@ export function createConfiguredVideoProvider(
       providerName,
       modelName,
       durationSeconds,
-      baseUrlConfigured: Boolean(baseUrl?.trim()),
-      apiTokenConfigured: Boolean(apiToken?.trim()),
+      baseUrlConfigured: Boolean(vectorEngineBaseUrl?.trim()),
+      apiTokenConfigured: Boolean(vectorEngineApiToken?.trim()),
     });
 
     return createKlingOmniStageVideoProvider({
-      baseUrl,
-      apiToken,
+      baseUrl: vectorEngineBaseUrl,
+      apiToken: vectorEngineApiToken,
       modelName,
       durationSeconds,
       referenceImageUploader: options.referenceImageUploader,
@@ -45,15 +46,34 @@ export function createConfiguredVideoProvider(
     console.info("[video-provider-config] selected", {
       providerName,
       modelName,
-      baseUrlConfigured: Boolean(baseUrl?.trim()),
-      apiTokenConfigured: Boolean(apiToken?.trim()),
+      baseUrlConfigured: Boolean(vectorEngineBaseUrl?.trim()),
+      apiTokenConfigured: Boolean(vectorEngineApiToken?.trim()),
     });
 
     return createSoraStageVideoProvider({
-      baseUrl,
-      apiToken,
+      baseUrl: vectorEngineBaseUrl,
+      apiToken: vectorEngineApiToken,
       modelName,
       referenceImageUploader: options.referenceImageUploader,
+    });
+  }
+
+  if (providerName === "seedance") {
+    const seedanceBaseUrl = env.SEEDANCE_API_BASE_URL;
+    const seedanceApiToken = env.SEEDANCE_API_TOKEN;
+    const modelName = readPreferredModel(env, "SEEDANCE_VIDEO_MODEL");
+
+    console.info("[video-provider-config] selected", {
+      providerName,
+      modelName,
+      baseUrlConfigured: Boolean(seedanceBaseUrl?.trim()),
+      apiTokenConfigured: Boolean(seedanceApiToken?.trim()),
+    });
+
+    return createSeedanceStageVideoProvider({
+      baseUrl: seedanceBaseUrl,
+      apiToken: seedanceApiToken,
+      modelName,
     });
   }
 
