@@ -3,209 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createProcessVideosGenerateTaskUseCase } from "../src/index";
 
 describe("process videos generate task use case", () => {
-  it("creates empty initial shot prompts and defers prompt text generation to the queued shot task", async () => {
-    const taskRepository = {
-      insert: vi.fn(),
-      findById: vi.fn().mockResolvedValue({
-        id: "task_videos_1",
-        projectId: "proj_1",
-        type: "videos_generate",
-        queueName: "videos-generate",
-        storageDir: "projects/proj_1-my-story/tasks/task_videos_1",
-        inputRelPath: "tasks/task_videos_1/input.json",
-        outputRelPath: "tasks/task_videos_1/output.json",
-        logRelPath: "tasks/task_videos_1/log.txt",
-      }),
-      findLatestByProjectId: vi.fn(),
-      delete: vi.fn(),
-      markRunning: vi.fn(),
-      markSucceeded: vi.fn(),
-      markFailed: vi.fn(),
-    };
-    const projectRepository = {
-      insert: vi.fn(),
-      findById: vi.fn().mockResolvedValue({
-        id: "proj_1",
-        storageDir: "projects/proj_1-my-story",
-        currentVideoBatchId: null,
-      }),
-      listAll: vi.fn(),
-      updatePremiseMetadata: vi.fn(),
-      updateCurrentMasterPlot: vi.fn(),
-      updateCurrentCharacterSheetBatch: vi.fn(),
-      updateCurrentStoryboard: vi.fn(),
-      updateCurrentShotScript: vi.fn(),
-      updateCurrentImageBatch: vi.fn(),
-      updateCurrentVideoBatch: vi.fn(),
-      updateStatus: vi.fn(),
-    };
-    const taskFileStorage = {
-      createTaskArtifacts: vi.fn(),
-      readTaskInput: vi.fn().mockResolvedValue({
-        taskId: "task_videos_1",
-        projectId: "proj_1",
-        taskType: "videos_generate",
-        sourceImageBatchId: "image_batch_v1",
-        imageBatch: {
-          id: "image_batch_v1",
-          sourceShotScriptId: "shot_script_v1",
-          shotCount: 1,
-          totalRequiredFrameCount: 1,
-          approvedShotCount: 1,
-          updatedAt: "2026-03-25T00:10:00.000Z",
-        },
-        sourceShotScriptId: "shot_script_v1",
-        shotScript: {
-          id: "shot_script_v1",
-          title: "Episode 1",
-          sourceStoryboardId: "storyboard_v1",
-          sourceTaskId: "task_shot_script",
-          updatedAt: "2026-03-25T00:09:00.000Z",
-          approvedAt: "2026-03-25T00:10:00.000Z",
-          segmentCount: 1,
-          shotCount: 1,
-          totalDurationSec: 3,
-          segments: [
-            {
-              segmentId: "segment_1",
-              sceneId: "scene_1",
-              order: 1,
-              name: "Arrival",
-              summary: "Rin arrives.",
-              durationSec: 3,
-              status: "approved",
-              lastGeneratedAt: "2026-03-25T00:09:00.000Z",
-              approvedAt: "2026-03-25T00:10:00.000Z",
-              shots: [
-                {
-                  id: "shot_1",
-                  sceneId: "scene_1",
-                  segmentId: "segment_1",
-                  order: 1,
-                  shotCode: "SC01-SG01-SH01",
-                  durationSec: 3,
-                  frameDependency: "start_frame_only",
-                  purpose: "Arrival",
-                  visual: "Rin enters the flooded market.",
-                  subject: "Rin",
-                  action: "Rin steps into the flooded market and scans ahead.",
-                  dialogue: null,
-                  os: null,
-                  audio: null,
-                  transitionHint: null,
-                  continuityNotes: "Keep her satchel visible.",
-                },
-              ],
-            },
-          ],
-        },
-        promptTemplateKey: "segment_video.generate",
-      }),
-      writeTaskOutput: vi.fn(),
-      appendTaskLog: vi.fn(),
-    };
-    const shotImageRepository = {
-      insertBatch: vi.fn(),
-      findBatchById: vi.fn(),
-      findCurrentBatchByProjectId: vi.fn(),
-      listFramesByBatchId: vi.fn(),
-      listShotsByBatchId: vi.fn().mockResolvedValue([
-        {
-          id: "shot_ref_1",
-          batchId: "image_batch_v1",
-          projectId: "proj_1",
-          sourceShotScriptId: "shot_script_v1",
-          shotId: "shot_1",
-          shotCode: "SC01-SG01-SH01",
-          sceneId: "scene_1",
-          segmentId: "segment_1",
-          segmentOrder: 1,
-          shotOrder: 1,
-          durationSec: 3,
-          frameDependency: "start_frame_only",
-          referenceStatus: "approved",
-          updatedAt: "2026-03-25T00:10:00.000Z",
-          startFrame: {
-            id: "frame_start_1",
-            frameType: "start_frame",
-            imageStatus: "approved",
-            imageAssetPath:
-              "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
-            imageWidth: 1024,
-            imageHeight: 1024,
-          },
-          endFrame: null,
-        },
-      ]),
-      insertFrame: vi.fn(),
-      insertShot: vi.fn(),
-      findFrameById: vi.fn(),
-      findShotById: vi.fn(),
-      updateFrame: vi.fn(),
-      updateShot: vi.fn(),
-    };
-    const videoRepository = {
-      insertBatch: vi.fn(),
-      findBatchById: vi.fn(),
-      findCurrentBatchByProjectId: vi.fn(),
-      listSegmentsByBatchId: vi.fn(),
-      insertSegment: vi.fn(),
-      findSegmentById: vi.fn(),
-      findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
-      findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
-      updateSegment: vi.fn(),
-    };
-    const videoStorage = {
-      initializePromptTemplate: vi.fn(),
-      readPromptTemplate: vi
-        .fn()
-        .mockResolvedValue("Segment summary: {{segment_summary}}\nShot summary: {{shot_summary}}"),
-      writePromptSnapshot: vi.fn(),
-      writePromptPlan: vi.fn(),
-      writeRawResponse: vi.fn(),
-      writeBatchManifest: vi.fn(),
-      writeCurrentVideo: vi.fn(),
-      writeVideoVersion: vi.fn(),
-      resolveProjectAssetPath: vi.fn(),
-    };
-    const taskQueue = { enqueue: vi.fn() };
-    const videoPromptProvider = {
-      generateVideoPrompt: vi.fn().mockRejectedValue(new Error("should not be called")),
-    };
-
-    const useCase = createProcessVideosGenerateTaskUseCase({
-      taskRepository,
-      projectRepository,
-      taskFileStorage,
-      shotImageRepository,
-      videoRepository,
-      videoStorage,
-      videoPromptProvider,
-      taskQueue,
-      taskIdGenerator: { generateTaskId: () => "task_segment_video_1" },
-      clock: {
-        now: vi
-          .fn()
-          .mockReturnValueOnce("2026-03-25T00:12:00.000Z")
-          .mockReturnValueOnce("2026-03-25T00:13:00.000Z"),
-      },
-    });
-
-    await useCase.execute({ taskId: "task_videos_1" });
-
-    expect(videoRepository.insertSegment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        shotId: "shot_1",
-        promptTextSeed: "",
-        promptTextCurrent: "",
-      }),
-    );
-    expect(videoStorage.readPromptTemplate).not.toHaveBeenCalled();
-    expect(videoPromptProvider.generateVideoPrompt).not.toHaveBeenCalled();
-    expect(videoStorage.writePromptPlan).not.toHaveBeenCalled();
-  });
-
-  it("creates one current video record per shot and enqueues one shot task per shot", async () => {
+  it("creates one segment record with deterministic deduplicated references and defers prompt text generation", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -273,7 +71,7 @@ describe("process videos generate task use case", () => {
               sceneId: "scene_1",
               order: 1,
               name: "Arrival",
-              summary: "Rin arrives.",
+              summary: "Rin arrives and follows the contact through the market.",
               durationSec: 8,
               status: "approved",
               lastGeneratedAt: "2026-03-25T00:09:00.000Z",
@@ -305,15 +103,15 @@ describe("process videos generate task use case", () => {
                   shotCode: "SC01-SG01-SH02",
                   durationSec: 5,
                   frameDependency: "start_and_end_frame",
-                  purpose: "Discovery",
-                  visual: "Rin spots the route forward.",
+                  purpose: "Follow",
+                  visual: "Rin follows the contact through the brighter aisle.",
                   subject: "Rin",
-                  action: "Rin points toward the brighter alley beyond the stalls.",
+                  action: "Rin turns and follows the contact deeper into the market.",
                   dialogue: null,
                   os: null,
                   audio: null,
                   transitionHint: null,
-                  continuityNotes: "Water should keep flowing left to right.",
+                  continuityNotes: "Keep water flow left to right.",
                 },
               ],
             },
@@ -385,7 +183,7 @@ describe("process videos generate task use case", () => {
             frameType: "end_frame",
             imageStatus: "approved",
             imageAssetPath:
-              "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_2/end-frame/current.png",
+              "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_2/start-frame/current.png",
             imageWidth: 1024,
             imageHeight: 1024,
           },
@@ -424,26 +222,7 @@ describe("process videos generate task use case", () => {
     };
     const taskQueue = { enqueue: vi.fn() };
     const videoPromptProvider = {
-      generateVideoPrompt: vi
-        .fn()
-        .mockResolvedValueOnce({
-          finalPrompt: "以<<<image_1>>>为首帧锚点，林谨慎走入积水市场，口型清晰说出“有人先到了”，雨声持续压场。",
-          dialoguePlan: "说话主体：林；台词：有人先到了。",
-          audioPlan: "雨声持续，摊布拍打声和远处人群骚动做底。",
-          visualGuardrails: "保持林的外观、服装和挎包位置稳定。",
-          rationale: "把对白和环境声直接编入 Kling Omni 单镜头提示词。",
-          provider: "gemini",
-          model: "gemini-3.1-pro-preview",
-        })
-        .mockResolvedValueOnce({
-          finalPrompt: "以<<<image_1>>>为首帧锚点，林指向更亮的巷口，无对白，保留水流和脚步涉水声。",
-          dialoguePlan: "无明确台词。",
-          audioPlan: "水流声、脚步涉水声。",
-          visualGuardrails: "从首帧自然推进到尾帧，避免跳切和主体漂移。",
-          rationale: "强调尾帧衔接和动作推进。",
-          provider: "gemini",
-          model: "gemini-3.1-pro-preview",
-        }),
+      generateVideoPrompt: vi.fn().mockRejectedValue(new Error("should not be called")),
     };
 
     const useCase = createProcessVideosGenerateTaskUseCase({
@@ -455,12 +234,7 @@ describe("process videos generate task use case", () => {
       videoStorage,
       videoPromptProvider,
       taskQueue,
-      taskIdGenerator: {
-        generateTaskId: vi
-          .fn()
-          .mockReturnValueOnce("task_segment_video_1")
-          .mockReturnValueOnce("task_segment_video_2"),
-      },
+      taskIdGenerator: { generateTaskId: () => "task_segment_video_1" },
       clock: {
         now: vi
           .fn()
@@ -471,70 +245,59 @@ describe("process videos generate task use case", () => {
 
     await useCase.execute({ taskId: "task_videos_1" });
 
-    expect(videoRepository.insertBatch).toHaveBeenCalledWith(
+    expect(videoRepository.insertSegment).toHaveBeenCalledTimes(1);
+    expect(videoRepository.insertSegment).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "video_batch_task_videos_1",
-        sourceImageBatchId: "image_batch_v1",
-        sourceShotScriptId: "shot_script_v1",
+        segmentId: "segment_1",
+        segmentName: "Arrival",
+        segmentSummary: "Rin arrives and follows the contact through the market.",
         shotCount: 2,
-      }),
-    );
-    expect(videoRepository.insertSegment).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        shotId: "shot_1",
-        shotCode: "SC01-SG01-SH01",
-        frameDependency: "start_frame_only",
-        durationSec: 3,
-        status: "generating",
+        sourceShotIds: ["shot_1", "shot_2"],
+        referenceImages: [
+          expect.objectContaining({
+            assetPath:
+              "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+            sourceShotId: "shot_1",
+            order: 0,
+          }),
+          expect.objectContaining({
+            assetPath:
+              "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_2/start-frame/current.png",
+            sourceShotId: "shot_2",
+            order: 1,
+          }),
+        ],
+        referenceAudios: [],
         promptTextSeed: "",
         promptTextCurrent: "",
       }),
     );
-    expect(videoRepository.insertSegment).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        shotId: "shot_2",
-        shotCode: "SC01-SG01-SH02",
-        frameDependency: "start_and_end_frame",
-        durationSec: 5,
-      }),
-    );
-    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(1, {
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledTimes(1);
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith({
       task: expect.objectContaining({ id: "task_segment_video_1" }),
       input: expect.objectContaining({
         taskType: "segment_video_prompt_generate",
         batchId: "video_batch_task_videos_1",
         sceneId: "scene_1",
         segmentId: "segment_1",
-        shotId: "shot_1",
-        shotCode: "SC01-SG01-SH01",
-        frameDependency: "start_frame_only",
-        startFrame: expect.objectContaining({ id: "frame_start_1" }),
-        endFrame: null,
+        shotCount: 2,
+        sourceShotIds: ["shot_1", "shot_2"],
+        referenceImages: [
+          expect.objectContaining({
+            id: "video_ref_image_segment_1_shot_1_start_frame",
+            sourceShotId: "shot_1",
+          }),
+          expect.objectContaining({
+            id: "video_ref_image_segment_1_shot_2_start_frame",
+            sourceShotId: "shot_2",
+          }),
+        ],
+        referenceAudios: [],
       }),
     });
-    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(2, {
-      task: expect.objectContaining({ id: "task_segment_video_2" }),
-      input: expect.objectContaining({
-        taskType: "segment_video_prompt_generate",
-        batchId: "video_batch_task_videos_1",
-        sceneId: "scene_1",
-        segmentId: "segment_1",
-        shotId: "shot_2",
-        shotCode: "SC01-SG01-SH02",
-        frameDependency: "start_and_end_frame",
-        startFrame: expect.objectContaining({ id: "frame_start_2" }),
-        endFrame: expect.objectContaining({ id: "frame_end_2" }),
-      }),
-    });
-    expect(taskQueue.enqueue).toHaveBeenNthCalledWith(1, {
+    expect(taskQueue.enqueue).toHaveBeenCalledTimes(1);
+    expect(taskQueue.enqueue).toHaveBeenCalledWith({
       taskId: "task_segment_video_1",
-      queueName: "segment-video-prompt-generate",
-      taskType: "segment_video_prompt_generate",
-    });
-    expect(taskQueue.enqueue).toHaveBeenNthCalledWith(2, {
-      taskId: "task_segment_video_2",
       queueName: "segment-video-prompt-generate",
       taskType: "segment_video_prompt_generate",
     });

@@ -11,6 +11,7 @@ import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { buildPersistedSegmentShotReference } from "./build-persisted-segment-shot-reference";
 import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
 
 export interface RegenerateAllVideoPromptsInput {
@@ -62,12 +63,6 @@ export function createRegenerateAllVideoPromptsUseCase(
 
       const timestamp = dependencies.clock.now();
       const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-      if (!dependencies.shotImageRepository.listShotsByBatchId) {
-        throw new CurrentShotScriptNotFoundError(project.id);
-      }
-      const shotReferences = await dependencies.shotImageRepository.listShotsByBatchId(
-        batch.sourceImageBatchId,
-      );
       const updatedSegments = await Promise.all(segments.map(async (currentSegment) => {
         const scriptSegment = shotScript.segments.find(
           (item) =>
@@ -80,11 +75,29 @@ export function createRegenerateAllVideoPromptsUseCase(
         }
 
         const scriptShot = scriptSegment.shots.find((item) => item.id === currentSegment.shotId);
-        const shotReference = shotReferences.find((item) => item.shotId === currentSegment.shotId);
 
-        if (!scriptShot || !shotReference) {
+        if (!scriptShot) {
           throw new CurrentShotScriptNotFoundError(project.id);
         }
+
+        const shotReference = buildPersistedSegmentShotReference({
+          id: currentSegment.id,
+          batchId: currentSegment.batchId,
+          projectId: currentSegment.projectId,
+          projectStorageDir: currentSegment.projectStorageDir,
+          sourceShotScriptId: currentSegment.sourceShotScriptId,
+          sourceImageBatchId: currentSegment.sourceImageBatchId,
+          sceneId: currentSegment.sceneId,
+          segmentId: currentSegment.segmentId,
+          segmentOrder: currentSegment.segmentOrder,
+          shotId: currentSegment.shotId,
+          shotCode: currentSegment.shotCode,
+          shotOrder: currentSegment.shotOrder,
+          frameDependency: currentSegment.frameDependency,
+          durationSec: currentSegment.durationSec,
+          updatedAt: currentSegment.updatedAt,
+          referenceImages: currentSegment.referenceImages,
+        });
 
         const promptPlan = await dependencies.videoPromptProvider.generateVideoPrompt(
           buildVideoPromptProviderInput({
