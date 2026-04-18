@@ -4,11 +4,12 @@ import {
   regenerateAllVideoPromptsRequestSchema,
   regenerateVideoPromptRequestSchema,
   regenerateVideoSegmentRequestSchema,
-  saveVideoPromptRequestSchema,
-  shotVideoResponseSchema,
+  saveSegmentVideoConfigRequestSchema,
+  segmentVideoResponseSchema,
   taskDetailResponseSchema,
   videoListResponseSchema,
-  type ShotVideoRecord,
+  type SaveSegmentVideoConfigRequest,
+  type SegmentVideoRecord,
   type TaskDetail,
   type VideoListResponse,
 } from "@sweet-star/shared";
@@ -29,34 +30,53 @@ export const videosApi = {
     http.get<VideoListResponse>(`/projects/${projectId}/videos`, videoListResponseSchema),
 
   getVideo: (projectId: string, videoId: string) =>
-    http.get<ShotVideoRecord>(
+    http.get<SegmentVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}`,
-      shotVideoResponseSchema,
+      segmentVideoResponseSchema,
+    ),
+
+  saveSegmentVideoConfig: (
+    projectId: string,
+    videoId: string,
+    data: SaveSegmentVideoConfigRequest,
+  ) =>
+    http.put<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${videoId}/config`,
+      segmentVideoResponseSchema,
+      {
+        body: jsonBody(saveSegmentVideoConfigRequestSchema, data),
+      },
     ),
 
   updateVideoPrompt: (
     projectId: string,
     videoId: string,
-    data: { promptTextCurrent: string },
-  ) =>
-    http.put<ShotVideoRecord>(
-      `/projects/${projectId}/videos/segments/${videoId}/prompt`,
-      shotVideoResponseSchema,
-      {
-        body: jsonBody(saveVideoPromptRequestSchema, data),
-      },
-    ),
+    data: SaveSegmentVideoConfigRequest,
+  ) => videosApi.saveSegmentVideoConfig(projectId, videoId, data),
 
   regenerateVideoPrompt: (
     projectId: string,
     videoId: string,
     data: Record<string, never> = {},
   ) =>
-    http.post<ShotVideoRecord>(
+    http.post<SegmentVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}/regenerate-prompt`,
-      shotVideoResponseSchema,
+      segmentVideoResponseSchema,
       {
         body: jsonBody(regenerateVideoPromptRequestSchema, data),
+      },
+    ),
+
+  generateVideoSegment: (
+    projectId: string,
+    videoId: string,
+    data: Record<string, never> = {},
+  ) =>
+    http.post<TaskDetail>(
+      `/projects/${projectId}/videos/segments/${videoId}/generate`,
+      taskDetailResponseSchema,
+      {
+        body: jsonBody(regenerateVideoSegmentRequestSchema, data),
       },
     ),
 
@@ -73,13 +93,43 @@ export const videosApi = {
     projectId: string,
     videoId: string,
     data: Record<string, never> = {},
-  ) =>
-    http.post<TaskDetail>(
-      `/projects/${projectId}/videos/segments/${videoId}/regenerate`,
-      taskDetailResponseSchema,
+  ) => videosApi.generateVideoSegment(projectId, videoId, data),
+
+  uploadSegmentReferenceAudio: (
+    projectId: string,
+    videoId: string,
+    file: File,
+    options?: { label?: string; durationSec?: number },
+  ) => {
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    if (options?.label) {
+      formData.append("label", options.label);
+    }
+
+    if (options?.durationSec !== undefined) {
+      formData.append("durationSec", String(options.durationSec));
+    }
+
+    return http.post<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${videoId}/reference-audios`,
+      segmentVideoResponseSchema,
       {
-        body: jsonBody(regenerateVideoSegmentRequestSchema, data),
+        body: formData,
       },
+    );
+  },
+
+  deleteSegmentReferenceAudio: (
+    projectId: string,
+    videoId: string,
+    referenceAudioId: string,
+  ) =>
+    http.del<SegmentVideoRecord>(
+      `/projects/${projectId}/videos/segments/${videoId}/reference-audios/${referenceAudioId}`,
+      segmentVideoResponseSchema,
     ),
 
   approveVideoSegment: (
@@ -87,9 +137,9 @@ export const videosApi = {
     videoId: string,
     data: Record<string, never> = {},
   ) =>
-    http.post<ShotVideoRecord>(
+    http.post<SegmentVideoRecord>(
       `/projects/${projectId}/videos/segments/${videoId}/approve`,
-      shotVideoResponseSchema,
+      segmentVideoResponseSchema,
       {
         body: jsonBody(approveVideoSegmentRequestSchema, data),
       },

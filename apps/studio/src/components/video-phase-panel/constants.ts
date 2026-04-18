@@ -1,4 +1,4 @@
-import type { ShotVideoRecord, TaskDetail } from "@sweet-star/shared";
+import type { SegmentVideoRecord, TaskDetail } from "@sweet-star/shared";
 
 export const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   pending: "排队中",
@@ -7,7 +7,7 @@ export const TASK_STATUS_LABELS: Record<TaskDetail["status"], string> = {
   failed: "失败",
 };
 
-export const VIDEO_STATUS_LABELS: Record<ShotVideoRecord["status"], string> = {
+export const VIDEO_STATUS_LABELS: Record<SegmentVideoRecord["status"], string> = {
   generating: "生成中",
   in_review: "待审核",
   approved: "已通过",

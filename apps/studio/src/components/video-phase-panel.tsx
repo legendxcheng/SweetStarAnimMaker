@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type {
   FinalCutRecord,
   ProjectDetail,
-  ShotVideoRecord,
+  SegmentVideoRecord,
   TaskDetail,
   VideoListResponse,
 } from "@sweet-star/shared";
@@ -14,8 +14,8 @@ import { CARD_CLASS, META_LABEL_CLASS, META_VALUE_CLASS } from "./video-phase-pa
 import { FinalCutCard } from "./video-phase-panel/final-cut-card";
 import { TaskStatusCard } from "./video-phase-panel/task-status-card";
 import type { VideoPhaseActionBusy } from "./video-phase-panel/types";
-import { sortShotsByHierarchy } from "./video-phase-panel/utils";
-import { VideoShotCard } from "./video-phase-panel/video-shot-card";
+import { sortSegmentsByHierarchy } from "./video-phase-panel/utils";
+import { VideoSegmentCard } from "./video-phase-panel/video-segment-card";
 
 interface VideoPhasePanelProps {
   project: ProjectDetail;
@@ -36,7 +36,7 @@ export function VideoPhasePanel({
   onGenerate,
   onProjectRefresh,
 }: VideoPhasePanelProps) {
-  const [shots, setShots] = useState<ShotVideoRecord[]>([]);
+  const [segments, setSegments] = useState<SegmentVideoRecord[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<Error | null>(null);
   const [actionError, setActionError] = useState<Error | null>(null);
@@ -47,14 +47,14 @@ export function VideoPhasePanel({
   const [finalCutTask, setFinalCutTask] = useState<TaskDetail | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const batchSummary = project.currentVideoBatch;
-  const allShotsApproved =
+  const allSegmentsApproved =
     batchSummary !== null &&
-    batchSummary.shotCount > 0 &&
-    batchSummary.approvedShotCount === batchSummary.shotCount;
+    batchSummary.segmentCount > 0 &&
+    batchSummary.approvedSegmentCount === batchSummary.segmentCount;
 
   useEffect(() => {
     if (!batchSummary) {
-      setShots([]);
+      setSegments([]);
       setDrafts({});
       setListError(null);
       setListLoading(false);
@@ -67,7 +67,7 @@ export function VideoPhasePanel({
 
     let cancelled = false;
 
-    async function loadShots() {
+    async function loadSegments() {
       setListLoading(true);
 
       try {
@@ -90,7 +90,7 @@ export function VideoPhasePanel({
       }
     }
 
-    void loadShots();
+    void loadSegments();
 
     return () => {
       cancelled = true;
@@ -134,7 +134,7 @@ export function VideoPhasePanel({
     };
   }, [
     batchSummary?.id,
-    batchSummary?.approvedShotCount,
+    batchSummary?.approvedSegmentCount,
     batchSummary?.updatedAt,
     project.id,
   ]);
@@ -213,21 +213,21 @@ export function VideoPhasePanel({
   }, [finalCutTask, onProjectRefresh, project.id]);
 
   function applyVideoListResponse(response: VideoListResponse) {
-    setShots(sortShotsByHierarchy(response.shots));
+    setSegments(sortSegmentsByHierarchy(response.segments));
     setDrafts((currentDrafts) => {
       const nextDrafts: Record<string, string> = {};
-      const previousShotsById = new Map(shots.map((shot) => [shot.id, shot]));
+      const previousSegmentsById = new Map(segments.map((segment) => [segment.id, segment]));
 
-      for (const shot of response.shots) {
-        const currentDraft = currentDrafts[shot.id];
-        const previousShot = previousShotsById.get(shot.id);
+      for (const segment of response.segments) {
+        const currentDraft = currentDrafts[segment.id];
+        const previousSegment = previousSegmentsById.get(segment.id);
         const shouldSyncWithServer =
           currentDraft === undefined ||
-          !previousShot ||
-          currentDraft === previousShot.promptTextCurrent;
+          !previousSegment ||
+          currentDraft === previousSegment.promptTextCurrent;
 
-        nextDrafts[shot.id] = shouldSyncWithServer
-          ? shot.promptTextCurrent
+        nextDrafts[segment.id] = shouldSyncWithServer
+          ? segment.promptTextCurrent
           : currentDraft;
       }
 
@@ -235,15 +235,15 @@ export function VideoPhasePanel({
     });
   }
 
-  function updateShot(nextShot: ShotVideoRecord) {
-    setShots((currentShots) =>
-      sortShotsByHierarchy(
-        currentShots.map((shot) => (shot.id === nextShot.id ? nextShot : shot)),
+  function updateSegment(nextSegment: SegmentVideoRecord) {
+    setSegments((currentSegments) =>
+      sortSegmentsByHierarchy(
+        currentSegments.map((segment) => (segment.id === nextSegment.id ? nextSegment : segment)),
       ),
     );
     setDrafts((currentDrafts) => ({
       ...currentDrafts,
-      [nextShot.id]: nextShot.promptTextCurrent,
+      [nextSegment.id]: nextSegment.promptTextCurrent,
     }));
   }
 
@@ -263,10 +263,10 @@ export function VideoPhasePanel({
     setFinalCutError(null);
   }
 
-  async function handleRegenerate(shotId: string) {
+  async function handleGenerate(segmentId: string) {
     try {
-      setActionBusy({ kind: "regenerate", shotId });
-      await apiClient.regenerateVideoSegment(project.id, shotId);
+      setActionBusy({ kind: "generate", segmentId });
+      await apiClient.generateVideoSegment(project.id, segmentId);
       await refreshProject();
       await refreshVideos();
       setActionError(null);
@@ -277,20 +277,22 @@ export function VideoPhasePanel({
     }
   }
 
-  async function handleSavePrompt(shot: ShotVideoRecord) {
-    const promptTextCurrent = drafts[shot.id]?.trim() ?? "";
+  async function handleSaveConfig(segment: SegmentVideoRecord) {
+    const promptTextCurrent = drafts[segment.id]?.trim() ?? "";
 
     if (!promptTextCurrent) {
       return;
     }
 
     try {
-      setActionBusy({ kind: "save-prompt", shotId: shot.id });
-      const updatedShot = await apiClient.updateVideoPrompt(project.id, shot.id, {
+      setActionBusy({ kind: "save-config", segmentId: segment.id });
+      const updatedSegment = await apiClient.saveSegmentVideoConfig(project.id, segment.id, {
         promptTextCurrent,
+        referenceImages: segment.referenceImages,
+        referenceAudios: segment.referenceAudios,
       });
 
-      updateShot(updatedShot);
+      updateSegment(updatedSegment);
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -299,12 +301,11 @@ export function VideoPhasePanel({
     }
   }
 
-  async function handleRegeneratePrompt(shot: ShotVideoRecord) {
+  async function handleUploadAudio(segment: SegmentVideoRecord, file: File) {
     try {
-      setActionBusy({ kind: "regenerate-prompt", shotId: shot.id });
-      const updatedShot = await apiClient.regenerateVideoPrompt(project.id, shot.id);
-
-      updateShot(updatedShot);
+      setActionBusy({ kind: "upload-audio", segmentId: segment.id });
+      const updatedSegment = await apiClient.uploadSegmentReferenceAudio(project.id, segment.id, file);
+      updateSegment(updatedSegment);
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -313,10 +314,10 @@ export function VideoPhasePanel({
     }
   }
 
-  async function handleApprove(shotId: string) {
+  async function handleApprove(segmentId: string) {
     try {
-      setActionBusy({ kind: "approve", shotId });
-      await apiClient.approveVideoSegment(project.id, shotId);
+      setActionBusy({ kind: "approve", segmentId });
+      await apiClient.approveVideoSegment(project.id, segmentId);
       await refreshProject();
       await refreshVideos();
       setActionError(null);
@@ -359,16 +360,16 @@ export function VideoPhasePanel({
     }
   }
 
-  async function handleRegenerateAllVideos() {
-    if (!batchSummary || shots.length === 0) {
+  async function handleGenerateAllVideos() {
+    if (!batchSummary || segments.length === 0) {
       return;
     }
 
     try {
       setActionBusy({ kind: "regenerate-all-videos" });
 
-      for (const shot of shots) {
-        await apiClient.regenerateVideoSegment(project.id, shot.id);
+      for (const segment of segments) {
+        await apiClient.generateVideoSegment(project.id, segment.id);
       }
 
       await refreshProject();
@@ -382,7 +383,7 @@ export function VideoPhasePanel({
   }
 
   async function handleGenerateFinalCut() {
-    if (!allShotsApproved) {
+    if (!allSegmentsApproved) {
       return;
     }
 
@@ -396,20 +397,20 @@ export function VideoPhasePanel({
   }
 
   const canApproveAll =
-    shots.length > 0 &&
-    shots.every((shot) => shot.status === "in_review" || shot.status === "approved");
-  const hasDirtyPrompts = shots.some(
-    (shot) => (drafts[shot.id] ?? shot.promptTextCurrent) !== shot.promptTextCurrent,
+    segments.length > 0 &&
+    segments.every((segment) => segment.status === "in_review" || segment.status === "approved");
+  const hasDirtyPrompts = segments.some(
+    (segment) => (drafts[segment.id] ?? segment.promptTextCurrent) !== segment.promptTextCurrent,
   );
 
   return (
     <section aria-label="视频工作区">
       <div className={CARD_CLASS}>
-        <div className="flex items-start justify-between gap-3 mb-5">
+        <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-(--color-text-primary)">视频工作区</h3>
-            <p className="text-sm text-(--color-text-muted) mt-1">
-              每个 Shot 维护一个当前视频片段，支持逐镜头重生成、审核和整批收口。
+            <p className="mt-1 text-sm text-(--color-text-muted)">
+              每个 Segment 维护一份可编辑视频配置，支持逐片段生成、审核和整批收口。
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-3">
@@ -422,19 +423,19 @@ export function VideoPhasePanel({
                 disabled={actionBusy !== null}
                 className={getButtonClassName({ variant: "warning" })}
               >
-                重新生成所有镜头提示词
+                重新生成所有片段提示词
               </button>
             )}
-            {batchSummary && shots.length > 0 && (
+            {batchSummary && segments.length > 0 && (
               <button
                 type="button"
                 onClick={() => {
-                  void handleRegenerateAllVideos();
+                  void handleGenerateAllVideos();
                 }}
-                disabled={actionBusy !== null || hasDirtyPrompts || shots.length === 0}
+                disabled={actionBusy !== null || hasDirtyPrompts || segments.length === 0}
                 className={getButtonClassName({ variant: "warning" })}
               >
-                重新生成所有镜头视频
+                生成所有片段视频
               </button>
             )}
             {batchSummary && (
@@ -446,7 +447,7 @@ export function VideoPhasePanel({
                 disabled={actionBusy !== null || !canApproveAll}
                 className={getButtonClassName({ variant: "success" })}
               >
-                全部视频审核通过
+                全部片段审核通过
               </button>
             )}
             {!batchSummary && (
@@ -456,7 +457,7 @@ export function VideoPhasePanel({
                 disabled={disableGenerate}
                 className={getButtonClassName()}
               >
-                {creatingTask ? "启动中..." : "开始生成视频提示词"}
+                {creatingTask ? "启动中..." : "开始生成视频片段配置"}
               </button>
             )}
           </div>
@@ -465,13 +466,13 @@ export function VideoPhasePanel({
         {batchSummary ? (
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <p className={META_LABEL_CLASS}>Shot 数量</p>
-              <p className={META_VALUE_CLASS}>{batchSummary.shotCount}</p>
+              <p className={META_LABEL_CLASS}>Segment 数量</p>
+              <p className={META_VALUE_CLASS}>{batchSummary.segmentCount}</p>
             </div>
             <div>
-              <p className={META_LABEL_CLASS}>已通过镜头</p>
+              <p className={META_LABEL_CLASS}>已通过片段</p>
               <p className={META_VALUE_CLASS}>
-                {batchSummary.approvedShotCount}/{batchSummary.shotCount}
+                {batchSummary.approvedSegmentCount}/{batchSummary.segmentCount}
               </p>
             </div>
             <div>
@@ -483,14 +484,14 @@ export function VideoPhasePanel({
           </div>
         ) : (
           <p className="text-sm text-(--color-text-muted)">
-            当前阶段会先为每个 Shot 生成可编辑视频提示词，确认后再逐镜头或整批生成视频。
+            当前阶段会先为每个 Segment 生成可编辑视频配置，确认后再逐片段或整批生成视频。
           </p>
         )}
       </div>
 
       {batchSummary && (
         <FinalCutCard
-          allShotsApproved={allShotsApproved}
+          allShotsApproved={allSegmentsApproved}
           batchSummary={batchSummary}
           cardClass={CARD_CLASS}
           finalCut={finalCut}
@@ -519,7 +520,7 @@ export function VideoPhasePanel({
       )}
 
       {project.status === "videos_generating" && !task && (
-        <div className="bg-(--color-warning)/10 border border-(--color-warning)/30 rounded-xl p-4 mb-4">
+        <div className="mb-4 rounded-xl border border-(--color-warning)/30 bg-(--color-warning)/10 p-4">
           <p className="text-sm text-(--color-warning)">视频生成任务执行中，正在自动刷新项目状态。</p>
         </div>
       )}
@@ -548,50 +549,50 @@ export function VideoPhasePanel({
         </div>
       )}
 
-      {batchSummary && !listLoading && shots.length === 0 && !listError && (
+      {batchSummary && !listLoading && segments.length === 0 && !listError && (
         <div className={CARD_CLASS}>
-          <p className="text-sm text-(--color-text-muted)">当前批次还没有可审核的视频镜头。</p>
+          <p className="text-sm text-(--color-text-muted)">当前批次还没有可审核的视频片段。</p>
         </div>
       )}
 
-      {shots.map((shot) => {
-        const promptDraft = drafts[shot.id] ?? shot.promptTextCurrent;
-        const isDirty = promptDraft !== shot.promptTextCurrent;
+      {segments.map((segment) => {
+        const promptDraft = drafts[segment.id] ?? segment.promptTextCurrent;
+        const isDirty = promptDraft !== segment.promptTextCurrent;
         const isBusy =
           actionBusy?.kind === "approve-all" ||
           actionBusy?.kind === "regenerate-all-prompts" ||
           actionBusy?.kind === "regenerate-all-videos" ||
-          actionBusy?.shotId === shot.id;
+          actionBusy?.segmentId === segment.id;
 
         return (
-          <VideoShotCard
-            key={shot.id}
+          <VideoSegmentCard
+            key={segment.id}
             cardClass={CARD_CLASS}
             isBusy={isBusy}
             isDirty={isDirty}
             metaLabelClass={META_LABEL_CLASS}
             metaValueClass={META_VALUE_CLASS}
             onApprove={() => {
-              void handleApprove(shot.id);
+              void handleApprove(segment.id);
             }}
             onDraftChange={(value) => {
               setDrafts((currentDrafts) => ({
                 ...currentDrafts,
-                [shot.id]: value,
+                [segment.id]: value,
               }));
             }}
-            onRegenerate={() => {
-              void handleRegenerate(shot.id);
+            onGenerate={() => {
+              void handleGenerate(segment.id);
             }}
-            onRegeneratePrompt={() => {
-              void handleRegeneratePrompt(shot);
+            onSaveConfig={() => {
+              void handleSaveConfig(segment);
             }}
-            onSavePrompt={() => {
-              void handleSavePrompt(shot);
+            onUploadAudio={(file) => {
+              void handleUploadAudio(segment, file);
             }}
             projectId={project.id}
             promptDraft={promptDraft}
-            shot={shot}
+            segment={segment}
           />
         );
       })}

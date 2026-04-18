@@ -38,7 +38,7 @@ export function FinalCutCard({
         <div>
           <h3 className="text-base font-semibold text-(--color-text-primary)">成片导出</h3>
           <p className="mt-1 text-sm text-(--color-text-muted)">
-            按 scene、segment、shot 固定顺序拼接当前批次全部已通过镜头，生成项目级 MP4。
+            按 scene、segment、shot 固定顺序拼接当前批次全部已通过片段，生成项目级 MP4。
           </p>
         </div>
         <button
@@ -53,7 +53,7 @@ export function FinalCutCard({
 
       {!allShotsApproved && (
         <p className="mt-3 text-sm text-(--color-text-muted)">
-          需先审核通过全部镜头片段后才能生成成片。
+          需先审核通过全部片段后才能生成成片。
         </p>
       )}
 
@@ -87,7 +87,7 @@ export function FinalCutCard({
             <div>
               <p className={META_LABEL_CLASS}>当前成片</p>
               <p className={META_VALUE_CLASS}>
-                {finalCut?.shotCount ?? batchSummary.approvedShotCount} 个镜头，更新于{" "}
+                {finalCut?.shotCount ?? batchSummary.approvedSegmentCount} 个片段，更新于{" "}
                 {finalCut ? new Date(finalCut.updatedAt).toLocaleString("zh-CN") : "-"}
               </p>
             </div>

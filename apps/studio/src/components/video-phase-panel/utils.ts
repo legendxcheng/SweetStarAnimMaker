@@ -1,8 +1,8 @@
-import type { ShotVideoRecord } from "@sweet-star/shared";
+import type { SegmentVideoRecord } from "@sweet-star/shared";
 
 import { config } from "../../services/config";
 
-const shotHierarchyCollator = new Intl.Collator("zh-CN", {
+const segmentHierarchyCollator = new Intl.Collator("zh-CN", {
   numeric: true,
   sensitivity: "base",
 });
@@ -13,23 +13,23 @@ export function getAssetUrl(projectId: string, assetRelPath: string, updatedAt: 
   return url.toString();
 }
 
-export function sortShotsByHierarchy(shots: ShotVideoRecord[]) {
-  return [...shots].sort((left, right) => {
-    const sceneCompare = shotHierarchyCollator.compare(left.sceneId, right.sceneId);
+export function sortSegmentsByHierarchy(segments: SegmentVideoRecord[]) {
+  return [...segments].sort((left, right) => {
+    const orderCompare = left.segmentOrder - right.segmentOrder;
+    if (orderCompare !== 0) {
+      return orderCompare;
+    }
+
+    const sceneCompare = segmentHierarchyCollator.compare(left.sceneId, right.sceneId);
     if (sceneCompare !== 0) {
       return sceneCompare;
     }
 
-    const segmentCompare = shotHierarchyCollator.compare(left.segmentId, right.segmentId);
+    const segmentCompare = segmentHierarchyCollator.compare(left.segmentId, right.segmentId);
     if (segmentCompare !== 0) {
       return segmentCompare;
     }
 
-    const shotCompare = shotHierarchyCollator.compare(left.shotId, right.shotId);
-    if (shotCompare !== 0) {
-      return shotCompare;
-    }
-
-    return shotHierarchyCollator.compare(left.shotCode, right.shotCode);
+    return segmentHierarchyCollator.compare(left.id, right.id);
   });
 }
