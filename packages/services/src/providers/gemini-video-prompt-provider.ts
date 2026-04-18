@@ -79,7 +79,7 @@ async function requestGeminiJson(input: {
           parts: [
             {
               text:
-                "You generate structured JSON video prompt plans for Kling Omni single-shot video generation. Output must be valid JSON. finalPrompt must be Simplified Chinese natural-language prompt text for Kling Omni. Preserve provided dialogue, narration, audio, and continuity constraints. Do not output markdown.",
+                "You generate structured JSON video prompt plans for Seedance 2.0 short-drama segment generation. Output must be valid JSON. finalPrompt must be Simplified Chinese natural-language prompt text for Seedance 2.0 multimodal reference video generation. Treat each segment as one continuous clip with internal sub-shots, continuity-first time-axis structure, preserved dialogue, preserved audio constraints, and explicit ending handoff state. Do not output markdown.",
             },
           ],
         },

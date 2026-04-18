@@ -1,5 +1,15 @@
 import type { ShotFrameDependency } from "@sweet-star/shared";
 
+export interface GenerateVideoPromptSegmentContext {
+  segmentId: string;
+  sceneId: string;
+  order: number;
+  name?: string | null;
+  summary: string;
+  durationSec?: number | null;
+  shotCount?: number;
+}
+
 export interface GenerateVideoPromptShotContext {
   id: string;
   shotCode: string;
@@ -8,6 +18,7 @@ export interface GenerateVideoPromptShotContext {
   subject: string;
   action: string;
   frameDependency: ShotFrameDependency;
+  durationSec?: number | null;
   dialogue: string | null;
   os: string | null;
   audio: string | null;
@@ -21,18 +32,34 @@ export interface GenerateVideoPromptFrameContext {
   height: number | null;
 }
 
+export interface GenerateVideoPromptReferenceImageContext {
+  id: string;
+  assetPath: string;
+  source: "auto" | "manual";
+  order: number;
+  sourceShotId?: string | null;
+  label?: string | null;
+}
+
+export interface GenerateVideoPromptReferenceAudioContext {
+  id: string;
+  assetPath: string;
+  source: "manual";
+  order: number;
+  label?: string | null;
+  durationSec?: number | null;
+}
+
 export interface GenerateVideoPromptInput {
   projectId: string;
-  segment: {
-    segmentId: string;
-    sceneId: string;
-    order: number;
-    summary: string;
-  };
-  currentShot: GenerateVideoPromptShotContext;
-  durationSec: number | null;
-  startFrame: GenerateVideoPromptFrameContext;
-  endFrame: GenerateVideoPromptFrameContext | null;
+  segment: GenerateVideoPromptSegmentContext;
+  shots?: GenerateVideoPromptShotContext[];
+  referenceImages?: GenerateVideoPromptReferenceImageContext[];
+  referenceAudios?: GenerateVideoPromptReferenceAudioContext[];
+  currentShot?: GenerateVideoPromptShotContext;
+  durationSec?: number | null;
+  startFrame?: GenerateVideoPromptFrameContext;
+  endFrame?: GenerateVideoPromptFrameContext | null;
 }
 
 export interface GenerateVideoPromptResult {

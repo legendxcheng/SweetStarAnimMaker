@@ -1,7 +1,6 @@
 import {
   type SegmentVideoPromptGenerateTaskInput,
 } from "../domain/task";
-import { createShotReferenceRecord } from "../domain/shot-image";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
@@ -95,36 +94,9 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
           buildVideoPromptProviderInput({
             projectId: project.id,
             segment: taskInput.segment,
-            shot: taskInput.shot,
-            shotReference: createShotReferenceRecord({
-              id: `shot_ref_${taskInput.sourceImageBatchId}_${taskInput.shotId}`,
-              batchId: taskInput.sourceImageBatchId,
-              projectId: project.id,
-              projectStorageDir: project.storageDir,
-              sourceShotScriptId: taskInput.sourceShotScriptId,
-              sceneId: taskInput.sceneId,
-              segmentId: taskInput.segmentId,
-              shotId: taskInput.shotId,
-              shotCode: taskInput.shotCode,
-              segmentOrder: taskInput.segment.order,
-              shotOrder: taskInput.shot.order,
-              durationSec: taskInput.shot.durationSec ?? null,
-              frameDependency: taskInput.frameDependency,
-              referenceStatus: "approved",
-              startFrame: {
-                ...taskInput.startFrame,
-                frameType: "start_frame",
-                imageStatus: "approved",
-              },
-              endFrame: taskInput.endFrame
-                ? {
-                    ...taskInput.endFrame,
-                    frameType: "end_frame",
-                    imageStatus: "approved",
-                  }
-                : null,
-              updatedAt: startedAt,
-            }),
+            shots: taskInput.shots ?? taskInput.segment.shots,
+            referenceImages: currentSegment.referenceImages,
+            referenceAudios: currentSegment.referenceAudios,
           }),
         );
 
@@ -160,12 +132,12 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
           output: {
-            shotId: taskInput.shotId,
+            segmentId: taskInput.segmentId,
           },
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: "shot video prompt generation succeeded",
+          message: "segment video prompt generation succeeded",
         });
         await dependencies.taskRepository.markSucceeded({
           taskId: task.id,
@@ -182,7 +154,7 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `shot video prompt generation failed: ${errorMessage}`,
+          message: `segment video prompt generation failed: ${errorMessage}`,
         });
 
         if (project && currentSegment) {
