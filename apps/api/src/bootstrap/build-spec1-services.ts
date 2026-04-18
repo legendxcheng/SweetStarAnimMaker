@@ -62,9 +62,11 @@ import {
   createResetProjectPremiseUseCase,
   createRejectMasterPlotUseCase,
   createRejectStoryboardUseCase,
+  createSaveSegmentVideoConfigUseCase,
   createSaveHumanMasterPlotUseCase,
   createSaveHumanShotScriptSegmentUseCase,
   createSaveHumanStoryboardVersionUseCase,
+  createUploadSegmentVideoAudioUseCase,
   createUpdateCharacterSheetPromptUseCase,
   createUpdateFramePromptUseCase,
   createUpdateVideoPromptUseCase,
@@ -556,6 +558,17 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     updateVideoPrompt: createUpdateVideoPromptUseCase({
       projectRepository: repository,
       videoRepository,
+      clock,
+    }),
+    saveSegmentVideoConfig: createSaveSegmentVideoConfigUseCase({
+      projectRepository: repository,
+      videoRepository,
+      clock,
+    }),
+    uploadSegmentVideoAudio: createUploadSegmentVideoAudioUseCase({
+      projectRepository: repository,
+      videoRepository,
+      videoStorage,
       clock,
     }),
     regenerateCharacterSheet: createRegenerateCharacterSheetUseCase({
