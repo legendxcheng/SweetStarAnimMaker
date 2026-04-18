@@ -66,61 +66,61 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         if (!project) {
           throw new ProjectNotFoundError(task.projectId);
         }
+        const projectStorageDir = project.storageDir;
 
         currentSegment =
-          (await dependencies.videoRepository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentIdAndShotId?.(
+          await dependencies.videoRepository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
             project.id,
             taskInput.sceneId,
             taskInput.segmentId,
-            taskInput.shotId,
-          )) ??
-          (await dependencies.videoRepository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
-            project.id,
-            taskInput.sceneId,
-            taskInput.segmentId,
-          ));
+          );
 
         if (!currentSegment) {
-          throw new SegmentVideoNotFoundError(taskInput.shotId);
+          throw new SegmentVideoNotFoundError(taskInput.segmentId);
         }
 
-        const startFramePath = await dependencies.videoStorage.resolveProjectAssetPath({
-          projectStorageDir: project.storageDir,
-          assetRelPath: taskInput.startFrame.imageAssetPath ?? "",
-        });
-        const endFramePath = taskInput.endFrame
-          ? await dependencies.videoStorage.resolveProjectAssetPath({
-              projectStorageDir: project.storageDir,
-              assetRelPath: taskInput.endFrame.imageAssetPath ?? "",
-            })
-          : undefined;
+        const referenceImages = await Promise.all(
+          [...(currentSegment.referenceImages ?? [])]
+            .sort((left, right) => left.order - right.order)
+            .map(async (reference) => ({
+              assetPath: await dependencies.videoStorage.resolveProjectAssetPath({
+                projectStorageDir,
+                assetRelPath: reference.assetPath,
+              }),
+              label: reference.label,
+              order: reference.order,
+            })),
+        );
+        const referenceAudios = await Promise.all(
+          [...(currentSegment.referenceAudios ?? [])]
+            .sort((left, right) => left.order - right.order)
+            .map(async (reference) => ({
+              assetPath: await dependencies.videoStorage.resolveProjectAssetPath({
+                projectStorageDir,
+                assetRelPath: reference.assetPath,
+              }),
+              label: reference.label,
+              order: reference.order,
+            })),
+        );
+        const shots = taskInput.shots ?? taskInput.segment.shots;
         const promptVariables = {
           segment: taskInput.segment,
-          shot: taskInput.shot,
-          startFrame: {
-            imageAssetPath: taskInput.startFrame.imageAssetPath,
-            width: taskInput.startFrame.imageWidth ?? null,
-            height: taskInput.startFrame.imageHeight ?? null,
-          },
-          endFrame: taskInput.endFrame
-            ? {
-                imageAssetPath: taskInput.endFrame.imageAssetPath,
-                width: taskInput.endFrame.imageWidth ?? null,
-                height: taskInput.endFrame.imageHeight ?? null,
-              }
-            : null,
+          shots,
+          referenceImages: currentSegment.referenceImages ?? [],
+          referenceAudios: currentSegment.referenceAudios ?? [],
         };
         const promptText = currentSegment.promptTextCurrent;
 
         console.info("[video-generate] starting", {
           taskId: task.id,
           projectId: project.id,
-          shotId: taskInput.shotId,
-          shotCode: taskInput.shotCode,
-          frameDependency: taskInput.frameDependency,
-          durationSec: taskInput.shot.durationSec ?? null,
-          hasEndFrame: Boolean(taskInput.endFrame),
-          shotAudioProvided: Boolean(taskInput.shot.audio?.trim()),
+          sceneId: currentSegment.sceneId,
+          segmentId: currentSegment.segmentId,
+          durationSec: currentSegment.durationSec ?? taskInput.segment.durationSec ?? null,
+          shotCount: currentSegment.shotCount,
+          referenceImageCount: referenceImages.length,
+          referenceAudioCount: referenceAudios.length,
           promptHasSoundConstraint: promptText.includes("声音约束："),
           promptLength: promptText.length,
         });
@@ -132,20 +132,17 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `requesting video provider for shot ${currentSegment.id}`,
+          message: `requesting video provider for segment ${currentSegment.id}`,
         });
 
         const providerResult = await dependencies.videoProvider.generateSegmentVideo({
           projectId: project.id,
-          sceneId: taskInput.sceneId,
-          segmentId: taskInput.segmentId,
-          shotId: taskInput.shotId,
-          shotCode: taskInput.shotCode,
-          frameDependency: taskInput.frameDependency,
+          sceneId: currentSegment.sceneId,
+          segmentId: currentSegment.segmentId,
           promptText,
-          startFramePath,
-          ...(endFramePath ? { endFramePath } : {}),
-          durationSec: taskInput.shot.durationSec ?? null,
+          referenceImages,
+          referenceAudios,
+          durationSec: currentSegment.durationSec ?? taskInput.segment.durationSec ?? null,
         });
 
         if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
@@ -160,16 +157,11 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         const finishedAt = dependencies.clock.now();
         const updatedSegment = {
           ...currentSegment,
-          shotId: taskInput.shotId,
-          shotCode: taskInput.shotCode,
-          sceneId: taskInput.sceneId,
-          segmentId: taskInput.segmentId,
-          shotOrder: taskInput.shot.order,
-          frameDependency: taskInput.frameDependency,
           status: "in_review" as const,
           videoAssetPath: currentSegment.currentVideoRelPath,
           thumbnailAssetPath: providerResult.thumbnailUrl ? currentSegment.thumbnailRelPath : null,
-          durationSec: providerResult.durationSec ?? taskInput.shot.durationSec ?? null,
+          durationSec:
+            providerResult.durationSec ?? currentSegment.durationSec ?? taskInput.segment.durationSec ?? null,
           provider: providerResult.provider,
           model: providerResult.model,
           updatedAt: finishedAt,
@@ -208,7 +200,7 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
           output: {
-            shotId: updatedSegment.shotId,
+            segmentId: updatedSegment.segmentId,
             videoAssetPath: updatedSegment.videoAssetPath,
             thumbnailAssetPath: updatedSegment.thumbnailAssetPath,
             provider: updatedSegment.provider,
@@ -217,7 +209,7 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: "shot video generation succeeded",
+          message: "segment video generation succeeded",
         });
         await dependencies.taskRepository.markSucceeded({
           taskId: task.id,
@@ -234,7 +226,7 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `shot video generation failed: ${errorMessage}`,
+          message: `segment video generation failed: ${errorMessage}`,
         });
 
         if (project && currentSegment) {

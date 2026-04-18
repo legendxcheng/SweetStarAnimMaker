@@ -217,8 +217,9 @@ export function createSoraStageVideoProvider(
 
   return {
     async generateSegmentVideo(input) {
+      const startFramePath = requireLegacyStartFramePath(input.startFramePath);
       const submitInput = {
-        image: input.startFramePath,
+        image: startFramePath,
         promptText: input.promptText,
         durationSeconds: input.durationSec ?? undefined,
         ...(input.endFramePath ? { imageTail: input.endFramePath } : {}),
@@ -255,6 +256,14 @@ export function createSoraStageVideoProvider(
       };
     },
   };
+}
+
+function requireLegacyStartFramePath(value: string | undefined) {
+  if (!value) {
+    throw new Error("Sora provider requires startFramePath");
+  }
+
+  return value;
 }
 
 function readApiToken(apiToken: string | undefined) {

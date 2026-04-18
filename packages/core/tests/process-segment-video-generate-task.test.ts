@@ -202,27 +202,30 @@ describe("process segment video generate task use case", () => {
       expect.objectContaining({
         taskId: "task_segment_video_1",
         projectId: "proj_1",
-        shotId: "shot_1",
-        frameDependency: "start_frame_only",
-        hasEndFrame: false,
-        shotAudioProvided: false,
+        segmentId: "segment_1",
+        referenceImageCount: 0,
+        referenceAudioCount: 0,
       }),
     );
     const providerCall = videoProvider.generateSegmentVideo.mock.calls[0]?.[0];
     expect(providerCall).toMatchObject({
       projectId: "proj_1",
-      shotId: "shot_1",
+      segmentId: "segment_1",
       promptText: "用户保存后的当前提示词",
       durationSec: 3,
+      referenceImages: [],
+      referenceAudios: [],
     });
+    expect(providerCall).not.toHaveProperty("startFramePath");
     expect(providerCall).not.toHaveProperty("endFramePath");
     expect(providerCall).not.toHaveProperty("model");
     expect(videoStorage.writePromptSnapshot).toHaveBeenCalledWith({
       taskStorageDir: "projects/proj_1-my-story/tasks/task_segment_video_1",
       promptText: "用户保存后的当前提示词",
       promptVariables: expect.objectContaining({
-        shot: expect.objectContaining({ id: "shot_1", frameDependency: "start_frame_only" }),
-        endFrame: null,
+        segment: expect.objectContaining({ segmentId: "segment_1" }),
+        referenceImages: [],
+        referenceAudios: [],
       }),
     });
     expect(videoStorage.writeCurrentVideo).toHaveBeenCalledWith({
@@ -657,9 +660,9 @@ describe("process segment video generate task use case", () => {
 
     expect(videoStorage.writeCurrentVideo).toHaveBeenCalledWith({
       segment: expect.objectContaining({
-        id: "video_shot_record_2",
-        shotId: "shot_2",
-        videoAssetPath: "videos/batches/video_batch_v1/shots/scene_1__segment_1__shot_2/current.mp4",
+        id: "video_shot_record_1",
+        segmentId: "segment_1",
+        videoAssetPath: "videos/batches/video_batch_v1/shots/scene_1__segment_1__shot_1/current.mp4",
       }),
       videoSourceUrl: "https://cdn.example/shot-2-output.mp4",
       thumbnailSourceUrl: "https://cdn.example/shot-2-output.webp",

@@ -20,11 +20,11 @@ export interface GenerateSegmentVideoInput {
   durationSec?: number | null;
   aspectRatio?: string | null;
   model?: string | null;
-  // Deprecated shot-first fields retained for compatibility until segment generation is migrated.
-  shotId: string;
-  shotCode: string;
-  frameDependency: "start_frame_only" | "start_and_end_frame";
-  startFramePath: string;
+  // Deprecated shot-first fields retained for compatibility with older providers.
+  shotId?: string;
+  shotCode?: string;
+  frameDependency?: "start_frame_only" | "start_and_end_frame";
+  startFramePath?: string;
   endFramePath?: string;
 }
 

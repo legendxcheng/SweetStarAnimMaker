@@ -242,11 +242,12 @@ export function createKlingOmniStageVideoProvider(
 
   return {
     async generateSegmentVideo(input) {
+      const startFramePath = requireLegacyStartFramePath(input.startFramePath, "Kling omni");
       const submittedDurationSeconds = normalizeStageDurationSeconds(input.durationSec, durationSeconds);
       const submitted = input.endFramePath
         ? await provider.submitOmniVideoWithFrames({
             promptText: input.promptText,
-            startImage: input.startFramePath,
+            startImage: startFramePath,
             endImage: input.endFramePath,
             durationSeconds: submittedDurationSeconds,
             aspectRatio,
@@ -254,7 +255,7 @@ export function createKlingOmniStageVideoProvider(
           })
         : await provider.submitOmniVideoWithStartFrame({
             promptText: input.promptText,
-            startImage: input.startFramePath,
+            startImage: startFramePath,
             durationSeconds: submittedDurationSeconds,
             aspectRatio,
             sound,
@@ -292,6 +293,14 @@ export function createKlingOmniStageVideoProvider(
       };
     },
   };
+}
+
+function requireLegacyStartFramePath(value: string | undefined, providerLabel: string) {
+  if (!value) {
+    throw new Error(`${providerLabel} provider requires startFramePath`);
+  }
+
+  return value;
 }
 
 async function buildElementRequestBody(

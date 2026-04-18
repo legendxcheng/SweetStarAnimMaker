@@ -5,87 +5,27 @@ import type { VideoProvider } from "@sweet-star/core";
 
 import { uploadWithPsda1 } from "../image-upload/providers/psda1-image-upload-provider";
 import { buildProviderRequestError } from "./provider-request-error";
+import type {
+  CreateSeedanceStageVideoProviderOptions,
+  CreateSeedanceVideoProviderOptions,
+  GetSeedanceVideoGenerationTaskInput,
+  GetSeedanceVideoGenerationTaskResult,
+  SeedanceVideoProvider,
+  SubmitSeedanceVideoGenerationTaskInput,
+  SubmitSeedanceVideoGenerationTaskResult,
+  WaitForSeedanceVideoGenerationTaskInput,
+} from "./seedance-video-provider.types";
 
-export interface CreateSeedanceVideoProviderOptions {
-  baseUrl?: string;
-  apiToken?: string;
-  modelName?: string;
-  resolution?: string;
-  ratio?: string;
-  durationSeconds?: number;
-  generateAudio?: boolean;
-  returnLastFrame?: boolean;
-  serviceTier?: string;
-  executionExpiresAfterSec?: number;
-  timeoutMs?: number;
-  fetchFn?: typeof fetch;
-}
-
-export interface SubmitSeedanceVideoGenerationTaskInput {
-  promptText?: string | null;
-  referenceImages?: string[] | null;
-  referenceVideos?: string[] | null;
-  referenceAudios?: string[] | null;
-  draftTaskId?: string | null;
-  callbackUrl?: string | null;
-  resolution?: string | null;
-  ratio?: string | null;
-  durationSeconds?: number | null;
-  generateAudio?: boolean | null;
-  returnLastFrame?: boolean | null;
-  serviceTier?: string | null;
-  executionExpiresAfterSec?: number | null;
-  safetyIdentifier?: string | null;
-}
-
-export interface SubmitSeedanceVideoGenerationTaskResult {
-  taskId: string;
-  status: string | null;
-  provider: string;
-  modelName: string;
-  rawResponse: string;
-}
-
-export interface GetSeedanceVideoGenerationTaskInput {
-  taskId: string;
-}
-
-export interface GetSeedanceVideoGenerationTaskResult {
-  taskId: string;
-  status: string | null;
-  videoUrl: string | null;
-  lastFrameUrl: string | null;
-  errorMessage: string | null;
-  durationSec: number | null;
-  generateAudio: boolean | null;
-  completed: boolean;
-  failed: boolean;
-  rawResponse: string;
-}
-
-export interface WaitForSeedanceVideoGenerationTaskInput
-  extends GetSeedanceVideoGenerationTaskInput {
-  pollIntervalMs?: number;
-  timeoutMs?: number;
-}
-
-export interface SeedanceVideoProvider {
-  submitVideoGenerationTask(
-    input: SubmitSeedanceVideoGenerationTaskInput,
-  ): Promise<SubmitSeedanceVideoGenerationTaskResult> | SubmitSeedanceVideoGenerationTaskResult;
-  getVideoGenerationTask(
-    input: GetSeedanceVideoGenerationTaskInput,
-  ): Promise<GetSeedanceVideoGenerationTaskResult> | GetSeedanceVideoGenerationTaskResult;
-  waitForVideoGenerationTask(
-    input: WaitForSeedanceVideoGenerationTaskInput,
-  ): Promise<GetSeedanceVideoGenerationTaskResult> | GetSeedanceVideoGenerationTaskResult;
-}
-
-export interface CreateSeedanceStageVideoProviderOptions
-  extends CreateSeedanceVideoProviderOptions {
-  pollIntervalMs?: number;
-  pollTimeoutMs?: number;
-}
+export type {
+  CreateSeedanceStageVideoProviderOptions,
+  CreateSeedanceVideoProviderOptions,
+  GetSeedanceVideoGenerationTaskInput,
+  GetSeedanceVideoGenerationTaskResult,
+  SeedanceVideoProvider,
+  SubmitSeedanceVideoGenerationTaskInput,
+  SubmitSeedanceVideoGenerationTaskResult,
+  WaitForSeedanceVideoGenerationTaskInput,
+} from "./seedance-video-provider.types";
 
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com";
 const DEFAULT_MODEL_NAME = "doubao-seedance-2-0-260128";
@@ -256,10 +196,23 @@ export function createSeedanceStageVideoProvider(
 
   return {
     async generateSegmentVideo(input) {
+      const referenceImages =
+        input.referenceImages && input.referenceImages.length > 0
+          ? input.referenceImages
+              .sort((left, right) => left.order - right.order)
+              .map((reference) => reference.assetPath)
+          : input.startFramePath
+            ? [input.startFramePath]
+            : [];
+      const referenceAudios = (input.referenceAudios ?? [])
+        .sort((left, right) => left.order - right.order)
+        .map((reference) => reference.assetPath);
       const submitted = await provider.submitVideoGenerationTask({
         promptText: input.promptText,
-        referenceImages: [input.startFramePath],
+        referenceImages,
+        referenceAudios,
         durationSeconds: input.durationSec ?? options.durationSeconds ?? DEFAULT_DURATION_SECONDS,
+        ratio: input.aspectRatio ?? options.ratio,
         generateAudio: options.generateAudio,
         returnLastFrame: options.returnLastFrame,
       });
@@ -457,7 +410,7 @@ function readApiToken(apiToken: string | undefined) {
   const normalizedToken = apiToken?.trim();
 
   if (!normalizedToken) {
-    throw new Error("SEEDANCE_API_TOKEN is required for Seedance video generation");
+    throw new Error("SEEDANCE_API_KEY is required for Seedance video generation");
   }
 
   return normalizedToken;

@@ -276,6 +276,7 @@ export function createKlingStageVideoProvider(
 
   return {
     async generateSegmentVideo(input) {
+      const startFramePath = requireLegacyStartFramePath(input.startFramePath, "Kling video");
       const stagePromptText = buildStageMultiPromptText(input.promptText);
       const multiPrompt = [
         {
@@ -285,7 +286,7 @@ export function createKlingStageVideoProvider(
         },
       ];
       const submitted = await provider.submitImageToVideo({
-        image: input.startFramePath,
+        image: startFramePath,
         ...(input.endFramePath ? { imageTail: input.endFramePath } : {}),
         durationSeconds,
         sound,
@@ -323,6 +324,14 @@ export function createKlingStageVideoProvider(
       };
     },
   };
+}
+
+function requireLegacyStartFramePath(value: string | undefined, providerLabel: string) {
+  if (!value) {
+    throw new Error(`${providerLabel} provider requires startFramePath`);
+  }
+
+  return value;
 }
 
 function buildStageMultiPromptText(promptText: string, maxLength = 512) {
