@@ -1,36 +1,56 @@
 import { z } from "zod";
 
 const requiredTextSchema = z.string().trim().min(1);
-const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
-const shotVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
+const segmentVideoStatuses = ["generating", "in_review", "approved", "failed"] as const;
 const finalCutStatuses = ["generating", "ready", "failed"] as const;
 
 export const currentVideoBatchSummaryResponseSchema = z.object({
   id: z.string(),
   sourceImageBatchId: z.string(),
   sourceShotScriptId: z.string(),
-  shotCount: z.number().int().positive(),
-  approvedShotCount: z.number().int().nonnegative(),
+  segmentCount: z.number().int().positive(),
+  approvedSegmentCount: z.number().int().nonnegative(),
   updatedAt: z.string(),
 });
 
-export const shotVideoResponseSchema = z.object({
+export const segmentVideoReferenceImageResponseSchema = z.object({
+  id: z.string(),
+  assetPath: requiredTextSchema,
+  source: z.enum(["auto", "manual"]),
+  order: z.number().int().nonnegative(),
+  sourceShotId: z.string().nullable().optional(),
+  label: z.string().nullable().optional(),
+});
+
+export const segmentVideoReferenceAudioResponseSchema = z.object({
+  id: z.string(),
+  assetPath: requiredTextSchema,
+  source: z.literal("manual"),
+  order: z.number().int().nonnegative(),
+  label: z.string().nullable().optional(),
+  durationSec: z.number().positive().nullable().optional(),
+});
+
+export const segmentVideoResponseSchema = z
+  .object({
   id: z.string(),
   projectId: z.string(),
   batchId: z.string(),
   sourceImageBatchId: z.string(),
   sourceShotScriptId: z.string(),
-  shotId: z.string(),
-  shotCode: z.string(),
   sceneId: z.string(),
   segmentId: z.string(),
   segmentOrder: z.number().int().positive(),
-  shotOrder: z.number().int().positive(),
-  frameDependency: z.enum(shotFrameDependencies),
-  status: z.enum(shotVideoStatuses),
+  segmentName: z.string().nullable(),
+  segmentSummary: requiredTextSchema,
+  shotCount: z.number().int().positive(),
+  sourceShotIds: z.array(z.string()),
+  status: z.enum(segmentVideoStatuses),
   promptTextSeed: requiredTextSchema,
   promptTextCurrent: requiredTextSchema,
   promptUpdatedAt: z.string(),
+  referenceImages: z.array(segmentVideoReferenceImageResponseSchema),
+  referenceAudios: z.array(segmentVideoReferenceAudioResponseSchema),
   videoAssetPath: z.string().nullable(),
   thumbnailAssetPath: z.string().nullable(),
   durationSec: z.number().positive().nullable(),
@@ -39,9 +59,10 @@ export const shotVideoResponseSchema = z.object({
   updatedAt: z.string(),
   approvedAt: z.string().nullable(),
   sourceTaskId: z.string().nullable(),
-});
+})
+  .strict();
 
-export const segmentVideoResponseSchema = shotVideoResponseSchema;
+export const shotVideoResponseSchema = segmentVideoResponseSchema;
 
 export const finalCutRecordResponseSchema = z.object({
   id: z.string(),
@@ -62,13 +83,25 @@ export const finalCutResponseSchema = z.object({
 
 export const videoListResponseSchema = z.object({
   currentBatch: currentVideoBatchSummaryResponseSchema,
-  shots: z.array(shotVideoResponseSchema),
+  segments: z.array(segmentVideoResponseSchema),
 });
 
 export const approveVideoSegmentRequestSchema = z.object({});
 
-export const saveVideoPromptRequestSchema = z.object({
+export const saveSegmentVideoConfigRequestSchema = z.object({
   promptTextCurrent: requiredTextSchema,
+  referenceImages: z.array(segmentVideoReferenceImageResponseSchema),
+  referenceAudios: z.array(segmentVideoReferenceAudioResponseSchema),
+});
+
+export const saveVideoPromptRequestSchema = saveSegmentVideoConfigRequestSchema;
+
+export const referenceAudioUploadMetadataRequestSchema = z.object({
+  fileName: requiredTextSchema,
+  mimeType: requiredTextSchema,
+  bytes: z.number().int().positive(),
+  label: z.string().trim().min(1).nullable().optional(),
+  durationSec: z.number().positive().nullable().optional(),
 });
 
 export const regenerateVideoPromptRequestSchema = z.object({});

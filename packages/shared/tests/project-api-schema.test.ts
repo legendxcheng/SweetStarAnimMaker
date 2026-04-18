@@ -295,8 +295,8 @@ describe("project api schema", () => {
         id: "video_batch_v1",
         sourceImageBatchId: "image_batch_v1",
         sourceShotScriptId: "shot_script_v1",
-        shotCount: 5,
-        approvedShotCount: 2,
+        segmentCount: 5,
+        approvedSegmentCount: 2,
         updatedAt: "2026-03-21T13:00:00.000Z",
       },
     });
@@ -309,7 +309,7 @@ describe("project api schema", () => {
     expect(parsed.currentImageBatch?.shotCount).toBe(5);
     expect(parsed.currentImageBatch?.totalRequiredFrameCount).toBe(10);
     expect(parsed.currentImageBatch?.approvedShotCount).toBe(3);
-    expect(parsed.currentVideoBatch?.shotCount).toBe(5);
-    expect(parsed.currentVideoBatch?.approvedShotCount).toBe(2);
+    expect(parsed.currentVideoBatch?.segmentCount).toBe(5);
+    expect(parsed.currentVideoBatch?.approvedSegmentCount).toBe(2);
   });
 });

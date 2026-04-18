@@ -1,34 +1,52 @@
-import type { ShotFrameDependency } from "./shot-script";
-
-export type ShotVideoStatus = "generating" | "in_review" | "approved" | "failed";
+export type SegmentVideoStatus = "generating" | "in_review" | "approved" | "failed";
 export type FinalCutStatus = "generating" | "ready" | "failed";
 
 export interface CurrentVideoBatchSummary {
   id: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  shotCount: number;
-  approvedShotCount: number;
+  segmentCount: number;
+  approvedSegmentCount: number;
   updatedAt: string;
 }
 
-export interface ShotVideoRecord {
+export interface SegmentVideoReferenceImage {
+  id: string;
+  assetPath: string;
+  source: "auto" | "manual";
+  order: number;
+  sourceShotId?: string | null;
+  label?: string | null;
+}
+
+export interface SegmentVideoReferenceAudio {
+  id: string;
+  assetPath: string;
+  source: "manual";
+  order: number;
+  label?: string | null;
+  durationSec?: number | null;
+}
+
+export interface SegmentVideoRecord {
   id: string;
   projectId: string;
   batchId: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  shotId: string;
-  shotCode: string;
   sceneId: string;
   segmentId: string;
   segmentOrder: number;
-  shotOrder: number;
-  frameDependency: ShotFrameDependency;
-  status: ShotVideoStatus;
+  segmentName: string | null;
+  segmentSummary: string;
+  shotCount: number;
+  sourceShotIds: string[];
+  status: SegmentVideoStatus;
   promptTextSeed: string;
   promptTextCurrent: string;
   promptUpdatedAt: string;
+  referenceImages: SegmentVideoReferenceImage[];
+  referenceAudios: SegmentVideoReferenceAudio[];
   videoAssetPath: string | null;
   thumbnailAssetPath: string | null;
   durationSec: number | null;
@@ -39,7 +57,8 @@ export interface ShotVideoRecord {
   sourceTaskId: string | null;
 }
 
-export type SegmentVideoRecord = ShotVideoRecord;
+export type ShotVideoStatus = SegmentVideoStatus;
+export type ShotVideoRecord = SegmentVideoRecord;
 
 export interface FinalCutRecord {
   id: string;
@@ -60,13 +79,25 @@ export interface FinalCutResponse {
 
 export interface VideoListResponse {
   currentBatch: CurrentVideoBatchSummary;
-  shots: ShotVideoRecord[];
+  segments: SegmentVideoRecord[];
 }
 
 export interface ApproveVideoSegmentRequest {}
 
-export interface SaveVideoPromptRequest {
+export interface SaveSegmentVideoConfigRequest {
   promptTextCurrent: string;
+  referenceImages: SegmentVideoReferenceImage[];
+  referenceAudios: SegmentVideoReferenceAudio[];
+}
+
+export type SaveVideoPromptRequest = SaveSegmentVideoConfigRequest;
+
+export interface ReferenceAudioUploadMetadataRequest {
+  fileName: string;
+  mimeType: string;
+  bytes: number;
+  label?: string | null;
+  durationSec?: number | null;
 }
 
 export interface RegenerateVideoPromptRequest {}
