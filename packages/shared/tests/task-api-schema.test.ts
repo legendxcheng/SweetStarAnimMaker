@@ -20,6 +20,7 @@ describe("task api schema", () => {
       "videos_generate",
       "segment_video_prompt_generate",
       "segment_video_generate",
+      "final_cut_generate",
     ]);
   });
 

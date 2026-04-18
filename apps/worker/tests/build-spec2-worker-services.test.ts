@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  createKlingOmniStageVideoProvider,
   createSeedanceStageVideoProvider,
-  createSoraStageVideoProvider,
 } from "@sweet-star/services";
 
 import { createConfiguredVideoProvider } from "../src/bootstrap/video-provider-config";
@@ -13,12 +11,6 @@ vi.mock("@sweet-star/services", async () => {
 
   return {
     ...actual,
-    createKlingOmniStageVideoProvider: vi.fn(() => ({
-      generateSegmentVideo: vi.fn(),
-    })),
-    createSoraStageVideoProvider: vi.fn(() => ({
-      generateSegmentVideo: vi.fn(),
-    })),
     createSeedanceStageVideoProvider: vi.fn(() => ({
       generateSegmentVideo: vi.fn(),
     })),
@@ -30,7 +22,7 @@ describe("createConfiguredVideoProvider", () => {
     vi.clearAllMocks();
   });
 
-  it("defaults to Kling with production Kling defaults", () => {
+  it("builds the seedance provider and logs unset optional config by default", () => {
     const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const referenceImageUploader = {
       uploadReferenceImage: vi.fn(),
@@ -38,76 +30,44 @@ describe("createConfiguredVideoProvider", () => {
 
     createConfiguredVideoProvider({
       env: {
-        VECTORENGINE_BASE_URL: "https://api.vectorengine.ai",
-        VECTORENGINE_API_TOKEN: "test-token",
-      },
-      referenceImageUploader,
-    });
-
-    expect(createKlingOmniStageVideoProvider).toHaveBeenCalledWith({
-      baseUrl: "https://api.vectorengine.ai",
-      apiToken: "test-token",
-      modelName: undefined,
-      durationSeconds: 10,
-      referenceImageUploader,
-    });
-    expect(consoleInfoSpy).toHaveBeenCalledWith(
-      "[video-provider-config] selected",
-      expect.objectContaining({
-        providerName: "kling",
-        modelName: undefined,
-        durationSeconds: 10,
-      }),
-    );
-    expect(createSoraStageVideoProvider).not.toHaveBeenCalled();
-  });
-
-  it("selects Sora when VIDEO_PROVIDER is set to sora", () => {
-    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
-    const referenceImageUploader = {
-      uploadReferenceImage: vi.fn(),
-    };
-
-    createConfiguredVideoProvider({
-      env: {
-        VIDEO_PROVIDER: "sora",
-        VECTORENGINE_BASE_URL: "https://api.vectorengine.ai",
-        VECTORENGINE_API_TOKEN: "test-token",
-        VIDEO_MODEL: "sora-custom",
-      },
-      referenceImageUploader,
-    });
-
-    expect(createSoraStageVideoProvider).toHaveBeenCalledWith({
-      baseUrl: "https://api.vectorengine.ai",
-      apiToken: "test-token",
-      modelName: "sora-custom",
-      referenceImageUploader,
-    });
-    expect(consoleInfoSpy).toHaveBeenCalledWith(
-      "[video-provider-config] selected",
-      expect.objectContaining({
-        providerName: "sora",
-        modelName: "sora-custom",
-      }),
-    );
-    expect(createKlingOmniStageVideoProvider).not.toHaveBeenCalled();
-  });
-
-  it("selects Seedance when VIDEO_PROVIDER is set to seedance", () => {
-    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
-    const referenceImageUploader = {
-      uploadReferenceImage: vi.fn(),
-    };
-
-    createConfiguredVideoProvider({
-      env: {
-        VIDEO_PROVIDER: "seedance",
-        VECTORENGINE_BASE_URL: "https://api.vectorengine.ai",
-        VECTORENGINE_API_TOKEN: "vector-token",
         SEEDANCE_API_BASE_URL: "https://ark.cn-beijing.volces.com",
-        SEEDANCE_API_TOKEN: "seedance-token",
-        SEEDANCE_VIDEO_MODEL: "doubao-seedance-2-0-260128",
+      },
+      referenceImageUploader,
+    });
+
+    expect(createSeedanceStageVideoProvider).toHaveBeenCalledWith({
+      baseUrl: "https://ark.cn-beijing.volces.com",
+      apiToken: undefined,
+      modelName: undefined,
+      durationSeconds: undefined,
+      ratio: undefined,
+    });
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "[video-provider-config] selected",
+      expect.objectContaining({
+        providerName: "seedance",
+        modelName: undefined,
+        durationSeconds: undefined,
+        ratio: undefined,
+        baseUrlConfigured: true,
+        apiKeyConfigured: false,
+      }),
+    );
+  });
+
+  it("passes explicit seedance env values through to the provider", () => {
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    const referenceImageUploader = {
+      uploadReferenceImage: vi.fn(),
+    };
+
+    createConfiguredVideoProvider({
+      env: {
+        SEEDANCE_API_BASE_URL: "https://ark.cn-beijing.volces.com",
+        SEEDANCE_API_KEY: "seedance-token",
+        SEEDANCE_MODEL: "doubao-seedance-2-0-260128",
+        SEEDANCE_DURATION_SEC: "8",
+        SEEDANCE_ASPECT_RATIO: "16:9",
       },
       referenceImageUploader,
     });
@@ -116,26 +76,19 @@ describe("createConfiguredVideoProvider", () => {
       baseUrl: "https://ark.cn-beijing.volces.com",
       apiToken: "seedance-token",
       modelName: "doubao-seedance-2-0-260128",
+      durationSeconds: 8,
+      ratio: "16:9",
     });
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       "[video-provider-config] selected",
       expect.objectContaining({
         providerName: "seedance",
         modelName: "doubao-seedance-2-0-260128",
+        durationSeconds: 8,
+        ratio: "16:9",
+        baseUrlConfigured: true,
+        apiKeyConfigured: true,
       }),
     );
-  });
-
-  it("rejects unsupported provider names", () => {
-    expect(() =>
-      createConfiguredVideoProvider({
-        env: {
-          VIDEO_PROVIDER: "invalid-provider",
-        },
-        referenceImageUploader: {
-          uploadReferenceImage: vi.fn(),
-        },
-      }),
-    ).toThrow("Unsupported VIDEO_PROVIDER: invalid-provider");
   });
 });

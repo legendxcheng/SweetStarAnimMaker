@@ -172,7 +172,7 @@ describe("create images generate task use case", () => {
     );
   });
 
-  it("creates a pending images batch task from the current in-review shot script and enqueues it", async () => {
+  it("rejects image generation when the current shot script is still in review", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -255,27 +255,12 @@ describe("create images generate task use case", () => {
       },
     });
 
-    const result = await useCase.execute({ projectId: "proj_20260324_ab12cd" });
-
-    expect(taskRepository.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "task_20260324_images_in_review",
-        projectId: "proj_20260324_ab12cd",
-        type: "images_generate",
-        status: "pending",
-      }),
+    await expect(useCase.execute({ projectId: "proj_20260324_ab12cd" })).rejects.toBeInstanceOf(
+      ProjectValidationError,
     );
-    expect(taskQueue.enqueue).toHaveBeenCalledWith({
-      taskId: "task_20260324_images_in_review",
-      queueName: "images-generate",
-      taskType: "images_generate",
-    });
-    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
-      projectId: "proj_20260324_ab12cd",
-      status: "images_generating",
-      updatedAt: "2026-03-24T00:11:00.000Z",
-    });
-    expect(result.type).toBe("images_generate");
+    expect(taskRepository.insert).not.toHaveBeenCalled();
+    expect(taskQueue.enqueue).not.toHaveBeenCalled();
+    expect(projectRepository.updateStatus).not.toHaveBeenCalled();
   });
 
   it("throws when the project is not ready for images", async () => {

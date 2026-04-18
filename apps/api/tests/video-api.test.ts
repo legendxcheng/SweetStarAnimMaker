@@ -170,10 +170,10 @@ describe("videos api", () => {
       expect.objectContaining({
         currentBatch: expect.objectContaining({
           id: "video_batch_1",
-          shotCount: 1,
-          approvedShotCount: 0,
+          segmentCount: 1,
+          approvedSegmentCount: 0,
         }),
-        shots: expect.arrayContaining([
+        segments: expect.arrayContaining([
           expect.objectContaining({
             id: "video_segment_1",
             shotId: "shot_1",
@@ -203,9 +203,11 @@ describe("videos api", () => {
 
     const savePromptResponse = await app.inject({
       method: "PUT",
-      url: `/projects/${project.id}/videos/segments/video_segment_1/prompt`,
+      url: `/projects/${project.id}/videos/segments/video_segment_1/config`,
       payload: {
         promptTextCurrent: "用户改写后的当前视频提示词",
+        referenceImages: [],
+        referenceAudios: [],
       },
     });
 
@@ -243,7 +245,7 @@ describe("videos api", () => {
         currentBatch: expect.objectContaining({
           id: "video_batch_1",
         }),
-        shots: expect.arrayContaining([
+        segments: expect.arrayContaining([
           expect.objectContaining({
             id: "video_segment_1",
             promptTextCurrent: expect.stringContaining("林在雨夜市场边停下"),
@@ -308,9 +310,9 @@ describe("videos api", () => {
     expect(approveAllResponse.json()).toEqual(
       expect.objectContaining({
         currentBatch: expect.objectContaining({
-          approvedShotCount: 1,
+          approvedSegmentCount: 1,
         }),
-        shots: expect.arrayContaining([
+        segments: expect.arrayContaining([
           expect.objectContaining({
             id: "video_segment_1",
             status: "approved",

@@ -74,11 +74,16 @@ describe("grok video prompt provider", () => {
     });
 
     expect(result.finalPrompt).toContain("<<<image_1>>>");
-    expect(result.finalPrompt).toContain("语音约束：人物对白：有人先到了");
-    expect(result.finalPrompt).toContain("旁白/画外音：这次不能再慢一步。");
+    expect(result.finalPrompt).toContain(
+      "语音约束：子镜头1（SC01-SG01-SH01）人物对白：有人先到了。",
+    );
+    expect(result.finalPrompt).toContain(
+      "子镜头1（SC01-SG01-SH01）旁白/画外音：这次不能再慢一步。",
+    );
     expect(result.finalPrompt).toContain("声音约束：雨声、摊布拍打声、远处人群骚动。");
-    expect(result.dialoguePlan).toContain("人物对白：有人先到了");
-    expect(result.audioPlan).toContain("环境声/音效/音乐：雨声、摊布拍打声、远处人群骚动。");
+    expect(result.dialoguePlan).toContain("子镜头1（SC01-SG01-SH01）人物对白：有人先到了。");
+    expect(result.audioPlan).toContain("环境声/音效：雨声、摊布拍打声、远处人群骚动。");
+    expect(result.audioPlan).toContain("未提供参考音频。");
     expect(result.visualGuardrails).toContain("首尾帧");
     expect(result.provider).toBe("grok");
     expect(result.model).toBe("grok-4.2");

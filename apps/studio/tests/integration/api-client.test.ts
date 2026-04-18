@@ -44,7 +44,9 @@ describe("API Client", () => {
       "createStoryboardGenerateTask",
       "createVideosGenerateTask",
       "deleteCharacterReferenceImage",
+      "deleteSegmentReferenceAudio",
       "generateAllImageFrames",
+      "generateVideoSegment",
       "generateImageFrame",
       "getCharacterSheet",
       "getCurrentShotScript",
@@ -80,13 +82,15 @@ describe("API Client", () => {
       "rejectStoryboard",
       "resetProjectPremise",
       "saveMasterPlot",
+      "saveSegmentVideoConfig",
       "saveShotScriptSegment",
       "saveStoryboard",
       "updateCharacterSheetPrompt",
       "updateImageFramePrompt",
       "updateVideoPrompt",
       "uploadCharacterReferenceImages",
-    ]);
+      "uploadSegmentReferenceAudio",
+    ].sort());
   });
 
   it("converts non-2xx responses to structured errors", async () => {
@@ -1318,28 +1322,30 @@ describe("API Client", () => {
           id: "video_batch_1",
           sourceImageBatchId: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          shotCount: 1,
-          approvedShotCount: 0,
+          segmentCount: 1,
+          approvedSegmentCount: 0,
           updatedAt: "2026-03-25T00:00:01.000Z",
         },
-        shots: [
+        segments: [
           {
             id: "video_segment_1",
             projectId: "proj_1",
             batchId: "video_batch_1",
             sourceImageBatchId: "image_batch_1",
             sourceShotScriptId: "shot_script_1",
-            shotId: "shot_1",
-            shotCode: "S01-SG01-SH01",
+            segmentName: "雨夜码头",
+            segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+            shotCount: 1,
+            sourceShotIds: ["shot_1"],
             sceneId: "scene_1",
             segmentId: "segment_1",
             segmentOrder: 1,
-            shotOrder: 1,
-            frameDependency: "start_and_end_frame",
             status: "in_review",
             promptTextSeed: "seed prompt",
             promptTextCurrent: "current prompt",
             promptUpdatedAt: "2026-03-25T00:00:01.000Z",
+            referenceImages: [],
+            referenceAudios: [],
             videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
             thumbnailAssetPath:
               "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
@@ -1358,17 +1364,19 @@ describe("API Client", () => {
         batchId: "video_batch_1",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
-        shotId: "shot_1",
-        shotCode: "S01-SG01-SH01",
+        segmentName: "雨夜码头",
+        segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+        shotCount: 1,
+        sourceShotIds: ["shot_1"],
         sceneId: "scene_1",
         segmentId: "segment_1",
         segmentOrder: 1,
-        shotOrder: 1,
-        frameDependency: "start_and_end_frame",
         status: "in_review",
         promptTextSeed: "seed prompt",
         promptTextCurrent: "current prompt",
         promptUpdatedAt: "2026-03-25T00:00:01.000Z",
+        referenceImages: [],
+        referenceAudios: [],
         videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
         thumbnailAssetPath:
           "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
@@ -1385,17 +1393,19 @@ describe("API Client", () => {
         batchId: "video_batch_1",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
-        shotId: "shot_1",
-        shotCode: "S01-SG01-SH01",
+        segmentName: "雨夜码头",
+        segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+        shotCount: 1,
+        sourceShotIds: ["shot_1"],
         sceneId: "scene_1",
         segmentId: "segment_1",
         segmentOrder: 1,
-        shotOrder: 1,
-        frameDependency: "start_and_end_frame",
         status: "in_review",
         promptTextSeed: "seed prompt",
         promptTextCurrent: "用户保存后的视频提示词",
         promptUpdatedAt: "2026-03-25T00:00:02.000Z",
+        referenceImages: [],
+        referenceAudios: [],
         videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
         thumbnailAssetPath:
           "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
@@ -1412,17 +1422,19 @@ describe("API Client", () => {
         batchId: "video_batch_1",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
-        shotId: "shot_1",
-        shotCode: "S01-SG01-SH01",
+        segmentName: "雨夜码头",
+        segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+        shotCount: 1,
+        sourceShotIds: ["shot_1"],
         sceneId: "scene_1",
         segmentId: "segment_1",
         segmentOrder: 1,
-        shotOrder: 1,
-        frameDependency: "start_and_end_frame",
         status: "in_review",
         promptTextSeed: "seed prompt",
         promptTextCurrent: "重新生成的视频提示词",
         promptUpdatedAt: "2026-03-25T00:00:03.000Z",
+        referenceImages: [],
+        referenceAudios: [],
         videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
         thumbnailAssetPath:
           "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
@@ -1438,28 +1450,30 @@ describe("API Client", () => {
           id: "video_batch_1",
           sourceImageBatchId: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          shotCount: 1,
-          approvedShotCount: 0,
+          segmentCount: 1,
+          approvedSegmentCount: 0,
           updatedAt: "2026-03-25T00:00:04.000Z",
         },
-        shots: [
+        segments: [
           {
             id: "video_segment_1",
             projectId: "proj_1",
             batchId: "video_batch_1",
             sourceImageBatchId: "image_batch_1",
             sourceShotScriptId: "shot_script_1",
-            shotId: "shot_1",
-            shotCode: "S01-SG01-SH01",
+            segmentName: "雨夜码头",
+            segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+            shotCount: 1,
+            sourceShotIds: ["shot_1"],
             sceneId: "scene_1",
             segmentId: "segment_1",
             segmentOrder: 1,
-            shotOrder: 1,
-            frameDependency: "start_and_end_frame",
             status: "in_review",
             promptTextSeed: "seed prompt",
             promptTextCurrent: "重新生成的视频提示词",
             promptUpdatedAt: "2026-03-25T00:00:04.000Z",
+            referenceImages: [],
+            referenceAudios: [],
             videoAssetPath:
               "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
             thumbnailAssetPath:
@@ -1495,17 +1509,19 @@ describe("API Client", () => {
         batchId: "video_batch_1",
         sourceImageBatchId: "image_batch_1",
         sourceShotScriptId: "shot_script_1",
-        shotId: "shot_1",
-        shotCode: "S01-SG01-SH01",
+        segmentName: "雨夜码头",
+        segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+        shotCount: 1,
+        sourceShotIds: ["shot_1"],
         sceneId: "scene_1",
         segmentId: "segment_1",
         segmentOrder: 1,
-        shotOrder: 1,
-        frameDependency: "start_and_end_frame",
         status: "approved",
         promptTextSeed: "seed prompt",
         promptTextCurrent: "重新生成的视频提示词",
         promptUpdatedAt: "2026-03-25T00:00:04.000Z",
+        referenceImages: [],
+        referenceAudios: [],
         videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
         thumbnailAssetPath:
           "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
@@ -1521,28 +1537,30 @@ describe("API Client", () => {
           id: "video_batch_1",
           sourceImageBatchId: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          shotCount: 1,
-          approvedShotCount: 1,
+          segmentCount: 1,
+          approvedSegmentCount: 1,
           updatedAt: "2026-03-25T00:00:07.000Z",
         },
-        shots: [
+        segments: [
           {
             id: "video_segment_1",
             projectId: "proj_1",
             batchId: "video_batch_1",
             sourceImageBatchId: "image_batch_1",
             sourceShotScriptId: "shot_script_1",
-            shotId: "shot_1",
-            shotCode: "S01-SG01-SH01",
+            segmentName: "雨夜码头",
+            segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+            shotCount: 1,
+            sourceShotIds: ["shot_1"],
             sceneId: "scene_1",
             segmentId: "segment_1",
             segmentOrder: 1,
-            shotOrder: 1,
-            frameDependency: "start_and_end_frame",
             status: "approved",
             promptTextSeed: "seed prompt",
             promptTextCurrent: "重新生成的视频提示词",
             promptUpdatedAt: "2026-03-25T00:00:04.000Z",
+            referenceImages: [],
+            referenceAudios: [],
             videoAssetPath:
               "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
             thumbnailAssetPath:
@@ -1573,12 +1591,14 @@ describe("API Client", () => {
     await apiClient.createVideosGenerateTask("proj_1");
     await apiClient.listVideos("proj_1");
     await apiClient.getVideo("proj_1", "video_segment_1");
-    await apiClient.updateVideoPrompt("proj_1", "video_segment_1", {
+    await apiClient.saveSegmentVideoConfig("proj_1", "video_segment_1", {
       promptTextCurrent: "用户保存后的视频提示词",
+      referenceImages: [],
+      referenceAudios: [],
     });
     await apiClient.regenerateVideoPrompt("proj_1", "video_segment_1");
     await apiClient.regenerateAllVideoPrompts("proj_1");
-    await apiClient.regenerateVideoSegment("proj_1", "video_segment_1");
+    await apiClient.generateVideoSegment("proj_1", "video_segment_1");
     await apiClient.approveVideoSegment("proj_1", "video_segment_1");
     await apiClient.approveAllVideoSegments("proj_1");
 
@@ -1599,7 +1619,7 @@ describe("API Client", () => {
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       4,
-      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/prompt`,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/config`,
       expect.objectContaining({ method: "PUT" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
@@ -1614,7 +1634,7 @@ describe("API Client", () => {
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       7,
-      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/regenerate`,
+      `${config.apiBaseUrl}/projects/proj_1/videos/segments/video_segment_1/generate`,
       expect.objectContaining({ method: "POST" }),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
