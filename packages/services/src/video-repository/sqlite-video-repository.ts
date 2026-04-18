@@ -1,6 +1,8 @@
 import type {
   FinalCutRecordEntity,
   SegmentVideoRecordEntity,
+  SegmentVideoReferenceAudio,
+  SegmentVideoReferenceImage,
   VideoBatchRecord,
   VideoRepository,
 } from "@sweet-star/core";
@@ -71,14 +73,18 @@ export function createSqliteVideoRepository(
           `
             INSERT INTO segment_videos (
               id, batch_id, project_id, project_storage_dir, source_image_batch_id, source_shot_script_id,
-              shot_id, shot_code, scene_id, segment_id, segment_order, shot_order, frame_dependency, status,
+              shot_id, shot_code, scene_id, segment_id, segment_order, segment_name, segment_summary,
+              shot_count, source_shot_ids_json, reference_images_json, reference_audios_json,
+              shot_order, frame_dependency, status,
               prompt_text_seed, prompt_text_current, prompt_updated_at, video_asset_path,
               thumbnail_asset_path, duration_sec, provider, model, updated_at, approved_at,
               source_task_id, storage_dir, current_video_rel_path, current_metadata_rel_path,
               thumbnail_rel_path, versions_storage_dir
             ) VALUES (
               @id, @batch_id, @project_id, @project_storage_dir, @source_image_batch_id, @source_shot_script_id,
-              @shot_id, @shot_code, @scene_id, @segment_id, @segment_order, @shot_order, @frame_dependency, @status,
+              @shot_id, @shot_code, @scene_id, @segment_id, @segment_order, @segment_name, @segment_summary,
+              @shot_count, @source_shot_ids_json, @reference_images_json, @reference_audios_json,
+              @shot_order, @frame_dependency, @status,
               @prompt_text_seed, @prompt_text_current, @prompt_updated_at, @video_asset_path,
               @thumbnail_asset_path, @duration_sec, @provider, @model, @updated_at, @approved_at,
               @source_task_id, @storage_dir, @current_video_rel_path, @current_metadata_rel_path,
@@ -158,6 +164,12 @@ export function createSqliteVideoRepository(
               scene_id = @scene_id,
               segment_id = @segment_id,
               segment_order = @segment_order,
+              segment_name = @segment_name,
+              segment_summary = @segment_summary,
+              shot_count = @shot_count,
+              source_shot_ids_json = @source_shot_ids_json,
+              reference_images_json = @reference_images_json,
+              reference_audios_json = @reference_audios_json,
               shot_order = @shot_order,
               frame_dependency = @frame_dependency,
               status = @status,
@@ -253,6 +265,12 @@ interface SegmentVideoRow {
   scene_id: string;
   segment_id: string;
   segment_order: number;
+  segment_name: string | null;
+  segment_summary: string;
+  shot_count: number;
+  source_shot_ids_json: string;
+  reference_images_json: string;
+  reference_audios_json: string;
   shot_order: number;
   frame_dependency: SegmentVideoRecordEntity["frameDependency"];
   status: SegmentVideoRecordEntity["status"];
@@ -340,6 +358,12 @@ function toSegmentRow(segment: SegmentVideoRecordEntity): SegmentVideoRow {
     scene_id: segment.sceneId,
     segment_id: segment.segmentId,
     segment_order: segment.segmentOrder,
+    segment_name: segment.segmentName,
+    segment_summary: segment.segmentSummary ?? "",
+    shot_count: segment.shotCount ?? 0,
+    source_shot_ids_json: JSON.stringify(segment.sourceShotIds ?? []),
+    reference_images_json: JSON.stringify(segment.referenceImages ?? []),
+    reference_audios_json: JSON.stringify(segment.referenceAudios ?? []),
     shot_order: segment.shotOrder,
     frame_dependency: segment.frameDependency,
     status: segment.status,
@@ -375,6 +399,12 @@ function fromSegmentRow(row: SegmentVideoRow): SegmentVideoRecordEntity {
     sceneId: row.scene_id,
     segmentId: row.segment_id,
     segmentOrder: row.segment_order,
+    segmentName: row.segment_name,
+    segmentSummary: row.segment_summary,
+    shotCount: row.shot_count,
+    sourceShotIds: parseJsonArray<string>(row.source_shot_ids_json),
+    referenceImages: parseJsonArray<SegmentVideoReferenceImage>(row.reference_images_json),
+    referenceAudios: parseJsonArray<SegmentVideoReferenceAudio>(row.reference_audios_json),
     shotOrder: row.shot_order,
     frameDependency: row.frame_dependency,
     status: row.status,
@@ -395,6 +425,16 @@ function fromSegmentRow(row: SegmentVideoRow): SegmentVideoRecordEntity {
     thumbnailRelPath: row.thumbnail_rel_path,
     versionsStorageDir: row.versions_storage_dir,
   };
+}
+
+function parseJsonArray<T>(json: string | null | undefined): T[] {
+  if (!json) {
+    return [];
+  }
+
+  const parsed = JSON.parse(json) as unknown;
+
+  return Array.isArray(parsed) ? (parsed as T[]) : [];
 }
 
 function toFinalCutRow(finalCut: FinalCutRecordEntity): FinalCutRow {

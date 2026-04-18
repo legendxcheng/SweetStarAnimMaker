@@ -5,6 +5,18 @@ export {
   type UpdateVideoPromptUseCaseDependencies,
 } from "../use-cases/update-video-prompt";
 export {
+  createSaveSegmentVideoConfigUseCase,
+  type SaveSegmentVideoConfigInput,
+  type SaveSegmentVideoConfigUseCase,
+  type SaveSegmentVideoConfigUseCaseDependencies,
+} from "../use-cases/save-segment-video-config";
+export {
+  createUploadSegmentVideoAudioUseCase,
+  type UploadSegmentVideoAudioInput,
+  type UploadSegmentVideoAudioUseCase,
+  type UploadSegmentVideoAudioUseCaseDependencies,
+} from "../use-cases/upload-segment-video-audio";
+export {
   createRegenerateVideoPromptUseCase,
   type RegenerateVideoPromptInput,
   type RegenerateVideoPromptUseCase,

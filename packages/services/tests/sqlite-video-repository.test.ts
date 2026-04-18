@@ -64,6 +64,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       segmentId: "segment_1",
       segmentOrder: 1,
+      segmentSummary: "SC01-SG01-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_1"],
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 3,
@@ -97,7 +100,119 @@ describe("sqlite video repository", () => {
     ).toEqual(shot);
   });
 
-  it("updates persisted shot metadata and keeps shot storage paths", async () => {
+  it("round-trips segment metadata and persisted reference JSON fields", async () => {
+    const { projectRepository, repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_video_segment_refs",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-25T00:00:00.000Z",
+      updatedAt: "2026-03-25T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-25T00:00:00.000Z",
+      premiseBytes: 7,
+    });
+    const batch = createVideoBatchRecord({
+      id: "video_batch_segment_refs",
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: "image_batch_refs",
+      sourceShotScriptId: "shot_script_refs",
+      segmentCount: 1,
+      createdAt: "2026-03-25T01:00:00.000Z",
+      updatedAt: "2026-03-25T01:00:00.000Z",
+    });
+    const segment = createSegmentVideoRecord({
+      id: "video_segment_refs_1",
+      batchId: batch.id,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceImageBatchId: batch.sourceImageBatchId,
+      sourceShotScriptId: batch.sourceShotScriptId,
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      segmentOrder: 1,
+      segmentName: "Arrival",
+      segmentSummary: "Rin arrives at the flooded market.",
+      shotCount: 2,
+      sourceShotIds: ["shot_1", "shot_2"],
+      status: "generating",
+      promptTextSeed: "seed prompt",
+      promptTextCurrent: "current prompt",
+      promptUpdatedAt: "2026-03-25T01:04:00.000Z",
+      referenceImages: [
+        {
+          id: "ref_img_1",
+          assetPath: "videos/batches/video_batch_segment_refs/segments/scene_1__segment_1/references/images/ref-1.png",
+          source: "auto",
+          order: 0,
+          sourceShotId: "shot_1",
+          label: "Shot 1 start",
+        },
+        {
+          id: "ref_img_2",
+          assetPath: "videos/batches/video_batch_segment_refs/segments/scene_1__segment_1/references/images/ref-2.png",
+          source: "manual",
+          order: 1,
+          sourceShotId: null,
+          label: "Manual continuity",
+        },
+      ],
+      referenceAudios: [
+        {
+          id: "ref_audio_1",
+          assetPath: "videos/batches/video_batch_segment_refs/segments/scene_1__segment_1/references/audios/rain.wav",
+          source: "manual",
+          order: 0,
+          label: "Rain guide",
+          durationSec: 8,
+        },
+      ],
+      durationSec: 8,
+      updatedAt: "2026-03-25T01:05:00.000Z",
+    });
+
+    projectRepository.insert(project);
+    repository.insertBatch(batch);
+    repository.insertSegment(segment);
+    projectRepository.updateCurrentVideoBatch?.({
+      projectId: project.id,
+      batchId: batch.id,
+    });
+
+    expect(repository.findSegmentById(segment.id)).toEqual(segment);
+    expect(repository.listSegmentsByBatchId(batch.id)).toEqual([segment]);
+    expect(
+      repository.findCurrentSegmentByProjectIdAndSceneIdAndSegmentId(
+        project.id,
+        "scene_1",
+        "segment_1",
+      ),
+    ).toEqual(segment);
+
+    const updatedSegment = {
+      ...segment,
+      promptTextCurrent: "operator edited prompt",
+      referenceImages: segment.referenceImages.slice(1),
+      referenceAudios: [
+        ...segment.referenceAudios,
+        {
+          id: "ref_audio_2",
+          assetPath: "videos/batches/video_batch_segment_refs/segments/scene_1__segment_1/references/audios/footsteps.mp3",
+          source: "manual" as const,
+          order: 1,
+          label: "Footsteps",
+          durationSec: 4,
+        },
+      ],
+      updatedAt: "2026-03-25T01:10:00.000Z",
+    };
+
+    repository.updateSegment(updatedSegment);
+
+    expect(repository.findSegmentById(segment.id)).toEqual(updatedSegment);
+  });
+
+  it("updates persisted shot metadata and keeps segment storage paths", async () => {
     const { projectRepository, repository } = await createRepositoryContext();
     const project = createProjectRecord({
       id: "proj_video_2",
@@ -130,6 +245,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       segmentId: "segment_1",
       segmentOrder: 1,
+      segmentSummary: "SC01-SG01-SH02",
+      shotCount: 1,
+      sourceShotIds: ["shot_2"],
       shotOrder: 2,
       frameDependency: "start_and_end_frame",
       durationSec: 5,
@@ -170,7 +288,7 @@ describe("sqlite video repository", () => {
     expect(persistedShot?.promptUpdatedAt).toBe("2026-03-25T01:09:00.000Z");
     expect(persistedShot?.shotCode).toBe("SC01-SG01-SH02");
     expect(persistedShot?.frameDependency).toBe("start_and_end_frame");
-    expect(persistedShot?.currentVideoRelPath).toContain("/shots/");
+    expect(persistedShot?.currentVideoRelPath).toContain("/segments/");
   });
 
   it("persists segment order for current video shots", async () => {
@@ -206,6 +324,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       segmentId: "segment_2",
       segmentOrder: 2,
+      segmentSummary: "SC01-SG02-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_2b"],
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 4,
@@ -256,6 +377,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_1",
       segmentId: "segment_1",
       segmentOrder: 1,
+      segmentSummary: "SC01-SG01-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_1"],
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 3,
@@ -278,6 +402,9 @@ describe("sqlite video repository", () => {
       sceneId: "scene_2",
       segmentId: "segment_1",
       segmentOrder: 1,
+      segmentSummary: "SC02-SG01-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_1"],
       shotOrder: 1,
       frameDependency: "start_and_end_frame",
       durationSec: 5,

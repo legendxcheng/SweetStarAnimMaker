@@ -31,6 +31,12 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
       scene_id TEXT NOT NULL,
       segment_id TEXT NOT NULL,
       segment_order INTEGER NOT NULL DEFAULT 0,
+      segment_name TEXT NULL,
+      segment_summary TEXT NOT NULL DEFAULT '',
+      shot_count INTEGER NOT NULL DEFAULT 0,
+      source_shot_ids_json TEXT NOT NULL DEFAULT '[]',
+      reference_images_json TEXT NOT NULL DEFAULT '[]',
+      reference_audios_json TEXT NOT NULL DEFAULT '[]',
       shot_order INTEGER NOT NULL DEFAULT 0,
       frame_dependency TEXT NOT NULL DEFAULT 'start_and_end_frame',
       status TEXT NOT NULL,
@@ -82,6 +88,12 @@ export function initializeSqliteVideoSchema(db: SqliteDatabase) {
   ensureSegmentVideosColumn(db, "shot_id", "TEXT NOT NULL DEFAULT ''");
   ensureSegmentVideosColumn(db, "shot_code", "TEXT NOT NULL DEFAULT ''");
   ensureSegmentVideosColumn(db, "segment_order", "INTEGER NOT NULL DEFAULT 0");
+  ensureSegmentVideosColumn(db, "segment_name", "TEXT NULL");
+  ensureSegmentVideosColumn(db, "segment_summary", "TEXT NOT NULL DEFAULT ''");
+  ensureSegmentVideosColumn(db, "shot_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureSegmentVideosColumn(db, "source_shot_ids_json", "TEXT NOT NULL DEFAULT '[]'");
+  ensureSegmentVideosColumn(db, "reference_images_json", "TEXT NOT NULL DEFAULT '[]'");
+  ensureSegmentVideosColumn(db, "reference_audios_json", "TEXT NOT NULL DEFAULT '[]'");
   ensureSegmentVideosColumn(
     db,
     "frame_dependency",

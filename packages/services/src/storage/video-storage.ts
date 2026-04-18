@@ -10,6 +10,9 @@ import type { LocalDataPaths } from "./local-data-paths";
 const promptSnapshotFileName = "prompt-snapshot.json";
 const rawResponseFileName = "raw-response.txt";
 const currentBatchFileName = "current-batch.json";
+const videoReferencesDirectoryName = "references";
+const videoReferenceImagesDirectoryName = "images";
+const videoReferenceAudiosDirectoryName = "audios";
 
 export interface CreateVideoStorageOptions {
   paths: LocalDataPaths;
@@ -214,6 +217,38 @@ export function createVideoStorage(options: CreateVideoStorageOptions): VideoSto
       await fs.writeFile(currentMetadataPath, payload, "utf8");
       await fs.writeFile(versionMetadataPath, payload, "utf8");
     },
+    async persistSegmentReferenceAudio(input) {
+      const assetRelPath = toSegmentReferenceAssetRelPath({
+        batchId: input.batchId,
+        sceneId: input.sceneId,
+        segmentId: input.segmentId,
+        referenceDirectoryName: videoReferenceAudiosDirectoryName,
+        assetId: input.audioId,
+        fileExtension: input.fileExtension,
+      });
+      const audioPath = toProjectAssetPath(options.paths, input.projectStorageDir, assetRelPath);
+
+      await ensureParentDirectory(audioPath);
+      await fs.writeFile(audioPath, input.content);
+
+      return assetRelPath;
+    },
+    async persistSegmentReferenceImage(input) {
+      const assetRelPath = toSegmentReferenceAssetRelPath({
+        batchId: input.batchId,
+        sceneId: input.sceneId,
+        segmentId: input.segmentId,
+        referenceDirectoryName: videoReferenceImagesDirectoryName,
+        assetId: input.imageId,
+        fileExtension: input.fileExtension,
+      });
+      const imagePath = toProjectAssetPath(options.paths, input.projectStorageDir, assetRelPath);
+
+      await ensureParentDirectory(imagePath);
+      await fs.writeFile(imagePath, input.content);
+
+      return assetRelPath;
+    },
     resolveProjectAssetPath(input) {
       return toProjectAssetPath(options.paths, input.projectStorageDir, input.assetRelPath);
     },
@@ -230,6 +265,28 @@ export function createVideoStorage(options: CreateVideoStorageOptions): VideoSto
 
 function toProjectAssetPath(paths: LocalDataPaths, projectStorageDir: string, assetRelPath: string) {
   return path.join(paths.projectPath(projectStorageDir), assetRelPath);
+}
+
+function toSegmentReferenceAssetRelPath(input: {
+  batchId: string;
+  sceneId: string;
+  segmentId: string;
+  referenceDirectoryName: string;
+  assetId: string;
+  fileExtension: string;
+}) {
+  const segmentStorageDir = `videos/batches/${input.batchId}/segments/${input.sceneId}__${input.segmentId}`;
+
+  return [
+    segmentStorageDir,
+    videoReferencesDirectoryName,
+    input.referenceDirectoryName,
+    `${input.assetId}${normalizeFileExtension(input.fileExtension)}`,
+  ].join("/");
+}
+
+function normalizeFileExtension(fileExtension: string) {
+  return fileExtension.startsWith(".") ? fileExtension : `.${fileExtension}`;
 }
 
 function isMissingFileError(error: unknown) {

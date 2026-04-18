@@ -18,7 +18,7 @@ describe("video storage", () => {
     await Promise.all(tempDirs.splice(0).map((tempDir) => fs.rm(tempDir, { recursive: true, force: true })));
   });
 
-  it("writes current batch manifest, current video assets, and versioned assets inside the shot directory", async () => {
+  it("writes current batch manifest, current video assets, and versioned assets inside the segment directory", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-videos-"));
     tempDirs.push(tempDir);
     await fs.mkdir(path.join(tempDir, "prompt-templates"), { recursive: true });
@@ -58,6 +58,9 @@ describe("video storage", () => {
       segmentId: "segment_1",
       sceneId: "scene_1",
       segmentOrder: 1,
+      segmentSummary: "SC01-SG01-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_1"],
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 3,
@@ -100,13 +103,13 @@ describe("video storage", () => {
     ).resolves.toContain('"shotCount": 1');
     await expect(
       fs.readFile(
-        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "shots", "scene_1__segment_1__shot_1", "current.json"),
+        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "segments", "scene_1__segment_1", "current.json"),
         "utf8",
       ),
     ).resolves.toContain('"provider": "vector-engine"');
     await expect(
       fs.readFile(
-        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "shots", "scene_1__segment_1__shot_1", "versions", "task_segment_1.json"),
+        path.join(tempDir, ".local-data", "projects", "proj_1-my-story", "videos", "batches", "video_batch_1", "segments", "scene_1__segment_1", "versions", "task_segment_1.json"),
         "utf8",
       ),
     ).resolves.toContain('"version": 2');
@@ -150,6 +153,9 @@ describe("video storage", () => {
       segmentId: "segment_1",
       sceneId: "scene_1",
       segmentOrder: 1,
+      segmentSummary: "SC01-SG01-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_1"],
       shotOrder: 1,
       frameDependency: "start_frame_only",
       durationSec: 3,
@@ -169,7 +175,7 @@ describe("video storage", () => {
     await expect(writePromise).rejects.toThrow("Video asset download timed out");
   });
 
-  it("writes video prompt planning metadata beside the shot assets", async () => {
+  it("writes video prompt planning metadata beside the segment assets", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-video-plan-"));
     tempDirs.push(tempDir);
     const paths = createLocalDataPaths(tempDir);
@@ -186,6 +192,9 @@ describe("video storage", () => {
       segmentId: "segment_1",
       sceneId: "scene_1",
       segmentOrder: 1,
+      segmentSummary: "SC01-SG01-SH01",
+      shotCount: 1,
+      sourceShotIds: ["shot_1"],
       shotOrder: 1,
       frameDependency: "start_and_end_frame",
       durationSec: 5,
@@ -217,13 +226,85 @@ describe("video storage", () => {
           "videos",
           "batches",
           "video_batch_1",
-          "shots",
-          "scene_1__segment_1__shot_1",
+          "segments",
+          "scene_1__segment_1",
           "prompt.plan.json",
         ),
         "utf8",
       ),
     ).resolves.toContain('"dialoguePlan": "说话主体：林；台词：有人先到了。"');
+  });
+
+  it("persists segment reference audio and image assets under segment references", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-video-refs-"));
+    tempDirs.push(tempDir);
+    const paths = createLocalDataPaths(tempDir);
+    const storage = createVideoStorage({ paths });
+
+    expect(storage.persistSegmentReferenceAudio).toBeTypeOf("function");
+    expect(storage.persistSegmentReferenceImage).toBeTypeOf("function");
+
+    const audioAssetPath = await storage.persistSegmentReferenceAudio!({
+      projectStorageDir: "projects/proj_1-my-story",
+      batchId: "video_batch_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      audioId: "ref_audio_1",
+      fileExtension: ".wav",
+      content: Uint8Array.from([1, 2, 3]),
+    });
+    const imageAssetPath = await storage.persistSegmentReferenceImage!({
+      projectStorageDir: "projects/proj_1-my-story",
+      batchId: "video_batch_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      imageId: "ref_image_1",
+      fileExtension: ".png",
+      content: Uint8Array.from([4, 5, 6]),
+    });
+
+    expect(audioAssetPath).toBe(
+      "videos/batches/video_batch_1/segments/scene_1__segment_1/references/audios/ref_audio_1.wav",
+    );
+    expect(imageAssetPath).toBe(
+      "videos/batches/video_batch_1/segments/scene_1__segment_1/references/images/ref_image_1.png",
+    );
+    await expect(
+      fs.readFile(
+        path.join(
+          tempDir,
+          ".local-data",
+          "projects",
+          "proj_1-my-story",
+          "videos",
+          "batches",
+          "video_batch_1",
+          "segments",
+          "scene_1__segment_1",
+          "references",
+          "audios",
+          "ref_audio_1.wav",
+        ),
+      ),
+    ).resolves.toEqual(Buffer.from([1, 2, 3]));
+    await expect(
+      fs.readFile(
+        path.join(
+          tempDir,
+          ".local-data",
+          "projects",
+          "proj_1-my-story",
+          "videos",
+          "batches",
+          "video_batch_1",
+          "segments",
+          "scene_1__segment_1",
+          "references",
+          "images",
+          "ref_image_1.png",
+        ),
+      ),
+    ).resolves.toEqual(Buffer.from([4, 5, 6]));
   });
 
   it("writes stable and versioned final cut assets plus the concat manifest", async () => {
