@@ -29,7 +29,7 @@ export interface ProcessFinalCutGenerateTaskUseCaseDependencies {
   clock: Clock;
 }
 
-const sceneOrderCollator = new Intl.Collator("zh-CN", {
+const segmentOrderCollator = new Intl.Collator("zh-CN", {
   numeric: true,
   sensitivity: "base",
 });
@@ -68,28 +68,31 @@ export function createProcessFinalCutGenerateTaskUseCase(
           throw new CurrentVideoBatchNotFoundError(project.id);
         }
 
-        const shots = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
+        const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
 
         if (
-          shots.length === 0 ||
-          shots.some((shot) => shot.status !== "approved" || !shot.videoAssetPath)
+          segments.length === 0 ||
+          segments.some((segment) => segment.status !== "approved" || !segment.videoAssetPath)
         ) {
           throw new FinalCutApprovalRequiredError(project.id);
         }
 
-        const orderedShots = [...shots].sort((left, right) => {
-          const sceneCompare = sceneOrderCollator.compare(left.sceneId, right.sceneId);
-          if (sceneCompare !== 0) {
-            return sceneCompare;
-          }
+        const orderedSegments = [...segments].sort((left, right) => {
           if (left.segmentOrder !== right.segmentOrder) {
             return left.segmentOrder - right.segmentOrder;
           }
-          if (left.shotOrder !== right.shotOrder) {
-            return left.shotOrder - right.shotOrder;
+
+          const sceneCompare = segmentOrderCollator.compare(left.sceneId, right.sceneId);
+          if (sceneCompare !== 0) {
+            return sceneCompare;
           }
 
-          return sceneOrderCollator.compare(left.shotCode, right.shotCode);
+          const segmentCompare = segmentOrderCollator.compare(left.segmentId, right.segmentId);
+          if (segmentCompare !== 0) {
+            return segmentCompare;
+          }
+
+          return segmentOrderCollator.compare(left.id, right.id);
         });
         const finalCut = createFinalCutRecord({
           id: `final_cut_${task.id}`,
@@ -97,16 +100,16 @@ export function createProcessFinalCutGenerateTaskUseCase(
           projectStorageDir: project.storageDir,
           sourceVideoBatchId: batch.id,
           status: "ready",
-          shotCount: orderedShots.length,
+          shotCount: orderedSegments.length,
           createdAt: startedAt,
           updatedAt: startedAt,
         });
         const lines: string[] = [];
 
-        for (const shot of orderedShots) {
+        for (const segment of orderedSegments) {
           const assetPath = await dependencies.videoStorage.resolveProjectAssetPath({
             projectStorageDir: project.storageDir,
-            assetRelPath: shot.videoAssetPath!,
+            assetRelPath: segment.videoAssetPath!,
           });
           lines.push(`file '${escapeFfmpegPath(assetPath)}'`);
         }
@@ -138,12 +141,12 @@ export function createProcessFinalCutGenerateTaskUseCase(
           output: {
             finalCutId: completedFinalCut.id,
             sourceVideoBatchId: batch.id,
-            shotCount: orderedShots.length,
+            shotCount: orderedSegments.length,
           },
         });
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `final cut generated from ${orderedShots.length} approved shots`,
+          message: `final cut generated from ${orderedSegments.length} approved segments`,
         });
         await dependencies.taskRepository.markSucceeded({
           taskId: task.id,
