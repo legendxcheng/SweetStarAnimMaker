@@ -61,25 +61,26 @@ export function createRegenerateAllVideoPromptsUseCase(
       }
 
       const timestamp = dependencies.clock.now();
-      const shots = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
+      const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
       if (!dependencies.shotImageRepository.listShotsByBatchId) {
         throw new CurrentShotScriptNotFoundError(project.id);
       }
       const shotReferences = await dependencies.shotImageRepository.listShotsByBatchId(
         batch.sourceImageBatchId,
       );
-      const updatedShots = await Promise.all(shots.map(async (currentShot) => {
+      const updatedSegments = await Promise.all(segments.map(async (currentSegment) => {
         const scriptSegment = shotScript.segments.find(
           (item) =>
-            item.segmentId === currentShot.segmentId && item.sceneId === currentShot.sceneId,
+            item.segmentId === currentSegment.segmentId &&
+            item.sceneId === currentSegment.sceneId,
         );
 
         if (!scriptSegment) {
           throw new CurrentShotScriptNotFoundError(project.id);
         }
 
-        const scriptShot = scriptSegment.shots.find((item) => item.id === currentShot.shotId);
-        const shotReference = shotReferences.find((item) => item.shotId === currentShot.shotId);
+        const scriptShot = scriptSegment.shots.find((item) => item.id === currentSegment.shotId);
+        const shotReference = shotReferences.find((item) => item.shotId === currentSegment.shotId);
 
         if (!scriptShot || !shotReference) {
           throw new CurrentShotScriptNotFoundError(project.id);
@@ -95,7 +96,7 @@ export function createRegenerateAllVideoPromptsUseCase(
         );
 
         return {
-          ...currentShot,
+          ...currentSegment,
           promptTextCurrent: promptPlan.finalPrompt,
           promptUpdatedAt: timestamp,
           updatedAt: timestamp,
@@ -103,13 +104,13 @@ export function createRegenerateAllVideoPromptsUseCase(
         };
       }));
 
-      for (const shot of updatedShots) {
-        const { _promptPlan, ...persistedShot } = shot as typeof shot & {
+      for (const segment of updatedSegments) {
+        const { _promptPlan, ...persistedSegment } = segment as typeof segment & {
           _promptPlan: Awaited<ReturnType<VideoPromptProvider["generateVideoPrompt"]>>;
         };
-        await dependencies.videoRepository.updateSegment(persistedShot);
+        await dependencies.videoRepository.updateSegment(persistedSegment);
         await dependencies.videoStorage.writePromptPlan({
-          segment: persistedShot,
+          segment: persistedSegment,
           planning: {
             finalPrompt: _promptPlan.finalPrompt,
             dialoguePlan: _promptPlan.dialoguePlan,
@@ -126,9 +127,9 @@ export function createRegenerateAllVideoPromptsUseCase(
       return {
         currentBatch: toCurrentVideoBatchSummary(
           batch,
-          updatedShots.map(({ _promptPlan: _unused, ...shot }) => shot),
+          updatedSegments.map(({ _promptPlan: _unused, ...segment }) => segment),
         ),
-        shots: updatedShots.map(({ _promptPlan: _unused, ...shot }) => shot),
+        segments: updatedSegments.map(({ _promptPlan: _unused, ...segment }) => segment),
       };
     },
   };

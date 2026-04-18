@@ -72,7 +72,7 @@ export function createListVideosUseCase(
 
       return {
         currentBatch: toCurrentVideoBatchSummary(batch, repairedSegments),
-        shots: repairedSegments.map(toVisibleSegmentVideoRecord),
+        segments: repairedSegments.map(toVisibleSegmentVideoRecord),
       };
     },
   };

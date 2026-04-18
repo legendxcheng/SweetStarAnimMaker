@@ -21,6 +21,8 @@ export type {
   MasterPlotReviewSummary,
   MasterPlotReviewWorkspace,
   SegmentVideoRecord,
+  SegmentVideoReferenceAudio,
+  SegmentVideoReferenceImage,
   TaskDetail,
 } from "@sweet-star/shared";
 

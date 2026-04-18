@@ -1,15 +1,31 @@
+export interface GenerateSegmentVideoReferenceImageInput {
+  assetPath: string;
+  label?: string | null;
+  order: number;
+}
+
+export interface GenerateSegmentVideoReferenceAudioInput {
+  assetPath: string;
+  label?: string | null;
+  order: number;
+}
+
 export interface GenerateSegmentVideoInput {
   projectId: string;
   sceneId: string;
   segmentId: string;
+  promptText: string;
+  referenceImages?: GenerateSegmentVideoReferenceImageInput[];
+  referenceAudios?: GenerateSegmentVideoReferenceAudioInput[];
+  durationSec?: number | null;
+  aspectRatio?: string | null;
+  model?: string | null;
+  // Deprecated shot-first fields retained for compatibility until segment generation is migrated.
   shotId: string;
   shotCode: string;
   frameDependency: "start_frame_only" | "start_and_end_frame";
-  promptText: string;
   startFramePath: string;
   endFramePath?: string;
-  durationSec?: number | null;
-  model?: string | null;
 }
 
 export interface GenerateSegmentVideoResult {

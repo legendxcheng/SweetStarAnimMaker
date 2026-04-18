@@ -1,4 +1,9 @@
-import type { SegmentVideoRecord, SaveVideoPromptRequest } from "@sweet-star/shared";
+import type {
+  SegmentVideoRecord,
+  SegmentVideoReferenceAudio,
+  SegmentVideoReferenceImage,
+  SaveVideoPromptRequest,
+} from "@sweet-star/shared";
 
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
@@ -6,9 +11,12 @@ import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { VideoRepository } from "../ports/video-repository";
 
-export interface UpdateVideoPromptInput extends SaveVideoPromptRequest {
+export interface UpdateVideoPromptInput
+  extends Pick<SaveVideoPromptRequest, "promptTextCurrent"> {
   projectId: string;
   videoId: string;
+  referenceImages?: SegmentVideoReferenceImage[];
+  referenceAudios?: SegmentVideoReferenceAudio[];
 }
 
 export interface UpdateVideoPromptUseCase {
@@ -48,6 +56,8 @@ export function createUpdateVideoPromptUseCase(
       const updatedSegment = {
         ...segment,
         promptTextCurrent,
+        referenceImages: input.referenceImages ?? segment.referenceImages,
+        referenceAudios: input.referenceAudios ?? segment.referenceAudios,
         promptUpdatedAt: timestamp,
         updatedAt: timestamp,
       };

@@ -1,15 +1,20 @@
 import type {
   CurrentVideoBatchSummary,
   FinalCutRecord,
+  SegmentVideoRecord,
+  SegmentVideoReferenceAudio,
+  SegmentVideoReferenceImage,
+  SegmentVideoStatus,
   ShotFrameDependency,
-  ShotVideoRecord,
-  ShotVideoStatus,
 } from "@sweet-star/shared";
 
 export const videosDirectoryName = "videos";
 export const videoBatchesDirectoryName = "batches";
 export const videoShotsDirectoryName = "shots";
 export const videoSegmentsDirectoryName = "segments";
+export const videoReferencesDirectoryName = "references";
+export const videoReferenceImagesDirectoryName = "images";
+export const videoReferenceAudiosDirectoryName = "audios";
 export const videoCurrentBatchFileName = "current-batch.json";
 export const videoManifestFileName = "manifest.json";
 export const videoCurrentFileName = "current.mp4";
@@ -52,16 +57,23 @@ export interface VideoBatchRecord {
   projectStorageDir: string;
   sourceImageBatchId: string;
   sourceShotScriptId: string;
-  shotCount: number;
+  segmentCount: number;
   storageDir: string;
   manifestRelPath: string;
   createdAt: string;
   updatedAt: string;
-  // Temporary alias while segment-first callers are still being migrated.
-  segmentCount: number;
+  // Deprecated alias while shot-first internals are still being migrated.
+  shotCount: number;
 }
 
-export interface ShotVideoRecordEntity extends ShotVideoRecord {
+export interface LegacyShotVideoFields {
+  shotId: string;
+  shotCode: string;
+  shotOrder: number;
+  frameDependency: ShotFrameDependency;
+}
+
+export interface SegmentVideoRecordEntity extends SegmentVideoRecord, LegacyShotVideoFields {
   projectStorageDir: string;
   storageDir: string;
   currentVideoRelPath: string;
@@ -70,7 +82,7 @@ export interface ShotVideoRecordEntity extends ShotVideoRecord {
   versionsStorageDir: string;
 }
 
-export type SegmentVideoRecordEntity = ShotVideoRecordEntity;
+export type ShotVideoRecordEntity = SegmentVideoRecordEntity;
 
 export interface CreateVideoBatchRecordInput {
   id: string;
@@ -82,6 +94,41 @@ export interface CreateVideoBatchRecordInput {
   segmentCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateSegmentVideoRecordInput {
+  id: string;
+  batchId: string;
+  projectId: string;
+  projectStorageDir: string;
+  sourceImageBatchId: string;
+  sourceShotScriptId: string;
+  sceneId: string;
+  segmentId: string;
+  segmentOrder: number;
+  segmentName?: string | null;
+  segmentSummary: string;
+  shotCount: number;
+  sourceShotIds: string[];
+  status?: SegmentVideoStatus;
+  promptTextSeed?: string;
+  promptTextCurrent?: string;
+  promptUpdatedAt?: string;
+  referenceImages?: SegmentVideoReferenceImage[];
+  referenceAudios?: SegmentVideoReferenceAudio[];
+  videoAssetPath?: string | null;
+  thumbnailAssetPath?: string | null;
+  durationSec?: number | null;
+  provider?: string | null;
+  model?: string | null;
+  updatedAt: string;
+  approvedAt?: string | null;
+  sourceTaskId?: string | null;
+  // Deprecated legacy fields kept until downstream use cases are migrated.
+  shotId?: string;
+  shotCode?: string;
+  shotOrder?: number;
+  frameDependency?: ShotFrameDependency;
 }
 
 export interface CreateShotVideoRecordInput {
@@ -98,10 +145,12 @@ export interface CreateShotVideoRecordInput {
   segmentOrder: number;
   shotOrder: number;
   frameDependency: ShotFrameDependency;
-  status?: ShotVideoStatus;
+  status?: SegmentVideoStatus;
   promptTextSeed?: string;
   promptTextCurrent?: string;
   promptUpdatedAt?: string;
+  referenceImages?: SegmentVideoReferenceImage[];
+  referenceAudios?: SegmentVideoReferenceAudio[];
   videoAssetPath?: string | null;
   thumbnailAssetPath?: string | null;
   durationSec?: number | null;
@@ -111,8 +160,6 @@ export interface CreateShotVideoRecordInput {
   approvedAt?: string | null;
   sourceTaskId?: string | null;
 }
-
-export type CreateSegmentVideoRecordInput = CreateShotVideoRecordInput;
 
 export function toVideoBatchStorageDir(projectStorageDir: string, batchId: string) {
   return `${projectStorageDir}/${videosDirectoryName}/${videoBatchesDirectoryName}/${batchId}`;
@@ -126,8 +173,21 @@ export function toVideoCurrentBatchRelPath() {
   return `${videosDirectoryName}/${videoCurrentBatchFileName}`;
 }
 
-export function toSegmentVideoStorageDir(batchId: string, segmentStorageKey: string) {
-  return `${videosDirectoryName}/${videoBatchesDirectoryName}/${batchId}/${videoSegmentsDirectoryName}/${segmentStorageKey}`;
+export function toSegmentVideoStorageKey(input: {
+  sceneId: string;
+  segmentId: string;
+}) {
+  return `${input.sceneId}__${input.segmentId}`;
+}
+
+export function toSegmentVideoStorageDir(
+  batchId: string,
+  input: {
+    sceneId: string;
+    segmentId: string;
+  },
+) {
+  return `${videosDirectoryName}/${videoBatchesDirectoryName}/${batchId}/${videoSegmentsDirectoryName}/${toSegmentVideoStorageKey(input)}`;
 }
 
 export function toShotVideoStorageKey(input: {
@@ -150,7 +210,7 @@ export function toShotVideoStorageDir(
 }
 
 export function createVideoBatchRecord(input: CreateVideoBatchRecordInput): VideoBatchRecord {
-  const shotCount = input.shotCount ?? input.segmentCount ?? 0;
+  const segmentCount = input.segmentCount ?? input.shotCount ?? 0;
 
   return {
     id: input.id,
@@ -158,12 +218,60 @@ export function createVideoBatchRecord(input: CreateVideoBatchRecordInput): Vide
     projectStorageDir: input.projectStorageDir,
     sourceImageBatchId: input.sourceImageBatchId,
     sourceShotScriptId: input.sourceShotScriptId,
-    shotCount,
+    segmentCount,
     storageDir: toVideoBatchStorageDir(input.projectStorageDir, input.id),
     manifestRelPath: toVideoBatchManifestRelPath(input.id),
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
-    segmentCount: shotCount,
+    shotCount: segmentCount,
+  };
+}
+
+export function createSegmentVideoRecord(
+  input: CreateSegmentVideoRecordInput,
+): SegmentVideoRecordEntity {
+  const storageDir = toSegmentVideoStorageDir(input.batchId, {
+    sceneId: input.sceneId,
+    segmentId: input.segmentId,
+  });
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    batchId: input.batchId,
+    sourceImageBatchId: input.sourceImageBatchId,
+    sourceShotScriptId: input.sourceShotScriptId,
+    sceneId: input.sceneId,
+    segmentId: input.segmentId,
+    segmentOrder: input.segmentOrder,
+    segmentName: input.segmentName ?? null,
+    segmentSummary: input.segmentSummary,
+    shotCount: input.shotCount,
+    sourceShotIds: input.sourceShotIds,
+    status: input.status ?? "generating",
+    promptTextSeed: input.promptTextSeed ?? "",
+    promptTextCurrent: input.promptTextCurrent ?? "",
+    promptUpdatedAt: input.promptUpdatedAt ?? input.updatedAt,
+    referenceImages: input.referenceImages ?? [],
+    referenceAudios: input.referenceAudios ?? [],
+    videoAssetPath: input.videoAssetPath ?? null,
+    thumbnailAssetPath: input.thumbnailAssetPath ?? null,
+    durationSec: input.durationSec ?? null,
+    provider: input.provider ?? null,
+    model: input.model ?? null,
+    updatedAt: input.updatedAt,
+    approvedAt: input.approvedAt ?? null,
+    sourceTaskId: input.sourceTaskId ?? null,
+    shotId: input.shotId ?? input.sourceShotIds[0] ?? input.segmentId,
+    shotCode: input.shotCode ?? input.sourceShotIds[0] ?? input.segmentId,
+    shotOrder: input.shotOrder ?? 1,
+    frameDependency: input.frameDependency ?? "start_frame_only",
+    projectStorageDir: input.projectStorageDir,
+    storageDir: `${input.projectStorageDir}/${storageDir}`,
+    currentVideoRelPath: `${storageDir}/${videoCurrentFileName}`,
+    currentMetadataRelPath: `${storageDir}/${videoCurrentMetadataFileName}`,
+    thumbnailRelPath: `${storageDir}/${videoThumbnailFileName}`,
+    versionsStorageDir: `${storageDir}/${videoVersionsDirectoryName}`,
   };
 }
 
@@ -180,17 +288,19 @@ export function createShotVideoRecord(input: CreateShotVideoRecordInput): ShotVi
     batchId: input.batchId,
     sourceImageBatchId: input.sourceImageBatchId,
     sourceShotScriptId: input.sourceShotScriptId,
-    shotId: input.shotId,
-    shotCode: input.shotCode,
     sceneId: input.sceneId,
     segmentId: input.segmentId,
     segmentOrder: input.segmentOrder,
-    shotOrder: input.shotOrder,
-    frameDependency: input.frameDependency,
+    segmentName: null,
+    segmentSummary: input.shotCode,
+    shotCount: 1,
+    sourceShotIds: [input.shotId],
     status: input.status ?? "generating",
     promptTextSeed: input.promptTextSeed ?? "",
     promptTextCurrent: input.promptTextCurrent ?? "",
     promptUpdatedAt: input.promptUpdatedAt ?? input.updatedAt,
+    referenceImages: input.referenceImages ?? [],
+    referenceAudios: input.referenceAudios ?? [],
     videoAssetPath: input.videoAssetPath ?? null,
     thumbnailAssetPath: input.thumbnailAssetPath ?? null,
     durationSec: input.durationSec ?? null,
@@ -199,6 +309,10 @@ export function createShotVideoRecord(input: CreateShotVideoRecordInput): ShotVi
     updatedAt: input.updatedAt,
     approvedAt: input.approvedAt ?? null,
     sourceTaskId: input.sourceTaskId ?? null,
+    shotId: input.shotId,
+    shotCode: input.shotCode,
+    shotOrder: input.shotOrder,
+    frameDependency: input.frameDependency,
     projectStorageDir: input.projectStorageDir,
     storageDir: `${input.projectStorageDir}/${storageDir}`,
     currentVideoRelPath: `${storageDir}/${videoCurrentFileName}`,
@@ -206,12 +320,6 @@ export function createShotVideoRecord(input: CreateShotVideoRecordInput): ShotVi
     thumbnailRelPath: `${storageDir}/${videoThumbnailFileName}`,
     versionsStorageDir: `${storageDir}/${videoVersionsDirectoryName}`,
   };
-}
-
-export function createSegmentVideoRecord(
-  input: CreateSegmentVideoRecordInput,
-): SegmentVideoRecordEntity {
-  return createShotVideoRecord(input);
 }
 
 export function toFinalCutStorageDir(projectStorageDir: string) {
@@ -249,17 +357,18 @@ export function createFinalCutRecord(input: CreateFinalCutRecordInput): FinalCut
 }
 
 export function toCurrentVideoBatchSummary(
-  batch: Pick<VideoBatchRecord, "id" | "sourceImageBatchId" | "sourceShotScriptId" | "shotCount" | "updatedAt"> & {
+  batch: Pick<VideoBatchRecord, "id" | "sourceImageBatchId" | "sourceShotScriptId" | "updatedAt"> & {
     segmentCount?: number;
+    shotCount?: number;
   },
-  shots: Pick<ShotVideoRecord, "status">[],
+  segments: Pick<SegmentVideoRecordEntity, "status">[],
 ): CurrentVideoBatchSummary {
   return {
     id: batch.id,
     sourceImageBatchId: batch.sourceImageBatchId,
     sourceShotScriptId: batch.sourceShotScriptId,
-    shotCount: batch.shotCount ?? batch.segmentCount ?? 0,
-    approvedShotCount: shots.filter((shot) => shot.status === "approved").length,
+    segmentCount: batch.segmentCount ?? batch.shotCount ?? 0,
+    approvedSegmentCount: segments.filter((segment) => segment.status === "approved").length,
     updatedAt: batch.updatedAt,
   };
 }

@@ -37,6 +37,8 @@ export type {
   UpdateProjectPremiseMetadataInput,
 } from "../ports/project-repository";
 export type {
+  GenerateSegmentVideoReferenceAudioInput,
+  GenerateSegmentVideoReferenceImageInput,
   GenerateSegmentVideoInput,
   GenerateSegmentVideoResult,
   VideoProvider,
@@ -52,6 +54,8 @@ export type {
 export type { VideoRepository } from "../ports/video-repository";
 export type {
   InitializeVideoPromptTemplateInput,
+  PersistSegmentReferenceAudioInput,
+  PersistSegmentReferenceImageInput,
   ReadVideoPromptTemplateInput,
   ResolveProjectAssetPathInput as ResolveVideoProjectAssetPathInput,
   VideoStorage,

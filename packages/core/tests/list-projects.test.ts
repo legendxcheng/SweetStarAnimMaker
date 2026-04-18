@@ -342,8 +342,8 @@ describe("list projects use case", () => {
     );
     expect(result[0].currentVideoBatch).toEqual(
       expect.objectContaining({
-        shotCount: 1,
-        approvedShotCount: 1,
+        segmentCount: 1,
+        approvedSegmentCount: 1,
       }),
     );
   });

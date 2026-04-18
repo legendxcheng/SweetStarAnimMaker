@@ -43,16 +43,16 @@ export function createApproveAllVideoSegmentsUseCase(
       }
 
       const timestamp = dependencies.clock.now();
-      const shots = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-      const updatedShots = shots.map((shot) => ({
-        ...shot,
+      const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
+      const updatedSegments = segments.map((segment) => ({
+        ...segment,
         status: "approved" as const,
-        approvedAt: shot.approvedAt ?? timestamp,
+        approvedAt: segment.approvedAt ?? timestamp,
         updatedAt: timestamp,
       }));
 
-      for (const shot of updatedShots) {
-        await dependencies.videoRepository.updateSegment(shot);
+      for (const segment of updatedSegments) {
+        await dependencies.videoRepository.updateSegment(segment);
       }
 
       await dependencies.projectRepository.updateStatus({
@@ -62,8 +62,8 @@ export function createApproveAllVideoSegmentsUseCase(
       });
 
       return {
-        currentBatch: toCurrentVideoBatchSummary(batch, updatedShots),
-        shots: updatedShots,
+        currentBatch: toCurrentVideoBatchSummary(batch, updatedSegments),
+        segments: updatedSegments,
       };
     },
   };

@@ -323,11 +323,11 @@ describe("regenerate all video prompts use case", () => {
     const result = await useCase.execute({ projectId: "proj_1" });
 
     expect(videoRepository.updateSegment).toHaveBeenCalledTimes(2);
-    expect(result.shots).toHaveLength(2);
-    expect(result.shots[0]?.promptTextCurrent).toBe(
+    expect(result.segments).toHaveLength(2);
+    expect(result.segments[0]?.promptTextCurrent).toBe(
       "以<<<image_1>>>为首帧锚点，林进入积水市场，保留脚步与雨声。",
     );
-    expect(result.shots[1]?.promptTextCurrent).toBe(
+    expect(result.segments[1]?.promptTextCurrent).toBe(
       "以<<<image_1>>>为首帧锚点，林转向被水淹没的路口，无对白，强调水流声。",
     );
   });

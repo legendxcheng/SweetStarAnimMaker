@@ -1,5 +1,7 @@
 import type {
   CurrentShotScript,
+  SegmentVideoReferenceAudio,
+  SegmentVideoReferenceImage,
   ShotFrameDependency,
   ShotScriptItem,
   ShotScriptSegment,
@@ -258,7 +260,6 @@ export interface VideosGenerateTaskInput {
     totalRequiredFrameCount: number;
     approvedShotCount: number;
     updatedAt: string;
-    // Temporary aliases for segment-first callers still being migrated.
     segmentCount?: number;
     totalFrameCount?: number;
     approvedFrameCount?: number;
@@ -283,11 +284,19 @@ export interface SegmentVideoGenerateTaskInput {
   sourceShotScriptId: string;
   segmentId: string;
   sceneId: string;
+  segmentOrder?: number;
+  segmentName?: string | null;
+  segmentSummary?: string;
+  shotCount?: number;
+  sourceShotIds?: string[];
   shotId: string;
   shotCode: string;
   frameDependency: ShotFrameDependency;
   segment: ShotScriptSegment;
+  shots?: ShotScriptItem[];
   shot: ShotScriptItem;
+  referenceImages?: SegmentVideoReferenceImage[];
+  referenceAudios?: SegmentVideoReferenceAudio[];
   startFrame: {
     id: string;
     imageAssetPath: string | null;
@@ -312,11 +321,19 @@ export interface SegmentVideoPromptGenerateTaskInput {
   sourceShotScriptId: string;
   segmentId: string;
   sceneId: string;
+  segmentOrder?: number;
+  segmentName?: string | null;
+  segmentSummary?: string;
+  shotCount?: number;
+  sourceShotIds?: string[];
   shotId: string;
   shotCode: string;
   frameDependency: ShotFrameDependency;
   segment: ShotScriptSegment;
+  shots?: ShotScriptItem[];
   shot: ShotScriptItem;
+  referenceImages?: SegmentVideoReferenceImage[];
+  referenceAudios?: SegmentVideoReferenceAudio[];
   startFrame: {
     id: string;
     imageAssetPath: string | null;

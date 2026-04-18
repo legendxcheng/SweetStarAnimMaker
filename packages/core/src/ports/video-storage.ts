@@ -1,6 +1,6 @@
 import type {
   FinalCutRecordEntity,
-  ShotVideoRecordEntity,
+  SegmentVideoRecordEntity,
   VideoBatchRecord,
 } from "../domain/video";
 
@@ -21,7 +21,7 @@ export interface WriteVideoPromptSnapshotInput {
 }
 
 export interface WriteVideoPromptPlanInput {
-  segment: ShotVideoRecordEntity;
+  segment: SegmentVideoRecordEntity;
   planning: Record<string, unknown>;
 }
 
@@ -35,7 +35,7 @@ export interface WriteVideoBatchManifestInput {
 }
 
 export interface WriteCurrentVideoInput {
-  segment: ShotVideoRecordEntity;
+  segment: SegmentVideoRecordEntity;
   videoSourceUrl: string;
   thumbnailSourceUrl: string | null;
   metadata: Record<string, unknown>;
@@ -60,6 +60,26 @@ export interface ResolveProjectAssetPathInput {
   assetRelPath: string;
 }
 
+export interface PersistSegmentReferenceAudioInput {
+  projectStorageDir: string;
+  batchId: string;
+  sceneId: string;
+  segmentId: string;
+  audioId: string;
+  fileExtension: string;
+  content: Uint8Array;
+}
+
+export interface PersistSegmentReferenceImageInput {
+  projectStorageDir: string;
+  batchId: string;
+  sceneId: string;
+  segmentId: string;
+  imageId: string;
+  fileExtension: string;
+  content: Uint8Array;
+}
+
 export interface VideoStorage {
   initializePromptTemplate(input: InitializeVideoPromptTemplateInput): Promise<void> | void;
   readPromptTemplate(input: ReadVideoPromptTemplateInput): Promise<string> | string;
@@ -71,5 +91,7 @@ export interface VideoStorage {
   writeVideoVersion(input: WriteVideoVersionInput): Promise<void> | void;
   writeFinalCutManifest?(input: WriteFinalCutManifestInput): Promise<void> | void;
   writeFinalCutFiles?(input: WriteFinalCutFilesInput): Promise<void> | void;
+  persistSegmentReferenceAudio?(input: PersistSegmentReferenceAudioInput): Promise<string> | string;
+  persistSegmentReferenceImage?(input: PersistSegmentReferenceImageInput): Promise<string> | string;
   resolveProjectAssetPath(input: ResolveProjectAssetPathInput): Promise<string> | string;
 }
