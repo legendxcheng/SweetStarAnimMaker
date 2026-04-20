@@ -3,7 +3,7 @@ import type { SegmentVideoRecord } from "@sweet-star/shared";
 
 import { getButtonClassName } from "../../styles/button-styles";
 import { VIDEO_STATUS_LABELS } from "./constants";
-import { getAssetUrl } from "./utils";
+import { getAssetUrl, isSegmentVideoReadyForApproval } from "./utils";
 
 interface VideoSegmentCardProps {
   cardClass: string;
@@ -38,6 +38,7 @@ export function VideoSegmentCard({
 }: VideoSegmentCardProps) {
   const canSaveConfig = promptDraft.trim().length > 0;
   const isGenerating = segment.status === "generating";
+  const isReadyForApproval = isSegmentVideoReadyForApproval(segment);
   const title = segment.segmentName ?? segment.segmentId;
   const audioInputId = `segment-audio-upload-${segment.id}`;
 
@@ -234,7 +235,7 @@ export function VideoSegmentCard({
             <button
               type="button"
               onClick={onApprove}
-              disabled={isBusy || segment.status !== "in_review"}
+              disabled={isBusy || !isReadyForApproval}
               className={getButtonClassName({ variant: "success" })}
             >
               审核通过当前 Segment

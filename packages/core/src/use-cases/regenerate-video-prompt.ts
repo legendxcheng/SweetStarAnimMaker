@@ -12,6 +12,7 @@ import type { ProjectRepository } from "../ports/project-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { deriveProjectVideoStatus } from "./derive-project-video-status";
 
 export interface RegenerateVideoPromptInput {
   projectId: string;
@@ -45,7 +46,11 @@ export function createRegenerateVideoPromptUseCase(
 
       const currentSegment = await dependencies.videoRepository.findSegmentById(input.videoId);
 
-      if (!currentSegment || currentSegment.projectId !== project.id) {
+      if (
+        !currentSegment ||
+        currentSegment.projectId !== project.id ||
+        currentSegment.batchId !== project.currentVideoBatchId
+      ) {
         throw new SegmentVideoNotFoundError(input.videoId);
       }
 
@@ -103,6 +108,8 @@ export function createRegenerateVideoPromptUseCase(
       const timestamp = dependencies.clock.now();
       const updatedSegment = {
         ...currentSegment,
+        status: currentSegment.status === "approved" ? ("in_review" as const) : currentSegment.status,
+        approvedAt: currentSegment.status === "approved" ? null : currentSegment.approvedAt,
         promptTextCurrent,
         promptUpdatedAt: timestamp,
         updatedAt: timestamp,
@@ -121,6 +128,12 @@ export function createRegenerateVideoPromptUseCase(
           model: promptPlan.model,
           rawResponse: promptPlan.rawResponse,
         },
+      });
+      const segments = await dependencies.videoRepository.listSegmentsByBatchId(currentSegment.batchId);
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: deriveProjectVideoStatus(segments, updatedSegment),
+        updatedAt: timestamp,
       });
 
       return updatedSegment;

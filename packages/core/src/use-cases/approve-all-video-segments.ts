@@ -1,7 +1,7 @@
 import type { VideoListResponse } from "@sweet-star/shared";
 
 import { toCurrentVideoBatchSummary } from "../domain/video";
-import { ProjectNotFoundError } from "../errors/project-errors";
+import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { CurrentVideoBatchNotFoundError } from "../errors/video-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -19,6 +19,23 @@ export interface ApproveAllVideoSegmentsUseCaseDependencies {
   projectRepository: ProjectRepository;
   videoRepository: VideoRepository;
   clock: Clock;
+}
+
+function isSegmentVideoReadyForApproval(segment: {
+  status: string;
+  videoAssetPath: string | null;
+}) {
+  return segment.status === "in_review" && segment.videoAssetPath !== null;
+}
+
+function isSegmentVideoApprovedOrReady(segment: {
+  status: string;
+  videoAssetPath: string | null;
+}) {
+  return (
+    (segment.status === "approved" && segment.videoAssetPath !== null) ||
+    isSegmentVideoReadyForApproval(segment)
+  );
 }
 
 export function createApproveAllVideoSegmentsUseCase(
@@ -44,14 +61,28 @@ export function createApproveAllVideoSegmentsUseCase(
 
       const timestamp = dependencies.clock.now();
       const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-      const updatedSegments = segments.map((segment) => ({
-        ...segment,
-        status: "approved" as const,
-        approvedAt: segment.approvedAt ?? timestamp,
-        updatedAt: timestamp,
-      }));
+      const invalidSegment = segments.find((segment) => !isSegmentVideoApprovedOrReady(segment));
+
+      if (invalidSegment) {
+        throw new ProjectValidationError("All segment videos must be generated before approval");
+      }
+
+      const updatedSegments = segments.map((segment) =>
+        segment.status === "approved"
+          ? segment
+          : {
+              ...segment,
+              status: "approved" as const,
+              approvedAt: segment.approvedAt ?? timestamp,
+              updatedAt: timestamp,
+            },
+      );
 
       for (const segment of updatedSegments) {
+        if (segment.status === "approved" && segments.some((item) => item.id === segment.id && item.status === "approved")) {
+          continue;
+        }
+
         await dependencies.videoRepository.updateSegment(segment);
       }
 

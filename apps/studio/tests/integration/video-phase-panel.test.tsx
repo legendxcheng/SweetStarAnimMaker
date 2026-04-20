@@ -331,6 +331,149 @@ describe("VideoPhasePanel", () => {
     });
   });
 
+  it("disables approval controls for an in-review segment without a generated video asset", async () => {
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: baseProject.currentVideoBatch,
+      segments: [
+        createVideoSegment({
+          videoAssetPath: null,
+          thumbnailAssetPath: null,
+        }),
+      ],
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByText("当前 Segment 还没有可播放视频")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "审核通过当前 Segment" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "全部片段审核通过" })).toBeDisabled();
+  });
+
+  it("refreshes project summary after saving config for an approved segment", async () => {
+    const onProjectRefresh = vi.fn();
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentVideoBatch,
+        approvedSegmentCount: 1,
+      },
+      segments: [
+        createVideoSegment({
+          status: "approved",
+          approvedAt: "2024-01-01T00:00:12Z",
+        }),
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "saveSegmentVideoConfig").mockResolvedValue(
+      createVideoSegment({
+        status: "in_review",
+        approvedAt: null,
+        promptTextCurrent: "保存后的降级提示词",
+        promptUpdatedAt: "2024-01-01T00:00:13Z",
+        updatedAt: "2024-01-01T00:00:13Z",
+      }),
+    );
+
+    renderPanel({
+      project: {
+        ...baseProject,
+        status: "videos_approved",
+        currentVideoBatch: {
+          ...baseProject.currentVideoBatch,
+          approvedSegmentCount: 1,
+        },
+      },
+      onProjectRefresh,
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    fireEvent.change(
+      screen.getByDisplayValue("雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。"),
+      {
+        target: { value: "保存后的降级提示词" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存当前 Segment 配置" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.saveSegmentVideoConfig).toHaveBeenCalledWith(
+        "proj-1",
+        "video-segment-1",
+        {
+          promptTextCurrent: "保存后的降级提示词",
+          referenceImages: [],
+          referenceAudios: [],
+        },
+      );
+    });
+    await waitFor(() => {
+      expect(onProjectRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("refreshes project summary after regenerating prompts for an approved batch", async () => {
+    const onProjectRefresh = vi.fn();
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentVideoBatch,
+        approvedSegmentCount: 1,
+      },
+      segments: [
+        createVideoSegment({
+          status: "approved",
+          approvedAt: "2024-01-01T00:00:12Z",
+        }),
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateAllVideoPrompts").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentVideoBatch,
+        approvedSegmentCount: 0,
+        updatedAt: "2024-01-01T00:00:13Z",
+      },
+      segments: [
+        createVideoSegment({
+          status: "in_review",
+          approvedAt: null,
+          promptTextCurrent: "批量重生成后的降级提示词",
+          promptUpdatedAt: "2024-01-01T00:00:13Z",
+          updatedAt: "2024-01-01T00:00:13Z",
+        }),
+      ],
+    });
+
+    renderPanel({
+      project: {
+        ...baseProject,
+        status: "videos_approved",
+        currentVideoBatch: {
+          ...baseProject.currentVideoBatch,
+          approvedSegmentCount: 1,
+        },
+      },
+      onProjectRefresh,
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成所有片段提示词" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateAllVideoPrompts).toHaveBeenCalledWith("proj-1");
+    });
+    await waitFor(() => {
+      expect(onProjectRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("renders segment cards in segment-first hierarchy order when the API returns them unsorted", async () => {
     vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
       currentBatch: {

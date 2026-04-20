@@ -6,6 +6,7 @@ import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { deriveProjectVideoStatus } from "./derive-project-video-status";
 
 export interface UploadSegmentVideoAudioInput {
   projectId: string;
@@ -44,7 +45,11 @@ export function createUploadSegmentVideoAudioUseCase(
 
       const segment = await dependencies.videoRepository.findSegmentById(input.videoId);
 
-      if (!segment || segment.projectId !== project.id) {
+      if (
+        !segment ||
+        segment.projectId !== project.id ||
+        segment.batchId !== project.currentVideoBatchId
+      ) {
         throw new SegmentVideoNotFoundError(input.videoId);
       }
 
@@ -63,6 +68,8 @@ export function createUploadSegmentVideoAudioUseCase(
       const timestamp = dependencies.clock.now();
       const updatedSegment = {
         ...segment,
+        status: segment.status === "approved" ? ("in_review" as const) : segment.status,
+        approvedAt: segment.status === "approved" ? null : segment.approvedAt,
         referenceAudios: [
           ...segment.referenceAudios,
           {
@@ -78,6 +85,12 @@ export function createUploadSegmentVideoAudioUseCase(
       };
 
       await dependencies.videoRepository.updateSegment(updatedSegment);
+      const segments = await dependencies.videoRepository.listSegmentsByBatchId(segment.batchId);
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: deriveProjectVideoStatus(segments, updatedSegment),
+        updatedAt: timestamp,
+      });
 
       return updatedSegment;
     },

@@ -14,7 +14,7 @@ import { CARD_CLASS, META_LABEL_CLASS, META_VALUE_CLASS } from "./video-phase-pa
 import { FinalCutCard } from "./video-phase-panel/final-cut-card";
 import { TaskStatusCard } from "./video-phase-panel/task-status-card";
 import type { VideoPhaseActionBusy } from "./video-phase-panel/types";
-import { sortSegmentsByHierarchy } from "./video-phase-panel/utils";
+import { isSegmentVideoApprovedOrReady, sortSegmentsByHierarchy } from "./video-phase-panel/utils";
 import { VideoSegmentCard } from "./video-phase-panel/video-segment-card";
 
 interface VideoPhasePanelProps {
@@ -293,6 +293,7 @@ export function VideoPhasePanel({
       });
 
       updateSegment(updatedSegment);
+      await refreshProject();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -306,6 +307,7 @@ export function VideoPhasePanel({
       setActionBusy({ kind: "upload-audio", segmentId: segment.id });
       const updatedSegment = await apiClient.uploadSegmentReferenceAudio(project.id, segment.id, file);
       updateSegment(updatedSegment);
+      await refreshProject();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -352,6 +354,7 @@ export function VideoPhasePanel({
       const response = await apiClient.regenerateAllVideoPrompts(project.id);
 
       applyVideoListResponse(response);
+      await refreshProject();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -398,7 +401,7 @@ export function VideoPhasePanel({
 
   const canApproveAll =
     segments.length > 0 &&
-    segments.every((segment) => segment.status === "in_review" || segment.status === "approved");
+    segments.every((segment) => isSegmentVideoApprovedOrReady(segment));
   const hasDirtyPrompts = segments.some(
     (segment) => (drafts[segment.id] ?? segment.promptTextCurrent) !== segment.promptTextCurrent,
   );

@@ -33,3 +33,15 @@ export function sortSegmentsByHierarchy(segments: SegmentVideoRecord[]) {
     return segmentHierarchyCollator.compare(left.id, right.id);
   });
 }
+
+export function isSegmentVideoReadyForApproval(
+  segment: Pick<SegmentVideoRecord, "status" | "videoAssetPath">,
+) {
+  return segment.status === "in_review" && segment.videoAssetPath !== null;
+}
+
+export function isSegmentVideoApprovedOrReady(
+  segment: Pick<SegmentVideoRecord, "status" | "videoAssetPath">,
+) {
+  return segment.status === "approved" || isSegmentVideoReadyForApproval(segment);
+}

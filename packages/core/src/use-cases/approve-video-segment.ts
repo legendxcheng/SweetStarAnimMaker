@@ -1,6 +1,6 @@
 import type { SegmentVideoRecord } from "@sweet-star/shared";
 
-import { ProjectNotFoundError } from "../errors/project-errors";
+import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -21,6 +21,12 @@ export interface ApproveVideoSegmentUseCaseDependencies {
   clock: Clock;
 }
 
+function isSegmentVideoReadyForApproval(
+  segment: Pick<SegmentVideoRecord, "status" | "videoAssetPath">,
+) {
+  return segment.status === "in_review" && segment.videoAssetPath !== null;
+}
+
 export function createApproveVideoSegmentUseCase(
   dependencies: ApproveVideoSegmentUseCaseDependencies,
 ): ApproveVideoSegmentUseCase {
@@ -36,6 +42,10 @@ export function createApproveVideoSegmentUseCase(
 
       if (!segment || segment.projectId !== project.id || segment.batchId !== project.currentVideoBatchId) {
         throw new SegmentVideoNotFoundError(input.videoId);
+      }
+
+      if (!isSegmentVideoReadyForApproval(segment)) {
+        throw new ProjectValidationError("Segment video is not ready for approval");
       }
 
       const timestamp = dependencies.clock.now();

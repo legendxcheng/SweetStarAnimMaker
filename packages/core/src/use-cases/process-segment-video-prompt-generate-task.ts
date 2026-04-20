@@ -16,6 +16,7 @@ import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
 import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
+import { deriveProjectVideoStatus } from "./derive-project-video-status";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessSegmentVideoPromptGenerateTaskInput {
@@ -107,6 +108,7 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
         const promptUpdatedAt = startedAt;
         const updatedSegment = {
           ...currentSegment,
+          status: "in_review" as const,
           promptTextSeed: promptPlan.finalPrompt,
           promptTextCurrent: promptPlan.finalPrompt,
           promptUpdatedAt,
@@ -129,6 +131,12 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
         });
 
         const finishedAt = dependencies.clock.now();
+        const segments = await dependencies.videoRepository.listSegmentsByBatchId(currentSegment.batchId);
+        await dependencies.projectRepository.updateStatus({
+          projectId: project.id,
+          status: deriveProjectVideoStatus(segments, updatedSegment),
+          updatedAt: finishedAt,
+        });
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
           output: {
@@ -183,23 +191,4 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
       }
     },
   };
-}
-
-function deriveProjectVideoStatus(
-  segments: Array<{ id: string; status: string }>,
-  updatedSegment: { id: string; status: string },
-) {
-  const nextSegments = segments.some((segment) => segment.id === updatedSegment.id)
-    ? segments.map((segment) => (segment.id === updatedSegment.id ? updatedSegment : segment))
-    : [...segments, updatedSegment];
-
-  if (nextSegments.some((segment) => segment.status === "generating")) {
-    return "videos_generating" as const;
-  }
-
-  if (nextSegments.every((segment) => segment.status === "approved")) {
-    return "videos_approved" as const;
-  }
-
-  return "videos_in_review" as const;
 }

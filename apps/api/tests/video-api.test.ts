@@ -334,7 +334,247 @@ describe("videos api", () => {
     );
   });
 
-  it("targets a duplicated shot-script segment by unique video id for load, regenerate, and approve", async () => {
+  it("returns 400 when approving an in-review segment that has no generated video asset", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedVideoBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "videos_in_review",
+    });
+    await updateSeededVideoSegment(tempDir, "video_segment_1", {
+      videoAssetPath: null,
+      thumbnailAssetPath: null,
+      updatedAt: "2026-03-25T01:08:00.000Z",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/segments/video_segment_1/approve`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: "Segment video is not ready for approval",
+    });
+  });
+
+  it("returns 400 when approve-all includes a segment without a generated video asset", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedVideoBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      projectStatus: "videos_in_review",
+    });
+    await updateSeededVideoSegment(tempDir, "video_segment_1", {
+      videoAssetPath: null,
+      thumbnailAssetPath: null,
+      updatedAt: "2026-03-25T01:08:00.000Z",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/approve-all`,
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: "All segment videos must be generated before approval",
+    });
+  });
+
+  it("revokes approval and downgrades project status after saving config for an approved segment", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedApprovedFinalCutSourceBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const saveConfigResponse = await app.inject({
+      method: "PUT",
+      url: `/projects/${project.id}/videos/segments/video_segment_1/config`,
+      payload: {
+        promptTextCurrent: "用户改写后的当前视频提示词",
+        referenceImages: [],
+        referenceAudios: [],
+      },
+    });
+
+    expect(saveConfigResponse.statusCode).toBe(200);
+    expect(saveConfigResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "video_segment_1",
+        status: "in_review",
+        approvedAt: null,
+        promptTextCurrent: "用户改写后的当前视频提示词",
+      }),
+    );
+
+    const projectDetailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
+    });
+
+    expect(projectDetailResponse.statusCode).toBe(200);
+    expect(projectDetailResponse.json()).toEqual(
+      expect.objectContaining({
+        status: "videos_in_review",
+        currentVideoBatch: expect.objectContaining({
+          approvedSegmentCount: 0,
+        }),
+      }),
+    );
+  });
+
+  it("revokes approval and downgrades project status after regenerating prompts for an approved batch", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedApprovedFinalCutSourceBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const regenerateResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/regenerate-prompts`,
+      payload: {},
+    });
+
+    expect(regenerateResponse.statusCode).toBe(200);
+    expect(regenerateResponse.json()).toEqual(
+      expect.objectContaining({
+        currentBatch: expect.objectContaining({
+          approvedSegmentCount: 0,
+        }),
+        segments: expect.arrayContaining([
+          expect.objectContaining({
+            id: "video_segment_1",
+            status: "in_review",
+            approvedAt: null,
+          }),
+        ]),
+      }),
+    );
+
+    const projectDetailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
+    });
+
+    expect(projectDetailResponse.statusCode).toBe(200);
+    expect(projectDetailResponse.json()).toEqual(
+      expect.objectContaining({
+        status: "videos_in_review",
+        currentVideoBatch: expect.objectContaining({
+          approvedSegmentCount: 0,
+        }),
+      }),
+    );
+  });
+
+  it("rejects config edits for a historical batch segment id", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedApprovedFinalCutSourceBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedHistoricalVideoSegment({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const saveConfigResponse = await app.inject({
+      method: "PUT",
+      url: `/projects/${project.id}/videos/segments/video_segment_old/config`,
+      payload: {
+        promptTextCurrent: "用户改写后的当前视频提示词",
+        referenceImages: [],
+        referenceAudios: [],
+      },
+    });
+
+    expect(saveConfigResponse.statusCode).toBe(404);
+    expect(saveConfigResponse.json()).toEqual({
+      message: "Segment video not found: video_segment_old",
+    });
+
+    const projectDetailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
+    });
+
+    expect(projectDetailResponse.statusCode).toBe(200);
+    expect(projectDetailResponse.json()).toEqual(
+      expect.objectContaining({
+        status: "videos_approved",
+        currentVideoBatch: expect.objectContaining({
+          id: "video_batch_1",
+          approvedSegmentCount: 1,
+        }),
+      }),
+    );
+  });
+
+  it("rejects prompt regeneration for a historical batch segment id", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedApprovedFinalCutSourceBatch({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedHistoricalVideoSegment({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+
+    const regeneratePromptResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/segments/video_segment_old/regenerate-prompt`,
+      payload: {},
+    });
+
+    expect(regeneratePromptResponse.statusCode).toBe(404);
+    expect(regeneratePromptResponse.json()).toEqual({
+      message: "Segment video not found: video_segment_old",
+    });
+
+    const projectDetailResponse = await app.inject({
+      method: "GET",
+      url: `/projects/${project.id}`,
+    });
+
+    expect(projectDetailResponse.statusCode).toBe(200);
+    expect(projectDetailResponse.json()).toEqual(
+      expect.objectContaining({
+        status: "videos_approved",
+        currentVideoBatch: expect.objectContaining({
+          id: "video_batch_1",
+          approvedSegmentCount: 1,
+        }),
+      }),
+    );
+  });
+
+  it("targets a duplicated shot-script segment by unique video id for load, approve, and regenerate", async () => {
     const enqueue = vi.fn();
     const { app, tempDir } = await createTempApp({
       taskQueue: { enqueue },
@@ -365,6 +605,21 @@ describe("videos api", () => {
       }),
     );
 
+    const approveResponse = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/videos/segments/video_segment_scene_2/approve`,
+      payload: {},
+    });
+
+    expect(approveResponse.statusCode).toBe(200);
+    expect(approveResponse.json()).toEqual(
+      expect.objectContaining({
+        id: "video_segment_scene_2",
+        sceneId: "scene_2",
+        status: "approved",
+      }),
+    );
+
     const regenerateResponse = await app.inject({
       method: "POST",
       url: `/projects/${project.id}/videos/segments/video_segment_scene_2/regenerate`,
@@ -383,21 +638,6 @@ describe("videos api", () => {
       queueName: "segment-video-generate",
       taskType: "segment_video_generate",
     });
-
-    const approveResponse = await app.inject({
-      method: "POST",
-      url: `/projects/${project.id}/videos/segments/video_segment_scene_2/approve`,
-      payload: {},
-    });
-
-    expect(approveResponse.statusCode).toBe(200);
-    expect(approveResponse.json()).toEqual(
-      expect.objectContaining({
-        id: "video_segment_scene_2",
-        sceneId: "scene_2",
-        status: "approved",
-      }),
-    );
   });
 
   async function createTempApp(options?: {
@@ -727,6 +967,86 @@ async function seedFinalCutRecord(input: {
     manifestStorageRelPath: "final-cut/manifests/final_cut_1.txt",
     versionsStorageDir: "final-cut/versions",
   });
+  db.close();
+}
+
+async function updateSeededVideoSegment(
+  tempDir: string,
+  segmentId: string,
+  overrides: Record<string, unknown>,
+) {
+  const paths = createLocalDataPaths(tempDir);
+  const db = createSqliteDb({ paths });
+  const videoRepository = createSqliteVideoRepository({ db });
+  const existingSegment = await videoRepository.findSegmentById(segmentId);
+
+  if (!existingSegment) {
+    db.close();
+    throw new Error(`Expected seeded video segment to exist: ${segmentId}`);
+  }
+
+  videoRepository.updateSegment({
+    ...existingSegment,
+    ...overrides,
+  });
+  db.close();
+}
+
+async function seedHistoricalVideoSegment(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+}) {
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const videoRepository = createSqliteVideoRepository({ db });
+
+  const batch = createVideoBatchRecord({
+    id: "video_batch_old",
+    projectId: input.projectId,
+    projectStorageDir: input.projectStorageDir,
+    sourceImageBatchId: "image_batch_old",
+    sourceShotScriptId: "shot_script_old",
+    segmentCount: 1,
+    createdAt: "2026-03-20T01:00:00.000Z",
+    updatedAt: "2026-03-20T01:00:00.000Z",
+  });
+  const segment = createSegmentVideoRecord({
+    id: "video_segment_old",
+    batchId: batch.id,
+    projectId: input.projectId,
+    projectStorageDir: input.projectStorageDir,
+    sourceImageBatchId: "image_batch_1",
+    sourceShotScriptId: "shot_script_1",
+    shotId: "shot_1",
+    shotCode: "S01-SG01-SH01",
+    segmentId: "segment_1",
+    sceneId: "scene_1",
+    segmentOrder: 1,
+    segmentSummary: "Historical segment.",
+    shotCount: 1,
+    sourceShotIds: ["shot_1"],
+    shotOrder: 1,
+    frameDependency: "start_and_end_frame",
+    status: "approved",
+    promptTextSeed: "historical prompt",
+    promptTextCurrent: "historical prompt",
+    promptUpdatedAt: "2026-03-20T01:04:00.000Z",
+    referenceImages: [],
+    referenceAudios: [],
+    videoAssetPath: "videos/batches/video_batch_old/shots/scene_1__segment_1__shot_1/current.mp4",
+    thumbnailAssetPath:
+      "videos/batches/video_batch_old/shots/scene_1__segment_1__shot_1/thumbnail.webp",
+    durationSec: 6,
+    provider: "vector-engine",
+    model: "sora-2-all",
+    approvedAt: "2026-03-20T01:05:00.000Z",
+    updatedAt: "2026-03-20T01:05:00.000Z",
+    sourceTaskId: "task_video_segment_old",
+  });
+
+  videoRepository.insertBatch(batch);
+  videoRepository.insertSegment(segment);
   db.close();
 }
 

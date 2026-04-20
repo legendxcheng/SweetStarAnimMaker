@@ -9,6 +9,7 @@ import {
   ProjectNotFoundError,
   ProjectValidationError,
   RejectStoryboardReasonRequiredError,
+  SegmentVideoNotFoundError,
   StoryboardReviewVersionConflictError,
   TaskNotFoundError,
 } from "@sweet-star/core";
@@ -42,6 +43,7 @@ export function createApiErrorHandler() {
       error instanceof CurrentShotScriptNotFoundError ||
       error instanceof CurrentStoryboardNotFoundError ||
       error instanceof ProjectNotFoundError ||
+      error instanceof SegmentVideoNotFoundError ||
       error instanceof TaskNotFoundError
     ) {
       return reply.status(404).send({

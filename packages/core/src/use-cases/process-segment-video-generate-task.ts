@@ -1,5 +1,3 @@
-import type { ProjectStatus } from "@sweet-star/shared";
-
 import type { SegmentVideoGenerateTaskInput } from "../domain/task";
 
 import { ProjectNotFoundError } from "../errors/project-errors";
@@ -12,6 +10,7 @@ import type { TaskRepository } from "../ports/task-repository";
 import type { VideoProvider } from "../ports/video-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { deriveProjectVideoStatus } from "./derive-project-video-status";
 import { isTaskStillActive } from "./task-reset-guard";
 
 export interface ProcessSegmentVideoGenerateTaskInput {
@@ -192,9 +191,10 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
           },
         });
         await dependencies.videoRepository.updateSegment(updatedSegment);
+        const segments = await dependencies.videoRepository.listSegmentsByBatchId(currentSegment.batchId);
         await dependencies.projectRepository.updateStatus({
           projectId: project.id,
-          status: "videos_in_review",
+          status: deriveProjectVideoStatus(segments, updatedSegment),
           updatedAt: finishedAt,
         });
         await dependencies.taskFileStorage.writeTaskOutput({
@@ -256,23 +256,4 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
       }
     },
   };
-}
-
-function deriveProjectVideoStatus(
-  segments: Array<{ id: string; status: string }>,
-  updatedSegment: { id: string; status: string },
-): ProjectStatus {
-  const nextSegments = segments.some((segment) => segment.id === updatedSegment.id)
-    ? segments.map((segment) => (segment.id === updatedSegment.id ? updatedSegment : segment))
-    : [...segments, updatedSegment];
-
-  if (nextSegments.some((segment) => segment.status === "generating")) {
-    return "videos_generating";
-  }
-
-  if (nextSegments.every((segment) => segment.status === "approved")) {
-    return "videos_approved";
-  }
-
-  return "videos_in_review";
 }

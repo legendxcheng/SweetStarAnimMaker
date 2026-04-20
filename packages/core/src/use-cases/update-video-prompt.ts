@@ -10,6 +10,7 @@ import { SegmentVideoNotFoundError } from "../errors/video-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
 import type { VideoRepository } from "../ports/video-repository";
+import { deriveProjectVideoStatus } from "./derive-project-video-status";
 
 export interface UpdateVideoPromptInput
   extends Pick<SaveVideoPromptRequest, "promptTextCurrent"> {
@@ -48,13 +49,19 @@ export function createUpdateVideoPromptUseCase(
 
       const segment = await dependencies.videoRepository.findSegmentById(input.videoId);
 
-      if (!segment || segment.projectId !== project.id) {
+      if (
+        !segment ||
+        segment.projectId !== project.id ||
+        segment.batchId !== project.currentVideoBatchId
+      ) {
         throw new SegmentVideoNotFoundError(input.videoId);
       }
 
       const timestamp = dependencies.clock.now();
       const updatedSegment = {
         ...segment,
+        status: segment.status === "approved" ? ("in_review" as const) : segment.status,
+        approvedAt: segment.status === "approved" ? null : segment.approvedAt,
         promptTextCurrent,
         referenceImages: input.referenceImages ?? segment.referenceImages,
         referenceAudios: input.referenceAudios ?? segment.referenceAudios,
@@ -63,6 +70,12 @@ export function createUpdateVideoPromptUseCase(
       };
 
       await dependencies.videoRepository.updateSegment(updatedSegment);
+      const segments = await dependencies.videoRepository.listSegmentsByBatchId(segment.batchId);
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: deriveProjectVideoStatus(segments, updatedSegment),
+        updatedAt: timestamp,
+      });
 
       return updatedSegment;
     },

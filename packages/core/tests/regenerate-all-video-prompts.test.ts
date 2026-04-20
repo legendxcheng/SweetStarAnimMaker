@@ -4,6 +4,23 @@ import { createRegenerateAllVideoPromptsUseCase } from "../src/index";
 
 describe("regenerate all video prompts use case", () => {
   it("rebuilds promptTextCurrent for every segment in the current video batch", async () => {
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        currentVideoBatchId: "video_batch_1",
+      }),
+      listAll: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
+      updateStatus: vi.fn(),
+    };
     const segments = [
       {
         id: "video_segment_1",
@@ -23,7 +40,7 @@ describe("regenerate all video prompts use case", () => {
         segmentOrder: 1,
         shotOrder: 1,
         frameDependency: "start_frame_only" as const,
-        status: "in_review" as const,
+        status: "approved" as const,
         promptTextSeed: "seed 1",
         promptTextCurrent: "old 1",
         promptUpdatedAt: "2026-03-25T00:18:00.000Z",
@@ -43,7 +60,7 @@ describe("regenerate all video prompts use case", () => {
         durationSec: null,
         provider: null,
         model: null,
-        approvedAt: null,
+        approvedAt: "2026-03-25T00:18:30.000Z",
         updatedAt: "2026-03-25T00:18:00.000Z",
         sourceTaskId: null,
         storageDir: "ignored",
@@ -133,23 +150,7 @@ describe("regenerate all video prompts use case", () => {
     };
 
     const useCase = createRegenerateAllVideoPromptsUseCase({
-      projectRepository: {
-        insert: vi.fn(),
-        findById: vi.fn().mockResolvedValue({
-          id: "proj_1",
-          storageDir: "projects/proj_1-my-story",
-          currentVideoBatchId: "video_batch_1",
-        }),
-        listAll: vi.fn(),
-        updatePremiseMetadata: vi.fn(),
-        updateCurrentMasterPlot: vi.fn(),
-        updateCurrentCharacterSheetBatch: vi.fn(),
-        updateCurrentStoryboard: vi.fn(),
-        updateCurrentShotScript: vi.fn(),
-        updateCurrentImageBatch: vi.fn(),
-        updateCurrentVideoBatch: vi.fn(),
-        updateStatus: vi.fn(),
-      },
+      projectRepository,
       shotScriptStorage: {
         initializePromptTemplate: vi.fn(),
         readPromptTemplate: vi.fn(),
@@ -284,9 +285,25 @@ describe("regenerate all video prompts use case", () => {
     const result = await useCase.execute({ projectId: "proj_1" });
 
     expect(videoRepository.updateSegment).toHaveBeenCalledTimes(2);
+    expect(videoRepository.updateSegment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id: "video_segment_1",
+        status: "in_review",
+        approvedAt: null,
+      }),
+    );
     expect(result.segments).toHaveLength(2);
     expect(result.segments[0]?.referenceImages[0]?.assetPath).toContain("ref_image_1.png");
     expect(result.segments[1]?.referenceAudios[0]?.assetPath).toContain("ref_audio_2.wav");
+    expect(result.currentBatch.approvedSegmentCount).toBe(0);
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_1",
+      status: "videos_in_review",
+      updatedAt: "2026-03-25T00:20:00.000Z",
+    });
+    expect(result.segments[0]?.status).toBe("in_review");
+    expect(result.segments[0]?.approvedAt).toBeNull();
     expect(result.segments[0]?.promptTextCurrent).toBe(
       "以<<<image_1>>>为首帧锚点，林进入积水市场，保留脚步与雨声。",
     );

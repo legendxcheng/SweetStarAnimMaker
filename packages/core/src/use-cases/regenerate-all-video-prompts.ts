@@ -13,6 +13,7 @@ import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
 import { buildPersistedSegmentShotReference } from "./build-persisted-segment-shot-reference";
 import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
+import { deriveProjectVideoStatus } from "./derive-project-video-status";
 
 export interface RegenerateAllVideoPromptsInput {
   projectId: string;
@@ -110,6 +111,8 @@ export function createRegenerateAllVideoPromptsUseCase(
 
         return {
           ...currentSegment,
+          status: currentSegment.status === "approved" ? ("in_review" as const) : currentSegment.status,
+          approvedAt: currentSegment.status === "approved" ? null : currentSegment.approvedAt,
           promptTextCurrent: promptPlan.finalPrompt,
           promptUpdatedAt: timestamp,
           updatedAt: timestamp,
@@ -137,12 +140,23 @@ export function createRegenerateAllVideoPromptsUseCase(
         });
       }
 
+      const persistedSegments = updatedSegments.map(({ _promptPlan: _unused, ...segment }) => segment);
+      const [firstSegment, ...remainingSegments] = persistedSegments;
+
+      await dependencies.projectRepository.updateStatus({
+        projectId: project.id,
+        status: firstSegment
+          ? deriveProjectVideoStatus(remainingSegments, firstSegment)
+          : "videos_in_review",
+        updatedAt: timestamp,
+      });
+
       return {
         currentBatch: toCurrentVideoBatchSummary(
           batch,
-          updatedSegments.map(({ _promptPlan: _unused, ...segment }) => segment),
+          persistedSegments,
         ),
-        segments: updatedSegments.map(({ _promptPlan: _unused, ...segment }) => segment),
+        segments: persistedSegments,
       };
     },
   };
