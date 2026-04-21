@@ -195,6 +195,55 @@ describe("character sheets api", () => {
     );
   });
 
+  it("accepts character reference images larger than 1 MB", async () => {
+    const { app, tempDir } = await createTempApp();
+    const project = await createProject(app);
+
+    await seedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      status: "character_sheets_in_review",
+      characters: [
+        {
+          id: "char_rin_1",
+          characterName: "Rin",
+          status: "in_review",
+        },
+      ],
+    });
+
+    const payload = createMultipartPayload([
+      {
+        fieldName: "files",
+        fileName: "rin-large.webp",
+        contentType: "image/webp",
+        bytes: Buffer.alloc(1024 * 1024 + 1, 7),
+      },
+    ]);
+    const response = await app.inject({
+      method: "POST",
+      url: `/projects/${project.id}/character-sheets/char_rin_1/reference-images`,
+      headers: {
+        "content-type": payload.contentType,
+      },
+      payload: payload.body,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: "char_rin_1",
+        referenceImages: [
+          expect.objectContaining({
+            originalFileName: "rin-large.webp",
+            mimeType: "image/webp",
+          }),
+        ],
+      }),
+    );
+  });
+
   it("deletes a character reference image and returns updated detail", async () => {
     const { app, tempDir } = await createTempApp();
     const project = await createProject(app);

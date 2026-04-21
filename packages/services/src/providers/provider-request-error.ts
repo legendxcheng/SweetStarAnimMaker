@@ -21,6 +21,54 @@ export function buildProviderRequestError(
   return new Error(segments.join("; "));
 }
 
+export function buildProviderNetworkError(providerLabel: string, error: Error) {
+  const segments = [
+    `${providerLabel} provider request failed before response`,
+    `message=${error.message}`,
+  ];
+  const cause = readErrorCause(error);
+
+  if (cause?.code) {
+    segments.push(`causeCode=${cause.code}`);
+  }
+
+  if (cause?.message) {
+    segments.push(`causeMessage=${cause.message}`);
+  }
+
+  if (cause?.syscall) {
+    segments.push(`syscall=${cause.syscall}`);
+  }
+
+  if (cause?.host) {
+    segments.push(`host=${cause.host}`);
+  }
+
+  if (cause?.port !== null && cause?.port !== undefined) {
+    segments.push(`port=${cause.port}`);
+  }
+
+  return new Error(segments.join("; "));
+}
+
+function readErrorCause(error: Error) {
+  const cause = (error as { cause?: unknown }).cause;
+
+  if (!cause || typeof cause !== "object") {
+    return null;
+  }
+
+  const causeRecord = cause as Record<string, unknown>;
+
+  return {
+    code: readString(causeRecord.code),
+    message: cause instanceof Error ? cause.message : readString(causeRecord.message),
+    syscall: readString(causeRecord.syscall),
+    host: readString(causeRecord.host),
+    port: readString(causeRecord.port) ?? readNumber(causeRecord.port),
+  };
+}
+
 function extractErrorDetails(bodyText: string | null) {
   const trimmed = bodyText?.trim();
 
@@ -100,6 +148,10 @@ function readString(value: unknown) {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function readNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function truncateBody(value: string) {

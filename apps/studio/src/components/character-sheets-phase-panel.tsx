@@ -15,6 +15,10 @@ import type {
 } from "./character-sheets-phase-panel/types";
 import { normalizeCharacter } from "./character-sheets-phase-panel/utils";
 
+function isActiveTaskStatus(status: "pending" | "running" | "succeeded" | "failed" | undefined) {
+  return status === "pending" || status === "running";
+}
+
 export function CharacterSheetsPhasePanel({
   project,
   task,
@@ -91,6 +95,98 @@ export function CharacterSheetsPhasePanel({
       cancelled = true;
     };
   }, [batchSummary?.id, project.id]);
+
+  useEffect(() => {
+    if (!batchSummary) {
+      return;
+    }
+
+    const shouldPoll =
+      project.status === "character_sheets_generating" ||
+      isActiveTaskStatus(task?.status) ||
+      characters.some((character) => character.status === "generating") ||
+      selectedCharacter?.status === "generating";
+
+    if (!shouldPoll) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const intervalId = setInterval(() => {
+      void (async () => {
+        try {
+          const listResponse = await apiClient.listCharacterSheets(project.id);
+
+          if (cancelled) {
+            return;
+          }
+
+          const nextCharacters = listResponse.characters.map(normalizeCharacter);
+          const nextSelectedCharacterId =
+            selectedCharacterId && nextCharacters.some((character) => character.id === selectedCharacterId)
+              ? selectedCharacterId
+              : nextCharacters[0]?.id ?? null;
+
+          setCharacters(nextCharacters);
+          setSelectedCharacterId(nextSelectedCharacterId);
+          setListError(null);
+
+          if (!nextSelectedCharacterId) {
+            setSelectedCharacter(null);
+            setDetailError(null);
+            return;
+          }
+
+          try {
+            const detailResponse = await apiClient.getCharacterSheet(
+              project.id,
+              nextSelectedCharacterId,
+            );
+
+            if (cancelled) {
+              return;
+            }
+
+            const normalizedCharacter = normalizeCharacter(detailResponse);
+            const shouldSyncPromptDraft =
+              selectedCharacter?.id !== normalizedCharacter.id ||
+              promptDraft === (selectedCharacter?.promptTextCurrent ?? "");
+
+            setSelectedCharacter(normalizedCharacter);
+            if (shouldSyncPromptDraft) {
+              setPromptDraft(normalizedCharacter.promptTextCurrent);
+            }
+            setDetailError(null);
+          } catch (error) {
+            if (!cancelled) {
+              setDetailError(error as Error);
+            }
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setListError(error as Error);
+          }
+        }
+      })();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [
+    batchSummary,
+    characters,
+    project.id,
+    project.status,
+    promptDraft,
+    selectedCharacter?.id,
+    selectedCharacter?.promptTextCurrent,
+    selectedCharacter?.status,
+    selectedCharacterId,
+    task?.status,
+  ]);
 
   useEffect(() => {
     const characterId = selectedCharacterId;

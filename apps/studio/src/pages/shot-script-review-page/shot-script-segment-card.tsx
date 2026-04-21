@@ -5,7 +5,7 @@ import type {
 } from "@sweet-star/shared";
 
 import { getButtonClassName } from "../../styles/button-styles";
-import { inputClass, textareaClass } from "./constants";
+import { getSegmentReviewLabel, inputClass, textareaClass } from "./constants";
 import { ShotScriptShotCard } from "./shot-script-shot-card";
 
 type UpdateSegmentField = <K extends keyof SaveShotScriptSegmentRequest>(
@@ -63,8 +63,11 @@ export function ShotScriptSegmentCard({
             {segment.name ?? segment.segmentId}
           </h2>
           <p className="mt-1 text-sm text-(--color-text-muted)">
-            Scene {segment.sceneId} / Segment {segment.segmentId} / 当前状态 {segment.status}
+            Scene {segment.sceneId} / Segment {segment.segmentId} / 当前状态 {getSegmentReviewLabel(segment)}
           </p>
+          {segment.status === "failed" && segment.lastErrorMessage && (
+            <p className="mt-2 text-sm text-(--color-danger)">{segment.lastErrorMessage}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isDirty && canSave && (

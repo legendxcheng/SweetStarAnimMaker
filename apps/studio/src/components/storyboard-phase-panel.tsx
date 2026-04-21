@@ -35,10 +35,12 @@ export function StoryboardPhasePanel({
   onGenerate,
 }: StoryboardPhasePanelProps) {
   const [currentStoryboard, setCurrentStoryboard] = useState<CurrentStoryboard | null>(null);
+  const [latestStoryboardTask, setLatestStoryboardTask] = useState<TaskDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<Error | null>(null);
   const [detailRequestVersion, setDetailRequestVersion] = useState(0);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
+  const displayedTask = task ?? latestStoryboardTask;
   const cardClass =
     "bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4";
   const metaLabelClass = "text-xs text-(--color-text-muted) uppercase tracking-wide mb-0.5";
@@ -62,6 +64,7 @@ export function StoryboardPhasePanel({
   useEffect(() => {
     if (!project.currentStoryboard) {
       setCurrentStoryboard(null);
+      setLatestStoryboardTask(null);
       setDetailError(null);
       setDetailLoading(false);
       return;
@@ -92,6 +95,17 @@ export function StoryboardPhasePanel({
     }
 
     void loadCurrentStoryboard();
+    void Promise.resolve(apiClient.getStoryboardReviewWorkspace(project.id))
+      .then((workspace) => {
+        if (!cancelled) {
+          setLatestStoryboardTask(workspace?.latestTask ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLatestStoryboardTask(null);
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -119,28 +133,32 @@ export function StoryboardPhasePanel({
         </div>
       </div>
 
-      {task && (
+      {displayedTask && (
         <div className={cardClass}>
           <h4 className="text-base font-semibold text-(--color-text-primary) mb-3">任务状态</h4>
           <div className="grid gap-2">
             <div>
               <p className={metaLabelClass}>任务 ID</p>
-              <p className={`${metaValueClass} font-mono text-xs`}>{task.id}</p>
+              <p className={`${metaValueClass} font-mono text-xs`}>{displayedTask.id}</p>
             </div>
             <div>
               <p className={metaLabelClass}>状态</p>
-              <p className={metaValueClass}>{TASK_STATUS_LABELS[task.status]}</p>
+              <p className={metaValueClass}>{TASK_STATUS_LABELS[displayedTask.status]}</p>
             </div>
             <div>
               <p className={metaLabelClass}>更新时间</p>
-              <p className={metaValueClass}>{new Date(task.updatedAt).toLocaleString("zh-CN")}</p>
+              <p className={metaValueClass}>
+                {new Date(displayedTask.updatedAt).toLocaleString("zh-CN")}
+              </p>
             </div>
-            {task.errorMessage && <p className="text-sm text-(--color-danger)">{task.errorMessage}</p>}
+            {displayedTask.errorMessage && (
+              <p className="text-sm text-(--color-danger)">{displayedTask.errorMessage}</p>
+            )}
           </div>
         </div>
       )}
 
-      {taskError && task && (
+      {taskError && displayedTask && (
         <div className="mb-4">
           <ErrorState error={taskError} />
         </div>

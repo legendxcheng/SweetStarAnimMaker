@@ -145,9 +145,9 @@ export function createProcessStoryboardGenerateTaskUseCase(
           updatedAt: finishedAt,
           finishedAt,
         });
-        await dependencies.projectRepository.updateStatus({
+        await restoreProjectAfterStoryboardFailure({
+          dependencies,
           projectId: task.projectId,
-          status: "character_sheets_approved",
           updatedAt: finishedAt,
         });
 
@@ -155,6 +155,40 @@ export function createProcessStoryboardGenerateTaskUseCase(
       }
     },
   };
+}
+
+async function restoreProjectAfterStoryboardFailure(input: {
+  dependencies: ProcessStoryboardGenerateTaskUseCaseDependencies;
+  projectId: string;
+  updatedAt: string;
+}) {
+  const project = await input.dependencies.projectRepository.findById(input.projectId);
+
+  if (project) {
+    const currentStoryboard =
+      await input.dependencies.storyboardStorage.readCurrentStoryboard({
+        storageDir: project.storageDir,
+      });
+
+    if (currentStoryboard) {
+      await input.dependencies.projectRepository.updateCurrentStoryboard({
+        projectId: input.projectId,
+        storyboardId: currentStoryboard.id,
+      });
+      await input.dependencies.projectRepository.updateStatus({
+        projectId: input.projectId,
+        status: currentStoryboard.approvedAt ? "storyboard_approved" : "storyboard_in_review",
+        updatedAt: input.updatedAt,
+      });
+      return;
+    }
+  }
+
+  await input.dependencies.projectRepository.updateStatus({
+    projectId: input.projectId,
+    status: "character_sheets_approved",
+    updatedAt: input.updatedAt,
+  });
 }
 
 function assertStoryboardTaskInput(input: {

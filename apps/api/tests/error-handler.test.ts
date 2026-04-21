@@ -51,4 +51,38 @@ describe("api error handler", () => {
       expect.any(Error),
     );
   });
+
+  it("returns 413 for multipart files that exceed the upload limit", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-api-errors-"));
+    tempDirs.push(tempDir);
+
+    const app = buildApp({
+      dataRoot: tempDir,
+      taskQueue: { enqueue: vi.fn() },
+    });
+    apps.push(app);
+
+    app.get("/too-large", async () => {
+      const error = new Error("request file too large") as Error & {
+        code?: string;
+        statusCode?: number;
+      };
+      error.code = "FST_REQ_FILE_TOO_LARGE";
+      error.statusCode = 413;
+      throw error;
+    });
+    await app.ready();
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await app.inject({
+      method: "GET",
+      url: "/too-large",
+    });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toEqual({
+      message: "Uploaded file is too large",
+    });
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
 });

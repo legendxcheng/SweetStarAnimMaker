@@ -144,6 +144,42 @@ const refreshedShotScriptWorkspace = {
   },
 };
 
+const failedShotScriptWorkspace = {
+  ...shotScriptWorkspace,
+  currentShotScript: {
+    ...shotScriptWorkspace.currentShotScript,
+    shotCount: 0,
+    totalDurationSec: null,
+    segments: [
+      {
+        ...shotScriptWorkspace.currentShotScript.segments[0],
+        name: null,
+        status: "failed" as const,
+        lastGeneratedAt: "2024-01-01T00:00:00Z",
+        approvedAt: null,
+        lastErrorMessage: "Gemini shot script provider returned invalid shot script JSON",
+        shots: [],
+      },
+    ],
+  },
+  latestTask: {
+    id: "task-shot-script-failed",
+    projectId: "proj-1",
+    type: "shot_script_segment_generate" as const,
+    status: "failed" as const,
+    createdAt: "2024-01-01T00:00:03Z",
+    updatedAt: "2024-01-01T00:00:20Z",
+    startedAt: "2024-01-01T00:00:04Z",
+    finishedAt: "2024-01-01T00:00:20Z",
+    errorMessage: "Gemini shot script provider returned invalid shot script JSON",
+    files: {
+      inputPath: "tasks/task-shot-script-failed/input.json",
+      outputPath: "tasks/task-shot-script-failed/output.json",
+      logPath: "tasks/task-shot-script-failed/log.txt",
+    },
+  },
+};
+
 const runningShotScriptTask = {
   id: "task-shot-script-running",
   projectId: "proj-1",
@@ -402,6 +438,23 @@ describe("Project Review Page", () => {
     expect(
       screen.getByRole("button", { name: "重新生成未通过段落" }),
     ).toBeInTheDocument();
+  });
+
+  it("surfaces failed shot-script segments and the latest task error", async () => {
+    vi.spyOn(apiModule.apiClient, "getShotScriptReviewWorkspace").mockResolvedValue(
+      failedShotScriptWorkspace,
+    );
+
+    renderShotScriptPage();
+
+    expect(await screen.findByText("还有 1 个段落未通过")).toBeInTheDocument();
+    expect(screen.getByText("其中 1 个段落生成失败，请优先重生成或人工修正。")).toBeInTheDocument();
+    expect(screen.getByText("生成失败")).toBeInTheDocument();
+    expect(screen.getByText(/当前状态 生成失败/)).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Gemini shot script provider returned invalid shot script JSON")[0],
+    ).toBeInTheDocument();
+    expect(screen.getByText(/最近任务失败/)).toBeInTheDocument();
   });
 
   it("keeps shot-script scene navigation as a non-shrinking single-row scroller", async () => {

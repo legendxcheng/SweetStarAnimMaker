@@ -13,6 +13,8 @@ import { registerTaskRoutes } from "./http/register-task-routes";
 import { registerVideoRoutes } from "./http/register-video-routes";
 import type { TaskIdGenerator, TaskQueue, VideoPromptProvider } from "@sweet-star/core";
 
+const multipartFileSizeLimitBytes = 20 * 1024 * 1024;
+
 export interface BuildAppOptions {
   dataRoot?: string;
   taskQueue?: TaskQueue;
@@ -28,7 +30,9 @@ const defaultStudioOrigins = [
 ];
 
 export function buildApp(options: BuildAppOptions = {}) {
-  const app = Fastify();
+  const app = Fastify({
+    bodyLimit: multipartFileSizeLimitBytes,
+  });
   const services = buildSpec1Services({
     workspaceRoot: options.dataRoot ?? process.cwd(),
     taskQueue: options.taskQueue,
@@ -47,7 +51,11 @@ export function buildApp(options: BuildAppOptions = {}) {
     },
     credentials: true,
   });
-  app.register(multipart);
+  app.register(multipart, {
+    limits: {
+      fileSize: multipartFileSizeLimitBytes,
+    },
+  });
 
   app.setErrorHandler(createApiErrorHandler());
   registerProjectRoutes(app, services);

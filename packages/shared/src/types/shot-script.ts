@@ -2,7 +2,8 @@ export type ShotScriptSegmentStatus =
   | "pending"
   | "generating"
   | "in_review"
-  | "approved";
+  | "approved"
+  | "failed";
 
 export type ShotFrameDependency = "start_frame_only" | "start_and_end_frame";
 
@@ -35,6 +36,7 @@ export interface ShotScriptSegment {
   status: ShotScriptSegmentStatus;
   lastGeneratedAt: string | null;
   approvedAt: string | null;
+  lastErrorMessage?: string | null;
   shots: ShotScriptItem[];
 }
 

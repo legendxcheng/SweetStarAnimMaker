@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CharacterSheetsPhasePanel } from "../../src/components/character-sheets-phase-panel";
@@ -61,6 +61,28 @@ const rinCharacter = {
   updatedAt: "2024-01-01T00:00:05Z",
   approvedAt: null,
   sourceTaskId: "task-char-rin",
+};
+
+const generatingProject = {
+  ...baseProject,
+  status: "character_sheets_generating" as const,
+};
+
+const generatingTask = {
+  id: "task-char-batch-1",
+  projectId: "proj-1",
+  type: "character_sheets_generate" as const,
+  status: "running" as const,
+  createdAt: "2024-01-01T00:00:06Z",
+  updatedAt: "2024-01-01T00:00:07Z",
+  startedAt: "2024-01-01T00:00:07Z",
+  finishedAt: null,
+  errorMessage: null,
+  files: {
+    inputPath: "tasks/task-char-batch-1/input.json",
+    outputPath: "tasks/task-char-batch-1/output.json",
+    logPath: "tasks/task-char-batch-1/log.txt",
+  },
 };
 
 function renderPanel() {
@@ -142,6 +164,56 @@ describe("CharacterSheetsPhasePanel", () => {
     expect(screen.getByDisplayValue("silver pilot jacket")).toBeInTheDocument();
   });
 
+  it("renders color-coded status tags in the character list", async () => {
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
+      currentBatch: baseProject.currentCharacterSheetBatch,
+      characters: [
+        {
+          ...rinCharacter,
+          id: "char-generating",
+          characterName: "Gen",
+          status: "generating" as const,
+        },
+        {
+          ...rinCharacter,
+          id: "char-review",
+          characterName: "Review",
+          status: "in_review" as const,
+        },
+        {
+          ...rinCharacter,
+          id: "char-approved",
+          characterName: "Approved",
+          status: "approved" as const,
+          approvedAt: "2024-01-01T00:00:06Z",
+        },
+        {
+          ...rinCharacter,
+          id: "char-failed",
+          characterName: "Failed",
+          status: "failed" as const,
+        },
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(rinCharacter);
+
+    renderPanel();
+
+    const listCard = (await screen.findByText("角色列表")).closest("div");
+    expect(listCard).not.toBeNull();
+
+    const listScope = within(listCard!);
+    const generatingTag = listScope.getByText("生成中");
+    const reviewTag = listScope.getByText("待审核");
+    const approvedTag = listScope.getByText("已通过");
+    const failedTag = listScope.getByText("失败");
+
+    expect(generatingTag).toHaveClass("bg-(--color-accent)/15", "text-(--color-accent)");
+    expect(reviewTag).toHaveClass("bg-(--color-warning)/15", "text-(--color-warning)");
+    expect(approvedTag).toHaveClass("bg-(--color-success)/15", "text-(--color-success)");
+    expect(failedTag).toHaveClass("bg-(--color-danger)/15", "text-(--color-danger)");
+  });
+
   it("renders the current character image preview and opens a larger viewer", async () => {
     vi.spyOn(apiModule.apiClient, "listCharacterSheets").mockResolvedValue({
       currentBatch: baseProject.currentCharacterSheetBatch,
@@ -219,7 +291,10 @@ describe("CharacterSheetsPhasePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Rin 待审核$/i }));
 
     expect(await screen.findByText("参考图")).toBeInTheDocument();
-    expect(screen.getByAltText("rin-face.png")).toBeInTheDocument();
+    expect(screen.getByAltText("rin-face.png")).toHaveAttribute(
+      "src",
+      expect.stringContaining("v=ref_001%3Aref-001.png%3A1234%3A2026-03-22T12%3A00%3A00.000Z"),
+    );
 
     const fileInput = screen.getByLabelText("添加参考图");
     const uploadFile = new File(["pose"], "rin-pose.jpg", { type: "image/jpeg" });
@@ -236,7 +311,10 @@ describe("CharacterSheetsPhasePanel", () => {
         [uploadFile],
       );
     });
-    expect(await screen.findByAltText("rin-pose.jpg")).toBeInTheDocument();
+    expect(await screen.findByAltText("rin-pose.jpg")).toHaveAttribute(
+      "src",
+      expect.stringContaining("v=ref_002%3Aref-002.jpg%3A2345%3A2026-03-22T12%3A01%3A00.000Z"),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /删除参考图 rin-face.png/i }));
 
@@ -334,5 +412,76 @@ describe("CharacterSheetsPhasePanel", () => {
       );
     });
     expect(refreshProject).toHaveBeenCalled();
+  });
+
+  it("refreshes character statuses and the selected image while generation is still in progress", async () => {
+    const intervalCallbacks: Array<() => void> = [];
+    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
+      intervalCallbacks.push(callback as () => void);
+      return intervalCallbacks.length as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+    vi.spyOn(global, "clearInterval").mockImplementation(() => undefined);
+
+    vi.spyOn(apiModule.apiClient, "listCharacterSheets")
+      .mockResolvedValueOnce({
+        currentBatch: generatingProject.currentCharacterSheetBatch,
+        characters: [
+          {
+            ...rinCharacter,
+            status: "generating" as const,
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        currentBatch: generatingProject.currentCharacterSheetBatch,
+        characters: [rinCharacter],
+      });
+    vi.spyOn(apiModule.apiClient, "getCharacterSheet")
+      .mockResolvedValueOnce({
+        ...rinCharacter,
+        status: "generating" as const,
+        imageAssetPath: null,
+        imageWidth: null,
+        imageHeight: null,
+      })
+      .mockResolvedValueOnce(rinCharacter);
+
+    render(
+      <CharacterSheetsPhasePanel
+        project={generatingProject}
+        task={generatingTask}
+        taskError={null}
+        creatingTask={false}
+        disableGenerate={false}
+        onGenerate={vi.fn()}
+        onProjectRefresh={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /^Rin 生成中$/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("尚未生成当前立绘")).toBeInTheDocument();
+    expect(intervalCallbacks.length).toBeGreaterThan(0);
+
+    await act(async () => {
+      intervalCallbacks[intervalCallbacks.length - 1]?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listCharacterSheets).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.getCharacterSheet).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByRole("button", { name: /^Rin 待审核$/i })).toBeInTheDocument();
+    expect(screen.getByAltText("Rin 当前立绘")).toBeInTheDocument();
   });
 });

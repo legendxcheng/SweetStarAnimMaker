@@ -70,6 +70,7 @@ export function createPendingShotScriptSegment(
     status: "pending",
     lastGeneratedAt: null,
     approvedAt: null,
+    lastErrorMessage: null,
     shots: [],
   };
 }
@@ -111,6 +112,7 @@ export function toInReviewShotScriptSegment(input: {
     status: "in_review",
     lastGeneratedAt: input.updatedAt,
     approvedAt: null,
+    lastErrorMessage: null,
     shots: input.shots,
   };
 }
@@ -129,6 +131,7 @@ export function toEditedShotScriptSegment(input: {
     durationSec: input.durationSec,
     status: "in_review",
     approvedAt: null,
+    lastErrorMessage: null,
     shots: input.shots,
   };
 }
@@ -141,6 +144,21 @@ export function toApprovedShotScriptSegment(
     ...segment,
     status: "approved",
     approvedAt,
+    lastErrorMessage: null,
+  };
+}
+
+export function toFailedShotScriptSegment(input: {
+  baseSegment: ShotScriptSegment;
+  updatedAt: string;
+  errorMessage: string;
+}): ShotScriptSegment {
+  return {
+    ...input.baseSegment,
+    status: "failed",
+    lastGeneratedAt: input.updatedAt,
+    approvedAt: null,
+    lastErrorMessage: input.errorMessage,
   };
 }
 
@@ -209,6 +227,7 @@ function readShotScriptSegments(shotScript: CurrentShotScript) {
       status: current.approvedAt ? ("approved" as const) : ("in_review" as const),
       lastGeneratedAt: current.updatedAt,
       approvedAt: current.approvedAt,
+      lastErrorMessage: null,
       shots: current.shots,
     },
   ];

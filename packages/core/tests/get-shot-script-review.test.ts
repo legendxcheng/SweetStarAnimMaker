@@ -288,4 +288,142 @@ describe("get shot script review use case", () => {
     expect(result.availableActions.approveAll).toBe(false);
     expect(result.availableActions.regenerateSegment).toBe(true);
   });
+
+  it("keeps failed segments unapproved without treating them as generating", async () => {
+    const useCase = createGetShotScriptReviewUseCase({
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_20260322_ab12cd",
+          name: "My Story",
+          slug: "my-story",
+          storageDir: "projects/proj_20260322_ab12cd-my-story",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 120,
+          currentMasterPlotId: "mp_20260322_ab12cd",
+          currentCharacterSheetBatchId: "char_batch_v1",
+          currentStoryboardId: "storyboard_20260322_ab12cd",
+          currentShotScriptId: "shot_script_20260322_ab12cd",
+          status: "shot_script_in_review",
+          createdAt: "2026-03-22T10:00:00.000Z",
+          updatedAt: "2026-03-22T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-22T10:00:00.000Z",
+        }),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
+        updateStatus: vi.fn(),
+        listAll: vi.fn(),
+      },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn().mockResolvedValue({
+          id: "shot_script_20260322_ab12cd",
+          title: "Episode 1 Shot Script",
+          sourceStoryboardId: "storyboard_20260322_ab12cd",
+          sourceTaskId: "task_20260322_shot_script",
+          updatedAt: "2026-03-22T12:00:00.000Z",
+          approvedAt: null,
+          segmentCount: 2,
+          shotCount: 1,
+          totalDurationSec: 4,
+          segments: [
+            {
+              segmentId: "segment_1",
+              sceneId: "scene_1",
+              order: 1,
+              name: "雨市压境",
+              summary: "林夏确认退路被封。",
+              durationSec: 4,
+              status: "failed",
+              lastGeneratedAt: "2026-03-22T12:00:00.000Z",
+              approvedAt: null,
+              lastErrorMessage: "Gemini shot script provider returned invalid shot script JSON",
+              shots: [],
+            },
+            {
+              segmentId: "segment_2",
+              sceneId: "scene_2",
+              order: 1,
+              name: "灯塔回响",
+              summary: "林夏听见远处灯塔回音。",
+              durationSec: 4,
+              status: "in_review",
+              lastGeneratedAt: "2026-03-22T12:01:00.000Z",
+              approvedAt: null,
+              lastErrorMessage: null,
+              shots: [
+                {
+                  id: "shot_2",
+                  sceneId: "scene_2",
+                  segmentId: "segment_2",
+                  order: 1,
+                  shotCode: "SC02-SG01-SH01",
+                  durationSec: 4,
+                  purpose: "建立第二场切入。",
+                  visual: "灯塔的光扫过湿冷台阶。",
+                  subject: "林夏",
+                  action: "林夏停下脚步回头。",
+                  frameDependency: "start_frame_only",
+                  dialogue: null,
+                  os: null,
+                  audio: "海浪、风声、机械转动声。",
+                  transitionHint: null,
+                  continuityNotes: null,
+                },
+              ],
+            },
+          ],
+        }),
+      },
+      shotScriptReviewRepository: {
+        insert: vi.fn(),
+        findLatestByProjectId: vi.fn().mockResolvedValue(null),
+      },
+      taskRepository: {
+        insert: vi.fn(),
+        findById: vi.fn(),
+        findLatestByProjectId: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: "task_failed_segment",
+            projectId: "proj_20260322_ab12cd",
+            type: "shot_script_segment_generate",
+            status: "failed",
+            queueName: "shot-script-segment-generate",
+            storageDir: "projects/proj_20260322_ab12cd-my-story/tasks/task_failed_segment",
+            inputRelPath: "tasks/task_failed_segment/input.json",
+            outputRelPath: "tasks/task_failed_segment/output.json",
+            logRelPath: "tasks/task_failed_segment/log.txt",
+            errorMessage: "Gemini shot script provider returned invalid shot script JSON",
+            createdAt: "2026-03-22T12:05:00.000Z",
+            updatedAt: "2026-03-22T12:05:30.000Z",
+            startedAt: "2026-03-22T12:05:01.000Z",
+            finishedAt: "2026-03-22T12:05:30.000Z",
+          })
+          .mockResolvedValueOnce(null),
+        delete: vi.fn(),
+        markRunning: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+    });
+
+    const result = await useCase.execute({
+      projectId: "proj_20260322_ab12cd",
+    });
+
+    expect(result.availableActions.approveAll).toBe(false);
+    expect(result.latestTask?.status).toBe("failed");
+    expect(result.currentShotScript.segments[0]?.status).toBe("failed");
+  });
 });

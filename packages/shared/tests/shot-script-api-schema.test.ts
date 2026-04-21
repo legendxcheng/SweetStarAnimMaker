@@ -125,6 +125,41 @@ describe("shot script api schema", () => {
     expect(parsed.segments[0]?.shots).toEqual([]);
   });
 
+  it("accepts a failed current shot-script payload with segment error details", () => {
+    const parsed = shared.currentShotScriptResponseSchema.parse({
+      id: "shot_script_20260322_ab12cd",
+      title: "Ep01 Shot Script",
+      sourceStoryboardId: "storyboard_20260322_ab12cd",
+      sourceTaskId: "task_20260322_shot_script",
+      updatedAt: "2026-03-22T12:00:00.000Z",
+      approvedAt: null,
+      segmentCount: 2,
+      shotCount: 0,
+      totalDurationSec: null,
+      segments: [
+        {
+          segmentId: "segment_1",
+          sceneId: "scene_1",
+          order: 1,
+          name: null,
+          summary: "林峰紧握护身符，等待金光冲破黑云。",
+          durationSec: 15,
+          status: "failed",
+          lastGeneratedAt: "2026-03-22T12:00:00.000Z",
+          approvedAt: null,
+          lastErrorMessage: "Gemini shot script provider returned invalid shot script JSON",
+          shots: [],
+        },
+      ],
+    });
+
+    expect(parsed.segments[0]?.status).toBe("failed");
+    expect(parsed.segments[0]).toHaveProperty(
+      "lastErrorMessage",
+      "Gemini shot script provider returned invalid shot script JSON",
+    );
+  });
+
   it("accepts a save-shot-script-segment request payload", () => {
     const parsed = shared.saveShotScriptSegmentRequestSchema.parse({
       name: "集市压境",

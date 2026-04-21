@@ -95,6 +95,11 @@ export function createGeminiShotScriptProvider(
             unsafeIssuesMessage,
           );
         } catch (error) {
+          if (isInvalidJsonError(error) && attempt < maxAttempts) {
+            promptText = buildInvalidJsonCorrectionPrompt(input.promptText, rawText);
+            continue;
+          }
+
           throw attachRawResponse(error, rawText);
         }
       }
@@ -153,11 +158,15 @@ function readCanonicalCharacterContext(
       {
         characterId,
         characterName,
-        promptTextCurrent,
+        promptTextCurrent: sanitizeCharacterPromptText(promptTextCurrent),
         imageAssetPath: typeof imageAssetPath === "string" ? imageAssetPath : null,
       },
     ];
   });
+}
+
+function isInvalidJsonError(error: unknown) {
+  return error instanceof Error && error.message === "Gemini shot script provider returned invalid shot script JSON";
 }
 
 function buildCorrectionPrompt(
@@ -187,4 +196,50 @@ function buildCorrectionPrompt(
   }
 
   return sections.join("\n");
+}
+
+function buildInvalidJsonCorrectionPrompt(basePromptText: string, rawResponse: string) {
+  return [
+    basePromptText,
+    "",
+    "上一次输出不是合法 JSON。请不要输出思考过程、解释、标题或 markdown，只返回一个完整 JSON 对象。",
+    "下面是上一次错误输出，请将其修正为合法 JSON：",
+    rawResponse,
+  ].join("\n");
+}
+
+function sanitizeCharacterPromptText(value: string) {
+  const normalized = value.replace(/\r\n/g, "\n").trim();
+
+  if (!normalized) {
+    return value;
+  }
+
+  const paragraphs = normalized
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.replace(/\*\*/g, "").trim())
+    .filter((paragraph) => paragraph.length > 0);
+
+  const chineseParagraphs = paragraphs.filter(
+    (paragraph) =>
+      /[\u4e00-\u9fff]/.test(paragraph) &&
+      !/(^total\b|chars?\b|thought process|generating a |okay,|first,|finally,)/i.test(paragraph),
+  );
+
+  if (chineseParagraphs.length > 0) {
+    return chineseParagraphs[chineseParagraphs.length - 1]!;
+  }
+
+  for (let index = paragraphs.length - 1; index >= 0; index -= 1) {
+    const paragraph = paragraphs[index];
+
+    if (
+      paragraph &&
+      !/(thought process|generating a |okay,|first,|finally,|total:|chars?\b)/i.test(paragraph)
+    ) {
+      return paragraph;
+    }
+  }
+
+  return normalized.replace(/\*\*/g, "");
 }

@@ -1,6 +1,10 @@
 import type { CharacterSheetRecord } from "@sweet-star/shared";
 
-import { CARD_CLASS, CHARACTER_STATUS_LABELS } from "./constants";
+import {
+  CARD_CLASS,
+  CHARACTER_STATUS_LABELS,
+  CHARACTER_STATUS_TAG_CLASSNAMES,
+} from "./constants";
 
 interface CharacterSheetListCardProps {
   characters: CharacterSheetRecord[];
@@ -41,7 +45,9 @@ export function CharacterSheetListCard({
                   <span className="text-sm font-semibold text-(--color-text-primary)">
                     {character.characterName}
                   </span>
-                  <span className="text-xs text-(--color-text-muted)">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CHARACTER_STATUS_TAG_CLASSNAMES[character.status]}`}
+                  >
                     {CHARACTER_STATUS_LABELS[character.status]}
                   </span>
                 </div>

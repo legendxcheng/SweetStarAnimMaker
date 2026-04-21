@@ -1,4 +1,7 @@
-import { buildProviderRequestError } from "./provider-request-error";
+import {
+  buildProviderNetworkError,
+  buildProviderRequestError,
+} from "./provider-request-error";
 
 export interface RequestOpenAiCompatibleChatCompletionInput {
   baseUrl: string;
@@ -74,6 +77,10 @@ export async function requestOpenAiCompatibleChatCompletion(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`${input.providerLabel} provider request timed out`);
+    }
+
+    if (error instanceof Error && error.message === "fetch failed") {
+      throw buildProviderNetworkError(input.providerLabel, error);
     }
 
     throw error;

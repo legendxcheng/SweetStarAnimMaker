@@ -1,6 +1,10 @@
 import { matchesShotScriptSegmentSelector } from "@sweet-star/shared";
 
-import { mergeShotScriptSegment, toInReviewShotScriptSegment } from "../domain/shot-script";
+import {
+  mergeShotScriptSegment,
+  toFailedShotScriptSegment,
+  toInReviewShotScriptSegment,
+} from "../domain/shot-script";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
@@ -50,15 +54,25 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
         startedAt,
       });
 
+      let projectStorageDir: string | null = null;
+      let projectId: string | null = null;
+      let taskSelector: { sceneId: string; segmentId: string } | null = null;
+
       try {
         const taskInput = await dependencies.taskFileStorage.readTaskInput({ task });
         assertShotScriptSegmentTaskInput(taskInput);
+        taskSelector = {
+          sceneId: taskInput.sceneId,
+          segmentId: taskInput.segmentId,
+        };
 
         const project = await dependencies.projectRepository.findById(task.projectId);
 
         if (!project) {
           throw new ProjectNotFoundError(task.projectId);
         }
+        projectStorageDir = project.storageDir;
+        projectId = project.id;
 
         const currentShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
           storageDir: project.storageDir,
@@ -72,13 +86,14 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           storageDir: project.storageDir,
           promptTemplateKey: taskInput.promptTemplateKey,
         });
+        const sanitizedCharacterSheets = sanitizeCharacterSheets(taskInput.characterSheets ?? []);
         const promptVariables = {
           storyboardTitle: taskInput.storyboardTitle,
           episodeTitle: taskInput.episodeTitle,
           scene: taskInput.scene,
           segment: taskInput.segment,
           masterPlot: taskInput.masterPlot,
-          characterSheets: taskInput.characterSheets ?? [],
+          characterSheets: sanitizedCharacterSheets,
           ...buildSpokenTextBudgetPromptVariables(taskInput.segment.durationSec),
         };
         const promptText = renderTemplate(promptTemplate, promptVariables);
@@ -199,6 +214,53 @@ export function createProcessShotScriptSegmentGenerateTaskUseCase(
           task,
           message: `shot script segment generation failed: ${errorMessage}`,
         });
+        if (projectStorageDir && projectId && taskSelector) {
+          const failedProjectStorageDir = projectStorageDir;
+          const failedProjectId = projectId;
+          const failedTaskSelector = taskSelector;
+
+          await withSerializedShotScriptRecovery(failedProjectStorageDir, async () => {
+            if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
+              return;
+            }
+
+            const latestShotScript = await dependencies.shotScriptStorage.readCurrentShotScript({
+              storageDir: failedProjectStorageDir,
+            });
+
+            if (!latestShotScript) {
+              throw new CurrentShotScriptNotFoundError(failedProjectId);
+            }
+
+            const existingSegment = latestShotScript.segments.find((segment) =>
+              matchesShotScriptSegmentSelector(segment, failedTaskSelector),
+            );
+
+            if (!existingSegment) {
+              throw new Error(`Shot script segment not found: ${failedTaskSelector.segmentId}`);
+            }
+
+            const updatedShotScript = mergeShotScriptSegment(
+              latestShotScript,
+              toFailedShotScriptSegment({
+                baseSegment: existingSegment,
+                updatedAt: finishedAt,
+                errorMessage,
+              }),
+              finishedAt,
+            );
+
+            await dependencies.shotScriptStorage.writeCurrentShotScript({
+              storageDir: failedProjectStorageDir,
+              shotScript: updatedShotScript,
+            });
+            await dependencies.projectRepository.updateStatus({
+              projectId: failedProjectId,
+              status: "shot_script_in_review",
+              updatedAt: finishedAt,
+            });
+          });
+        }
         await dependencies.taskRepository.markFailed({
           taskId: task.id,
           errorMessage,
@@ -341,7 +403,7 @@ function renderCharacterSheets(value: unknown) {
     return "无已批准角色设定";
   }
 
-  return value
+  return sanitizeCharacterSheets(value)
     .map((entry) => {
       if (!entry || typeof entry !== "object") {
         return null;
@@ -376,4 +438,62 @@ function readTemplateString(value: unknown, fallback: string) {
   }
 
   return value;
+}
+
+function sanitizeCharacterSheets(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return entry;
+    }
+
+    const promptTextCurrent = (entry as { promptTextCurrent?: unknown }).promptTextCurrent;
+
+    return {
+      ...entry,
+      promptTextCurrent:
+        typeof promptTextCurrent === "string"
+          ? sanitizeCharacterPromptText(promptTextCurrent)
+          : promptTextCurrent,
+    };
+  });
+}
+
+function sanitizeCharacterPromptText(value: string) {
+  const normalized = value.replace(/\r\n/g, "\n").trim();
+
+  if (!normalized) {
+    return value;
+  }
+
+  const paragraphs = normalized
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.replace(/\*\*/g, "").trim())
+    .filter((paragraph) => paragraph.length > 0);
+
+  const chineseParagraphs = paragraphs.filter(
+    (paragraph) =>
+      /[\u4e00-\u9fff]/.test(paragraph) &&
+      !/(^total\b|chars?\b|thought process|generating a |okay,|first,|finally,)/i.test(paragraph),
+  );
+
+  if (chineseParagraphs.length > 0) {
+    return chineseParagraphs[chineseParagraphs.length - 1]!;
+  }
+
+  for (let index = paragraphs.length - 1; index >= 0; index -= 1) {
+    const paragraph = paragraphs[index];
+
+    if (
+      paragraph &&
+      !/(thought process|generating a |okay,|first,|finally,|total:|chars?\b)/i.test(paragraph)
+    ) {
+      return paragraph;
+    }
+  }
+
+  return normalized.replace(/\*\*/g, "");
 }

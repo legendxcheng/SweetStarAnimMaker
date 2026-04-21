@@ -54,6 +54,11 @@ const masterPlotInReviewProject = {
   status: "master_plot_in_review" as const,
 };
 
+const generatingMasterPlotProject = {
+  ...baseProject,
+  status: "master_plot_generating" as const,
+};
+
 const runningTask = {
   id: "task-1",
   projectId: "proj-1",
@@ -78,6 +83,13 @@ const runningMasterPlotTask = {
 
 const succeededTask = {
   ...runningTask,
+  status: "succeeded" as const,
+  updatedAt: "2024-01-01T00:00:03Z",
+  finishedAt: "2024-01-01T00:00:03Z",
+};
+
+const succeededMasterPlotTask = {
+  ...runningMasterPlotTask,
   status: "succeeded" as const,
   updatedAt: "2024-01-01T00:00:03Z",
   finishedAt: "2024-01-01T00:00:03Z",
@@ -322,6 +334,19 @@ const fullStoryboard = {
   ],
 };
 
+const storyboardReviewWorkspaceWithFailedTask = {
+  projectId: "proj-1",
+  projectName: "Test Project",
+  projectStatus: "storyboard_in_review" as const,
+  currentStoryboard: fullStoryboard,
+  latestTask: failedTask,
+  availableActions: {
+    save: true,
+    approve: true,
+    reject: true,
+  },
+};
+
 const generatingProject = {
   ...characterSheetsApprovedProject,
   status: "storyboard_generating" as const,
@@ -450,6 +475,79 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "主情节" }));
 
     expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /进入主情节审核/i })).toHaveAttribute(
+      "href",
+      "/projects/proj-1/master-plot/review",
+    );
+  });
+
+  it("keeps polling the project after master-plot task success until the review data arrives", async () => {
+    const intervalCallbacks: Array<() => void> = [];
+    vi.spyOn(global, "setInterval").mockImplementation(((callback) => {
+      intervalCallbacks.push(callback as () => void);
+      return intervalCallbacks.length as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval);
+    vi.spyOn(global, "clearInterval").mockImplementation(() => undefined);
+
+    vi.spyOn(apiModule.apiClient, "getProjectDetail")
+      .mockResolvedValueOnce(baseProject)
+      .mockResolvedValueOnce(generatingMasterPlotProject)
+      .mockResolvedValueOnce(masterPlotInReviewProject);
+    vi.spyOn(apiModule.apiClient, "regenerateMasterPlot").mockResolvedValue(runningMasterPlotTask);
+    const getTaskDetail = vi
+      .spyOn(apiModule.apiClient, "getTaskDetail")
+      .mockResolvedValue(succeededMasterPlotTask);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "主情节" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "主情节" }));
+
+    const intervalCountBeforeGenerate = intervalCallbacks.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateMasterPlot).toHaveBeenCalledWith("proj-1");
+    });
+
+    let taskPollHandled = false;
+    const intervalCountAfterGenerate = intervalCallbacks.length;
+
+    for (let index = intervalCountBeforeGenerate; index < intervalCountAfterGenerate; index += 1) {
+      await act(async () => {
+        intervalCallbacks[index]?.();
+        await flushMicrotasks();
+      });
+
+      if (getTaskDetail.mock.calls.length > 0) {
+        taskPollHandled = true;
+        break;
+      }
+    }
+
+    expect(taskPollHandled).toBe(true);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.getProjectDetail).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.queryByRole("link", { name: /进入主情节审核/i })).not.toBeInTheDocument();
+
+    const projectRefreshCallbacks = intervalCallbacks.slice(intervalCountAfterGenerate);
+    expect(projectRefreshCallbacks.length).toBeGreaterThan(0);
+
+    for (const callback of projectRefreshCallbacks) {
+      await act(async () => {
+        callback();
+        await flushMicrotasks();
+      });
+    }
+
+    expect(apiModule.apiClient.getProjectDetail).toHaveBeenCalledTimes(3);
     expect(screen.getByRole("link", { name: /进入主情节审核/i })).toHaveAttribute(
       "href",
       "/projects/proj-1/master-plot/review",
@@ -767,6 +865,30 @@ describe("Project Detail Page", () => {
     expect(screen.getByText("That sound again.")).toBeInTheDocument();
     expect(screen.getByText("Start the mystery.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /进入分镜审核/i })).not.toBeInTheDocument();
+  });
+
+  it("loads the latest storyboard task status after refreshing the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(reviewedProject);
+    vi.spyOn(apiModule.apiClient, "getCurrentStoryboard").mockResolvedValue(fullStoryboard);
+    const getStoryboardReviewWorkspace = vi
+      .spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace")
+      .mockResolvedValue(storyboardReviewWorkspaceWithFailedTask);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "分镜" }));
+
+    await waitFor(() => {
+      expect(getStoryboardReviewWorkspace).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
+    expect(screen.getByText("失败")).toBeInTheDocument();
+    expect(screen.getByText("Provider rate limit")).toBeInTheDocument();
   });
 
   it("shows an inline detail error while keeping the storyboard summary visible", async () => {

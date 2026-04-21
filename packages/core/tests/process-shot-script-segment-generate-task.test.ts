@@ -364,6 +364,186 @@ describe("process shot script segment generate task use case", () => {
     );
   });
 
+  it("sanitizes polluted character prompt text before rendering the prompt snapshot", async () => {
+    const taskRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "task_segment_sanitized_prompt",
+        projectId: "proj_1",
+        type: "shot_script_segment_generate",
+        queueName: "shot-script-segment-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_segment_sanitized_prompt",
+      }),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        status: "shot_script_generating",
+      }),
+      updateStatus: vi.fn(),
+    };
+    const taskFileStorage = {
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_segment_sanitized_prompt",
+        projectId: "proj_1",
+        taskType: "shot_script_segment_generate",
+        sourceStoryboardId: "storyboard_1",
+        sourceShotScriptId: "shot_script_task_batch_1",
+        sceneId: "scene_2",
+        segmentId: "segment_2",
+        scene: {
+          id: "scene_2",
+          order: 2,
+          name: "大师指点迷津",
+          dramaticPurpose: "让运势出现关键转折。",
+        },
+        segment: {
+          id: "segment_2",
+          order: 2,
+          durationSec: 15,
+          visual: "林峰紧握护身符，一道金光冲破头顶黑云。",
+          characterAction: "林峰闭目凝神后逐渐舒展眉头。",
+          dialogue: "",
+          voiceOver: "否极泰来，破后而立。",
+          audio: "钟鸣和管弦乐渐起。",
+          purpose: "呈现运势转折。",
+        },
+        storyboardTitle: "第1集",
+        episodeTitle: "转运一瞬间",
+        characterSheets: [
+          {
+            characterId: "char_linfeng",
+            characterName: "林峰（倒霉青年）",
+            promptTextCurrent: `**Generating a Visual Prompt for "Lin Feng"**
+
+Okay, so the task is clear: I need to craft a concise visual prompt.
+
+林峰，二十多岁的中国青年，身形略瘦，黑发凌乱，黑眼圈明显，穿廉价深灰西装和松开的浅蓝衬衫，胸前佩戴微微泛金光的护身符，神情疲惫却仍有希望。`,
+            imageAssetPath: "character-sheets/char_linfeng/current.png",
+          },
+        ],
+        promptTemplateKey: "shot_script.segment.generate",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      readPromptTemplate: vi.fn().mockResolvedValue(
+        ["角色设定：", "{{characterSheets}}"].join("\n"),
+      ),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_task_batch_1",
+        title: "第1集",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_batch_1",
+        updatedAt: "2026-03-23T12:03:00.000Z",
+        approvedAt: null,
+        segmentCount: 1,
+        shotCount: 0,
+        totalDurationSec: null,
+        segments: [
+          {
+            segmentId: "segment_2",
+            sceneId: "scene_2",
+            order: 2,
+            name: null,
+            summary: "呈现运势转折。",
+            durationSec: 15,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            shots: [],
+          },
+        ],
+      }),
+      writeCurrentShotScript: vi.fn(),
+    };
+    const shotScriptProvider = {
+      generateShotScriptSegment: vi.fn().mockResolvedValue({
+        rawResponse: '{"segmentId":"segment_2"}',
+        segment: {
+          segmentId: "segment_2",
+          sceneId: "scene_2",
+          order: 2,
+          name: "转运光爆",
+          summary: "林峰握住护身符，金光冲破头顶黑云。",
+          durationSec: 15,
+          status: "in_review",
+          lastGeneratedAt: null,
+          approvedAt: null,
+          shots: [
+            {
+              id: "shot_1",
+              sceneId: "scene_2",
+              segmentId: "segment_2",
+              order: 1,
+              shotCode: "SC02-SG02-SH01",
+              durationSec: 15,
+              purpose: "完成运势转折的核心画面。",
+              visual: "林峰握紧护身符，金光向上贯穿黑云。",
+              subject: "林峰（倒霉青年）",
+              action: "林峰（倒霉青年）闭目凝神后慢慢舒展眉头。",
+              frameDependency: "start_frame_only",
+              dialogue: null,
+              os: "否极泰来，破后而立。",
+              audio: "钟鸣与管弦乐同时升起。",
+              transitionHint: "由近景推至中景",
+              continuityNotes: "护身符保持胸前位置，西装与前段一致。",
+            },
+          ],
+        },
+      }),
+    };
+
+    const useCase = createProcessShotScriptSegmentGenerateTaskUseCase({
+      taskRepository: taskRepository as never,
+      projectRepository: projectRepository as never,
+      taskFileStorage: taskFileStorage as never,
+      shotScriptProvider: shotScriptProvider as never,
+      shotScriptStorage: shotScriptStorage as never,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-23T12:04:00.000Z")
+          .mockReturnValueOnce("2026-03-23T12:05:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_segment_sanitized_prompt" });
+
+    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptText: expect.stringContaining("林峰，二十多岁的中国青年"),
+      }),
+    );
+    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptText: expect.not.stringContaining("Generating a Visual Prompt"),
+      }),
+    );
+    expect(shotScriptStorage.writePromptSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptText: expect.not.stringContaining("Okay, so the task is clear"),
+      }),
+    );
+    expect(shotScriptProvider.generateShotScriptSegment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          characterSheets: [
+            expect.objectContaining({
+              promptTextCurrent: expect.stringContaining("林峰，二十多岁的中国青年"),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
   it("updates the matching scene segment when raw segment ids repeat", async () => {
     const taskRepository = {
       findById: vi.fn().mockResolvedValue({
@@ -905,6 +1085,166 @@ describe("process shot script segment generate task use case", () => {
       errorMessage: "Gemini shot script provider returned invalid segments[0].strategy",
       updatedAt: "2026-03-23T12:05:00.000Z",
       finishedAt: "2026-03-23T12:05:00.000Z",
+    });
+  });
+
+  it("marks the targeted segment as failed with the provider error message", async () => {
+    const taskRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "task_segment_failed_state",
+        projectId: "proj_1",
+        type: "shot_script_segment_generate",
+        queueName: "shot-script-segment-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_segment_failed_state",
+      }),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        status: "shot_script_generating",
+      }),
+      updateStatus: vi.fn(),
+    };
+    const taskFileStorage = {
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_segment_failed_state",
+        projectId: "proj_1",
+        taskType: "shot_script_segment_generate",
+        sourceStoryboardId: "storyboard_1",
+        sourceShotScriptId: "shot_script_task_batch_1",
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        scene: {
+          id: "scene_1",
+          order: 1,
+          name: "集市入口",
+          dramaticPurpose: "封死主角退路。",
+        },
+        segment: {
+          id: "segment_1",
+          order: 1,
+          durationSec: 6,
+          visual: "积水集市口被杂乱摊棚堵住。",
+          characterAction: "林夏停住脚步。",
+          dialogue: "",
+          voiceOver: "来得真快。",
+          audio: "雨声和水声混在一起。",
+          purpose: "确认对手先一步堵路。",
+        },
+        storyboardTitle: "第1集",
+        episodeTitle: "暴雨封路",
+        promptTemplateKey: "shot_script.segment.generate",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const shotScriptStorage = {
+      readPromptTemplate: vi.fn().mockResolvedValue("{{segment.visual}}"),
+      writePromptSnapshot: vi.fn(),
+      writeRawResponse: vi.fn(),
+      readCurrentShotScript: vi.fn().mockResolvedValue({
+        id: "shot_script_task_batch_1",
+        title: "第1集",
+        sourceStoryboardId: "storyboard_1",
+        sourceTaskId: "task_batch_1",
+        updatedAt: "2026-03-23T12:03:00.000Z",
+        approvedAt: null,
+        segmentCount: 2,
+        shotCount: 1,
+        totalDurationSec: 3,
+        segments: [
+          {
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 1,
+            name: null,
+            summary: "确认对手先一步堵路。",
+            durationSec: 6,
+            status: "pending",
+            lastGeneratedAt: null,
+            approvedAt: null,
+            lastErrorMessage: null,
+            shots: [],
+          },
+          {
+            segmentId: "segment_2",
+            sceneId: "scene_1",
+            order: 2,
+            name: "第二段",
+            summary: "对手继续逼近。",
+            durationSec: 3,
+            status: "in_review",
+            lastGeneratedAt: "2026-03-23T12:03:00.000Z",
+            approvedAt: null,
+            lastErrorMessage: null,
+            shots: [
+              {
+                id: "shot_2",
+                sceneId: "scene_1",
+                segmentId: "segment_2",
+                order: 1,
+                shotCode: "S01-SG02-SH01",
+                durationSec: 3,
+                purpose: "建立第二段。",
+                visual: "黑影穿过雨帘。",
+                subject: "对手",
+                action: "继续逼近。",
+                dialogue: null,
+                os: null,
+                audio: "脚步踩水声。",
+                transitionHint: null,
+                continuityNotes: null,
+              },
+            ],
+          },
+        ],
+      }),
+      writeCurrentShotScript: vi.fn(),
+    };
+    const shotScriptProvider = {
+      generateShotScriptSegment: vi
+        .fn()
+        .mockRejectedValue(new Error("Gemini shot script provider returned invalid shot script JSON")),
+    };
+
+    const useCase = createProcessShotScriptSegmentGenerateTaskUseCase({
+      taskRepository: taskRepository as never,
+      projectRepository: projectRepository as never,
+      taskFileStorage: taskFileStorage as never,
+      shotScriptProvider: shotScriptProvider as never,
+      shotScriptStorage: shotScriptStorage as never,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-23T12:04:00.000Z")
+          .mockReturnValueOnce("2026-03-23T12:05:00.000Z"),
+      },
+    });
+
+    await expect(useCase.execute({ taskId: "task_segment_failed_state" })).rejects.toThrow(
+      "Gemini shot script provider returned invalid shot script JSON",
+    );
+
+    expect(shotScriptStorage.writeCurrentShotScript).toHaveBeenCalledWith({
+      storageDir: "projects/proj_1-my-story",
+      shotScript: expect.objectContaining({
+        segments: [
+          expect.objectContaining({
+            segmentId: "segment_1",
+            status: "failed",
+            lastErrorMessage: "Gemini shot script provider returned invalid shot script JSON",
+            shots: [],
+          }),
+          expect.objectContaining({
+            segmentId: "segment_2",
+            status: "in_review",
+          }),
+        ],
+      }),
     });
   });
 });

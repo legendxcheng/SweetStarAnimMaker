@@ -7,12 +7,14 @@ type ShotScriptReviewSummaryProps = {
   workspace: ShotScriptReviewWorkspace;
   unapprovedSegments: ShotScriptSegment[];
   incompleteSegmentCount: number;
+  failedSegmentCount: number;
 };
 
 export function ShotScriptReviewSummary({
   workspace,
   unapprovedSegments,
   incompleteSegmentCount,
+  failedSegmentCount,
 }: ShotScriptReviewSummaryProps) {
   return (
     <div className="rounded-xl border border-(--color-border) bg-(--color-bg-surface) p-5">
@@ -55,12 +57,23 @@ export function ShotScriptReviewSummary({
                 还有 {unapprovedSegments.length} 个段落未通过
               </p>
               <p className="mt-1 text-xs text-(--color-text-muted)">
-                {incompleteSegmentCount > 0
-                  ? `其中 ${incompleteSegmentCount} 个段落未生成完成，全部通过按钮会继续隐藏。`
+                {failedSegmentCount > 0
+                  ? `其中 ${failedSegmentCount} 个段落生成失败，请优先重生成或人工修正。`
+                  : incompleteSegmentCount > 0
+                    ? `其中 ${incompleteSegmentCount} 个段落未生成完成，全部通过按钮会继续隐藏。`
                   : "当前都已生成完成，但仍需逐段通过。"}
               </p>
             </div>
           </div>
+
+          {workspace.latestTask?.status === "failed" && workspace.latestTask.errorMessage && (
+            <div className="mt-3 rounded-lg border border-(--color-danger)/30 bg-(--color-danger)/8 px-3 py-2">
+              <p className="text-xs font-semibold text-(--color-danger)">最近任务失败</p>
+              <p className="mt-1 text-sm text-(--color-text-primary)">
+                {workspace.latestTask.errorMessage}
+              </p>
+            </div>
+          )}
 
           <div className="mt-3 flex flex-col gap-2">
             {unapprovedSegments.map((segment) => (
@@ -79,6 +92,9 @@ export function ShotScriptReviewSummary({
                 <p className="mt-1 text-sm text-(--color-text-muted)">
                   {segment.name ?? segment.summary ?? segment.segmentId}
                 </p>
+                {segment.status === "failed" && segment.lastErrorMessage && (
+                  <p className="mt-1 text-xs text-(--color-danger)">{segment.lastErrorMessage}</p>
+                )}
               </div>
             ))}
           </div>

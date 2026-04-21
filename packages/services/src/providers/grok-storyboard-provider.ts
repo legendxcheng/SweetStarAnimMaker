@@ -7,6 +7,7 @@ import type {
   StoryboardProvider,
 } from "@sweet-star/core";
 
+import { parseJsonObjectFromText } from "./json-object-parser";
 import { requestOpenAiCompatibleChatCompletion } from "./openai-compatible-chat";
 
 export interface CreateGrokStoryboardProviderOptions {
@@ -45,7 +46,12 @@ export function createGrokStoryboardProvider(
         promptText: buildMasterPlotPromptText(input),
         responseFormat: "json_object",
       });
-      const masterPlot = normalizeMasterPlotPayload(JSON.parse(rawText));
+      const masterPlot = normalizeMasterPlotPayload(
+        parseJsonObjectFromText(
+          rawText,
+          "Grok master plot provider returned invalid master plot JSON",
+        ),
+      );
 
       return {
         rawResponse: rawText,
@@ -68,7 +74,9 @@ export function createGrokStoryboardProvider(
         promptText: buildStoryboardPromptText(input),
         responseFormat: "json_object",
       });
-      const storyboard = normalizeStoryboardPayload(JSON.parse(rawText));
+      const storyboard = normalizeStoryboardPayload(
+        parseJsonObjectFromText(rawText, "Grok storyboard provider returned invalid storyboard JSON"),
+      );
 
       return {
         rawResponse: rawText,

@@ -7,7 +7,11 @@ import type {
   StoryboardProvider,
 } from "@sweet-star/core";
 
-import { buildProviderRequestError } from "./provider-request-error";
+import {
+  buildProviderNetworkError,
+  buildProviderRequestError,
+} from "./provider-request-error";
+import { parseJsonObjectFromText } from "./json-object-parser";
 
 export interface CreateGeminiStoryboardProviderOptions {
   baseUrl?: string;
@@ -43,7 +47,12 @@ export function createGeminiStoryboardProvider(
         promptText: buildMasterPlotPromptText(input),
         responseJsonSchema: masterPlotResponseJsonSchema,
       });
-      const masterPlot = normalizeMasterPlotPayload(JSON.parse(rawText));
+      const masterPlot = normalizeMasterPlotPayload(
+        parseJsonObjectFromText(
+          rawText,
+          "Gemini master plot provider returned invalid master plot JSON",
+        ),
+      );
 
       return {
         rawResponse: rawText,
@@ -63,7 +72,12 @@ export function createGeminiStoryboardProvider(
         promptText: buildStoryboardPromptText(input),
         responseJsonSchema: storyboardResponseJsonSchema,
       });
-      const storyboard = normalizeStoryboardPayload(JSON.parse(rawText));
+      const storyboard = normalizeStoryboardPayload(
+        parseJsonObjectFromText(
+          rawText,
+          "Gemini storyboard provider returned invalid storyboard JSON",
+        ),
+      );
 
       return {
         rawResponse: rawText,
@@ -124,6 +138,10 @@ async function requestGeminiJson(input: {
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Gemini ${input.errorLabel} provider request timed out`);
+    }
+
+    if (error instanceof Error && error.message === "fetch failed") {
+      throw buildProviderNetworkError(`Gemini ${input.errorLabel}`, error);
     }
 
     throw error;

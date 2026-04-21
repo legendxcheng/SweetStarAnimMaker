@@ -238,6 +238,7 @@ describe("Spec5 Studio Flow", () => {
     });
     vi.spyOn(apiModule.apiClient, "getStoryboardReviewWorkspace")
       .mockResolvedValueOnce(reviewWorkspace)
+      .mockResolvedValueOnce(reviewWorkspace)
       .mockResolvedValueOnce(refreshedWorkspace);
     vi.spyOn(apiModule.apiClient, "saveStoryboard").mockResolvedValue(
       refreshedWorkspace.currentStoryboard,

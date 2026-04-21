@@ -6,17 +6,18 @@
 
 当前目标是把项目拆成一系列可独立实现、可审核、可回溯的阶段，然后按阶段一个一个落地。
 
+本文描述的是 `2026-04-20` 当前仓库实现。
+
 ## 项目定义
 
 - 一个 `Project` 对应一个短篇视频片段项目
 - 项目起点不是完整剧本，而是一段简短创意
-- 每一个阶段都必须经过人工审核后，才能进入下一个阶段
+- 每一个正式生成阶段都必须经过人工审核后，才能进入下一个阶段
+- `final_cut` 当前是导出资产阶段，不额外引入项目级 `final_cut_*` 状态
 
 ## 当前仓库对齐说明
 
-截至当前仓库实现，业务主链路已经不是最初设想的细粒度流水线，而是一条先跑通并已落地到 `images` 的简化流水线。
-
-当前代码已经实现到：
+截至当前仓库实现，业务主链路已经落地到 Seedance 视频工作流：
 
 1. 创意输入
 2. 总剧情生成
@@ -24,8 +25,10 @@
 4. 分镜文案生成
 5. 镜头脚本生成与审核
 6. 出图生成与审核
+7. 视频 prompt 生成、人工编辑、Seedance 片段生成与审核
+8. 成片/导出
 
-其中第 5 步当前已经按新的 segment-first 语义落地：
+其中第 5 步已经按 `segment-first` 语义落地：
 
 - `storyboard` 仍然是上游叙事资产
 - `shot_script` 以 `segment` 为生成和审核原子单位
@@ -34,16 +37,29 @@
 - 每个 `segment` 可以单独保存、重生成、审核通过
 - 同时提供“全部通过”动作，把整份 `shot_script` 作为阶段结果收口
 
-当前代码尚未实现的后续阶段有：
+第 6 步 `images` 阶段也按 `segment-first` 语义维护：
 
-1. 视频片段
-2. 成片/导出
+- 基于已审核 `shot_script` 创建项目级 image batch
+- 每个 `segment` 生成并维护一组 shots 的 `start_frame` / `end_frame`
+- 支持按段重生成、按段审核和全部通过
+- 项目进入 `images_approved` 后才允许启动视频阶段
 
-说明：
+第 7 步 `videos` 阶段已经正式接入 Seedance 工作流：
 
-- `images` 阶段已经有主链路实现与工作区入口
-- 当前 `images` 阶段仍需要继续按 `segment-first` 语义维护文档与实现
-- `videos` 与 `final_cut` 仍只处于设计/预留阶段，尚无正式实现
+- `videos_generate` 只初始化视频批次和 segment 记录，不直接调用 Seedance
+- worker 为每个 `segment` 生成 `segment_video_prompt_generate` 子任务
+- prompt 生成完成后，segment 进入 `in_review`
+- Studio 支持人工编辑 prompt、参考图、参考音频和重新生成 prompt
+- 用户对单个 segment 点击生成视频后，才创建 `segment_video_generate` 任务
+- worker 通过 Seedance provider 生成视频，下载结果并写回本地存储与 SQLite
+- 所有 segment 视频审核通过后，项目进入 `videos_approved`
+
+第 8 步 `final_cut` 已经有最小导出实现：
+
+- `POST /projects/:projectId/final-cut/generate` 创建 `final_cut_generate` 任务
+- 该任务要求当前视频批次下所有 segment 都是 `approved` 且有 `videoAssetPath`
+- worker 按 segment 顺序生成 ffmpeg manifest 并渲染最终视频
+- 当前不会把项目状态推进到新的 `final_cut_*` 状态
 
 最初规划中的这些细粒度阶段，目前仍没有作为独立阶段落地到代码主链路中：
 
@@ -76,14 +92,64 @@
   - 支持查看当前镜头脚本、按段人工修改、按段重生成、按段审核通过、全部通过
 - `出图`
   - 基于已审核的 `shot_script` 生成项目级 `images batch`
-  - 当前采用 `segment-first` 结构，每个 `segment` 生成 `start_frame` 与 `end_frame`
+  - 当前采用 `segment-first` 结构，每个 `segment` 维护一组 shots 的 `start_frame` 与 `end_frame`
   - 支持查看当前画面、按段重生成、按段审核通过、全部通过
 - `视频片段`
-  - 当前仓库未实现
-  - 设计目标是基于每个 `segment` 的已审核首帧/尾帧生成一个可审核视频片段
-  - 当前建议使用 `视频 API`，最小实现优先接 `VectorEngine + sora-2-all`
+  - 基于已审核的 `images batch` 和 `shot_script` 初始化项目级 `video batch`
+  - 当前采用 `segment-first` 视频记录，一个 `segment` 对应一条当前视频记录
+  - 初始化阶段自动收集 segment 下 shots 的参考图，并创建 prompt 生成任务
+  - prompt 生成与视频生成是两个独立 worker 阶段
+  - Studio 允许先审 prompt 和参考素材，再按 segment 手动触发 Seedance 视频生成
+  - 支持参考音频、prompt 重生成、单段视频生成、单段审核、全部通过
 - `成片/导出`
-  - 当前仓库未实现，仅保留真正项目级拼接/导出阶段占位
+  - 基于当前已审核的 `video batch` 创建 `final_cut_generate` 任务
+  - 当前实现是按 segment 顺序拼接已审核视频片段
+  - 生成结果作为 final cut 资产读取，不改变项目状态机
+
+## 视频阶段当前语义
+
+当前视频阶段不是“按 shot 直接生成视频”，也不是“初始化时一次性生成所有付费视频”。
+
+真实流程是：
+
+1. `images_approved` 后，API 创建 `videos_generate`
+2. worker 创建 `video_batches` 和每个 `segment` 的 `segment_videos` 记录
+3. worker 为每个 segment 创建 `segment_video_prompt_generate`
+4. prompt 生成后，segment 进入 `in_review`
+5. Studio 人工编辑 `promptTextCurrent`、`referenceImages`、`referenceAudios`
+6. 用户手动触发单个 segment 的 `segment_video_generate`
+7. Seedance provider 生成视频并写回 `current.mp4`、缩略图和元数据
+8. segment 审核通过后，全部通过时项目进入 `videos_approved`
+9. `videos_approved` 后允许生成 final cut
+
+当前 Seedance adapter 的核心语义是：
+
+- 优先使用 segment 记录里的整组 `referenceImages`
+- 只有 `referenceImages` 为空时才 fallback 到 legacy `startFramePath`
+- `referenceAudios` 会随请求一起传给 Seedance
+- 当前 reference images 只是参考图集合，不是严格的首帧/尾帧控制模式
+
+当前产品上建议把 segment 视频参考素材理解为一组“有业务语义的参考包”：
+
+- `角色设定参考图` 必选
+  - 作用是锁定角色外观、服装、发型、体型和整体人设一致性
+- `首帧` 必选
+  - 作用是锁定当前 segment 的开场构图、动作起点和镜头起势
+- `尾帧` 可选
+  - 只有当这个 segment 明确需要稳定终态时才补充
+- `场景设定图` 可选
+  - 只有当环境空间、时代氛围或场景辨识度很重要时才补充
+
+也就是说：
+
+- `视频生成最小必需素材 = 角色设定参考图 + 首帧`
+- `增强控制素材 = 尾帧 + 场景设定图`
+- 当前实现里，这些素材仍统一作为 `referenceImages` 发送给 Seedance
+- 但在业务语义、UI 展示、Prompt 描述和人工审核时，应该明确区分它们的用途
+
+更详细的代码路径和维护说明见：
+
+- `docs/guide/Seedance-Workflow-Code-Guide.md`
 
 ## 关键业务规则
 
@@ -100,6 +166,13 @@
 ### 2. 下游默认只消费上游已审核结果
 
 新生成但尚未审核的内容，不能直接被下游使用。
+
+当前门禁示例：
+
+- `shot_script` 只能消费已审核 `storyboard`
+- `images` 只能消费已审核 `shot_script`
+- `videos` 只能从 `images_approved` 启动
+- `final_cut` 只能消费当前视频批次里全部已审核且有视频资产的 segments
 
 ### 3. 每个 AI 环节都必须绑定 Prompt 模板
 
@@ -129,16 +202,29 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - 也不再按“一个 storyboard segment = 一个 shot”理解
 - `shot_script` 阶段的原子单位是 `segment`
 
-### 6. 后续视频阶段仍按一个 segment 对应一个片段预留
+### 6. 当前 `videos` 已按 segment-first 固定
 
-虽然当前仓库还没实现 `videos` 阶段，但后续阶段默认预留为：
+当前仓库中视频阶段的真实原子单位是：
 
-`一个 segment = 一组 shots = 一张首帧 + 一张尾帧 + 一个视频片段`
+`1 segment = N shots = 一组参考图/音频 = 一个当前视频片段`
 
-并且默认约束：
+也就是说：
 
-- 一个 `segment` 的总时长不应超过 `15s`
-- 首尾帧逻辑发生在后续视频/出图阶段，而不是当前 `shot_script` 阶段
+- 视频 prompt 是 segment 级
+- 视频配置编辑是 segment 级
+- Seedance 生成任务是 segment 级
+- 审核通过也是 segment 级
+- legacy `shotId` / `shotCode` 等字段仍存在，但不是当前视频阶段的业务原子
+
+### 7. 视频配置变更会使审核失效
+
+如果某个 segment 已经 `approved`，后续修改以下内容会把它打回 `in_review`：
+
+- `promptTextCurrent`
+- `referenceImages`
+- `referenceAudios`
+
+同时会清空 `approvedAt`。
 
 ## 通用实现契约
 
@@ -155,13 +241,15 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 ## 当前约定的 AI 提供方类型
 
 - `文字 API`
-  - 用于总剧情、角色提示词、分镜文案
+  - 用于总剧情、角色提示词、分镜文案、视频 prompt 规划
 - `图片 API`
-  - 用于角色图，以及后续分镜首帧、分镜尾帧
+  - 用于角色图、segment shots 的参考帧生成
 - `视频 API`
-  - 用于后续 `videos` 阶段的视频片段生成
+  - 当前视频阶段默认接入 Seedance provider
+- `导出/渲染器`
+  - 当前 final cut 通过 ffmpeg manifest 和 renderer 生成导出资产
 
-当前先按这三类固定提供方设计，不做可插拔抽象层。
+当前业务主链路按这些提供方类型设计。具体 provider 选择属于 worker / services 层配置，不应把业务状态逻辑塞进 provider。
 
 ## 当前建议的最小存储原则
 
@@ -178,10 +266,14 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
   - 保存模板正文
   - 保存变量输入快照
   - 保存渲染后的 prompt
+- Final cut：
+  - 保存 manifest
+  - 保存导出视频文件
+  - 配套一份 `json` 元数据
 
 ## 当前代码中的阶段门禁
 
-当前仓库已实现部分采用的门禁顺序如下：
+当前仓库已实现的门禁顺序如下：
 
 - `premise_ready`
   - 允许创建 `master_plot_generate`
@@ -193,13 +285,12 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
   - 允许创建 `shot_script_generate`
 - `shot_script_approved`
   - 允许创建 `images_generate`
-
-下一阶段设计追加的门禁顺序为：
-
 - `images_approved`
   - 允许创建 `videos_generate`
+- `videos_approved`
+  - 允许创建 `final_cut_generate`
 
-各阶段运行和审核中的状态包括：
+各阶段运行和审核中的项目状态包括：
 
 - `master_plot_generating`
 - `master_plot_in_review`
@@ -214,6 +305,11 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `images_generating`
 - `images_in_review`
 - `images_approved`
+- `videos_generating`
+- `videos_in_review`
+- `videos_approved`
+
+当前没有项目级 `final_cut_generating` / `final_cut_approved` 状态。final cut 的运行状态通过 `final_cut_generate` task 和 final cut read model 表达。
 
 当前代码中已经存在的任务类型包括：
 
@@ -224,10 +320,16 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `shot_script_generate`
 - `shot_script_segment_generate`
 - `images_generate`
+- `image_batch_generate_all_frames`
+- `image_batch_regenerate_failed_frames`
+- `image_batch_regenerate_all_prompts`
+- `image_batch_regenerate_failed_prompts`
 - `frame_prompt_generate`
 - `frame_image_generate`
-
-当前代码中还不存在 `videos_generate`、`segment_video_generate` 等后续阶段任务类型。
+- `videos_generate`
+- `segment_video_prompt_generate`
+- `segment_video_generate`
+- `final_cut_generate`
 
 ## 当前文档补齐顺序
 
@@ -238,15 +340,41 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `01-Premise-To-Master-Plot-Guide.md`
 - `04-Storyboard-To-Shot-Script-Guide.md`
 - `05-Shot-Script-To-Images-Guide.md`
+- `06-Images-To-Videos-Guide.md`
 
 其中：
 
 - `01` 对应已实现阶段
-- `04` 需要继续按当前 segment-first 实现语义维护，旧的“一个 segment = 一个 shot”表述已经不再准确
+- `04` 需要继续按当前 segment-first 实现语义维护
 - `05` 已经对应当前仓库中的正式 `images` 阶段语义，需要继续按 segment-first 实现维护
+- `06` 已存在，但如果仍保留 shot-first 或“尚未实现”表述，需要按当前 Seedance segment-first 实现继续更新
 
 建议下一步补齐或更新：
 
 - `02-Master-Plot-To-Character-Sheets-Guide.md`
 - `03-Character-Sheets-To-Storyboard-Guide.md`
 - `06-Images-To-Videos-Guide.md`
+- `07-Videos-To-Final-Cut-Guide.md`
+
+## 后续开发分流
+
+继续开发时，先判断要改的是哪一层：
+
+- “这是业务规则变化吗？” -> `packages/core`
+- “这是 HTTP/前后端契约变化吗？” -> `apps/api` + `packages/shared` + `apps/studio`
+- “这是 Seedance 请求协议变化吗？” -> `packages/services`
+- “这是数据落盘/版本保留变化吗？” -> `packages/services/src/storage` + `packages/core/src/domain/video.ts`
+- “这是按钮和交互变化吗？” -> `apps/studio`
+- “这是最终拼接/导出变化吗？” -> `packages/core` final cut use case + renderer/storage + `apps/studio`
+
+## 结论
+
+当前主链路已经从 `premise_ready` 贯通到 `videos_approved`，并具备最小 final cut 导出能力。
+
+现在最重要的维护原则是：
+
+- `shot_script`、`images`、`videos` 都按 `segment-first` 语义理解
+- `videos_generate` 负责初始化批次与 prompt 准备，不直接生成所有视频
+- `segment_video_generate` 才是真正调用 Seedance 的阶段
+- `final_cut_generate` 消费已审核视频片段并生成导出资产，不扩展项目状态机
+- provider 只处理外部协议适配，业务状态和审核规则应留在 `packages/core`

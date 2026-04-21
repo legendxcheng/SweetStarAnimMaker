@@ -10,6 +10,7 @@ const shotScriptSegmentStatuses = [
   "generating",
   "in_review",
   "approved",
+  "failed",
 ] as const;
 const shotFrameDependencies = ["start_frame_only", "start_and_end_frame"] as const;
 
@@ -42,6 +43,7 @@ export const shotScriptSegmentResponseSchema = z.object({
   status: z.enum(shotScriptSegmentStatuses),
   lastGeneratedAt: z.string().nullable(),
   approvedAt: z.string().nullable(),
+  lastErrorMessage: z.string().nullable().optional().default(null),
   shots: z.array(shotScriptItemResponseSchema),
 });
 

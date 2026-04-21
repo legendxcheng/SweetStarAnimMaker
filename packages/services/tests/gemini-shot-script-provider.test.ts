@@ -1106,4 +1106,87 @@ describe("gemini shot script provider", () => {
       rawResponse: expect.stringContaining('"strategy":"single_anchor"'),
     });
   });
+
+  it("retries when Gemini first returns prose-only thought text instead of JSON", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `**JSON Shot Script Generation: My Thought Process**
+
+I will first think about the timing and then format the result later.`,
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      name: "转运光爆",
+                      summary: "林峰握住护身符，金光冲破头顶黑云。",
+                      shots: [
+                        {
+                          id: "shot_1",
+                          sceneId: "scene_2",
+                          segmentId: "segment_2",
+                          order: 1,
+                          shotCode: "SC02-SG02-SH01",
+                          durationSec: 15,
+                          purpose: "完成运势转折的核心画面。",
+                          visual: "林峰握紧护身符，金光向上贯穿黑云。",
+                          subject: "林峰",
+                          action: "林峰闭目凝神后慢慢舒展眉头。",
+                          frameDependency: "start_frame_only",
+                          dialogue: null,
+                          os: "否极泰来，破后而立。",
+                          audio: "钟鸣与管弦乐同时升起。",
+                          transitionHint: "由近景推至中景",
+                          continuityNotes: "护身符保持胸前位置，西装与前段一致。",
+                        },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiShotScriptProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateShotScriptSegment({
+      promptText: "请直接输出 JSON，不要任何解释。",
+      variables: {
+        scene: { id: "scene_2" },
+        segment: { id: "segment_2", order: 2, durationSec: 15 },
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retryRequest = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
+    expect(retryRequest.contents[0].parts[0].text).toContain("上一次输出不是合法 JSON");
+    expect(retryRequest.contents[0].parts[0].text).toContain("My Thought Process");
+    expect(result.segment.summary).toBe("林峰握住护身符，金光冲破头顶黑云。");
+  });
 });

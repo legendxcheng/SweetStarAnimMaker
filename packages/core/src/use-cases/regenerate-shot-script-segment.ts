@@ -197,14 +197,14 @@ export function createRegenerateShotScriptSegmentUseCase(
 function deriveShotScriptProjectStatus(shotScript: {
   approvedAt: string | null;
   segments: Array<{
-    status: "pending" | "generating" | "in_review" | "approved";
+    status: "pending" | "generating" | "in_review" | "approved" | "failed";
   }>;
 }) {
   if (shotScript.approvedAt) {
     return "shot_script_approved" as const;
   }
 
-  if (shotScript.segments.some((segment) => segment.status === "in_review")) {
+  if (shotScript.segments.some((segment) => segment.status === "in_review" || segment.status === "failed")) {
     return "shot_script_in_review" as const;
   }
 

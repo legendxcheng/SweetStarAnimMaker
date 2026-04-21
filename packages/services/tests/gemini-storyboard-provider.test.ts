@@ -143,6 +143,79 @@ describe("gemini storyboard provider", () => {
     expect(result.rawResponse).toContain("The Last Sky Choir");
   });
 
+  it("parses storyboard JSON when Gemini wraps it in markdown text", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: [
+                      "**Storyboard JSON**",
+                      "```json",
+                      JSON.stringify({
+                        title: "The Last Sky Choir",
+                        episodeTitle: "Episode 1",
+                        scenes: [
+                          {
+                            name: "Rin Hears The Sky",
+                            dramaticPurpose: "Trigger the inciting beat.",
+                            segments: [
+                              {
+                                durationSec: 12,
+                                visual: "Rain shakes across the cockpit glass.",
+                                characterAction: "Rin looks up.",
+                                dialogue: "",
+                                voiceOver: "That sound again.",
+                                audio: "",
+                                purpose: "Start the mystery.",
+                              },
+                            ],
+                          },
+                        ],
+                      }),
+                      "```",
+                    ].join("\n"),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateStoryboard({
+      projectId: "proj_20260321_ab12cd",
+      masterPlot: {
+        title: "The Last Sky Choir",
+        logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+        synopsis:
+          "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+        mainCharacters: ["Rin", "Ivo"],
+        coreConflict:
+          "Rin must choose between private escape and saving the city that exiled her.",
+        emotionalArc: "She moves from bitterness to sacrificial hope.",
+        endingBeat: "Rin turns the comet's music into a rising tide of light.",
+        targetDurationSec: 480,
+      },
+      promptText: "Turn this master plot into storyboard scenes.",
+    });
+
+    expect(result.storyboard.title).toBe("The Last Sky Choir");
+    expect(result.storyboard.scenes[0]?.segments[0]?.durationSec).toBe(12);
+  });
+
   it("rejects non-2xx provider responses", async () => {
     vi.stubGlobal(
       "fetch",
@@ -177,6 +250,46 @@ describe("gemini storyboard provider", () => {
         promptText: "Turn this master plot into storyboard scenes.",
       }),
     ).rejects.toThrow("Gemini storyboard provider request failed with status 401");
+  });
+
+  it("includes fetch cause details when the provider request fails before a response", async () => {
+    const cause = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+      syscall: "read",
+      host: "api.vectorengine.ai",
+      port: 443,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause })),
+    );
+
+    const provider = createGeminiStoryboardProvider({
+      baseUrl: "https://api.vectorengine.ai",
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await expect(
+      provider.generateStoryboard({
+        projectId: "proj_20260321_ab12cd",
+        masterPlot: {
+          title: "The Last Sky Choir",
+          logline: "A disgraced pilot chases a cosmic song to save her flooded home.",
+          synopsis:
+            "A fallen courier hears a comet sing and discovers the drowned city can still be lifted.",
+          mainCharacters: ["Rin", "Ivo"],
+          coreConflict:
+            "Rin must choose between private escape and saving the city that exiled her.",
+          emotionalArc: "She moves from bitterness to sacrificial hope.",
+          endingBeat: "Rin turns the comet's music into a rising tide of light.",
+          targetDurationSec: 480,
+        },
+        promptText: "Turn this master plot into storyboard scenes.",
+      }),
+    ).rejects.toThrow(
+      "Gemini storyboard provider request failed before response; message=fetch failed; causeCode=ECONNRESET; causeMessage=read ECONNRESET; syscall=read; host=api.vectorengine.ai; port=443",
+    );
   });
 
   it("rejects responses without usable storyboard content", async () => {

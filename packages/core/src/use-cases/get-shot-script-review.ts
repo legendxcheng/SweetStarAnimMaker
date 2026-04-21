@@ -54,7 +54,11 @@ export function createGetShotScriptReviewUseCase(
       ]);
       const latestTask = latestSegmentTask ?? latestBatchTask;
       const hasIncompleteSegments = currentShotScript.segments.some(
-        (segment) => segment.status === "pending" || segment.shots.length === 0,
+        (segment) =>
+          segment.status === "pending" ||
+          segment.status === "generating" ||
+          segment.status === "failed" ||
+          segment.shots.length === 0,
       );
 
       return {

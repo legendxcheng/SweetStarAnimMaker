@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import type { CharacterSheetRecord } from "@sweet-star/shared";
+import type { CharacterReferenceImage, CharacterSheetRecord } from "@sweet-star/shared";
 
 import { config } from "../../services/config";
 import { getButtonClassName } from "../../styles/button-styles";
@@ -163,10 +163,10 @@ export function CharacterSheetDetailCard({
                     className="rounded-xl border border-(--color-border) bg-(--color-bg-base) p-3"
                   >
                     <img
-                      src={config.characterReferenceImageContentUrl(
+                      src={characterReferenceImagePreviewUrl(
                         projectId,
                         selectedCharacter.id,
-                        referenceImage.id,
+                        referenceImage,
                       )}
                       alt={referenceImage.originalFileName}
                       className="mb-3 h-32 w-full rounded-lg object-cover"
@@ -236,4 +236,16 @@ export function CharacterSheetDetailCard({
       )}
     </div>
   );
+}
+
+function characterReferenceImagePreviewUrl(
+  projectId: string,
+  characterId: string,
+  referenceImage: CharacterReferenceImage,
+) {
+  const cacheKey = encodeURIComponent(
+    `${referenceImage.id}:${referenceImage.fileName}:${referenceImage.sizeBytes}:${referenceImage.createdAt}`,
+  );
+
+  return `${config.characterReferenceImageContentUrl(projectId, characterId, referenceImage.id)}?v=${cacheKey}`;
 }

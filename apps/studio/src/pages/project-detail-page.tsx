@@ -245,7 +245,7 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (
       !project ||
-      activeTask ||
+      isActiveTask(activeTask) ||
       (project.status !== "master_plot_generating" &&
         project.status !== "character_sheets_generating" &&
         project.status !== "storyboard_generating" &&

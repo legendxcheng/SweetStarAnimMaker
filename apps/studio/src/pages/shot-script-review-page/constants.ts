@@ -38,6 +38,10 @@ export function getSegmentReviewLabel(segment: ShotScriptSegment) {
     return "已通过";
   }
 
+  if (segment.status === "failed") {
+    return "生成失败";
+  }
+
   if (segment.status === "pending" || segment.status === "generating" || segment.shots.length === 0) {
     return "未生成完成";
   }

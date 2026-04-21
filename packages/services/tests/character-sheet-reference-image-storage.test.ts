@@ -153,6 +153,124 @@ describe("character sheet reference image storage", () => {
     ).resolves.not.toContain('"ref-001.png"');
   });
 
+  it("does not reuse a deleted reference image id or filename", async () => {
+    const { storage, character, tempDir } = await createFixture(tempDirs);
+
+    const firstReferenceImages = await storage.saveReferenceImages({
+      character,
+      files: [
+        {
+          originalFileName: "rin-face.png",
+          mimeType: "image/png",
+          sizeBytes: 3,
+          contentBytes: new Uint8Array([1, 2, 3]),
+          createdAt: "2026-03-22T12:00:00.000Z",
+        },
+      ],
+    });
+    await storage.deleteReferenceImage({
+      character,
+      referenceImageId: firstReferenceImages[0]!.id,
+    });
+
+    const nextReferenceImages = await storage.saveReferenceImages({
+      character,
+      files: [
+        {
+          originalFileName: "rin-pose.jpg",
+          mimeType: "image/jpeg",
+          sizeBytes: 4,
+          contentBytes: new Uint8Array([4, 5, 6, 7]),
+          createdAt: "2026-03-22T12:01:00.000Z",
+        },
+      ],
+    });
+
+    expect(nextReferenceImages).toEqual([
+      {
+        id: "ref_002",
+        fileName: "ref-002.jpg",
+        originalFileName: "rin-pose.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 4,
+        createdAt: "2026-03-22T12:01:00.000Z",
+      },
+    ]);
+    await expect(
+      fs.readFile(
+        path.join(
+          tempDir,
+          ".local-data",
+          "projects",
+          "proj_1-my-story",
+          "character-sheets",
+          "batches",
+          "char_batch_v1",
+          "characters",
+          "char_rin_1",
+          "references",
+          "ref-002.jpg",
+        ),
+      ),
+    ).resolves.toEqual(Buffer.from([4, 5, 6, 7]));
+  });
+
+  it("does not reuse a deleted reference image from legacy storage without a sequence cursor", async () => {
+    const { storage, character, tempDir } = await createFixture(tempDirs);
+
+    const firstReferenceImages = await storage.saveReferenceImages({
+      character,
+      files: [
+        {
+          originalFileName: "rin-face.png",
+          mimeType: "image/png",
+          sizeBytes: 3,
+          contentBytes: new Uint8Array([1, 2, 3]),
+          createdAt: "2026-03-22T12:00:00.000Z",
+        },
+      ],
+    });
+    await fs.rm(
+      path.join(
+        tempDir,
+        ".local-data",
+        "projects",
+        "proj_1-my-story",
+        "character-sheets",
+        "batches",
+        "char_batch_v1",
+        "characters",
+        "char_rin_1",
+        "references",
+        "next-sequence.txt",
+      ),
+    );
+
+    await storage.deleteReferenceImage({
+      character,
+      referenceImageId: firstReferenceImages[0]!.id,
+    });
+    const nextReferenceImages = await storage.saveReferenceImages({
+      character,
+      files: [
+        {
+          originalFileName: "rin-pose.jpg",
+          mimeType: "image/jpeg",
+          sizeBytes: 4,
+          contentBytes: new Uint8Array([4, 5, 6, 7]),
+          createdAt: "2026-03-22T12:01:00.000Z",
+        },
+      ],
+    });
+
+    expect(nextReferenceImages[0]).toEqual(
+      expect.objectContaining({
+        id: "ref_002",
+        fileName: "ref-002.jpg",
+      }),
+    );
+  });
+
   it("resolves absolute local file paths for current references", async () => {
     const { storage, character, tempDir } = await createFixture(tempDirs);
 

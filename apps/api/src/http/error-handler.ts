@@ -22,6 +22,12 @@ export function createApiErrorHandler() {
     request: FastifyRequest,
     reply: FastifyReply,
   ) {
+    if (isMultipartFileTooLargeError(error)) {
+      return reply.status(413).send({
+        message: "Uploaded file is too large",
+      });
+    }
+
     if (error instanceof ProjectValidationError || error instanceof ZodError) {
       return reply.status(400).send({
         message: error.message,
@@ -66,4 +72,10 @@ export function createApiErrorHandler() {
       message: "Internal Server Error",
     });
   };
+}
+
+function isMultipartFileTooLargeError(
+  error: FastifyError | Error,
+): error is FastifyError & { code: "FST_REQ_FILE_TOO_LARGE"; statusCode: 413 } {
+  return error instanceof Error && "code" in error && error.code === "FST_REQ_FILE_TOO_LARGE";
 }

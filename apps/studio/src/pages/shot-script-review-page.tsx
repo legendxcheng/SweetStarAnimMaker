@@ -78,6 +78,10 @@ export function ShotScriptReviewPage() {
       ).length,
     [unapprovedSegments],
   );
+  const failedSegmentCount = useMemo(
+    () => unapprovedSegments.filter((segment) => segment.status === "failed").length,
+    [unapprovedSegments],
+  );
   const regenerateUnapprovedDisabled =
     regeneratingUnapproved ||
     regeneratingAll ||
@@ -365,6 +369,7 @@ export function ShotScriptReviewPage() {
                 workspace={ws}
                 unapprovedSegments={unapprovedSegments}
                 incompleteSegmentCount={incompleteSegmentCount}
+                failedSegmentCount={failedSegmentCount}
               />
 
               <ShotScriptSceneNav

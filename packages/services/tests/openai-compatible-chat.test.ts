@@ -110,6 +110,32 @@ describe("openai-compatible chat helper", () => {
     ).rejects.toThrow("Grok storyboard provider request failed with status 503");
   });
 
+  it("includes fetch cause details when the request fails before a response", async () => {
+    const cause = Object.assign(new Error("connect ETIMEDOUT"), {
+      code: "ETIMEDOUT",
+      syscall: "connect",
+      host: "api.vectorengine.ai",
+      port: 443,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause })),
+    );
+
+    await expect(
+      requestOpenAiCompatibleChatCompletion({
+        baseUrl: "https://api.vectorengine.ai",
+        apiToken: "test-token",
+        model: "grok-4.2",
+        providerLabel: "Grok storyboard",
+        systemText: "Return only JSON.",
+        promptText: "Generate a tiny object.",
+      }),
+    ).rejects.toThrow(
+      "Grok storyboard provider request failed before response; message=fetch failed; causeCode=ETIMEDOUT; causeMessage=connect ETIMEDOUT; syscall=connect; host=api.vectorengine.ai; port=443",
+    );
+  });
+
   it("includes provider error details from non-2xx responses", async () => {
     vi.stubGlobal(
       "fetch",

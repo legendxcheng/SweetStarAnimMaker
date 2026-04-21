@@ -161,7 +161,7 @@ export function createCharacterSheetStorage(
     },
     async saveReferenceImages(input) {
       const existingReferenceImages = await readReferenceManifest(input.character);
-      let nextSequence = getNextReferenceSequence(existingReferenceImages);
+      let nextSequence = await readNextReferenceSequence(input.character, existingReferenceImages);
       const storedReferenceImages: CharacterReferenceImage[] = [];
 
       for (const file of input.files) {
@@ -185,6 +185,7 @@ export function createCharacterSheetStorage(
       }
 
       const allReferenceImages = [...existingReferenceImages, ...storedReferenceImages];
+      await writeNextReferenceSequence(input.character, nextSequence);
       await writeReferenceManifest(input.character, allReferenceImages);
       return allReferenceImages;
     },
@@ -204,6 +205,10 @@ export function createCharacterSheetStorage(
 
       const remainingReferenceImages = existingReferenceImages.filter(
         (entry) => entry.id !== input.referenceImageId,
+      );
+      await writeNextReferenceSequence(
+        input.character,
+        await readNextReferenceSequence(input.character, existingReferenceImages),
       );
       await writeReferenceManifest(input.character, remainingReferenceImages);
       return remainingReferenceImages;
@@ -296,6 +301,57 @@ export function createCharacterSheetStorage(
     );
   }
 
+  function toReferenceSequencePath(character: {
+    projectStorageDir: string;
+    batchId: string;
+    id: string;
+  }) {
+    return options.paths.projectCharacterSheetAssetPath(
+      character.projectStorageDir,
+      `${toCharacterSheetReferencesStorageDir(character.batchId, character.id)}/next-sequence.txt`,
+    );
+  }
+
+  async function readNextReferenceSequence(
+    character: {
+      projectStorageDir: string;
+      batchId: string;
+      id: string;
+    },
+    referenceImages: CharacterReferenceImage[],
+  ) {
+    const fallbackSequence = getNextReferenceSequenceFromManifest(referenceImages);
+    const sequencePath = toReferenceSequencePath(character);
+
+    try {
+      const storedSequence = Number.parseInt(await fs.readFile(sequencePath, "utf8"), 10);
+
+      if (Number.isFinite(storedSequence) && storedSequence > 0) {
+        return Math.max(storedSequence, fallbackSequence);
+      }
+    } catch (error) {
+      if (!isMissingFileError(error)) {
+        throw error;
+      }
+    }
+
+    return fallbackSequence;
+  }
+
+  async function writeNextReferenceSequence(
+    character: {
+      projectStorageDir: string;
+      batchId: string;
+      id: string;
+    },
+    nextSequence: number,
+  ) {
+    const sequencePath = toReferenceSequencePath(character);
+
+    await ensureParentDirectory(sequencePath);
+    await fs.writeFile(sequencePath, String(nextSequence), "utf8");
+  }
+
   function toReferenceImagePath(
     character: {
       projectStorageDir: string;
@@ -380,7 +436,7 @@ function isMissingFileError(error: unknown) {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
-function getNextReferenceSequence(referenceImages: CharacterReferenceImage[]) {
+function getNextReferenceSequenceFromManifest(referenceImages: CharacterReferenceImage[]) {
   const maxSequence = referenceImages.reduce((currentMax, referenceImage) => {
     const match = /^ref-(\d+)\./.exec(referenceImage.fileName);
     const sequence = match ? Number(match[1]) : 0;
