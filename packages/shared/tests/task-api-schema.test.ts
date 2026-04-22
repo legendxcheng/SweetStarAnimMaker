@@ -7,6 +7,8 @@ describe("task api schema", () => {
       "master_plot_generate",
       "character_sheets_generate",
       "character_sheet_generate",
+      "scene_sheets_generate",
+      "scene_sheet_generate",
       "storyboard_generate",
       "shot_script_generate",
       "shot_script_segment_generate",
@@ -40,6 +42,11 @@ describe("task api schema", () => {
     const schema = shared.createCharacterSheetsGenerateTaskResponseSchema;
 
     expect(schema).toBeDefined();
+  });
+
+  it("exports a scene-sheet task response schema", () => {
+    expect(shared.createSceneSheetsGenerateTaskResponseSchema).toBeDefined();
+    expect(shared.createSceneSheetGenerateTaskResponseSchema).toBeDefined();
   });
 
   it("exports a shot-script task response schema", () => {
@@ -151,6 +158,27 @@ describe("task api schema", () => {
     });
 
     expect(parsed.type).toBe("shot_script_generate");
+  });
+
+  it("accepts a scene-sheet generation task detail response", () => {
+    const parsed = shared.taskDetailResponseSchema.parse({
+      id: "task_20260421_scene_1",
+      projectId: "proj_20260421_ab12cd",
+      type: "scene_sheet_generate",
+      status: "succeeded",
+      createdAt: "2026-04-21T12:10:00.000Z",
+      updatedAt: "2026-04-21T12:12:00.000Z",
+      startedAt: "2026-04-21T12:10:05.000Z",
+      finishedAt: "2026-04-21T12:12:00.000Z",
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task_20260421_scene_1/input.json",
+        outputPath: "tasks/task_20260421_scene_1/output.json",
+        logPath: "tasks/task_20260421_scene_1/log.txt",
+      },
+    });
+
+    expect(parsed.type).toBe("scene_sheet_generate");
   });
 
   it("accepts a shot-script-segment generation task detail response", () => {

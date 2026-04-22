@@ -4,6 +4,7 @@ import { initialProjectStatus, projectStatuses } from "../constants/project-stat
 import {
   currentCharacterSheetBatchSummaryResponseSchema,
 } from "./character-sheet-api";
+import { currentSceneSheetBatchSummaryResponseSchema } from "./scene-sheet-api";
 import {
   currentMasterPlotResponseSchema,
   currentStoryboardSummaryResponseSchema,
@@ -44,6 +45,7 @@ export const projectSummaryResponseSchema = z.object({
   updatedAt: z.string(),
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
   currentCharacterSheetBatch: currentCharacterSheetBatchSummaryResponseSchema.nullable(),
+  currentSceneSheetBatch: currentSceneSheetBatchSummaryResponseSchema.nullable().optional().default(null),
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
   currentShotScript: currentShotScriptSummaryResponseSchema.nullable(),
   currentImageBatch: currentImageBatchSummaryResponseSchema.nullable().optional().default(null),
@@ -63,6 +65,7 @@ export const projectDetailResponseSchema = z.object({
   premise: premiseMetadataSchema,
   currentMasterPlot: currentMasterPlotResponseSchema.nullable(),
   currentCharacterSheetBatch: currentCharacterSheetBatchSummaryResponseSchema.nullable(),
+  currentSceneSheetBatch: currentSceneSheetBatchSummaryResponseSchema.nullable().optional().default(null),
   currentStoryboard: currentStoryboardSummaryResponseSchema.nullable(),
   currentShotScript: currentShotScriptSummaryResponseSchema.nullable(),
   currentImageBatch: currentImageBatchSummaryResponseSchema.nullable().optional().default(null),

@@ -35,6 +35,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   ensureProjectsColumn(db, "premise_updated_at", "TEXT NULL");
   ensureProjectsColumn(db, "current_master_plot_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_character_sheet_batch_id", "TEXT NULL");
+  ensureProjectsColumn(db, "current_scene_sheet_batch_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_storyboard_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_shot_script_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_image_batch_id", "TEXT NULL");

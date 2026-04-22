@@ -9,6 +9,7 @@ import { MasterPlotPhasePanel } from "../components/master-plot-phase-panel";
 import { PageHeader } from "../components/page-header";
 import { PremisePhasePanel } from "../components/premise-phase-panel";
 import { ProjectPhaseNav } from "../components/project-phase-nav";
+import { SceneSheetsPhasePanel } from "../components/scene-sheets-phase-panel";
 import { ShotScriptPhasePanel } from "../components/shot-script-phase-panel";
 import { StoryboardPhasePanel } from "../components/storyboard-phase-panel";
 import { VideoPhasePanel } from "../components/video-phase-panel";
@@ -28,6 +29,7 @@ const PROJECT_PHASES = [
   { key: "premise", label: "前提" },
   { key: "master_plot", label: "主情节" },
   { key: "character_sheets", label: "角色设定" },
+  { key: "scene_sheets", label: "场景" },
   { key: "storyboard", label: "分镜" },
   { key: "shot_script", label: "镜头脚本" },
   { key: "images", label: "画面" },
@@ -67,6 +69,15 @@ function getDefaultProjectPhase(project: ProjectDetail | null): ProjectPhaseKey 
     project.currentShotScript != null
   ) {
     return "shot_script";
+  }
+
+  if (
+    project.status === "scene_sheets_generating" ||
+    project.status === "scene_sheets_in_review" ||
+    project.status === "scene_sheets_approved" ||
+    project.currentSceneSheetBatch != null
+  ) {
+    return "scene_sheets";
   }
 
   if (
@@ -123,6 +134,17 @@ function hasApprovedCharacterSheets(project: ProjectDetail | null) {
   );
 }
 
+function hasApprovedSceneSheets(project: ProjectDetail | null) {
+  if (!project?.currentSceneSheetBatch) {
+    return false;
+  }
+
+  return (
+    project.currentSceneSheetBatch.sceneCount > 0 &&
+    project.currentSceneSheetBatch.approvedSceneCount === project.currentSceneSheetBatch.sceneCount
+  );
+}
+
 function hasApprovedStoryboard(project: ProjectDetail | null) {
   return project?.currentStoryboard?.approvedAt != null;
 }
@@ -136,7 +158,15 @@ function isStoryboardPhaseEnabled(project: ProjectDetail | null) {
     return false;
   }
 
-  return hasApprovedCharacterSheets(project) || project.currentStoryboard != null;
+  return hasApprovedSceneSheets(project) || project.currentStoryboard != null;
+}
+
+function isSceneSheetsPhaseEnabled(project: ProjectDetail | null) {
+  if (!project) {
+    return false;
+  }
+
+  return hasApprovedCharacterSheets(project) || project.currentSceneSheetBatch != null;
 }
 
 function isShotScriptPhaseEnabled(project: ProjectDetail | null) {
@@ -156,7 +186,7 @@ function canRegenerateCharacterSheets(project: ProjectDetail | null) {
 }
 
 function canRegenerateStoryboard(project: ProjectDetail | null) {
-  return hasApprovedCharacterSheets(project);
+  return hasApprovedSceneSheets(project);
 }
 
 function canRegenerateShotScript(project: ProjectDetail | null) {
@@ -248,6 +278,7 @@ export function ProjectDetailPage() {
       isActiveTask(activeTask) ||
       (project.status !== "master_plot_generating" &&
         project.status !== "character_sheets_generating" &&
+        project.status !== "scene_sheets_generating" &&
         project.status !== "storyboard_generating" &&
         project.status !== "shot_script_generating" &&
         project.status !== "images_generating" &&
@@ -396,6 +427,7 @@ export function ProjectDetailPage() {
       phase.key === "premise" ||
       phase.key === "master_plot" ||
       (phase.key === "character_sheets" && isCharacterSheetsPhaseEnabled(project)) ||
+      (phase.key === "scene_sheets" && isSceneSheetsPhaseEnabled(project)) ||
       (phase.key === "storyboard" && isStoryboardPhaseEnabled(project)) ||
       (phase.key === "shot_script" && isShotScriptPhaseEnabled(project)) ||
       (phase.key === "images" && isImagesPhaseEnabled(project)) ||
@@ -461,6 +493,12 @@ export function ProjectDetailPage() {
                       void handleRegenerateCharacterSheets();
                     }}
                     onProjectRefresh={loadProject}
+                  />
+                ) : selectedPhase === "scene_sheets" ? (
+                  <SceneSheetsPhasePanel
+                    project={currentProject}
+                    task={task}
+                    taskError={taskError}
                   />
                 ) : selectedPhase === "storyboard" ? (
                   <StoryboardPhasePanel

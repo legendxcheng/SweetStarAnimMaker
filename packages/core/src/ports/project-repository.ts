@@ -19,6 +19,11 @@ export interface UpdateCurrentCharacterSheetBatchInput {
   batchId: string | null;
 }
 
+export interface UpdateCurrentSceneSheetBatchInput {
+  projectId: string;
+  batchId: string | null;
+}
+
 export interface UpdateCurrentStoryboardInput {
   projectId: string;
   storyboardId: string | null;
@@ -65,6 +70,9 @@ export interface ProjectRepository {
   ): Promise<void> | void;
   updateCurrentCharacterSheetBatch(
     input: UpdateCurrentCharacterSheetBatchInput,
+  ): Promise<void> | void;
+  updateCurrentSceneSheetBatch?(
+    input: UpdateCurrentSceneSheetBatchInput,
   ): Promise<void> | void;
   updateCurrentStoryboard(
     input: UpdateCurrentStoryboardInput,

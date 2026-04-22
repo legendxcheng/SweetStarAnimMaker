@@ -9,6 +9,10 @@ export {
   CurrentCharacterSheetBatchNotFoundError,
 } from "../errors/character-sheet-errors";
 export {
+  CurrentSceneSheetBatchNotFoundError,
+  SceneSheetNotFoundError,
+} from "../errors/scene-sheet-errors";
+export {
   CurrentMasterPlotNotFoundError,
   CurrentShotScriptNotFoundError,
   CurrentStoryboardNotFoundError,

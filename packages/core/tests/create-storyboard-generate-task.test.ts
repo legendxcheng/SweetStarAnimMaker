@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CurrentCharacterSheetBatchNotFoundError,
   CurrentMasterPlotNotFoundError,
+  CurrentSceneSheetBatchNotFoundError,
   ProjectNotFoundError,
   ProjectValidationError,
   createCreateStoryboardGenerateTaskUseCase,
@@ -21,8 +22,9 @@ describe("create storyboard generate task use case", () => {
         premiseBytes: 88,
         currentMasterPlotId: "mp_20260321_ab12cd",
         currentCharacterSheetBatchId: "char_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
         currentStoryboardId: null,
-        status: "character_sheets_approved",
+        status: "scene_sheets_approved",
         createdAt: "2026-03-21T11:59:00.000Z",
         updatedAt: "2026-03-21T12:00:00.000Z",
         premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
@@ -209,8 +211,9 @@ describe("create storyboard generate task use case", () => {
           premiseBytes: 88,
           currentMasterPlotId: null,
           currentCharacterSheetBatchId: "char_batch_v1",
+          currentSceneSheetBatchId: null,
           currentStoryboardId: null,
-          status: "character_sheets_approved",
+          status: "scene_sheets_approved",
         createdAt: "2026-03-21T11:59:00.000Z",
         updatedAt: "2026-03-21T12:00:00.000Z",
         premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
@@ -262,7 +265,7 @@ describe("create storyboard generate task use case", () => {
       useCase.execute({
         projectId: "proj_20260321_ab12cd",
       }),
-    ).rejects.toBeInstanceOf(CurrentMasterPlotNotFoundError);
+    ).rejects.toBeInstanceOf(CurrentSceneSheetBatchNotFoundError);
   });
 
   it("marks the task failed when enqueueing fails", async () => {
@@ -292,8 +295,9 @@ describe("create storyboard generate task use case", () => {
           premiseBytes: 88,
           currentMasterPlotId: "mp_20260321_ab12cd",
           currentCharacterSheetBatchId: "char_batch_v1",
+          currentSceneSheetBatchId: "scene_batch_v1",
           currentStoryboardId: null,
-          status: "character_sheets_approved",
+          status: "scene_sheets_approved",
           createdAt: "2026-03-21T11:59:00.000Z",
           updatedAt: "2026-03-21T12:00:00.000Z",
           premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
@@ -360,7 +364,7 @@ describe("create storyboard generate task use case", () => {
     });
   });
 
-  it("throws when the project is not yet character_sheets_approved", async () => {
+  it("throws when the project is not yet scene_sheets_approved", async () => {
     const useCase = createCreateStoryboardGenerateTaskUseCase({
       projectRepository: {
         insert: vi.fn(),
@@ -373,8 +377,9 @@ describe("create storyboard generate task use case", () => {
           premiseBytes: 88,
           currentMasterPlotId: "mp_20260321_ab12cd",
           currentCharacterSheetBatchId: "char_batch_v1",
+          currentSceneSheetBatchId: "scene_batch_v1",
           currentStoryboardId: null,
-          status: "character_sheets_in_review",
+          status: "scene_sheets_in_review",
           createdAt: "2026-03-21T11:59:00.000Z",
           updatedAt: "2026-03-21T12:00:00.000Z",
           premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
@@ -419,5 +424,75 @@ describe("create storyboard generate task use case", () => {
     await expect(
       useCase.execute({ projectId: "proj_20260321_ab12cd" }),
     ).rejects.toBeInstanceOf(ProjectValidationError);
+  });
+
+  it("throws when the approved current master plot is missing after scene sheets are approved", async () => {
+    const useCase = createCreateStoryboardGenerateTaskUseCase({
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_20260321_ab12cd",
+          name: "My Story",
+          slug: "my-story",
+          storageDir: "projects/proj_20260321_ab12cd-my-story",
+          premiseRelPath: "premise/v1.md",
+          premiseBytes: 88,
+          currentMasterPlotId: null,
+          currentCharacterSheetBatchId: "char_batch_v1",
+          currentSceneSheetBatchId: "scene_batch_v1",
+          currentStoryboardId: null,
+          status: "scene_sheets_approved",
+          createdAt: "2026-03-21T11:59:00.000Z",
+          updatedAt: "2026-03-21T12:00:00.000Z",
+          premiseUpdatedAt: "2026-03-21T12:00:00.000Z",
+        }),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
+        updateStatus: vi.fn(),
+        listAll: vi.fn(),
+      },
+      masterPlotStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeCurrentMasterPlot: vi.fn(),
+        readCurrentMasterPlot: vi.fn().mockResolvedValue(null),
+      },
+      taskRepository: {
+        insert: vi.fn(),
+        findById: vi.fn(),
+        findLatestByProjectId: vi.fn(),
+        delete: vi.fn(),
+        markRunning: vi.fn(),
+        markSucceeded: vi.fn(),
+        markFailed: vi.fn(),
+      },
+      taskFileStorage: {
+        createTaskArtifacts: vi.fn(),
+        readTaskInput: vi.fn(),
+        writeTaskOutput: vi.fn(),
+        appendTaskLog: vi.fn(),
+      },
+      taskQueue: {
+        enqueue: vi.fn(),
+      },
+      taskIdGenerator: {
+        generateTaskId: () => "task_20260321_storyboard",
+      },
+      clock: {
+        now: () => "2026-03-21T12:00:00.000Z",
+      },
+    });
+
+    await expect(
+      useCase.execute({
+        projectId: "proj_20260321_ab12cd",
+      }),
+    ).rejects.toBeInstanceOf(CurrentMasterPlotNotFoundError);
   });
 });

@@ -7,6 +7,7 @@ import {
 } from "../domain/task";
 import { CurrentCharacterSheetBatchNotFoundError } from "../errors/character-sheet-errors";
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
+import { CurrentSceneSheetBatchNotFoundError } from "../errors/scene-sheet-errors";
 import { CurrentMasterPlotNotFoundError } from "../errors/storyboard-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -46,10 +47,14 @@ export function createCreateStoryboardGenerateTaskUseCase(
         throw new ProjectNotFoundError(input.projectId);
       }
 
-      if (project.status !== "character_sheets_approved") {
+      if (project.status !== "scene_sheets_approved") {
         throw new ProjectValidationError(
-          "Storyboard generation requires character_sheets_approved",
+          "Storyboard generation requires scene_sheets_approved",
         );
+      }
+
+      if (!project.currentSceneSheetBatchId) {
+        throw new CurrentSceneSheetBatchNotFoundError(project.id);
       }
 
       if (!project.currentCharacterSheetBatchId) {

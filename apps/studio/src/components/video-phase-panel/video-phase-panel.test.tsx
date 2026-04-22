@@ -25,6 +25,7 @@ const baseProject = {
   },
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
+  currentSceneSheetBatch: null,
   currentStoryboard: null,
   currentShotScript: null,
   currentImageBatch: {

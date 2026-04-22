@@ -24,6 +24,7 @@ const baseProject = {
   },
   currentMasterPlot: null,
   currentCharacterSheetBatch: null,
+  currentSceneSheetBatch: null,
   currentStoryboard: null,
   currentShotScript: null,
   currentImageBatch: null,
@@ -144,8 +145,34 @@ const characterSheetsApprovedProject = {
   },
 };
 
+const sceneSheetsInReviewProject = {
+  ...characterSheetsApprovedProject,
+  status: "scene_sheets_in_review" as const,
+  currentSceneSheetBatch: {
+    id: "scene-batch-1",
+    sourceMasterPlotId: "mp-1",
+    sourceCharacterSheetBatchId: "char-batch-1",
+    sceneCount: 2,
+    approvedSceneCount: 1,
+    updatedAt: "2024-01-01T00:00:06Z",
+  },
+};
+
+const sceneSheetsApprovedProject = {
+  ...characterSheetsApprovedProject,
+  status: "scene_sheets_approved" as const,
+  currentSceneSheetBatch: {
+    id: "scene-batch-1",
+    sourceMasterPlotId: "mp-1",
+    sourceCharacterSheetBatchId: "char-batch-1",
+    sceneCount: 2,
+    approvedSceneCount: 2,
+    updatedAt: "2024-01-01T00:00:06Z",
+  },
+};
+
 const storyboardApprovedProject = {
-  ...approvedMasterPlotProject,
+  ...sceneSheetsApprovedProject,
   status: "storyboard_approved" as const,
   currentStoryboard: {
     ...reviewedProject.currentStoryboard,
@@ -348,7 +375,7 @@ const storyboardReviewWorkspaceWithFailedTask = {
 };
 
 const generatingProject = {
-  ...characterSheetsApprovedProject,
+  ...sceneSheetsApprovedProject,
   status: "storyboard_generating" as const,
 };
 
@@ -386,6 +413,7 @@ describe("Project Detail Page", () => {
     });
 
     expect(screen.getByRole("button", { name: "主情节" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "场景" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
     expect(screen.getByRole("heading", { name: "前提工作区" })).toBeInTheDocument();
     expect(screen.getByText("premise/v1.md")).toBeInTheDocument();
@@ -589,6 +617,7 @@ describe("Project Detail Page", () => {
       expect(screen.getByRole("button", { name: "角色设定" })).toBeEnabled();
     });
 
+    expect(screen.getByRole("button", { name: "场景" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "角色设定" }));
@@ -597,10 +626,26 @@ describe("Project Detail Page", () => {
     expect(screen.getAllByRole("button", { name: "重新生成" }).length).toBeGreaterThan(0);
   });
 
-  it("enables the storyboard panel after character sheets are approved", async () => {
+  it("enables the scene panel after character sheets are approved and keeps storyboard disabled", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
       characterSheetsApprovedProject,
     );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    expect(screen.getByRole("heading", { name: "场景设定工作区" })).toBeInTheDocument();
+  });
+
+  it("enables the storyboard panel after scene sheets are approved", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(sceneSheetsApprovedProject);
 
     renderPage();
 
@@ -816,7 +861,7 @@ describe("Project Detail Page", () => {
 
   it("loads project detail and lets the user start storyboard regeneration", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
-      characterSheetsApprovedProject,
+      sceneSheetsApprovedProject,
     );
     vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
 
@@ -1128,7 +1173,7 @@ describe("Project Detail Page", () => {
     }) as typeof setInterval);
 
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(characterSheetsApprovedProject)
+      .mockResolvedValueOnce(sceneSheetsApprovedProject)
       .mockResolvedValueOnce(reviewedProject);
     vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     const getTaskDetail = vi
@@ -1177,7 +1222,7 @@ describe("Project Detail Page", () => {
     }) as typeof setInterval);
 
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
-      characterSheetsApprovedProject,
+      sceneSheetsApprovedProject,
     );
     vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     const getTaskDetail = vi
@@ -1266,6 +1311,22 @@ describe("Project Detail Page", () => {
       expect(screen.getByText("Rin")).toBeInTheDocument();
     });
 
+    expect(screen.getByRole("button", { name: "场景" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+  });
+
+  it("loads the scene phase when scene sheets are in review and keeps storyboard locked", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(sceneSheetsInReviewProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    expect(screen.getByRole("heading", { name: "场景设定工作区" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
   });
 });

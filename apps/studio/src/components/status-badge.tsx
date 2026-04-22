@@ -47,6 +47,22 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotClass: "bg-(--color-success)",
     pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
   },
+  scene_sheets_generating: {
+    label: "场景生成中",
+    dotClass: "bg-(--color-warning)",
+    pillClass: "bg-(--color-warning)/10 border-(--color-warning)/30 text-(--color-warning)",
+    pulse: true,
+  },
+  scene_sheets_in_review: {
+    label: "场景审核中",
+    dotClass: "bg-(--color-accent)",
+    pillClass: "bg-(--color-accent)/10 border-(--color-accent)/30 text-(--color-accent)",
+  },
+  scene_sheets_approved: {
+    label: "场景已通过",
+    dotClass: "bg-(--color-success)",
+    pillClass: "bg-(--color-success)/10 border-(--color-success)/30 text-(--color-success)",
+  },
   storyboard_generating: {
     label: "生成中",
     dotClass: "bg-(--color-warning)",

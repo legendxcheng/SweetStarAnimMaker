@@ -11,6 +11,7 @@ export interface ProjectRecord {
   premiseBytes: number;
   currentMasterPlotId: string | null;
   currentCharacterSheetBatchId: string | null;
+  currentSceneSheetBatchId: string | null;
   currentStoryboardId: string | null;
   currentShotScriptId: string | null;
   currentImageBatchId: string | null;
@@ -33,6 +34,7 @@ export interface CreateProjectRecordInput {
   visualStyleText?: string;
   currentMasterPlotId?: string | null;
   currentCharacterSheetBatchId?: string | null;
+  currentSceneSheetBatchId?: string | null;
   currentStoryboardId?: string | null;
   currentShotScriptId?: string | null;
   currentImageBatchId?: string | null;
@@ -60,6 +62,7 @@ export function createProjectRecord(input: CreateProjectRecordInput): ProjectRec
     premiseBytes: input.premiseBytes ?? 0,
     currentMasterPlotId: input.currentMasterPlotId ?? null,
     currentCharacterSheetBatchId: input.currentCharacterSheetBatchId ?? null,
+    currentSceneSheetBatchId: input.currentSceneSheetBatchId ?? null,
     currentStoryboardId: input.currentStoryboardId ?? null,
     currentShotScriptId: input.currentShotScriptId ?? null,
     currentImageBatchId: input.currentImageBatchId ?? null,

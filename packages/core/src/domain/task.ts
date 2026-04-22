@@ -12,6 +12,8 @@ import type {
 export const masterPlotGenerateQueueName = "master-plot-generate";
 export const characterSheetsGenerateQueueName = "character-sheets-generate";
 export const characterSheetGenerateQueueName = "character-sheet-generate";
+export const sceneSheetsGenerateQueueName = "scene-sheets-generate";
+export const sceneSheetGenerateQueueName = "scene-sheet-generate";
 export const storyboardGenerateQueueName = "storyboard-generate";
 export const shotScriptGenerateQueueName = "shot-script-generate";
 export const shotScriptSegmentGenerateQueueName = "shot-script-segment-generate";
@@ -97,6 +99,30 @@ export interface CharacterSheetGenerateTaskInput {
   promptTextCurrent: string;
   imagePromptTemplateKey: "character_sheet.turnaround.generate";
   referenceImagePaths?: string[];
+}
+
+export interface SceneSheetsGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "scene_sheets_generate";
+  batchId: string;
+  sourceMasterPlotId: string;
+  sourceCharacterSheetBatchId: string;
+}
+
+export interface SceneSheetGenerateTaskInput {
+  taskId: string;
+  projectId: string;
+  taskType: "scene_sheet_generate";
+  batchId: string;
+  sceneId: string;
+  sourceMasterPlotId: string;
+  sourceCharacterSheetBatchId: string;
+  sceneName: string;
+  scenePurpose: string;
+  promptTextCurrent: string;
+  constraintsText: string;
+  imagePromptTemplateKey: "scene_sheet.generate";
 }
 
 export interface ShotScriptGenerateTaskInput {

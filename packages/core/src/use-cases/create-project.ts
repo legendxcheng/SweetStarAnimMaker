@@ -71,7 +71,15 @@ export function createCreateProjectUseCase(
         throw error;
       }
 
-      return toProjectDetailDto(persistedProject, null, null, null, premiseText, visualStyleText);
+      return toProjectDetailDto(
+        persistedProject,
+        null,
+        null,
+        null,
+        null,
+        premiseText,
+        visualStyleText,
+      );
     },
   };
 }

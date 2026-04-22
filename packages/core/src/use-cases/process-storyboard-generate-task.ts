@@ -186,7 +186,7 @@ async function restoreProjectAfterStoryboardFailure(input: {
 
   await input.dependencies.projectRepository.updateStatus({
     projectId: input.projectId,
-    status: "character_sheets_approved",
+    status: "scene_sheets_approved",
     updatedAt: input.updatedAt,
   });
 }

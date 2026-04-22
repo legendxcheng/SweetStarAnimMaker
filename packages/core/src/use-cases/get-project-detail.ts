@@ -1,11 +1,13 @@
 import type { ProjectDetail } from "@sweet-star/shared";
 
 import { toCurrentCharacterSheetBatchSummary } from "../domain/character-sheet";
+import { toCurrentSceneSheetBatchSummary } from "../domain/scene-sheet";
 import { toCurrentShotScriptSummary } from "../domain/shot-script";
 import { toCurrentStoryboardSummary } from "../domain/storyboard";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoRepository } from "../ports/video-repository";
@@ -32,6 +34,7 @@ export interface GetProjectDetailUseCaseDependencies {
   storyboardStorage: StoryboardStorage;
   shotScriptStorage: ShotScriptStorage;
   characterSheetRepository: CharacterSheetRepository;
+  sceneSheetRepository?: SceneSheetRepository;
   shotImageRepository: ShotImageRepository;
   videoRepository: VideoRepository;
 }
@@ -66,6 +69,7 @@ export function createGetProjectDetailUseCase(
           })
         : null;
       let currentCharacterSheetBatch = null;
+      let currentSceneSheetBatch = null;
       let currentImageBatch = null;
       let currentVideoBatch = null;
 
@@ -79,6 +83,17 @@ export function createGetProjectDetailUseCase(
             batch.id,
           );
           currentCharacterSheetBatch = toCurrentCharacterSheetBatchSummary(batch, characters);
+        }
+      }
+
+      if (project.currentSceneSheetBatchId && dependencies.sceneSheetRepository) {
+        const batch = await dependencies.sceneSheetRepository.findBatchById(
+          project.currentSceneSheetBatchId,
+        );
+
+        if (batch) {
+          const scenes = await dependencies.sceneSheetRepository.listScenesByBatchId(batch.id);
+          currentSceneSheetBatch = toCurrentSceneSheetBatchSummary(batch, scenes);
         }
       }
 
@@ -110,6 +125,7 @@ export function createGetProjectDetailUseCase(
         project,
         currentMasterPlot,
         currentCharacterSheetBatch,
+        currentSceneSheetBatch,
         currentStoryboard ? toCurrentStoryboardSummary(currentStoryboard) : null,
         premiseText,
         project.visualStyleText,

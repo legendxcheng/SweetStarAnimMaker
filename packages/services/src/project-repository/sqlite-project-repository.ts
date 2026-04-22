@@ -5,6 +5,7 @@ import type {
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentImageBatchInput,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentSceneSheetBatchInput,
   UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
   UpdateCurrentVideoBatchInput,
@@ -26,6 +27,7 @@ interface SqliteProjectRow {
   premise_updated_at: string | null;
   current_master_plot_id: string | null;
   current_character_sheet_batch_id: string | null;
+  current_scene_sheet_batch_id?: string | null;
   current_storyboard_id: string | null;
   current_shot_script_id: string | null;
   current_image_batch_id: string | null;
@@ -48,11 +50,16 @@ export function createSqliteProjectRepository(
     projectColumns.has("script_rel_path") &&
     projectColumns.has("script_bytes") &&
     projectColumns.has("script_updated_at");
+  const hasCurrentSceneSheetBatchColumn = projectColumns.has("current_scene_sheet_batch_id");
   const legacySelectColumns = hasLegacyScriptColumns
     ? `,
               script_rel_path,
               script_bytes,
               script_updated_at`
+    : "";
+  const currentSceneSheetBatchSelectColumn = hasCurrentSceneSheetBatchColumn
+    ? `,
+              current_scene_sheet_batch_id`
     : "";
 
   return {
@@ -76,6 +83,7 @@ export function createSqliteProjectRepository(
                 premise_updated_at,
                 current_master_plot_id,
                 current_character_sheet_batch_id,
+                current_scene_sheet_batch_id,
                 current_storyboard_id,
                 current_shot_script_id,
                 current_image_batch_id,
@@ -97,6 +105,7 @@ export function createSqliteProjectRepository(
                 @premise_updated_at,
                 @current_master_plot_id,
                 @current_character_sheet_batch_id,
+                @current_scene_sheet_batch_id,
                 @current_storyboard_id,
                 @current_shot_script_id,
                 @current_image_batch_id,
@@ -128,6 +137,7 @@ export function createSqliteProjectRepository(
               premise_updated_at,
               current_master_plot_id,
               current_character_sheet_batch_id,
+              current_scene_sheet_batch_id,
               current_storyboard_id,
               current_shot_script_id,
               current_image_batch_id,
@@ -146,6 +156,7 @@ export function createSqliteProjectRepository(
               @premise_updated_at,
               @current_master_plot_id,
               @current_character_sheet_batch_id,
+              @current_scene_sheet_batch_id,
               @current_storyboard_id,
               @current_shot_script_id,
               @current_image_batch_id,
@@ -173,6 +184,7 @@ export function createSqliteProjectRepository(
               premise_updated_at,
               current_master_plot_id,
               current_character_sheet_batch_id,
+              current_scene_sheet_batch_id${currentSceneSheetBatchSelectColumn},
               current_storyboard_id,
               current_shot_script_id,
               current_image_batch_id,
@@ -203,6 +215,7 @@ export function createSqliteProjectRepository(
               premise_updated_at,
               current_master_plot_id,
               current_character_sheet_batch_id,
+              current_scene_sheet_batch_id${currentSceneSheetBatchSelectColumn},
               current_storyboard_id,
               current_shot_script_id,
               current_image_batch_id,
@@ -263,6 +276,9 @@ export function createSqliteProjectRepository(
     updateCurrentCharacterSheetBatch(input) {
       updateCurrentCharacterSheetBatch(options.db, input);
     },
+    updateCurrentSceneSheetBatch(input) {
+      updateCurrentSceneSheetBatch(options.db, input);
+    },
     updateCurrentStoryboard(input) {
       updateCurrentStoryboard(options.db, input);
     },
@@ -310,6 +326,22 @@ function updateCurrentCharacterSheetBatch(
   ).run({
     project_id: input.projectId,
     current_character_sheet_batch_id: input.batchId,
+  });
+}
+
+function updateCurrentSceneSheetBatch(
+  db: SqliteDatabase,
+  input: UpdateCurrentSceneSheetBatchInput,
+) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET current_scene_sheet_batch_id = @current_scene_sheet_batch_id
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    current_scene_sheet_batch_id: input.batchId,
   });
 }
 
@@ -471,6 +503,7 @@ function resetProjectToPremise(
             status = @status,
             current_master_plot_id = NULL,
             current_character_sheet_batch_id = NULL,
+            current_scene_sheet_batch_id = NULL,
             current_storyboard_id = NULL,
             current_shot_script_id = NULL,
             current_image_batch_id = NULL,
@@ -494,6 +527,7 @@ function resetProjectToPremise(
           status = @status,
           current_master_plot_id = NULL,
           current_character_sheet_batch_id = NULL,
+          current_scene_sheet_batch_id = NULL,
           current_storyboard_id = NULL,
           current_shot_script_id = NULL,
           current_image_batch_id = NULL,
@@ -520,6 +554,7 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     premise_updated_at: project.premiseUpdatedAt,
     current_master_plot_id: project.currentMasterPlotId,
     current_character_sheet_batch_id: project.currentCharacterSheetBatchId,
+    current_scene_sheet_batch_id: project.currentSceneSheetBatchId,
     current_storyboard_id: project.currentStoryboardId,
     current_shot_script_id: project.currentShotScriptId,
     current_image_batch_id: project.currentImageBatchId,
@@ -549,6 +584,7 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     premiseBytes,
     currentMasterPlotId: row.current_master_plot_id,
     currentCharacterSheetBatchId: row.current_character_sheet_batch_id,
+    currentSceneSheetBatchId: row.current_scene_sheet_batch_id ?? null,
     currentStoryboardId: row.current_storyboard_id,
     currentShotScriptId: row.current_shot_script_id,
     currentImageBatchId: row.current_image_batch_id,
@@ -577,6 +613,9 @@ function normalizeProjectStatus(status: string): ProjectRecord["status"] {
     case "character_sheets_generating":
     case "character_sheets_in_review":
     case "character_sheets_approved":
+    case "scene_sheets_generating":
+    case "scene_sheets_in_review":
+    case "scene_sheets_approved":
     case "storyboard_generating":
     case "storyboard_in_review":
     case "storyboard_approved":

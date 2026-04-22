@@ -9,6 +9,7 @@ export type {
 export type {
   CharacterSheetRepository,
 } from "../ports/character-sheet-repository";
+export type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 export type {
   CharacterSheetStorage,
   CharacterSheetReferenceImageContent,
@@ -30,6 +31,7 @@ export type {
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentImageBatchInput,
   UpdateCurrentMasterPlotInput,
+  UpdateCurrentSceneSheetBatchInput,
   UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
   UpdateCurrentVideoBatchInput,

@@ -53,6 +53,7 @@ describe("project api schema", () => {
       },
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
+      currentSceneSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
@@ -81,6 +82,7 @@ describe("project api schema", () => {
       },
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
+      currentSceneSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
@@ -99,6 +101,9 @@ describe("project api schema", () => {
       "character_sheets_generating",
       "character_sheets_in_review",
       "character_sheets_approved",
+      "scene_sheets_generating",
+      "scene_sheets_in_review",
+      "scene_sheets_approved",
       "storyboard_generating",
       "storyboard_in_review",
       "storyboard_approved",
@@ -125,6 +130,7 @@ describe("project api schema", () => {
       updatedAt: "2026-03-17T12:00:00.000Z",
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
+      currentSceneSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
@@ -159,6 +165,7 @@ describe("project api schema", () => {
         approvedAt: null,
       },
       currentCharacterSheetBatch: null,
+      currentSceneSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,
@@ -181,6 +188,7 @@ describe("project api schema", () => {
         updatedAt: "2026-03-17T12:00:00.000Z",
         currentMasterPlot: null,
         currentCharacterSheetBatch: null,
+        currentSceneSheetBatch: null,
         currentStoryboard: null,
         currentShotScript: null,
         currentImageBatch: null,
@@ -209,6 +217,7 @@ describe("project api schema", () => {
           approvedAt: "2026-03-17T13:15:00.000Z",
         },
         currentCharacterSheetBatch: null,
+        currentSceneSheetBatch: null,
         currentStoryboard: null,
         currentShotScript: null,
         currentImageBatch: null,
@@ -260,6 +269,14 @@ describe("project api schema", () => {
         approvedCharacterCount: 1,
         updatedAt: "2026-03-21T12:20:00.000Z",
       },
+      currentSceneSheetBatch: {
+        id: "scene_batch_v1",
+        sourceMasterPlotId: "master_plot_v1",
+        sourceCharacterSheetBatchId: "char_batch_v1",
+        sceneCount: 3,
+        approvedSceneCount: 2,
+        updatedAt: "2026-03-21T12:25:00.000Z",
+      },
       currentStoryboard: {
         id: "storyboard_v1",
         title: "The Last Sky Choir",
@@ -304,6 +321,7 @@ describe("project api schema", () => {
     expect(parsed.currentStoryboard).not.toBeNull();
     expect(parsed.currentStoryboard?.segmentCount).toBe(5);
     expect(parsed.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
+    expect(parsed.currentSceneSheetBatch?.approvedSceneCount).toBe(2);
     expect(parsed.currentShotScript?.segmentCount).toBe(5);
     expect(parsed.currentShotScript?.shotCount).toBe(5);
     expect(parsed.currentImageBatch?.shotCount).toBe(5);

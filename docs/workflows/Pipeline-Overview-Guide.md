@@ -2,11 +2,11 @@
 
 ## 目标
 
-这份 Guide 只用于定义当前版本的业务流水线，并与当前代码仓库的实现保持一致，不展开数据库、服务分层、完整状态机等系统设计。
+这份 Guide 只用于定义当前版本的业务流水线，并与当前仓库要落地的实现保持一致，不展开数据库、服务分层、完整状态机等系统设计。
 
 当前目标是把项目拆成一系列可独立实现、可审核、可回溯的阶段，然后按阶段一个一个落地。
 
-本文描述的是 `2026-04-20` 当前仓库实现。
+本文描述的是 `2026-04-21` 当前主链路约定。
 
 ## 项目定义
 
@@ -17,18 +17,30 @@
 
 ## 当前仓库对齐说明
 
-截至当前仓库实现，业务主链路已经落地到 Seedance 视频工作流：
+当前业务主链路按以下顺序对齐到 Seedance 视频工作流：
 
 1. 创意输入
 2. 总剧情生成
 3. 角色设定/角色图生成
-4. 分镜文案生成
-5. 镜头脚本生成与审核
-6. 出图生成与审核
-7. 视频 prompt 生成、人工编辑、Seedance 片段生成与审核
-8. 成片/导出
+4. 场景设定/场景图生成
+5. 分镜文案生成
+6. 镜头脚本生成与审核
+7. 出图生成与审核
+8. 视频 prompt 生成、人工编辑、Seedance 片段生成与审核
+9. 成片/导出
 
-其中第 5 步已经按 `segment-first` 语义落地：
+其中第 4 步 `scene_sheets` 是本次新增的正式阶段：
+
+- 它是“项目级核心场景库”，不是按 `segment` 逐段生成
+- 每个 `scene_sheet` 只生成 `1` 张主场景图，作为稳定场景锚点
+- 它的职责类似 `character_sheet`
+  - `character_sheet` 锁定“谁在演”
+  - `scene_sheet` 锁定“人在哪里演”
+- `storyboard` 只能消费已审核 `scene_sheets`
+- 但 `storyboard segment` 不强制必须绑定某个 `scene_sheet`
+  - 有些段落可以直接落在纯黑、纯白、抽象空间或一次性临时场景中
+
+第 6 步 `shot_script` 已按 `segment-first` 语义落地：
 
 - `storyboard` 仍然是上游叙事资产
 - `shot_script` 以 `segment` 为生成和审核原子单位
@@ -37,14 +49,14 @@
 - 每个 `segment` 可以单独保存、重生成、审核通过
 - 同时提供“全部通过”动作，把整份 `shot_script` 作为阶段结果收口
 
-第 6 步 `images` 阶段也按 `segment-first` 语义维护：
+第 7 步 `images` 也按 `segment-first` 语义维护：
 
 - 基于已审核 `shot_script` 创建项目级 image batch
 - 每个 `segment` 生成并维护一组 shots 的 `start_frame` / `end_frame`
 - 支持按段重生成、按段审核和全部通过
 - 项目进入 `images_approved` 后才允许启动视频阶段
 
-第 7 步 `videos` 阶段已经正式接入 Seedance 工作流：
+第 8 步 `videos` 已正式接入 Seedance 工作流：
 
 - `videos_generate` 只初始化视频批次和 segment 记录，不直接调用 Seedance
 - worker 为每个 `segment` 生成 `segment_video_prompt_generate` 子任务
@@ -54,21 +66,12 @@
 - worker 通过 Seedance provider 生成视频，下载结果并写回本地存储与 SQLite
 - 所有 segment 视频审核通过后，项目进入 `videos_approved`
 
-第 8 步 `final_cut` 已经有最小导出实现：
+第 9 步 `final_cut` 已有最小导出实现：
 
 - `POST /projects/:projectId/final-cut/generate` 创建 `final_cut_generate` 任务
 - 该任务要求当前视频批次下所有 segment 都是 `approved` 且有 `videoAssetPath`
 - worker 按 segment 顺序生成 ffmpeg manifest 并渲染最终视频
 - 当前不会把项目状态推进到新的 `final_cut_*` 状态
-
-最初规划中的这些细粒度阶段，目前仍没有作为独立阶段落地到代码主链路中：
-
-- 情节大纲生成
-- 人物设定生成
-- 分镜首帧/尾帧生成
-- 分镜视频生成
-
-如果后续决定回到更细的阶段划分，需要在现有主链路基础上重新拆分并补充 Stage Guide。
 
 ## 当前主流水线
 
@@ -82,8 +85,16 @@
   - 基于已审核的 `master_plot` 提取主角色列表
   - 为每个角色生成可编辑的角色提示词
   - 为每个角色生成当前角色图，并支持参考图、重生成和逐个审核
+- `场景设定/场景图生成`
+  - 基于已审核的 `master_plot` 和已审核的 `character_sheets` 提炼项目级核心场景
+  - 为每个核心场景生成可编辑的场景 prompt、场景约束和当前场景图
+  - 每个 `scene_sheet` 只维护一张主场景图，不做多视角场景包
+  - 支持逐个场景查看、改 prompt、重生成和逐个审核
+  - 只有全部核心场景审核通过后，项目才允许进入 `storyboard`
 - `分镜文案生成`
-  - 基于已审核的 `master_plot` 和已审核的 `character_sheets` 生成项目级分镜文案
+  - 基于已审核的 `master_plot`、`character_sheets` 和 `scene_sheets` 生成项目级分镜文案
+  - `scene_sheets` 作为项目级核心场景资产库提供稳定环境参考
+  - `storyboard segment` 可以引用已有 `scene_sheet`，也可以不引用
 - `镜头脚本`
   - 基于已审核的 `storyboard` 生成项目级 `shot_script`
   - 当前采用 `segment-first` 结构，而不是整份一次性平铺生成
@@ -93,6 +104,7 @@
 - `出图`
   - 基于已审核的 `shot_script` 生成项目级 `images batch`
   - 当前采用 `segment-first` 结构，每个 `segment` 维护一组 shots 的 `start_frame` 与 `end_frame`
+  - 如某段属于核心场景，生成时可优先注入对应 `scene_sheet`
   - 支持查看当前画面、按段重生成、按段审核通过、全部通过
 - `视频片段`
   - 基于已审核的 `images batch` 和 `shot_script` 初始化项目级 `video batch`
@@ -105,6 +117,29 @@
   - 基于当前已审核的 `video batch` 创建 `final_cut_generate` 任务
   - 当前实现是按 segment 顺序拼接已审核视频片段
   - 生成结果作为 final cut 资产读取，不改变项目状态机
+
+## Scene Sheets 阶段当前语义
+
+`scene_sheets` 不是“把项目里所有场景都提前画一遍”，而是“把值得前置锁定的核心场景正式做成上游资产”。
+
+它的正式语义是：
+
+- `scene_sheets` 是项目级核心场景库
+- 只收录值得提前锁定、且后续可能反复复用的核心场景
+- 每个 `scene_sheet` 是一个“单图场景锚点”
+- 输出至少包括：
+  - `sceneName`
+  - `scenePurpose`
+  - `promptTextCurrent`
+  - `constraintsText`
+  - `imageAssetPath`
+  - `status`
+
+也就是说：
+
+- `scene_sheet` 不负责镜头开始状态和结束状态
+- `scene_sheet` 不负责多机位覆盖
+- `scene_sheet` 只负责给后续阶段一个稳定的环境锚点
 
 ## 视频阶段当前语义
 
@@ -127,25 +162,30 @@
 - 优先使用 segment 记录里的整组 `referenceImages`
 - 只有 `referenceImages` 为空时才 fallback 到 legacy `startFramePath`
 - `referenceAudios` 会随请求一起传给 Seedance
-- 当前 reference images 只是参考图集合，不是严格的首帧/尾帧控制模式
+- 当前 `referenceImages` 是参考素材集合，不是严格的首帧/尾帧控制模式
 
 当前产品上建议把 segment 视频参考素材理解为一组“有业务语义的参考包”：
 
 - `角色设定参考图` 必选
   - 作用是锁定角色外观、服装、发型、体型和整体人设一致性
+- `场景设定图` 可选但优先使用正式 `scene_sheet`
+  - 作用是锁定环境空间、时代氛围、关键陈设和场景辨识度
+  - 正式来源应优先是已审核 `scene_sheet`
+  - 只有当该段没有可复用核心场景时，才临时补充视频阶段场景参考
 - `首帧` 必选
   - 作用是锁定当前 segment 的开场构图、动作起点和镜头起势
 - `尾帧` 可选
   - 只有当这个 segment 明确需要稳定终态时才补充
-- `场景设定图` 可选
-  - 只有当环境空间、时代氛围或场景辨识度很重要时才补充
 
 也就是说：
 
 - `视频生成最小必需素材 = 角色设定参考图 + 首帧`
-- `增强控制素材 = 尾帧 + 场景设定图`
+- `增强控制素材 = 场景设定图 + 尾帧`
 - 当前实现里，这些素材仍统一作为 `referenceImages` 发送给 Seedance
-- 但在业务语义、UI 展示、Prompt 描述和人工审核时，应该明确区分它们的用途
+- 但在业务语义、UI 展示、Prompt 描述和人工审核时，必须明确区分：
+  - `character_sheet` 锁角色一致性
+  - `scene_sheet` 锁环境一致性
+  - `start_frame / end_frame` 锁镜头起止连续性
 
 更详细的代码路径和维护说明见：
 
@@ -169,6 +209,8 @@
 
 当前门禁示例：
 
+- `scene_sheets` 只能消费已审核 `character_sheets`
+- `storyboard` 只能消费已审核 `scene_sheets`
 - `shot_script` 只能消费已审核 `storyboard`
 - `images` 只能消费已审核 `shot_script`
 - `videos` 只能从 `images_approved` 启动
@@ -202,7 +244,20 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - 也不再按“一个 storyboard segment = 一个 shot”理解
 - `shot_script` 阶段的原子单位是 `segment`
 
-### 6. 当前 `videos` 已按 segment-first 固定
+### 6. 当前 `images` 已按 segment-first 固定
+
+当前仓库中图片阶段的真实原子单位是：
+
+`1 segment = N shots = 一组 start_frame / end_frame = 一个当前段画面包`
+
+也就是说：
+
+- 图片批次是项目级
+- 参考帧生成依然发生在 shot/frame 级
+- 但审核通过与批次收口是 segment 级
+- 某段重生成不会强制影响其他段
+
+### 7. 当前 `videos` 已按 segment-first 固定
 
 当前仓库中视频阶段的真实原子单位是：
 
@@ -216,7 +271,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - 审核通过也是 segment 级
 - legacy `shotId` / `shotCode` 等字段仍存在，但不是当前视频阶段的业务原子
 
-### 7. 视频配置变更会使审核失效
+### 8. 视频配置变更会使审核失效
 
 如果某个 segment 已经 `approved`，后续修改以下内容会把它打回 `in_review`：
 
@@ -241,9 +296,9 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 ## 当前约定的 AI 提供方类型
 
 - `文字 API`
-  - 用于总剧情、角色提示词、分镜文案、视频 prompt 规划
+  - 用于总剧情、角色提示词、场景提示词、分镜文案、视频 prompt 规划
 - `图片 API`
-  - 用于角色图、segment shots 的参考帧生成
+  - 用于角色图、场景图、segment shots 的参考帧生成
 - `视频 API`
   - 当前视频阶段默认接入 Seedance provider
 - `导出/渲染器`
@@ -273,13 +328,15 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 ## 当前代码中的阶段门禁
 
-当前仓库已实现的门禁顺序如下：
+当前仓库已实现和约定的门禁顺序如下：
 
 - `premise_ready`
   - 允许创建 `master_plot_generate`
 - `master_plot_approved`
   - 允许创建 `character_sheets_generate`
 - `character_sheets_approved`
+  - 允许创建 `scene_sheets_generate`
+- `scene_sheets_approved`
   - 允许创建 `storyboard_generate`
 - `storyboard_approved`
   - 允许创建 `shot_script_generate`
@@ -296,6 +353,10 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `master_plot_in_review`
 - `character_sheets_generating`
 - `character_sheets_in_review`
+- `character_sheets_approved`
+- `scene_sheets_generating`
+- `scene_sheets_in_review`
+- `scene_sheets_approved`
 - `storyboard_generating`
 - `storyboard_in_review`
 - `storyboard_approved`
@@ -311,11 +372,13 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 当前没有项目级 `final_cut_generating` / `final_cut_approved` 状态。final cut 的运行状态通过 `final_cut_generate` task 和 final cut read model 表达。
 
-当前代码中已经存在的任务类型包括：
+当前代码中已经存在和约定的任务类型包括：
 
 - `master_plot_generate`
 - `character_sheets_generate`
 - `character_sheet_generate`
+- `scene_sheets_generate`
+- `scene_sheet_generate`
 - `storyboard_generate`
 - `shot_script_generate`
 - `shot_script_segment_generate`
@@ -335,26 +398,16 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 当前应按仓库现状补齐和维护 Stage Guide，而不是再按最早版本的理想流水线回推。
 
-当前已存在：
+当前建议阶段文档顺序为：
 
 - `01-Premise-To-Master-Plot-Guide.md`
-- `04-Storyboard-To-Shot-Script-Guide.md`
-- `05-Shot-Script-To-Images-Guide.md`
-- `06-Images-To-Videos-Guide.md`
-
-其中：
-
-- `01` 对应已实现阶段
-- `04` 需要继续按当前 segment-first 实现语义维护
-- `05` 已经对应当前仓库中的正式 `images` 阶段语义，需要继续按 segment-first 实现维护
-- `06` 已存在，但如果仍保留 shot-first 或“尚未实现”表述，需要按当前 Seedance segment-first 实现继续更新
-
-建议下一步补齐或更新：
-
 - `02-Master-Plot-To-Character-Sheets-Guide.md`
-- `03-Character-Sheets-To-Storyboard-Guide.md`
-- `06-Images-To-Videos-Guide.md`
-- `07-Videos-To-Final-Cut-Guide.md`
+- `03-Character-Sheets-To-Scene-Sheets-Guide.md`
+- `04-Scene-Sheets-To-Storyboard-Guide.md`
+- `05-Storyboard-To-Shot-Script-Guide.md`
+- `06-Shot-Script-To-Images-Guide.md`
+- `07-Images-To-Videos-Guide.md`
+- `08-Videos-To-Final-Cut-Guide.md`
 
 ## 后续开发分流
 
@@ -363,7 +416,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - “这是业务规则变化吗？” -> `packages/core`
 - “这是 HTTP/前后端契约变化吗？” -> `apps/api` + `packages/shared` + `apps/studio`
 - “这是 Seedance 请求协议变化吗？” -> `packages/services`
-- “这是数据落盘/版本保留变化吗？” -> `packages/services/src/storage` + `packages/core/src/domain/video.ts`
+- “这是数据落盘/版本保留变化吗？” -> `packages/services/src/storage`
 - “这是按钮和交互变化吗？” -> `apps/studio`
 - “这是最终拼接/导出变化吗？” -> `packages/core` final cut use case + renderer/storage + `apps/studio`
 
@@ -373,6 +426,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 现在最重要的维护原则是：
 
+- `scene_sheets` 是正式上游阶段，不是视频阶段临时补的一张环境图
 - `shot_script`、`images`、`videos` 都按 `segment-first` 语义理解
 - `videos_generate` 负责初始化批次与 prompt 准备，不直接生成所有视频
 - `segment_video_generate` 才是真正调用 Seedance 的阶段

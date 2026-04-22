@@ -64,6 +64,14 @@ export {
   updateCharacterSheetPromptRequestSchema,
 } from "./schemas/character-sheet-api";
 export {
+  approveSceneSheetRequestSchema,
+  currentSceneSheetBatchSummaryResponseSchema,
+  regenerateSceneSheetRequestSchema,
+  sceneSheetDetailResponseSchema,
+  sceneSheetListResponseSchema,
+  updateSceneSheetPromptRequestSchema,
+} from "./schemas/scene-sheet-api";
+export {
   currentMasterPlotResponseSchema,
   currentStoryboardSummaryResponseSchema,
   currentStoryboardResponseSchema,
@@ -99,6 +107,8 @@ export {
   createMasterPlotGenerateTaskResponseSchema,
   createCharacterSheetGenerateTaskResponseSchema,
   createCharacterSheetsGenerateTaskResponseSchema,
+  createSceneSheetGenerateTaskResponseSchema,
+  createSceneSheetsGenerateTaskResponseSchema,
   createShotScriptGenerateTaskResponseSchema,
   createShotScriptSegmentGenerateTaskResponseSchema,
   createStoryboardGenerateTaskResponseSchema,
@@ -116,6 +126,15 @@ export type {
   RegenerateCharacterSheetRequest,
   UpdateCharacterSheetPromptRequest,
 } from "./types/character-sheet";
+export type {
+  ApproveSceneSheetRequest,
+  CurrentSceneSheetBatchSummary,
+  RegenerateSceneSheetRequest,
+  SceneSheetListResponse,
+  SceneSheetRecord,
+  SceneSheetStatus,
+  UpdateSceneSheetPromptRequest,
+} from "./types/scene-sheet";
 export type {
   CurrentMasterPlot,
 } from "./types/master-plot";

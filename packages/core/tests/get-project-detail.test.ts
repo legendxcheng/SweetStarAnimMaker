@@ -18,6 +18,7 @@ describe("get project detail use case", () => {
         premiseBytes: 88,
         currentMasterPlotId: "mp_20260317_ab12cd",
         currentCharacterSheetBatchId: "char_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
         currentStoryboardId: "storyboard_20260321_ab12cd",
         currentShotScriptId: "shot_script_20260322_ab12cd",
         currentImageBatchId: "image_batch_1",
@@ -162,6 +163,29 @@ describe("get project detail use case", () => {
         findCharacterById: vi.fn(),
         updateCharacter: vi.fn(),
       },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "scene_batch_v1",
+          projectId: "proj_20260317_ab12cd",
+          projectStorageDir: "projects/proj_20260317_ab12cd-my-story",
+          sourceMasterPlotId: "mp_20260317_ab12cd",
+          sourceCharacterSheetBatchId: "char_batch_v1",
+          sceneCount: 3,
+          storageDir: "projects/proj_20260317_ab12cd-my-story/scene-sheets/batches/scene_batch_v1",
+          manifestRelPath: "scene-sheets/batches/scene_batch_v1/manifest.json",
+          createdAt: "2026-03-17T00:00:00.000Z",
+          updatedAt: "2026-03-21T11:00:00.000Z",
+        }),
+        listScenesByBatchId: vi.fn().mockResolvedValue([
+          { id: "scene_room_1", status: "approved" },
+          { id: "scene_hospital_2", status: "approved" },
+          { id: "scene_rooftop_3", status: "in_review" },
+        ]),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
+      },
       shotImageRepository: {
         insertBatch: vi.fn(),
         findBatchById: vi.fn().mockResolvedValue({
@@ -217,6 +241,7 @@ describe("get project detail use case", () => {
     );
     expect(result.currentMasterPlot?.title).toBe("The Last Sky Choir");
     expect(result.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
+    expect(result.currentSceneSheetBatch?.approvedSceneCount).toBe(2);
     expect(result.currentStoryboard).toEqual(
       expect.objectContaining({
         id: "storyboard_20260321_ab12cd",
@@ -332,6 +357,7 @@ describe("get project detail use case", () => {
         premiseBytes: 88,
         currentMasterPlotId: null,
         currentCharacterSheetBatchId: null,
+        currentSceneSheetBatchId: null,
         currentStoryboardId: null,
         currentShotScriptId: null,
         currentImageBatchId: "image_batch_legacy",
@@ -391,6 +417,14 @@ describe("get project detail use case", () => {
         insertCharacter: vi.fn(),
         findCharacterById: vi.fn(),
         updateCharacter: vi.fn(),
+      },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn(),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
       },
       shotImageRepository: {
         insertBatch: vi.fn(),
@@ -462,6 +496,7 @@ describe("get project detail use case", () => {
         premiseBytes: 42,
         currentMasterPlotId: null,
         currentCharacterSheetBatchId: null,
+        currentSceneSheetBatchId: null,
         currentStoryboardId: null,
         currentShotScriptId: null,
         currentImageBatchId: "image_batch_shot_first",
@@ -531,6 +566,14 @@ describe("get project detail use case", () => {
         insertCharacter: vi.fn(),
         findCharacterById: vi.fn(),
         updateCharacter: vi.fn(),
+      },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn(),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
       },
       shotImageRepository: {
         insertBatch: vi.fn(),

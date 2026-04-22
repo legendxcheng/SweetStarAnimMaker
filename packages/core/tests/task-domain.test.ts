@@ -4,6 +4,8 @@ import {
   characterSheetGenerateQueueName,
   characterSheetsGenerateQueueName,
   createTaskRecord,
+  sceneSheetGenerateQueueName,
+  sceneSheetsGenerateQueueName,
   storyboardGenerateQueueName,
 } from "../src/index";
 
@@ -67,5 +69,29 @@ describe("task domain", () => {
     expect(batchTask.queueName).toBe("character-sheets-generate");
     expect(characterTask.type).toBe("character_sheet_generate");
     expect(characterTask.queueName).toBe("character-sheet-generate");
+  });
+
+  it("derives scene-sheet batch and per-scene task storage and queue metadata", () => {
+    const batchTask = createTaskRecord({
+      id: "task_20260421_scene_batch",
+      projectId: "proj_20260421_ab12cd",
+      projectStorageDir: "projects/proj_20260421_ab12cd-my-story",
+      type: "scene_sheets_generate",
+      queueName: sceneSheetsGenerateQueueName,
+      createdAt: "2026-04-21T12:00:00.000Z",
+    });
+    const sceneTask = createTaskRecord({
+      id: "task_20260421_scene_office",
+      projectId: "proj_20260421_ab12cd",
+      projectStorageDir: "projects/proj_20260421_ab12cd-my-story",
+      type: "scene_sheet_generate",
+      queueName: sceneSheetGenerateQueueName,
+      createdAt: "2026-04-21T12:01:00.000Z",
+    });
+
+    expect(batchTask.type).toBe("scene_sheets_generate");
+    expect(batchTask.queueName).toBe("scene-sheets-generate");
+    expect(sceneTask.type).toBe("scene_sheet_generate");
+    expect(sceneTask.queueName).toBe("scene-sheet-generate");
   });
 });
