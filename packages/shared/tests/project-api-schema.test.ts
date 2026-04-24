@@ -41,6 +41,7 @@ describe("project api schema", () => {
       name: "My Story",
       slug: "my-story",
       status: "premise_ready",
+      videoReferenceStrategy: "auto",
       storageDir: "projects/proj_20260317_ab12cd-my-story",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
@@ -61,6 +62,7 @@ describe("project api schema", () => {
     });
 
     expect(parsed.currentMasterPlot).toBeNull();
+    expect(parsed.videoReferenceStrategy).toBe("auto");
     expect(parsed.premise.text).toContain("singing comet");
     expect(parsed.premise.visualStyleText).toContain("赛璐璐");
   });
@@ -71,6 +73,7 @@ describe("project api schema", () => {
       name: "My Story",
       slug: "my-story",
       status: "premise_ready",
+      videoReferenceStrategy: "auto",
       storageDir: "projects/proj_20260317_ab12cd-my-story",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
@@ -90,6 +93,14 @@ describe("project api schema", () => {
     });
 
     expect(parsed.premise.visualStyleText).toBe("");
+  });
+
+  it("accepts updating the project video reference strategy", () => {
+    const parsed = shared.updateProjectRequestSchema.parse({
+      videoReferenceStrategy: "without_frame_refs",
+    });
+
+    expect(parsed.videoReferenceStrategy).toBe("without_frame_refs");
   });
 
   it("exposes the expanded master-plot workflow statuses", () => {
@@ -125,6 +136,7 @@ describe("project api schema", () => {
       name: "My Story",
       slug: "my-story",
       status: "premise_ready",
+      videoReferenceStrategy: "auto",
       storageDir: "projects/proj_20260317_ab12cd-my-story",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
@@ -138,6 +150,7 @@ describe("project api schema", () => {
     });
 
     expect(parsed.id).toBe("proj_20260317_ab12cd");
+    expect(parsed.videoReferenceStrategy).toBe("auto");
     expect(parsed.currentMasterPlot).toBeNull();
   });
 
@@ -147,6 +160,7 @@ describe("project api schema", () => {
       name: "My Story",
       slug: "my-story",
       status: "master_plot_in_review",
+      videoReferenceStrategy: "with_frame_refs",
       storageDir: "projects/proj_20260317_ab12cd-my-story",
       createdAt: "2026-03-17T12:00:00.000Z",
       updatedAt: "2026-03-17T12:00:00.000Z",
@@ -173,6 +187,7 @@ describe("project api schema", () => {
     });
 
     expect(parsed.currentMasterPlot).not.toBeNull();
+    expect(parsed.videoReferenceStrategy).toBe("with_frame_refs");
     expect(parsed.currentMasterPlot?.title).toBe("The Last Sky Choir");
   });
 
@@ -183,6 +198,7 @@ describe("project api schema", () => {
         name: "Project One",
         slug: "project-one",
         status: "premise_ready",
+        videoReferenceStrategy: "auto",
         storageDir: "projects/proj_1-project-one",
         createdAt: "2026-03-17T12:00:00.000Z",
         updatedAt: "2026-03-17T12:00:00.000Z",
@@ -199,6 +215,7 @@ describe("project api schema", () => {
         name: "Project Two",
         slug: "project-two",
         status: "master_plot_approved",
+        videoReferenceStrategy: "without_frame_refs",
         storageDir: "projects/proj_2-project-two",
         createdAt: "2026-03-17T13:00:00.000Z",
         updatedAt: "2026-03-17T13:00:00.000Z",
@@ -227,6 +244,7 @@ describe("project api schema", () => {
 
     expect(parsed).toHaveLength(2);
     expect(parsed[0].name).toBe("Project One");
+    expect(parsed[1].videoReferenceStrategy).toBe("without_frame_refs");
     expect(parsed[1].currentMasterPlot?.approvedAt).toBe("2026-03-17T13:15:00.000Z");
   });
 
@@ -236,6 +254,7 @@ describe("project api schema", () => {
       name: "My Story",
       slug: "my-story",
       status: "storyboard_in_review",
+      videoReferenceStrategy: "auto",
       storageDir: "projects/proj_20260321_ab12cd-my-story",
       createdAt: "2026-03-21T12:00:00.000Z",
       updatedAt: "2026-03-21T12:30:00.000Z",
@@ -319,6 +338,7 @@ describe("project api schema", () => {
     });
 
     expect(parsed.currentStoryboard).not.toBeNull();
+    expect(parsed.videoReferenceStrategy).toBe("auto");
     expect(parsed.currentStoryboard?.segmentCount).toBe(5);
     expect(parsed.currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(parsed.currentSceneSheetBatch?.approvedSceneCount).toBe(2);

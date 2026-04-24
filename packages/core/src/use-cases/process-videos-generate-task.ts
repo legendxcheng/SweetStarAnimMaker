@@ -11,7 +11,9 @@ import {
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import type { Clock } from "../ports/clock";
+import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { TaskFileStorage } from "../ports/task-file-storage";
 import type { TaskIdGenerator } from "../ports/task-id-generator";
@@ -36,6 +38,8 @@ export interface ProcessVideosGenerateTaskUseCaseDependencies {
   projectRepository: ProjectRepository;
   taskFileStorage: TaskFileStorage;
   shotImageRepository: ShotImageRepository;
+  characterSheetRepository: CharacterSheetRepository;
+  sceneSheetRepository: SceneSheetRepository;
   videoRepository: VideoRepository;
   videoStorage: VideoStorage;
   videoPromptProvider: VideoPromptProvider;
@@ -81,6 +85,16 @@ export function createProcessVideosGenerateTaskUseCase(
         const shots = await dependencies.shotImageRepository.listShotsByBatchId(
           taskInput.sourceImageBatchId,
         );
+        const characterSheets = project.currentCharacterSheetBatchId
+          ? await dependencies.characterSheetRepository.listCharactersByBatchId(
+              project.currentCharacterSheetBatchId,
+            )
+          : [];
+        const sceneSheets = project.currentSceneSheetBatchId
+          ? await dependencies.sceneSheetRepository.listScenesByBatchId(
+              project.currentSceneSheetBatchId,
+            )
+          : [];
         const batch = createVideoBatchRecord({
           id: `video_batch_${task.id}`,
           projectId: project.id,
@@ -131,8 +145,15 @@ export function createProcessVideosGenerateTaskUseCase(
           }
 
           const referenceImages = buildSegmentVideoReferences({
+            strategy: taskInput.videoReferenceStrategy,
             segment,
             shotReferences: segmentShotReferences,
+            sceneSheet:
+              sceneSheets.find(
+                (sceneSheet) =>
+                  sceneSheet.id === segment.sceneId && sceneSheet.status === "approved",
+              ) ?? null,
+            characterSheets,
           });
           const videoRecord = createSegmentVideoRecord({
             id: `video_${batch.id}_${segment.sceneId}_${segment.segmentId}`,

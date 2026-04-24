@@ -74,6 +74,7 @@ import {
   createUpdateCharacterSheetPromptUseCase,
   createUpdateSceneSheetPromptUseCase,
   createUpdateFramePromptUseCase,
+  createUpdateProjectUseCase,
   createUpdateVideoPromptUseCase,
   createUpdateProjectScriptUseCase,
   type TaskIdGenerator,
@@ -470,6 +471,10 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     updateProjectScript: createUpdateProjectScriptUseCase({
       repository,
       premiseStorage,
+      clock,
+    }),
+    updateProject: createUpdateProjectUseCase({
+      repository,
       clock,
     }),
     resetProjectPremise: createResetProjectPremiseUseCase({

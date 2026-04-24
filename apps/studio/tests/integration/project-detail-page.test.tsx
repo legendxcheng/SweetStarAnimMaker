@@ -12,6 +12,7 @@ const baseProject = {
   name: "Test Project",
   slug: "test-project",
   status: "premise_ready" as const,
+  videoReferenceStrategy: "auto" as const,
   storageDir: "/path/to/project",
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
@@ -419,6 +420,32 @@ describe("Project Detail Page", () => {
     expect(screen.getByText("premise/v1.md")).toBeInTheDocument();
   });
 
+  it("shows and saves the project-level video reference strategy in the basic settings area", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
+    const updateProject = vi.spyOn(apiModule.apiClient, "updateProject").mockResolvedValue({
+      ...baseProject,
+      videoReferenceStrategy: "without_frame_refs",
+    });
+
+    renderPage();
+
+    expect(await screen.findByRole("combobox", { name: "视频参考策略" })).toHaveValue("auto");
+
+    fireEvent.change(screen.getByRole("combobox", { name: "视频参考策略" }), {
+      target: { value: "without_frame_refs" },
+    });
+
+    await waitFor(() => {
+      expect(updateProject).toHaveBeenCalledWith("proj-1", {
+        videoReferenceStrategy: "without_frame_refs",
+      });
+    });
+
+    expect(screen.getByRole("combobox", { name: "视频参考策略" })).toHaveValue(
+      "without_frame_refs",
+    );
+  });
+
   it("resets the project premise after a second confirmation", async () => {
     vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(baseProject);
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -536,7 +563,7 @@ describe("Project Detail Page", () => {
 
     const intervalCountBeforeGenerate = intervalCallbacks.length;
 
-    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateMasterPlot).toHaveBeenCalledWith("proj-1");
@@ -597,7 +624,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "主情节" }));
 
     expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
 
     await waitFor(() => {
       expect(regenerateMasterPlot).toHaveBeenCalledWith("proj-1");
@@ -891,7 +918,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");

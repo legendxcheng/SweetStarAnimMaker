@@ -9,6 +9,7 @@ import type {
   UpdateCurrentShotScriptInput,
   UpdateCurrentStoryboardInput,
   UpdateCurrentVideoBatchInput,
+  UpdateProjectSettingsInput,
   UpdateProjectStatusInput,
 } from "@sweet-star/core";
 
@@ -32,6 +33,7 @@ interface SqliteProjectRow {
   current_shot_script_id: string | null;
   current_image_batch_id: string | null;
   current_video_batch_id: string | null;
+  video_reference_strategy?: string | null;
   visual_style_text?: string | null;
   script_rel_path?: string | null;
   script_bytes?: number | null;
@@ -88,6 +90,7 @@ export function createSqliteProjectRepository(
                 current_shot_script_id,
                 current_image_batch_id,
                 current_video_batch_id,
+                video_reference_strategy,
                 visual_style_text,
                 script_rel_path,
                 script_bytes,
@@ -110,6 +113,7 @@ export function createSqliteProjectRepository(
                 @current_shot_script_id,
                 @current_image_batch_id,
                 @current_video_batch_id,
+                @video_reference_strategy,
                 @visual_style_text,
                 @script_rel_path,
                 @script_bytes,
@@ -142,6 +146,7 @@ export function createSqliteProjectRepository(
               current_shot_script_id,
               current_image_batch_id,
               current_video_batch_id,
+              video_reference_strategy,
               visual_style_text
             ) VALUES (
               @id,
@@ -161,6 +166,7 @@ export function createSqliteProjectRepository(
               @current_shot_script_id,
               @current_image_batch_id,
               @current_video_batch_id,
+              @video_reference_strategy,
               @visual_style_text
             )
           `,
@@ -189,6 +195,7 @@ export function createSqliteProjectRepository(
               current_shot_script_id,
               current_image_batch_id,
               current_video_batch_id,
+              video_reference_strategy,
               visual_style_text${legacySelectColumns}
             FROM projects
             WHERE id = ?
@@ -220,6 +227,7 @@ export function createSqliteProjectRepository(
               current_shot_script_id,
               current_image_batch_id,
               current_video_batch_id,
+              video_reference_strategy,
               visual_style_text${legacySelectColumns}
             FROM projects
             ORDER BY updated_at DESC
@@ -293,6 +301,9 @@ export function createSqliteProjectRepository(
     },
     updateStatus(input) {
       updateProjectStatus(options.db, input);
+    },
+    updateSettings(input) {
+      updateProjectSettings(options.db, input);
     },
     resetToPremise(input) {
       resetProjectToPremise(options.db, input, hasLegacyScriptColumns);
@@ -409,6 +420,22 @@ function updateProjectStatus(db: SqliteDatabase, input: UpdateProjectStatusInput
   ).run({
     project_id: input.projectId,
     status: input.status,
+    updated_at: input.updatedAt,
+  });
+}
+
+function updateProjectSettings(db: SqliteDatabase, input: UpdateProjectSettingsInput) {
+  db.prepare(
+    `
+      UPDATE projects
+      SET
+        video_reference_strategy = COALESCE(@video_reference_strategy, video_reference_strategy),
+        updated_at = @updated_at
+      WHERE id = @project_id
+    `,
+  ).run({
+    project_id: input.projectId,
+    video_reference_strategy: input.videoReferenceStrategy ?? null,
     updated_at: input.updatedAt,
   });
 }
@@ -559,6 +586,7 @@ function toSqliteRow(project: ProjectRecord): SqliteProjectRow {
     current_shot_script_id: project.currentShotScriptId,
     current_image_batch_id: project.currentImageBatchId,
     current_video_batch_id: project.currentVideoBatchId,
+    video_reference_strategy: project.videoReferenceStrategy,
     visual_style_text: project.visualStyleText,
     script_rel_path: project.premiseRelPath,
     script_bytes: project.premiseBytes,
@@ -589,6 +617,7 @@ function fromSqliteRow(row: SqliteProjectRow): ProjectRecord {
     currentShotScriptId: row.current_shot_script_id,
     currentImageBatchId: row.current_image_batch_id,
     currentVideoBatchId: row.current_video_batch_id,
+    videoReferenceStrategy: normalizeVideoReferenceStrategy(row.video_reference_strategy),
     visualStyleText: row.visual_style_text ?? "",
     status: normalizeProjectStatus(row.status),
     createdAt: row.created_at,
@@ -631,5 +660,22 @@ function normalizeProjectStatus(status: string): ProjectRecord["status"] {
       return status;
     default:
       throw new Error(`Unknown project status in sqlite storage: ${status}`);
+  }
+}
+
+function normalizeVideoReferenceStrategy(
+  strategy: string | null | undefined,
+): ProjectRecord["videoReferenceStrategy"] {
+  switch (strategy) {
+    case undefined:
+    case null:
+    case "":
+    case "auto":
+      return "auto";
+    case "with_frame_refs":
+    case "without_frame_refs":
+      return strategy;
+    default:
+      throw new Error(`Unknown video reference strategy in sqlite storage: ${strategy}`);
   }
 }

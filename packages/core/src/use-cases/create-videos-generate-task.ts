@@ -99,6 +99,7 @@ export function createCreateVideosGenerateTaskUseCase(
         taskId: task.id,
         projectId: project.id,
         taskType: "videos_generate",
+        videoReferenceStrategy: project.videoReferenceStrategy,
         sourceImageBatchId: imageBatch.id,
         imageBatch: {
           id: imageBatch.id,

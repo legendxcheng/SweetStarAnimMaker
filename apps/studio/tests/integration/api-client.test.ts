@@ -95,6 +95,7 @@ describe("API Client", () => {
       "updateVideoPrompt",
       "uploadCharacterReferenceImages",
       "uploadSegmentReferenceAudio",
+      "updateProject",
     ].sort());
   });
 
@@ -425,6 +426,54 @@ describe("API Client", () => {
       premiseText: "A new premise after reset.",
       visualStyleText: "Warm watercolor dusk.",
       confirmReset: true,
+    });
+  });
+
+  it("calls the project update endpoint with the expected payload", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "proj_1",
+        name: "Test Project",
+        slug: "test-project",
+        status: "premise_ready",
+        videoReferenceStrategy: "without_frame_refs",
+        storageDir: "/path/to/project",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-02T00:00:00Z",
+        premise: {
+          path: "premise/v1.md",
+          bytes: 52,
+          updatedAt: "2024-01-02T00:00:00Z",
+          text: "A new premise after reset.",
+          visualStyleText: "Warm watercolor dusk.",
+        },
+        currentMasterPlot: null,
+        currentCharacterSheetBatch: null,
+        currentSceneSheetBatch: null,
+        currentStoryboard: null,
+        currentShotScript: null,
+        currentImageBatch: null,
+        currentVideoBatch: null,
+      }),
+    });
+    global.fetch = mockFetch;
+
+    const response = await apiClient.updateProject("proj_1", {
+      videoReferenceStrategy: "without_frame_refs",
+    });
+
+    expect(response.videoReferenceStrategy).toBe("without_frame_refs");
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${config.apiBaseUrl}/projects/proj_1`,
+      expect.objectContaining({
+        method: "PUT",
+      }),
+    );
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string)).toEqual({
+      videoReferenceStrategy: "without_frame_refs",
     });
   });
 

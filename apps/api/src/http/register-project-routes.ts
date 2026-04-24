@@ -2,7 +2,11 @@ import fs from "node:fs/promises";
 
 import type { FastifyInstance } from "fastify";
 
-import { createProjectRequestSchema, resetProjectPremiseRequestSchema } from "@sweet-star/shared";
+import {
+  createProjectRequestSchema,
+  resetProjectPremiseRequestSchema,
+  updateProjectRequestSchema,
+} from "@sweet-star/shared";
 
 import type { buildSpec1Services } from "../bootstrap/build-spec1-services";
 
@@ -26,6 +30,16 @@ export function registerProjectRoutes(
 
     return services.getProjectDetail.execute({
       projectId: params.projectId,
+    });
+  });
+
+  app.put("/projects/:projectId", async (request) => {
+    const params = request.params as { projectId: string };
+    const payload = updateProjectRequestSchema.parse(request.body);
+
+    return services.updateProject.execute({
+      projectId: params.projectId,
+      ...payload,
     });
   });
 

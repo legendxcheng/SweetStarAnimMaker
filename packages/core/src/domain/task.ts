@@ -7,6 +7,7 @@ import type {
   ShotScriptSegment,
   TaskStatus,
   TaskType,
+  VideoReferenceStrategy,
 } from "@sweet-star/shared";
 
 export const masterPlotGenerateQueueName = "master-plot-generate";
@@ -280,6 +281,7 @@ export interface VideosGenerateTaskInput {
   taskId: string;
   projectId: string;
   taskType: "videos_generate";
+  videoReferenceStrategy: VideoReferenceStrategy;
   sourceImageBatchId: string;
   imageBatch: {
     id: string;
