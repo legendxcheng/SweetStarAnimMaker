@@ -16,9 +16,9 @@ const shotReferenceStatuses = ["pending", "in_review", "approved", "failed"] as 
 export const currentImageBatchSummaryResponseSchema = z.object({
   id: z.string(),
   sourceShotScriptId: z.string(),
-  shotCount: z.number().int().positive(),
+  segmentCount: z.number().int().positive(),
   totalRequiredFrameCount: z.number().int().positive(),
-  approvedShotCount: z.number().int().nonnegative(),
+  approvedSegmentCount: z.number().int().nonnegative(),
   updatedAt: z.string(),
 });
 
@@ -35,6 +35,9 @@ export const imageFrameResponseSchema = z
     planStatus: z.enum(imageFramePlanStatuses),
     imageStatus: z.enum(imageFrameStatuses),
     selectedCharacterIds: z.array(z.string()),
+    selectedSceneId: z.string().nullable(),
+    selectedSceneName: z.string().nullable(),
+    selectedSceneImageAssetPath: z.string().nullable().optional(),
     matchedReferenceImagePaths: z.array(z.string()),
     unmatchedCharacterIds: z.array(z.string()),
     promptTextSeed: optionalFrameTextSchema,
@@ -86,35 +89,40 @@ export const imageFrameResponseSchema = z
     }
   });
 
-const shotReferenceRecordBaseSchema = z.object({
+const segmentImageRecordBaseSchema = z.object({
   id: z.string(),
   batchId: z.string(),
   projectId: z.string(),
   sourceShotScriptId: z.string(),
-  sceneId: z.string().optional(),
-  segmentId: z.string().optional(),
-  segmentOrder: z.number().int().positive().optional(),
-  shotOrder: z.number().int().positive().optional(),
-  shotId: z.string(),
-  shotCode: z.string(),
-  referenceStatus: z.enum(shotReferenceStatuses),
+  sceneId: z.string(),
+  segmentId: z.string(),
+  segmentOrder: z.number().int().positive(),
+  segmentName: z.string().nullable(),
+  segmentSummary: z.string(),
+  sourceShotIds: z.array(z.string()),
+  status: z.enum(shotReferenceStatuses),
   startFrame: imageFrameResponseSchema,
+  approvedAt: z.string().nullable(),
   updatedAt: z.string(),
+  shotId: z.string().optional(),
+  shotCode: z.string().optional(),
+  shotOrder: z.number().int().positive().optional(),
+  referenceStatus: z.enum(shotReferenceStatuses).optional(),
 });
 
-const shotReferenceRecordSchema = z.discriminatedUnion("frameDependency", [
-  shotReferenceRecordBaseSchema.extend({
+const segmentImageRecordSchema = z.discriminatedUnion("frameDependency", [
+  segmentImageRecordBaseSchema.extend({
     frameDependency: z.literal("start_frame_only"),
     endFrame: z.null(),
   }),
-  shotReferenceRecordBaseSchema.extend({
+  segmentImageRecordBaseSchema.extend({
     frameDependency: z.literal("start_and_end_frame"),
     endFrame: imageFrameResponseSchema,
   }),
 ]);
 export const imageFrameListResponseSchema = z.object({
   currentBatch: currentImageBatchSummaryResponseSchema,
-  shots: z.array(shotReferenceRecordSchema),
+  segments: z.array(segmentImageRecordSchema),
 });
 
 export const regenerateAllImagePromptsResponseSchema = z.object({

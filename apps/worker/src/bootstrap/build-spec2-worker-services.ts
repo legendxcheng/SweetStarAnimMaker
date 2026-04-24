@@ -15,7 +15,9 @@ import {
   createProcessVideosGenerateTaskUseCase,
   type VideoPromptProvider,
   createProcessCharacterSheetGenerateTaskUseCase,
+  createProcessSceneSheetGenerateTaskUseCase,
   createProcessCharacterSheetsGenerateTaskUseCase,
+  createProcessSceneSheetsGenerateTaskUseCase,
   createProcessShotScriptGenerateTaskUseCase,
   createProcessShotScriptSegmentGenerateTaskUseCase,
   createProcessStoryboardGenerateTaskUseCase,
@@ -31,6 +33,7 @@ import {
   type MasterPlotStorage,
   type ProcessMasterPlotGenerateTaskUseCase,
   type ProcessCharacterSheetGenerateTaskUseCase,
+  type ProcessSceneSheetGenerateTaskUseCase,
   type ProcessCharacterSheetsGenerateTaskUseCase,
   type ProcessFinalCutGenerateTaskUseCase,
   type ProcessFrameImageGenerateTaskUseCase,
@@ -46,6 +49,8 @@ import {
   type ProcessShotScriptGenerateTaskUseCase,
   type ProcessStoryboardGenerateTaskUseCase,
   type ProjectRepository,
+  type SceneSheetRepository,
+  type SceneSheetStorage,
   type ShotImageProvider,
   type ShotImageRepository,
   type ShotImageStorage,
@@ -68,6 +73,7 @@ import {
 import {
   createBullMqTaskQueue,
   createCharacterSheetStorage,
+  createSceneSheetStorage,
   createGeminiFramePromptProvider,
   createGeminiVideoPromptProvider,
   createGeminiCharacterSheetProvider,
@@ -81,6 +87,7 @@ import {
   createLocalDataPaths,
   createReferenceImageUploader,
   createSqliteCharacterSheetRepository,
+  createSqliteSceneSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
   createSqliteShotImageRepository,
@@ -89,6 +96,8 @@ import {
   createShotScriptStorage,
   createStoryboardStorage,
   createTaskFileStorage,
+  createArkCharacterSheetImageProvider,
+  createArkFrameImageProvider,
   createTurnaroundImageProvider,
   createVideoStorage,
   createFfmpegFinalCutRenderer,
@@ -112,6 +121,8 @@ export interface BuildSpec2WorkerServicesOptions {
   shotScriptStorage?: ShotScriptStorage;
   characterSheetRepository?: CharacterSheetRepository;
   characterSheetStorage?: CharacterSheetStorage;
+  sceneSheetRepository?: SceneSheetRepository;
+  sceneSheetStorage?: SceneSheetStorage;
   shotImageRepository?: ShotImageRepository;
   shotImageStorage?: ShotImageStorage;
   videoRepository?: VideoRepository;
@@ -124,6 +135,7 @@ export interface BuildSpec2WorkerServicesOptions {
   framePromptProvider?: FramePromptProvider;
   videoPromptProvider?: VideoPromptProvider;
   shotImageProvider?: ShotImageProvider;
+  sceneSheetImageProvider?: ShotImageProvider;
   videoProvider?: VideoProvider;
   finalCutRenderer?: FinalCutRenderer;
   taskQueue?: TaskQueue;
@@ -139,6 +151,8 @@ export interface Spec2WorkerServices {
   processShotScriptSegmentGenerateTask: ProcessShotScriptSegmentGenerateTaskUseCase;
   processCharacterSheetsGenerateTask: ProcessCharacterSheetsGenerateTaskUseCase;
   processCharacterSheetGenerateTask: ProcessCharacterSheetGenerateTaskUseCase;
+  processSceneSheetGenerateTask: ProcessSceneSheetGenerateTaskUseCase;
+  processSceneSheetsGenerateTask: ReturnType<typeof createProcessSceneSheetsGenerateTaskUseCase>;
   processImagesGenerateTask: ProcessImagesGenerateTaskUseCase;
   processImageBatchGenerateAllFramesTask: ProcessImageBatchGenerateAllFramesTaskUseCase;
   processImageBatchRegenerateFailedFramesTask: ProcessImageBatchRegenerateFailedFramesTaskUseCase;
@@ -163,6 +177,7 @@ export function buildSpec2WorkerServices(
   const defaultStoryboardStorage = paths ? createStoryboardStorage({ paths }) : null;
   const defaultShotScriptStorage = paths ? createShotScriptStorage({ paths }) : null;
   const defaultCharacterSheetStorage = paths ? createCharacterSheetStorage({ paths }) : null;
+  const defaultSceneSheetStorage = paths ? createSceneSheetStorage({ paths }) : null;
   const defaultShotImageStorage = paths ? createShotImageStorage({ paths }) : null;
   const defaultVideoStorage = paths ? createVideoStorage({ paths }) : null;
 
@@ -182,7 +197,10 @@ export function buildSpec2WorkerServices(
   const masterPlotStorage = options.masterPlotStorage ?? defaultStoryboardStorage;
   const characterSheetRepository =
     options.characterSheetRepository ?? (db ? createSqliteCharacterSheetRepository({ db }) : null);
+  const sceneSheetRepository =
+    options.sceneSheetRepository ?? (db ? createSqliteSceneSheetRepository({ db }) : null);
   const characterSheetStorage = options.characterSheetStorage ?? defaultCharacterSheetStorage;
+  const sceneSheetStorage = options.sceneSheetStorage ?? defaultSceneSheetStorage;
   const shotImageRepository =
     options.shotImageRepository ??
     (db ? createSqliteShotImageRepository({ db }) : createUnsupportedShotImageRepository());
@@ -264,12 +282,10 @@ export function buildSpec2WorkerServices(
   });
   const characterSheetImageProvider =
     options.characterSheetImageProvider ??
-    createTurnaroundImageProvider({
-      baseUrl: process.env.VECTORENGINE_BASE_URL,
-      apiToken: process.env.VECTORENGINE_API_TOKEN,
+    createArkCharacterSheetImageProvider({
+      baseUrl: process.env.SEEDANCE_API_BASE_URL,
+      apiToken: process.env.SEEDANCE_API_KEY,
       model: process.env.CHARACTER_SHEET_IMAGE_MODEL,
-      size: defaultLandscapeImageSize,
-      referenceImageUploader,
     });
   const framePromptProvider =
     options.framePromptProvider ??
@@ -299,14 +315,21 @@ export function buildSpec2WorkerServices(
         model: process.env.VIDEO_PROMPT_GROK_MODEL,
       }),
     );
-  const shotImageProvider =
-    options.shotImageProvider ??
+  const sceneSheetImageProvider =
+    options.sceneSheetImageProvider ??
     createTurnaroundImageProvider({
       baseUrl: process.env.VECTORENGINE_BASE_URL,
       apiToken: process.env.VECTORENGINE_API_TOKEN,
       model: process.env.FRAME_IMAGE_MODEL,
       size: defaultLandscapeImageSize,
       referenceImageUploader,
+    });
+  const shotImageProvider =
+    options.shotImageProvider ??
+    createArkFrameImageProvider({
+      baseUrl: process.env.SEEDANCE_API_BASE_URL,
+      apiToken: process.env.SEEDANCE_API_KEY,
+      model: process.env.FRAME_IMAGE_MODEL,
     });
   const videoProvider =
     options.videoProvider ??
@@ -369,7 +392,9 @@ export function buildSpec2WorkerServices(
     !masterPlotStorage ||
     !storyboardStorage ||
     !characterSheetRepository ||
-    !characterSheetStorage
+    !characterSheetStorage ||
+    !sceneSheetRepository ||
+    !sceneSheetStorage
   ) {
     throw new Error(
       "buildSpec2WorkerServices requires either workspaceRoot or explicit task dependencies",
@@ -441,6 +466,31 @@ export function buildSpec2WorkerServices(
       characterSheetRepository,
       characterSheetStorage,
       characterSheetImageProvider,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processSceneSheetGenerateTask: createProcessSceneSheetGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      sceneSheetRepository,
+      sceneSheetStorage,
+      shotImageProvider: sceneSheetImageProvider,
+      clock: options.clock ?? {
+        now: () => new Date().toISOString(),
+      },
+    }),
+    processSceneSheetsGenerateTask: createProcessSceneSheetsGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      masterPlotStorage,
+      characterSheetRepository,
+      sceneSheetRepository,
+      sceneSheetStorage,
+      taskQueue,
+      taskIdGenerator,
       clock: options.clock ?? {
         now: () => new Date().toISOString(),
       },
@@ -597,6 +647,7 @@ export function buildSpec2WorkerServices(
       shotScriptStorage,
       characterSheetRepository,
       characterSheetStorage,
+      sceneSheetRepository,
       framePromptProvider,
       clock: options.clock ?? {
         now: () => new Date().toISOString(),

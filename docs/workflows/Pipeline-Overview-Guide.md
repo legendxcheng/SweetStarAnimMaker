@@ -52,7 +52,8 @@
 第 7 步 `images` 也按 `segment-first` 语义维护：
 
 - 基于已审核 `shot_script` 创建项目级 image batch
-- 每个 `segment` 生成并维护一组 shots 的 `start_frame` / `end_frame`
+- 每个 `segment` 只生成并维护 `startFrame`，必要时补充可选的 `endFrame`
+- 当前图片阶段不再为 `segment` 下的每个 `shot` 单独保留一帧输出结构
 - 支持按段重生成、按段审核和全部通过
 - 项目进入 `images_approved` 后才允许启动视频阶段
 
@@ -87,9 +88,16 @@
   - 为每个角色生成当前角色图，并支持参考图、重生成和逐个审核
 - `场景设定/场景图生成`
   - 基于已审核的 `master_plot` 和已审核的 `character_sheets` 提炼项目级核心场景
+  - 一次通常生成多个核心场景，而不是只生成一张总场景图
+  - 场景列表必须从当前剧情文本中提炼，不能退化成对所有项目都固定复用的硬编码场景模板
+  - 若剧情中存在多个可复用环境节点，应拆成多条 `scene_sheet`，例如“都市办公区 / 仪式空间 / 财团大厅”
   - 为每个核心场景生成可编辑的场景 prompt、场景约束和当前场景图
+  - 场景图片 prompt 应只描述场景本身，不混入剧情讲述、镜头调度或角色表演说明
   - 每个 `scene_sheet` 只维护一张主场景图，不做多视角场景包
-  - 支持逐个场景查看、改 prompt、重生成和逐个审核
+  - 在场景图尚未实际生成成功前，`imageAssetPath` 可以为空
+  - Studio 在这种情况下应显示“生成中/暂无场景图”占位，而不是预先请求一个尚不存在的 `current.png`
+  - Studio 支持逐个场景查看、直接修改 prompt 文本、保存后重生成，或直接用当前编辑文本重生成
+  - 支持逐个场景审核
   - 只有全部核心场景审核通过后，项目才允许进入 `storyboard`
 - `分镜文案生成`
   - 基于已审核的 `master_plot`、`character_sheets` 和 `scene_sheets` 生成项目级分镜文案
@@ -103,8 +111,12 @@
   - 支持查看当前镜头脚本、按段人工修改、按段重生成、按段审核通过、全部通过
 - `出图`
   - 基于已审核的 `shot_script` 生成项目级 `images batch`
-  - 当前采用 `segment-first` 结构，每个 `segment` 维护一组 shots 的 `start_frame` 与 `end_frame`
-  - 如某段属于核心场景，生成时可优先注入对应 `scene_sheet`
+  - 当前采用 `segment-first` 结构，每个 `segment` 只维护 `startFrame` 和可选 `endFrame` 两张关键画面
+  - 关键画面 prompt 生成时，应综合当前 `segment` 下的 `shots`、`storyboard`、`character_sheets` 和 `scene_sheets`，先解析“当前相关人物”和“当前相关场景”，不能只抽人物不抽场景
+  - 人物信息用于锁定角色外观与表演主体，场景信息用于锁定环境空间、关键陈设、光线氛围和空间关系
+  - 如某段属于核心场景，生成时应优先注入对应已审核 `scene_sheet`
+  - 如某段没有可复用 `scene_sheet`，也应从当前 `storyboard` / `shot_script` 文案中提炼临时场景描述，而不是让画面 prompt 只剩人物描述
+  - Studio 顶部按钮应显示“重新生成余下的帧”，用于补跑所有已完成 prompt 规划但尚未完成出图的帧，不影响已完成帧
   - 支持查看当前画面、按段重生成、按段审核通过、全部通过
 - `视频片段`
   - 基于已审核的 `images batch` 和 `shot_script` 初始化项目级 `video batch`
@@ -126,7 +138,11 @@
 
 - `scene_sheets` 是项目级核心场景库
 - 只收录值得提前锁定、且后续可能反复复用的核心场景
+- 一次 batch 可以包含多个核心场景 `scene_sheet`
 - 每个 `scene_sheet` 是一个“单图场景锚点”
+- `promptTextCurrent` 应优先写环境空间、时代气质、陈设、材质、光线、天气、色温等场景信息
+- 不要求在场景 prompt 中重复剧情、人物动作、镜头语言或分镜说明
+- 场景命名与场景拆分应尽量贴合当前项目文本，不应出现与剧情无关的默认场景名
 - 输出至少包括：
   - `sceneName`
   - `scenePurpose`
@@ -248,13 +264,15 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 
 当前仓库中图片阶段的真实原子单位是：
 
-`1 segment = N shots = 一组 start_frame / end_frame = 一个当前段画面包`
+`1 segment = 1 条 SegmentImageRecord = startFrame + 可选 endFrame`
 
 也就是说：
 
 - 图片批次是项目级
-- 参考帧生成依然发生在 shot/frame 级
-- 但审核通过与批次收口是 segment 级
+- 当前图片表单和 API 主返回结构都只暴露 `segments[]`
+- 每个 `segment` 只保留 `startFrame` 与可选 `endFrame`
+- 是否需要 `endFrame` 由该 `segment` 的整体 `frameDependency` 决定
+- `segment` 下的 `shots[]` 只作为 prompt 规划和上下文解析输入，不再作为图片阶段主输出结构
 - 某段重生成不会强制影响其他段
 
 ### 7. 当前 `videos` 已按 segment-first 固定
@@ -385,6 +403,7 @@ Prompt 不是代码里的临时字符串，而是这个环节的正式资产。
 - `images_generate`
 - `image_batch_generate_all_frames`
 - `image_batch_regenerate_failed_frames`
+  - 当前兼容承载 Studio “重新生成余下的帧”动作，语义是补跑所有未完成出图的帧
 - `image_batch_regenerate_all_prompts`
 - `image_batch_regenerate_failed_prompts`
 - `frame_prompt_generate`

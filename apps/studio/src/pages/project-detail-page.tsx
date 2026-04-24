@@ -72,21 +72,21 @@ function getDefaultProjectPhase(project: ProjectDetail | null): ProjectPhaseKey 
   }
 
   if (
-    project.status === "scene_sheets_generating" ||
-    project.status === "scene_sheets_in_review" ||
-    project.status === "scene_sheets_approved" ||
-    project.currentSceneSheetBatch != null
-  ) {
-    return "scene_sheets";
-  }
-
-  if (
     project.status === "storyboard_generating" ||
     project.status === "storyboard_in_review" ||
     project.status === "storyboard_approved" ||
     project.currentStoryboard != null
   ) {
     return "storyboard";
+  }
+
+  if (
+    project.status === "scene_sheets_generating" ||
+    project.status === "scene_sheets_in_review" ||
+    project.status === "scene_sheets_approved" ||
+    project.currentSceneSheetBatch != null
+  ) {
+    return "scene_sheets";
   }
 
   if (
@@ -189,6 +189,10 @@ function canRegenerateStoryboard(project: ProjectDetail | null) {
   return hasApprovedSceneSheets(project);
 }
 
+function canGenerateSceneSheets(project: ProjectDetail | null) {
+  return hasApprovedCharacterSheets(project);
+}
+
 function canRegenerateShotScript(project: ProjectDetail | null) {
   return hasApprovedStoryboard(project);
 }
@@ -203,8 +207,8 @@ function hasApprovedImages(project: ProjectDetail | null) {
   }
 
   return (
-    project.currentImageBatch.shotCount > 0 &&
-    project.currentImageBatch.approvedShotCount === project.currentImageBatch.shotCount
+    project.currentImageBatch.segmentCount > 0 &&
+    project.currentImageBatch.approvedSegmentCount === project.currentImageBatch.segmentCount
   );
 }
 
@@ -357,6 +361,20 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateSceneSheets = async () => {
+    if (!projectId || creatingTask || !confirmRegeneration()) return;
+    try {
+      setCreatingTask(true);
+      const nextTask = await apiClient.createSceneSheetsGenerateTask(projectId);
+      setActiveTask(nextTask);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const handleRegenerateShotScript = async () => {
     if (!projectId || creatingTask || !confirmRegeneration()) return;
     try {
@@ -499,6 +517,12 @@ export function ProjectDetailPage() {
                     project={currentProject}
                     task={task}
                     taskError={taskError}
+                    creatingTask={creatingTask}
+                    disableGenerate={creatingTask || !canGenerateSceneSheets(currentProject)}
+                    onGenerate={() => {
+                      void handleGenerateSceneSheets();
+                    }}
+                    onProjectRefresh={loadProject}
                   />
                 ) : selectedPhase === "storyboard" ? (
                   <StoryboardPhasePanel

@@ -5,6 +5,7 @@ import {
   createApproveAllVideoSegmentsUseCase,
   createApproveAllShotScriptSegmentsUseCase,
   createApproveCharacterSheetUseCase,
+  createApproveSceneSheetUseCase,
   createApproveImageFrameUseCase,
   createApproveVideoSegmentUseCase,
   createApproveMasterPlotUseCase,
@@ -17,6 +18,7 @@ import {
   createCreateImageBatchRegenerateFailedPromptsTaskUseCase,
   createCreateMasterPlotGenerateTaskUseCase,
   createCreateCharacterSheetsGenerateTaskUseCase,
+  createCreateSceneSheetsGenerateTaskUseCase,
   createCreateFinalCutGenerateTaskUseCase,
   createCreateShotScriptGenerateTaskUseCase,
   createCreateStoryboardGenerateTaskUseCase,
@@ -40,6 +42,7 @@ import {
   createGetTaskDetailUseCase,
   createGetVideoUseCase,
   createListCharacterSheetsUseCase,
+  createListSceneSheetsUseCase,
   createListImagesUseCase,
   createListVideosUseCase,
   createListProjectsUseCase,
@@ -56,6 +59,7 @@ import {
   createRegenerateVideoSegmentUseCase,
   createRegenerateMasterPlotUseCase,
   createRegenerateCharacterSheetUseCase,
+  createRegenerateSceneSheetUseCase,
   createRegenerateFramePromptUseCase,
   createRegenerateShotScriptUseCase,
   createRegenerateStoryboardUseCase,
@@ -68,6 +72,7 @@ import {
   createSaveHumanStoryboardVersionUseCase,
   createUploadSegmentVideoAudioUseCase,
   createUpdateCharacterSheetPromptUseCase,
+  createUpdateSceneSheetPromptUseCase,
   createUpdateFramePromptUseCase,
   createUpdateVideoPromptUseCase,
   createUpdateProjectScriptUseCase,
@@ -78,9 +83,11 @@ import {
 import {
   createBullMqTaskQueue,
   createCharacterSheetStorage,
+  createSceneSheetStorage,
   createFileScriptStorage,
   createLocalDataPaths,
   createSqliteCharacterSheetRepository,
+  createSqliteSceneSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
   createSqliteShotImageRepository,
@@ -121,10 +128,12 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const storyboardStorage = createStoryboardStorage({ paths });
   const shotScriptStorage = createShotScriptStorage({ paths });
   const characterSheetRepository = createSqliteCharacterSheetRepository({ db });
+  const sceneSheetRepository = createSqliteSceneSheetRepository({ db });
   const shotImageRepository = createSqliteShotImageRepository({ db });
   const videoRepository = createSqliteVideoRepository({ db });
   const shotScriptReviewRepository = createSqliteShotScriptReviewRepository({ db });
   const characterSheetStorage = createCharacterSheetStorage({ paths });
+  const sceneSheetStorage = createSceneSheetStorage({ paths });
   const shotImageStorage = createShotImageStorage({ paths });
   const videoStorage = createVideoStorage({ paths });
   const videoPromptProvider =
@@ -201,6 +210,16 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
   const createCharacterSheetsGenerateTask = createCreateCharacterSheetsGenerateTaskUseCase({
     projectRepository: repository,
     masterPlotStorage,
+    taskRepository,
+    taskFileStorage,
+    taskQueue: queuedTaskGateway,
+    taskIdGenerator,
+    clock,
+  });
+  const createSceneSheetsGenerateTask = createCreateSceneSheetsGenerateTaskUseCase({
+    projectRepository: repository,
+    masterPlotStorage,
+    characterSheetRepository,
     taskRepository,
     taskFileStorage,
     taskQueue: queuedTaskGateway,
@@ -333,6 +352,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       shotScriptStorage,
       characterSheetRepository,
+      sceneSheetRepository,
       shotImageRepository,
       videoRepository,
     }),
@@ -343,6 +363,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       storyboardStorage,
       shotScriptStorage,
       characterSheetRepository,
+      sceneSheetRepository,
       shotImageRepository,
       videoRepository,
     }),
@@ -350,6 +371,10 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       projectRepository: repository,
       characterSheetRepository,
       characterSheetStorage,
+    }),
+    listSceneSheets: createListSceneSheetsUseCase({
+      projectRepository: repository,
+      sceneSheetRepository,
     }),
     addCharacterSheetReferenceImages: createAddCharacterSheetReferenceImagesUseCase({
       projectRepository: repository,
@@ -387,7 +412,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     listImages: createListImagesUseCase({
       projectRepository: repository,
+      sceneSheetRepository,
       shotImageRepository,
+      shotImageStorage,
     }),
     listVideos: createListVideosUseCase({
       projectRepository: repository,
@@ -403,7 +430,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     getImageFrame: createGetImageFrameUseCase({
       projectRepository: repository,
+      sceneSheetRepository,
       shotImageRepository,
+      shotImageStorage,
     }),
     getVideo: createGetVideoUseCase({
       projectRepository: repository,
@@ -550,9 +579,16 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       characterSheetRepository,
       clock,
     }),
+    updateSceneSheetPrompt: createUpdateSceneSheetPromptUseCase({
+      projectRepository: repository,
+      sceneSheetRepository,
+      clock,
+    }),
     updateFramePrompt: createUpdateFramePromptUseCase({
       projectRepository: repository,
+      sceneSheetRepository,
       shotImageRepository,
+      shotImageStorage,
       clock,
     }),
     updateVideoPrompt: createUpdateVideoPromptUseCase({
@@ -575,6 +611,15 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       projectRepository: repository,
       characterSheetRepository,
       characterSheetStorage,
+      taskRepository,
+      taskFileStorage,
+      taskQueue: queuedTaskGateway,
+      taskIdGenerator,
+      clock,
+    }),
+    regenerateSceneSheet: createRegenerateSceneSheetUseCase({
+      projectRepository: repository,
+      sceneSheetRepository,
       taskRepository,
       taskFileStorage,
       taskQueue: queuedTaskGateway,
@@ -658,9 +703,16 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
       characterSheetRepository,
       clock,
     }),
+    approveSceneSheet: createApproveSceneSheetUseCase({
+      projectRepository: repository,
+      sceneSheetRepository,
+      clock,
+    }),
     approveImageFrame: createApproveImageFrameUseCase({
       projectRepository: repository,
+      sceneSheetRepository,
       shotImageRepository,
+      shotImageStorage,
       clock,
     }),
     approveVideoSegment: createApproveVideoSegmentUseCase({
@@ -670,7 +722,9 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     approveAllImageFrames: createApproveAllImageFramesUseCase({
       projectRepository: repository,
+      sceneSheetRepository,
       shotImageRepository,
+      shotImageStorage,
       clock,
     }),
     approveAllVideoSegments: createApproveAllVideoSegmentsUseCase({
@@ -680,6 +734,7 @@ export function buildSpec1Services(options: BuildSpec1ServicesOptions) {
     }),
     createMasterPlotGenerateTask,
     createCharacterSheetsGenerateTask,
+    createSceneSheetsGenerateTask,
     createStoryboardGenerateTask,
     createShotScriptGenerateTask,
     createImagesGenerateTask,

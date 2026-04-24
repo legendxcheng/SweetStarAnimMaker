@@ -30,6 +30,7 @@ describe("API Client", () => {
       "approveAllShotScriptSegments",
       "approveAllVideoSegments",
       "approveCharacterSheet",
+      "approveSceneSheet",
       "approveImageFrame",
       "approveMasterPlot",
       "approveShotScriptSegment",
@@ -40,6 +41,7 @@ describe("API Client", () => {
       "createImagesGenerateTask",
       "createMasterPlotGenerateTask",
       "createProject",
+      "createSceneSheetsGenerateTask",
       "createShotScriptGenerateTask",
       "createStoryboardGenerateTask",
       "createVideosGenerateTask",
@@ -62,10 +64,12 @@ describe("API Client", () => {
       "listCharacterSheets",
       "listImages",
       "listProjects",
+      "listSceneSheets",
       "listVideos",
       "regenerateAllImagePrompts",
       "regenerateAllVideoPrompts",
       "regenerateCharacterSheet",
+      "regenerateSceneSheet",
       "regenerateCharacterSheets",
       "regenerateFailedImageFrames",
       "regenerateFailedImagePrompts",
@@ -86,6 +90,7 @@ describe("API Client", () => {
       "saveShotScriptSegment",
       "saveStoryboard",
       "updateCharacterSheetPrompt",
+      "updateSceneSheetPrompt",
       "updateImageFramePrompt",
       "updateVideoPrompt",
       "uploadCharacterReferenceImages",
@@ -145,9 +150,9 @@ describe("API Client", () => {
           currentImageBatch: {
             id: "image-batch-1",
             sourceShotScriptId: "shot-script-1",
-            shotCount: 1,
+            segmentCount: 1,
             totalRequiredFrameCount: 1,
-            approvedShotCount: 0,
+            approvedSegmentCount: 0,
             updatedAt: "2024-01-01T00:00:00Z",
           },
           currentVideoBatch: null,
@@ -159,21 +164,28 @@ describe("API Client", () => {
           currentBatch: {
             id: "image-batch-1",
             sourceShotScriptId: "shot-script-1",
-            shotCount: 1,
+            segmentCount: 1,
             totalRequiredFrameCount: 1,
-            approvedShotCount: 0,
+            approvedSegmentCount: 0,
             updatedAt: "2024-01-01T00:00:00Z",
           },
-          shots: [
+          segments: [
             {
               id: "shot-ref-1",
               batchId: "image-batch-1",
               projectId: "proj-1",
               sourceShotScriptId: "shot-script-1",
+              sceneId: "scene-1",
+              segmentId: "segment-1",
+              segmentOrder: 1,
+              segmentName: "雨夜开场",
+              segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+              sourceShotIds: ["shot-1"],
               shotId: "shot-1",
               shotCode: "S01-SG01-SH01",
               frameDependency: "start_frame_only",
-              referenceStatus: "pending",
+              status: "pending",
+              approvedAt: null,
               startFrame: {
                 id: "frame-start-1",
                 batchId: "image-batch-1",
@@ -186,6 +198,9 @@ describe("API Client", () => {
                 planStatus: "planned",
                 imageStatus: "pending",
                 selectedCharacterIds: [],
+                selectedSceneId: null,
+                selectedSceneName: null,
+                selectedSceneImageAssetPath: null,
                 matchedReferenceImagePaths: [],
                 unmatchedCharacterIds: [],
                 promptTextSeed: "seed",
@@ -790,12 +805,12 @@ describe("API Client", () => {
         currentBatch: {
           id: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          shotCount: 1,
+          segmentCount: 1,
           totalRequiredFrameCount: 2,
-          approvedShotCount: 0,
+          approvedSegmentCount: 0,
           updatedAt: "2026-03-24T00:00:01.000Z",
         },
-        shots: [
+        segments: [
           {
             id: "shot_ref_1",
             batchId: "image_batch_1",
@@ -804,11 +819,15 @@ describe("API Client", () => {
             sceneId: "scene_1",
             segmentId: "segment_1",
             segmentOrder: 1,
+            segmentName: "雨夜开场",
+            segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+            sourceShotIds: ["shot_1"],
             shotOrder: 1,
             shotId: "shot_1",
             shotCode: "S01-SG01-SH01",
             frameDependency: "start_and_end_frame",
-            referenceStatus: "in_review",
+            status: "in_review",
+            approvedAt: null,
             startFrame: {
               id: "frame_start_1",
               batchId: "image_batch_1",
@@ -821,6 +840,9 @@ describe("API Client", () => {
               planStatus: "planned",
               imageStatus: "in_review",
               selectedCharacterIds: ["char_rin_1"],
+              selectedSceneId: "scene_sheet_market",
+              selectedSceneName: "雨夜市场入口",
+              selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
               matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
               unmatchedCharacterIds: [],
               promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
@@ -848,6 +870,9 @@ describe("API Client", () => {
               planStatus: "planned",
               imageStatus: "in_review",
               selectedCharacterIds: ["char_rin_1"],
+              selectedSceneId: "scene_sheet_market",
+              selectedSceneName: "雨夜市场入口",
+              selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
               matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
               unmatchedCharacterIds: [],
               promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
@@ -879,6 +904,9 @@ describe("API Client", () => {
         planStatus: "planned",
         imageStatus: "in_review",
         selectedCharacterIds: ["char_rin_1"],
+        selectedSceneId: "scene_sheet_market",
+        selectedSceneName: "雨夜市场入口",
+        selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
         matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
         unmatchedCharacterIds: [],
         promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
@@ -906,6 +934,9 @@ describe("API Client", () => {
         planStatus: "planned",
         imageStatus: "in_review",
         selectedCharacterIds: ["char_rin_1"],
+        selectedSceneId: "scene_sheet_market",
+        selectedSceneName: "雨夜市场入口",
+        selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
         matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
         unmatchedCharacterIds: [],
         promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
@@ -965,6 +996,9 @@ describe("API Client", () => {
         planStatus: "planned",
         imageStatus: "approved",
         selectedCharacterIds: ["char_rin_1"],
+        selectedSceneId: "scene_sheet_market",
+        selectedSceneName: "雨夜市场入口",
+        selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
         matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
         unmatchedCharacterIds: [],
         promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
@@ -984,21 +1018,28 @@ describe("API Client", () => {
         currentBatch: {
           id: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          shotCount: 1,
+          segmentCount: 1,
           totalRequiredFrameCount: 2,
-          approvedShotCount: 1,
+          approvedSegmentCount: 1,
           updatedAt: "2026-03-24T00:00:06.000Z",
         },
-        shots: [
+        segments: [
           {
             id: "shot_ref_1",
             batchId: "image_batch_1",
             projectId: "proj_1",
             sourceShotScriptId: "shot_script_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            segmentOrder: 1,
+            segmentName: "雨夜开场",
+            segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+            sourceShotIds: ["shot_1"],
             shotId: "shot_1",
             shotCode: "S01-SG01-SH01",
             frameDependency: "start_and_end_frame",
-            referenceStatus: "approved",
+            status: "approved",
+            approvedAt: "2026-03-24T00:00:05.000Z",
             startFrame: {
               id: "frame_start_1",
               batchId: "image_batch_1",
@@ -1011,6 +1052,9 @@ describe("API Client", () => {
               planStatus: "planned",
               imageStatus: "approved",
               selectedCharacterIds: ["char_rin_1"],
+              selectedSceneId: "scene_sheet_market",
+              selectedSceneName: "雨夜市场入口",
+              selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
               matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
               unmatchedCharacterIds: [],
               promptTextSeed: "雨夜市场入口，林站在霓虹雨幕前。",
@@ -1038,6 +1082,9 @@ describe("API Client", () => {
               planStatus: "planned",
               imageStatus: "approved",
               selectedCharacterIds: ["char_rin_1"],
+              selectedSceneId: "scene_sheet_market",
+              selectedSceneName: "雨夜市场入口",
+              selectedSceneImageAssetPath: "scene-sheets/scene_sheet_market/current.png",
               matchedReferenceImagePaths: ["character-sheets/char_rin/current.png"],
               unmatchedCharacterIds: [],
               promptTextSeed: "尾帧定格在林与天际冷白尾光的对视。",
@@ -1235,12 +1282,12 @@ describe("API Client", () => {
         currentBatch: {
           id: "image_batch_1",
           sourceShotScriptId: "shot_script_1",
-          shotCount: 1,
+          segmentCount: 1,
           totalRequiredFrameCount: 1,
-          approvedShotCount: 0,
+          approvedSegmentCount: 0,
           updatedAt: "2026-03-24T00:00:01.000Z",
         },
-        shots: [
+        segments: [
             {
               id: "shot_ref_1",
               batchId: "image_batch_1",
@@ -1249,11 +1296,15 @@ describe("API Client", () => {
               sceneId: "scene_1",
               segmentId: "segment_1",
               segmentOrder: 1,
+              segmentName: "雨夜开场",
+              segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+              sourceShotIds: ["shot_1"],
               shotOrder: 1,
               shotId: "shot_1",
               shotCode: "S01-SG01-SH01",
               frameDependency: "start_frame_only",
-              referenceStatus: "pending",
+              status: "pending",
+              approvedAt: null,
             startFrame: {
               id: "frame_start_1",
               batchId: "image_batch_1",
@@ -1266,6 +1317,9 @@ describe("API Client", () => {
               planStatus: "pending",
               imageStatus: "pending",
               selectedCharacterIds: [],
+              selectedSceneId: null,
+              selectedSceneName: null,
+              selectedSceneImageAssetPath: null,
               matchedReferenceImagePaths: [],
               unmatchedCharacterIds: [],
               promptTextSeed: "",
@@ -1290,13 +1344,13 @@ describe("API Client", () => {
 
     const response = await apiClient.listImages("proj_1");
 
-    expect(response.shots[0]?.sceneId).toBe("scene_1");
-    expect(response.shots[0]?.segmentId).toBe("segment_1");
-    expect(response.shots[0]?.segmentOrder).toBe(1);
-    expect(response.shots[0]?.shotOrder).toBe(1);
-    expect(response.shots[0]?.startFrame.planStatus).toBe("pending");
-    expect(response.shots[0]?.startFrame.promptTextSeed).toBe("");
-    expect(response.shots[0]?.startFrame.promptTextCurrent).toBe("");
+    expect(response.segments[0]?.sceneId).toBe("scene_1");
+    expect(response.segments[0]?.segmentId).toBe("segment_1");
+    expect(response.segments[0]?.segmentOrder).toBe(1);
+    expect(response.segments[0]?.shotOrder).toBe(1);
+    expect(response.segments[0]?.startFrame.planStatus).toBe("pending");
+    expect(response.segments[0]?.startFrame.promptTextSeed).toBe("");
+    expect(response.segments[0]?.startFrame.promptTextCurrent).toBe("");
   });
 
   it("calls the video endpoints with the expected methods and parses prompt-aware payloads", async () => {

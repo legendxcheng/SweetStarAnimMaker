@@ -32,6 +32,23 @@ export function createShotImageStorage(options: CreateShotImageStorageOptions): 
       await ensureParentDirectory(planningPath);
       await fs.writeFile(planningPath, JSON.stringify(input.planning, null, 2), "utf8");
     },
+    async readFramePlanning(input) {
+      const planningPath = toProjectAssetPath(
+        options.paths,
+        input.projectStorageDir,
+        input.planningRelPath,
+      );
+
+      try {
+        return JSON.parse(await fs.readFile(planningPath, "utf8"));
+      } catch (error) {
+        if (isMissingFileError(error)) {
+          return null;
+        }
+
+        throw error;
+      }
+    },
     async writeFramePromptFiles(input) {
       const promptSeedPath = toProjectAssetPath(
         options.paths,

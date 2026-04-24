@@ -6,7 +6,7 @@ import {
 } from "../src/index";
 
 describe("process images generate task use case", () => {
-  it("creates one shot record per shot and only enqueues required frame prompt tasks", async () => {
+  it("creates one segment image record per segment and only enqueues required frame prompt tasks", async () => {
     const taskRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -159,13 +159,13 @@ describe("process images generate task use case", () => {
       findBatchById: vi.fn(),
       findCurrentBatchByProjectId: vi.fn(),
       listFramesByBatchId: vi.fn(),
-      listShotsByBatchId: vi.fn(),
+      listSegmentsByBatchId: vi.fn(),
       insertFrame: vi.fn(),
-      insertShot: vi.fn(),
+      insertSegment: vi.fn(),
       findFrameById: vi.fn(),
-      findShotById: vi.fn(),
+      findSegmentById: vi.fn(),
       updateFrame: vi.fn(),
-      updateShot: vi.fn(),
+      updateSegment: vi.fn(),
     };
     const shotImageStorage = {
       writeBatchManifest: vi.fn(),
@@ -213,23 +213,27 @@ describe("process images generate task use case", () => {
       expect.objectContaining({
         id: "image_batch_task_20260324_images",
         sourceShotScriptId: "shot_script_v1",
-        shotCount: 2,
+        segmentCount: 2,
         totalRequiredFrameCount: 3,
       }),
     );
-    expect(shotImageRepository.insertShot).toHaveBeenCalledTimes(2);
-    expect(shotImageRepository.insertShot).toHaveBeenNthCalledWith(
+    expect(shotImageRepository.insertSegment).toHaveBeenCalledTimes(2);
+    expect(shotImageRepository.insertSegment).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        shotId: "shot_1",
+        segmentId: "segment_1",
+        segmentName: "集市压境",
+        sourceShotIds: ["shot_1"],
         frameDependency: "start_frame_only",
         endFrame: null,
       }),
     );
-    expect(shotImageRepository.insertShot).toHaveBeenNthCalledWith(
+    expect(shotImageRepository.insertSegment).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        shotId: "shot_2",
+        segmentId: "segment_2",
+        segmentName: "退路消失",
+        sourceShotIds: ["shot_2"],
         frameDependency: "start_and_end_frame",
         endFrame: expect.objectContaining({
           frameType: "end_frame",
@@ -241,6 +245,11 @@ describe("process images generate task use case", () => {
       projectId: "proj_20260324_ab12cd",
       batchId: "image_batch_task_20260324_images",
     });
+    expect(projectRepository.updateStatus).toHaveBeenCalledWith({
+      projectId: "proj_20260324_ab12cd",
+      status: "images_in_review",
+      updatedAt: "2026-03-24T00:13:00.000Z",
+    });
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledTimes(3);
     expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
       1,
@@ -249,6 +258,11 @@ describe("process images generate task use case", () => {
           taskType: "frame_prompt_generate",
           segmentId: "segment_1",
           shotId: "shot_1",
+          sourceShotIds: ["shot_1"],
+          segmentSnapshot: expect.objectContaining({
+            segmentId: "segment_1",
+            name: "集市压境",
+          }),
           frameType: "start_frame",
         }),
       }),
@@ -260,6 +274,11 @@ describe("process images generate task use case", () => {
           taskType: "frame_prompt_generate",
           segmentId: "segment_2",
           shotId: "shot_2",
+          sourceShotIds: ["shot_2"],
+          segmentSnapshot: expect.objectContaining({
+            segmentId: "segment_2",
+            name: "退路消失",
+          }),
           frameType: "start_frame",
         }),
       }),
@@ -271,6 +290,11 @@ describe("process images generate task use case", () => {
           taskType: "frame_prompt_generate",
           segmentId: "segment_2",
           shotId: "shot_2",
+          sourceShotIds: ["shot_2"],
+          segmentSnapshot: expect.objectContaining({
+            segmentId: "segment_2",
+            name: "退路消失",
+          }),
           frameType: "end_frame",
         }),
       }),

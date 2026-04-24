@@ -8,6 +8,7 @@ import type { CharacterSheetStorage } from "../ports/character-sheet-storage";
 import type { Clock } from "../ports/clock";
 import type { FramePromptProvider } from "../ports/frame-prompt-provider";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotImageStorage } from "../ports/shot-image-storage";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
@@ -33,6 +34,7 @@ export interface ProcessFramePromptGenerateTaskUseCaseDependencies {
   shotScriptStorage: ShotScriptStorage;
   characterSheetRepository: CharacterSheetRepository;
   characterSheetStorage: CharacterSheetStorage;
+  sceneSheetRepository?: SceneSheetRepository;
   framePromptProvider: FramePromptProvider;
   clock: Clock;
 }
@@ -134,6 +136,14 @@ export function createProcessFramePromptGenerateTaskUseCase(
                 imageAssetPath: shot.startFrame.imageAssetPath,
               }
             : undefined;
+        const sceneContext = buildShotScriptSceneContext({
+          segment,
+          currentShot,
+        });
+        const sceneCandidates = await loadApprovedSceneCandidates({
+          project,
+          sceneSheetRepository: dependencies.sceneSheetRepository,
+        });
 
         const promptPlan = await dependencies.framePromptProvider.generateFramePrompt({
           projectId: project.id,
@@ -153,6 +163,8 @@ export function createProcessFramePromptGenerateTaskUseCase(
             promptTextCurrent: character.promptTextCurrent,
             imageAssetPath: character.imageAssetPath,
           })),
+          sceneCandidates,
+          sceneContext,
         });
 
         if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
@@ -171,6 +183,8 @@ export function createProcessFramePromptGenerateTaskUseCase(
           const character = characterRoster.find((item) => item.id === id);
           return !character?.imageAssetPath;
         });
+        const selectedScene =
+          sceneCandidates.find((scene) => scene.sceneId === promptPlan.selectedSceneId) ?? null;
         const promptText = promptPlan.promptText.trim();
 
         if (!promptText) {
@@ -198,6 +212,8 @@ export function createProcessFramePromptGenerateTaskUseCase(
           planning: {
             frameType: promptPlan.frameType,
             selectedCharacterIds,
+            selectedSceneId: selectedScene?.sceneId ?? null,
+            selectedSceneName: selectedScene?.sceneName ?? null,
             negativePromptText: promptPlan.negativePromptText,
             rationale: promptPlan.rationale,
             rawResponse: promptPlan.rawResponse,
@@ -296,6 +312,68 @@ async function loadApprovedCharacterRoster(input: {
       approvedAt: character.approvedAt,
       sourceTaskId: character.sourceTaskId,
     })) satisfies CharacterSheetRecord[];
+}
+
+async function loadApprovedSceneCandidates(input: {
+  project: {
+    currentSceneSheetBatchId?: string | null;
+  };
+  sceneSheetRepository?: SceneSheetRepository;
+}) {
+  const batchId = input.project.currentSceneSheetBatchId ?? null;
+
+  if (!batchId || !input.sceneSheetRepository) {
+    return [];
+  }
+
+  const scenes = await input.sceneSheetRepository.listScenesByBatchId(batchId);
+
+  return scenes
+    .filter((scene) => scene.status === "approved")
+    .map((scene) => ({
+      sceneId: scene.id,
+      sceneName: scene.sceneName,
+      scenePurpose: scene.scenePurpose,
+      promptTextCurrent: scene.promptTextCurrent,
+      constraintsText: scene.constraintsText,
+      imageAssetPath: scene.imageAssetPath,
+      environmentSummary: [scene.sceneName, scene.promptTextCurrent, scene.constraintsText]
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        .join(" | "),
+    }));
+}
+
+function buildShotScriptSceneContext(input: {
+  segment: {
+    sceneId: string;
+    name?: string | null;
+    summary: string;
+  };
+  currentShot: {
+    visual: string;
+    action: string;
+    continuityNotes: string | null;
+  };
+}) {
+  const derivedSummary = [
+    input.segment.summary,
+    input.currentShot.visual,
+    input.currentShot.action,
+    input.currentShot.continuityNotes ?? null,
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" | ");
+
+  return {
+    source: "shot_script" as const,
+    sceneId: input.segment.sceneId,
+    sceneName: input.segment.name ?? null,
+    scenePurpose: null,
+    promptTextCurrent: null,
+    constraintsText: input.currentShot.continuityNotes ?? null,
+    imageAssetPath: null,
+    environmentSummary: derivedSummary,
+  };
 }
 
 function assertFramePromptTaskInput(input: {

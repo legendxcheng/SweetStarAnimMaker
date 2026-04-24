@@ -1,0 +1,14 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e8]: S
+      - generic [ref=e9]: 甜星工坊
+    - navigation [ref=e10]:
+      - link "项目列表" [ref=e11] [cursor=pointer]:
+        - /url: /projects
+    - link "+ 新建项目" [ref=e13] [cursor=pointer]:
+      - /url: /projects/new
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]
+      - generic [ref=e21]

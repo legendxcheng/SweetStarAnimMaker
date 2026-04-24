@@ -16,6 +16,7 @@ import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 import {
   seedApprovedCharacterSheets,
   seedApprovedMasterPlot,
+  seedApprovedSceneSheets,
 } from "./storyboard-test-helpers";
 
 describe("spec3 storyboard flow", () => {
@@ -75,6 +76,11 @@ describe("spec3 storyboard flow", () => {
       projectStorageDir: project.storageDir,
     });
     await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,

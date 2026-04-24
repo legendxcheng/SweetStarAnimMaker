@@ -41,7 +41,7 @@ export function createRejectStoryboardUseCase(
 
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "character_sheets_approved",
+        status: "scene_sheets_approved",
         updatedAt: currentStoryboard.updatedAt,
       });
 

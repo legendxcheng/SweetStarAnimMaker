@@ -149,6 +149,23 @@ describe("character-sheet worker integration", () => {
         getImageContent: vi.fn(),
         resolveReferenceImagePaths: vi.fn().mockResolvedValue([]),
       },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn().mockResolvedValue([]),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
+      },
+      sceneSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeScenePromptFiles: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        writeImageVersion: vi.fn(),
+        readCurrentSceneSheet: vi.fn(),
+      },
       characterSheetPromptProvider: promptProvider,
       characterSheetImageProvider: {
         generateCharacterSheetImage: vi.fn(),
@@ -339,6 +356,23 @@ describe("character-sheet worker integration", () => {
       },
       characterSheetRepository,
       characterSheetStorage,
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn().mockResolvedValue([]),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
+      },
+      sceneSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeScenePromptFiles: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        writeImageVersion: vi.fn(),
+        readCurrentSceneSheet: vi.fn(),
+      },
       taskQueue,
       taskIdGenerator: {
         generateTaskId: vi.fn().mockReturnValue("task_20260317_char_rin"),
@@ -370,10 +404,11 @@ describe("character-sheet worker integration", () => {
     });
   });
 
-  it("builds the uploader-backed turnaround provider from env and uploads reference images", async () => {
-    vi.stubEnv("VECTORENGINE_API_TOKEN", "test-token");
+  it("routes character sheet generation through Ark while leaving the rest of the image stack untouched", async () => {
+    vi.stubEnv("SEEDANCE_API_KEY", "test-token");
+    vi.stubEnv("SEEDANCE_API_BASE_URL", "https://ark.cn-beijing.volces.com");
     vi.stubEnv("VECTORENGINE_BASE_URL", "https://api.vectorengine.ai");
-    vi.stubEnv("CHARACTER_SHEET_IMAGE_MODEL", "imagen-4.0-generate-preview");
+    vi.stubEnv("CHARACTER_SHEET_IMAGE_MODEL", "doubao-seedream-5-0-260128");
     vi.stubEnv("IMAGE_UPLOAD_PROVIDER_ORDER", "psda1,picgo");
     vi.stubEnv("PICGO_API_KEY", "test-picgo-key");
 
@@ -383,30 +418,26 @@ describe("character-sheet worker integration", () => {
         ok: true,
         status: 200,
         json: async () => ({
-          data: {
-            url: "https://cdn.example/ref-1.png",
-          },
+          model: "doubao-seedream-5-0-260128",
+          created: 1776997419,
+          data: [
+            {
+              url: "https://cdn.example/generated-character.png",
+              size: "2048x2048",
+            },
+          ],
         }),
       })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({
-          data: [
-            {
-              b64_json: "AQID",
-              width: 2848,
-              height: 1600,
-            },
-          ],
-        }),
+        arrayBuffer: async () =>
+          Uint8Array.from([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+            0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x08, 0x00,
+          ]).buffer.slice(0),
       });
     vi.stubGlobal("fetch", fetchMock);
-
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-worker-reference-"));
-    const localReferencePath = path.join(tempDir, "ref-1.png");
-    tempDirs.push(tempDir);
-    await fs.writeFile(localReferencePath, new Uint8Array([1, 2, 3]));
 
     const taskRepository = {
       insert: vi.fn(),
@@ -541,7 +572,7 @@ describe("character-sheet worker integration", () => {
         characterName: "Rin",
         promptTextCurrent: "silver pilot jacket, storm glare, scar at the brow",
         imagePromptTemplateKey: "character_sheet.turnaround.generate",
-        referenceImagePaths: [localReferencePath],
+        referenceImagePaths: ["E:/tmp/ref-1.png"],
       }),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
@@ -595,6 +626,23 @@ describe("character-sheet worker integration", () => {
       },
       characterSheetRepository,
       characterSheetStorage,
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn().mockResolvedValue([]),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
+      },
+      sceneSheetStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeScenePromptFiles: vi.fn(),
+        writeCurrentImage: vi.fn(),
+        writeImageVersion: vi.fn(),
+        readCurrentSceneSheet: vi.fn(),
+      },
       clock: {
         now: vi
           .fn()
@@ -608,15 +656,23 @@ describe("character-sheet worker integration", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "https://p.sda1.dev/api/v1/upload_external_noform?filename=ref-1.png",
-    );
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.vectorengine.ai/v1/images/generations");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://ark.cn-beijing.volces.com/api/v3/images/generations");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://cdn.example/generated-character.png");
 
-    const request = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
-    expect(request.image).toEqual(["https://cdn.example/ref-1.png"]);
-    expect(request.size).toBe("2848x1600");
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(request.model).toBe("doubao-seedream-5-0-260128");
+    expect(request.size).toBe("2K");
+    expect(request.output_format).toBe("png");
+    expect(request.watermark).toBe(false);
     expect(request.prompt).toContain("Turnaround sheet for Rin");
+    expect(characterSheetRepository.updateCharacter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "ark-character-sheet-image",
+        model: "doubao-seedream-5-0-260128",
+        imageWidth: 2048,
+        imageHeight: 2048,
+      }),
+    );
     expect(taskRepository.markSucceeded).toHaveBeenCalledWith({
       taskId: "task_20260322_char_rin",
       updatedAt: "2026-03-22T12:02:00.000Z",

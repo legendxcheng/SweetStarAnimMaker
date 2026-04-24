@@ -39,7 +39,7 @@ export function createGrokFramePromptProvider(
         providerLabel: "Grok frame prompt",
         systemText: [
           "You generate structured JSON frame plans for SeaDream image generation.",
-          "Only select characterId values from the approved roster.",
+          "Only select characterId values from the approved roster and sceneId values from the provided scene candidates.",
           "All prompt text must be Simplified Chinese.",
           "Return only one valid JSON object and no markdown.",
         ].join(" "),
@@ -85,14 +85,20 @@ function normalizeFramePromptPayload(
   }
 
   const validCharacterIds = new Set(input.characterRoster.map((item) => item.characterId));
+  const validSceneIds = new Set(input.sceneCandidates.map((item) => item.sceneId));
   const selectedCharacterIds = normalizeCharacterIds(
     (payload as { selectedCharacterIds?: unknown }).selectedCharacterIds,
     validCharacterIds,
+  );
+  const selectedSceneId = normalizeSceneId(
+    (payload as { selectedSceneId?: unknown }).selectedSceneId,
+    validSceneIds,
   );
 
   return {
     frameType,
     selectedCharacterIds,
+    selectedSceneId,
     promptText: readNonEmptyString(
       (payload as { promptText?: unknown }).promptText,
       "promptText",
@@ -132,6 +138,28 @@ function normalizeCharacterIds(value: unknown, validCharacterIds: Set<string>) {
   }
 
   return Array.from(deduped);
+}
+
+function normalizeSceneId(value: unknown, validSceneIds: Set<string>) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new Error("Grok frame prompt provider returned invalid selectedSceneId");
+  }
+
+  const normalizedId = value.trim();
+
+  if (!normalizedId) {
+    return null;
+  }
+
+  if (!validSceneIds.has(normalizedId)) {
+    return null;
+  }
+
+  return normalizedId;
 }
 
 function readNonEmptyString(value: unknown, fieldName: string) {

@@ -136,6 +136,8 @@ export function createSceneSheetBatchRecord(
 export function createSceneSheetRecord(
   input: CreateSceneSheetRecordInput,
 ): SceneSheetRecordEntity {
+  const currentImageRelPath = toSceneSheetCurrentImageRelPath(input.batchId, input.id);
+
   return {
     id: input.id,
     projectId: input.projectId,
@@ -148,7 +150,7 @@ export function createSceneSheetRecord(
     promptTextGenerated: input.promptTextGenerated,
     promptTextCurrent: input.promptTextCurrent,
     constraintsText: input.constraintsText,
-    imageAssetPath: input.imageAssetPath ?? toSceneSheetCurrentImageRelPath(input.batchId, input.id),
+    imageAssetPath: input.imageAssetPath ?? null,
     imageWidth: input.imageWidth ?? null,
     imageHeight: input.imageHeight ?? null,
     provider: input.provider ?? null,
@@ -158,7 +160,7 @@ export function createSceneSheetRecord(
     approvedAt: input.approvedAt ?? null,
     sourceTaskId: input.sourceTaskId ?? null,
     storageDir: `${input.projectStorageDir}/${toSceneSheetStorageDir(input.batchId, input.id)}`,
-    currentImageRelPath: toSceneSheetCurrentImageRelPath(input.batchId, input.id),
+    currentImageRelPath,
     currentMetadataRelPath: toSceneSheetCurrentMetadataRelPath(input.batchId, input.id),
     promptGeneratedRelPath: toSceneSheetPromptGeneratedRelPath(input.batchId, input.id),
     promptCurrentRelPath: toSceneSheetPromptCurrentRelPath(input.batchId, input.id),

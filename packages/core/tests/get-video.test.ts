@@ -410,6 +410,38 @@ describe("get video use case", () => {
     });
 
     expect(videoRepository.updateSegment).not.toHaveBeenCalled();
-    expect(result).toEqual(blockedSegment);
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: "video_shot_1",
+        projectId: "proj_1",
+        batchId: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        status: "failed",
+        promptTextSeed: "",
+        promptTextCurrent: "",
+        promptUpdatedAt: "",
+        videoAssetPath: null,
+        thumbnailAssetPath: null,
+        durationSec: 3,
+        provider: null,
+        model: null,
+        approvedAt: null,
+        updatedAt: "2026-03-25T00:18:00.000Z",
+        sourceTaskId: null,
+      }),
+    );
+    expect(result).not.toHaveProperty("projectStorageDir");
+    expect(result).not.toHaveProperty("shotId");
+    expect(result).not.toHaveProperty("shotCode");
+    expect(result).not.toHaveProperty("shotOrder");
+    expect(result).not.toHaveProperty("frameDependency");
+    expect(result).not.toHaveProperty("storageDir");
+    expect(result).not.toHaveProperty("currentVideoRelPath");
+    expect(result).not.toHaveProperty("currentMetadataRelPath");
+    expect(result).not.toHaveProperty("thumbnailRelPath");
+    expect(result).not.toHaveProperty("versionsStorageDir");
   });
 });

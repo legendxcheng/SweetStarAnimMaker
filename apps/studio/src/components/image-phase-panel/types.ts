@@ -34,7 +34,7 @@ export type ImagePhaseActionKind =
   | "regenerate"
   | "regenerate-all-prompts"
   | "regenerate-failed-prompts"
-  | "regenerate-failed-frames"
+  | "regenerate-remaining-frames"
   | "generate-all-frames"
   | "generate"
   | "approve"
@@ -62,9 +62,9 @@ export interface FrameEditorCardProps {
   onGenerateFrame: (frame: ShotReferenceFrame) => Promise<void>;
 }
 
-export interface SegmentShotGroup {
+export interface ImageSegmentGroup {
   segmentId: string;
   sceneId: string;
   segmentOrder?: number;
-  shots: ShotReferenceRecord[];
+  segment: ShotReferenceRecord;
 }

@@ -372,3 +372,51 @@ export function toCurrentVideoBatchSummary(
     updatedAt: batch.updatedAt,
   };
 }
+
+export function toPublicSegmentVideoRecord(
+  segment: SegmentVideoRecord &
+    Partial<
+      Pick<
+        SegmentVideoRecordEntity,
+        | "projectStorageDir"
+        | "storageDir"
+        | "currentVideoRelPath"
+        | "currentMetadataRelPath"
+        | "thumbnailRelPath"
+        | "versionsStorageDir"
+        | "shotId"
+        | "shotCode"
+        | "shotOrder"
+        | "frameDependency"
+      >
+    >,
+): SegmentVideoRecord {
+  return {
+    id: segment.id,
+    projectId: segment.projectId,
+    batchId: segment.batchId,
+    sourceImageBatchId: segment.sourceImageBatchId,
+    sourceShotScriptId: segment.sourceShotScriptId,
+    sceneId: segment.sceneId,
+    segmentId: segment.segmentId,
+    segmentOrder: segment.segmentOrder,
+    segmentName: segment.segmentName,
+    segmentSummary: segment.segmentSummary,
+    shotCount: segment.shotCount,
+    sourceShotIds: segment.sourceShotIds,
+    status: segment.status,
+    promptTextSeed: segment.promptTextSeed,
+    promptTextCurrent: segment.promptTextCurrent,
+    promptUpdatedAt: segment.promptUpdatedAt,
+    referenceImages: segment.referenceImages,
+    referenceAudios: segment.referenceAudios,
+    videoAssetPath: segment.videoAssetPath,
+    thumbnailAssetPath: segment.thumbnailAssetPath,
+    durationSec: segment.durationSec,
+    provider: segment.provider,
+    model: segment.model,
+    updatedAt: segment.updatedAt,
+    approvedAt: segment.approvedAt,
+    sourceTaskId: segment.sourceTaskId,
+  };
+}

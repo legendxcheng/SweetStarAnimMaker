@@ -220,9 +220,9 @@ const imagesInReviewProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    shotCount: 1,
+    segmentCount: 1,
     totalRequiredFrameCount: 2,
-    approvedShotCount: 0,
+    approvedSegmentCount: 0,
     updatedAt: "2024-01-01T00:00:09Z",
   },
 };
@@ -233,9 +233,9 @@ const imagesGeneratingProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    shotCount: 1,
+    segmentCount: 1,
     totalRequiredFrameCount: 2,
-    approvedShotCount: 0,
+    approvedSegmentCount: 0,
     updatedAt: "2024-01-01T00:00:09Z",
   },
 };
@@ -246,9 +246,9 @@ const imagesApprovedSummaryProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    shotCount: 2,
+    segmentCount: 2,
     totalRequiredFrameCount: 3,
-    approvedShotCount: 2,
+    approvedSegmentCount: 2,
     updatedAt: "2024-01-01T00:00:09Z",
   },
   currentVideoBatch: null,
@@ -260,9 +260,9 @@ const videosInReviewProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    shotCount: 1,
+    segmentCount: 1,
     totalRequiredFrameCount: 2,
-    approvedShotCount: 1,
+    approvedSegmentCount: 1,
     updatedAt: "2024-01-01T00:00:09Z",
   },
   currentVideoBatch: {
@@ -536,7 +536,7 @@ describe("Project Detail Page", () => {
 
     const intervalCountBeforeGenerate = intervalCallbacks.length;
 
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateMasterPlot).toHaveBeenCalledWith("proj-1");
@@ -597,7 +597,7 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "主情节" }));
 
     expect(screen.getByRole("heading", { name: "主情节工作区" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(regenerateMasterPlot).toHaveBeenCalledWith("proj-1");
@@ -656,7 +656,26 @@ describe("Project Detail Page", () => {
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
 
     expect(screen.getByRole("heading", { name: "分镜工作区" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重新生成分镜" })).toBeInTheDocument();
+  });
+
+  it("auto-selects storyboard instead of scene sheets once storyboard data exists", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(storyboardApprovedProject);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "分镜" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
+
+    expect(screen.getByRole("heading", { name: "分镜工作区" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "场景" })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("enables the shot-script panel after storyboard approval", async () => {
@@ -1188,7 +1207,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
@@ -1236,7 +1255,7 @@ describe("Project Detail Page", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
@@ -1328,5 +1347,390 @@ describe("Project Detail Page", () => {
 
     expect(screen.getByRole("heading", { name: "场景设定工作区" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();
+  });
+
+  it("shows a generate button in the scene phase after character sheets are approved", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(
+      characterSheetsApprovedProject,
+    );
+    vi.spyOn(apiModule.apiClient, "createSceneSheetsGenerateTask").mockResolvedValue({
+      id: "task-scene-batch-1",
+      projectId: "proj-1",
+      type: "scene_sheets_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:00Z",
+      updatedAt: "2024-01-01T00:00:00Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-scene-batch-1/input.json",
+        outputPath: "tasks/task-scene-batch-1/output.json",
+        logPath: "tasks/task-scene-batch-1/log.txt",
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    const generateButton = await screen.findByRole("button", { name: "生成场景设定" });
+    expect(generateButton).toBeEnabled();
+
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createSceneSheetsGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+  });
+
+  it("keeps the scene generate button enabled after the project has already entered scene-sheet review", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(sceneSheetsInReviewProject);
+    vi.spyOn(apiModule.apiClient, "listSceneSheets").mockResolvedValue({
+      currentBatch: sceneSheetsInReviewProject.currentSceneSheetBatch,
+      scenes: [
+        {
+          id: "scene-1",
+          projectId: "proj-1",
+          batchId: "scene-batch-1",
+          sourceMasterPlotId: "mp-1",
+          sourceCharacterSheetBatchId: "char-batch-1",
+          sceneName: "Rain Dock",
+          scenePurpose: "Establish the main dock environment.",
+          constraintsText: "Wet reflective dock, blue neon, storm wind",
+          promptTextGenerated: "anime dock at rainstorm night",
+          promptTextCurrent: "anime dock at rainstorm night",
+          imageAssetPath: "scene-sheets/scene-1/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "seedance",
+          model: "seedance-scene",
+          status: "in_review" as const,
+          updatedAt: "2024-01-01T00:00:06Z",
+          approvedAt: null,
+          sourceTaskId: "task-scene-1",
+        },
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "createSceneSheetsGenerateTask").mockResolvedValue({
+      id: "task-scene-batch-2",
+      projectId: "proj-1",
+      type: "scene_sheets_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:00Z",
+      updatedAt: "2024-01-01T00:00:00Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-scene-batch-2/input.json",
+        outputPath: "tasks/task-scene-batch-2/output.json",
+        logPath: "tasks/task-scene-batch-2/log.txt",
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    const generateButton = await screen.findByRole("button", { name: "生成场景设定" });
+    expect(generateButton).toBeEnabled();
+
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.createSceneSheetsGenerateTask).toHaveBeenCalledWith("proj-1");
+    });
+  });
+
+  it("lets the user edit, regenerate, and approve a scene sheet from the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(sceneSheetsInReviewProject);
+    vi.spyOn(apiModule.apiClient, "listSceneSheets").mockResolvedValue({
+      currentBatch: sceneSheetsInReviewProject.currentSceneSheetBatch,
+      scenes: [
+        {
+          id: "scene-1",
+          projectId: "proj-1",
+          batchId: "scene-batch-1",
+          sourceMasterPlotId: "mp-1",
+          sourceCharacterSheetBatchId: "char-batch-1",
+          sceneName: "暴雨码头",
+          scenePurpose: "开场的外部环境锚点。",
+          constraintsText: "保持码头结构、远处吊机轮廓、暴雨夜氛围。",
+          promptTextGenerated: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+          promptTextCurrent: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+          imageAssetPath: "scene-sheets/scene-1/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "seedance",
+          model: "seedance-scene",
+          status: "in_review" as const,
+          updatedAt: "2024-01-01T00:00:06Z",
+          approvedAt: null,
+          sourceTaskId: "task-scene-1",
+        },
+        {
+          id: "scene-2",
+          projectId: "proj-1",
+          batchId: "scene-batch-1",
+          sourceMasterPlotId: "mp-1",
+          sourceCharacterSheetBatchId: "char-batch-1",
+          sceneName: "诊所走廊",
+          scenePurpose: "揭示段的重要室内环境。",
+          constraintsText: "保持窄走廊、冷白顶灯、旧门牌与夜间空旷感。",
+          promptTextGenerated: "老旧私人诊所走廊，夜晚冷白顶灯，空旷安静。",
+          promptTextCurrent: "老旧私人诊所走廊，夜晚冷白顶灯，空旷安静。",
+          imageAssetPath: "scene-sheets/scene-2/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "seedance",
+          model: "seedance-scene",
+          status: "approved" as const,
+          updatedAt: "2024-01-01T00:00:06Z",
+          approvedAt: "2024-01-01T00:00:07Z",
+          sourceTaskId: "task-scene-2",
+        },
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "updateSceneSheetPrompt").mockResolvedValue({
+      id: "scene-1",
+      projectId: "proj-1",
+      batchId: "scene-batch-1",
+      sourceMasterPlotId: "mp-1",
+      sourceCharacterSheetBatchId: "char-batch-1",
+      sceneName: "暴雨码头",
+      scenePurpose: "开场的外部环境锚点。",
+      constraintsText: "保持码头结构、远处吊机轮廓、暴雨夜氛围。",
+      promptTextGenerated: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+      promptTextCurrent: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影，湿滑地面积水。",
+      imageAssetPath: "scene-sheets/scene-1/current.png",
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "seedance",
+      model: "seedance-scene",
+      status: "in_review",
+      updatedAt: "2024-01-01T00:00:08Z",
+      approvedAt: null,
+      sourceTaskId: "task-scene-1",
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateSceneSheet").mockResolvedValue({
+      id: "task-scene-1-regen",
+      projectId: "proj-1",
+      type: "scene_sheet_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:07Z",
+      updatedAt: "2024-01-01T00:00:07Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-scene-1-regen/input.json",
+        outputPath: "tasks/task-scene-1-regen/output.json",
+        logPath: "tasks/task-scene-1-regen/log.txt",
+      },
+    });
+    vi.spyOn(apiModule.apiClient, "approveSceneSheet").mockResolvedValue({
+      id: "scene-1",
+      projectId: "proj-1",
+      batchId: "scene-batch-1",
+      sourceMasterPlotId: "mp-1",
+      sourceCharacterSheetBatchId: "char-batch-1",
+      sceneName: "暴雨码头",
+      scenePurpose: "开场的外部环境锚点。",
+      constraintsText: "保持码头结构、远处吊机轮廓、暴雨夜氛围。",
+      promptTextGenerated: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+      promptTextCurrent: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影，湿滑地面积水。",
+      imageAssetPath: "scene-sheets/scene-1/current.png",
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "seedance",
+      model: "seedance-scene",
+      status: "approved",
+      updatedAt: "2024-01-01T00:00:09Z",
+      approvedAt: "2024-01-01T00:00:09Z",
+      sourceTaskId: "task-scene-1-regen",
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("暴雨码头")).toBeInTheDocument();
+      expect(screen.getByText("诊所走廊")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "场景提示词" })[0]!, {
+      target: { value: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影，湿滑地面积水。" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "保存提示词" })[0]!);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.updateSceneSheetPrompt).toHaveBeenCalledWith("proj-1", "scene-1", {
+        promptTextCurrent: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影，湿滑地面积水。",
+      });
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "重新生成当前场景" })[0]!);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateSceneSheet).toHaveBeenCalledWith("proj-1", "scene-1");
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "通过当前场景" })[0]!);
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.approveSceneSheet).toHaveBeenCalledWith("proj-1", "scene-1");
+    });
+  });
+
+  it("saves the current scene prompt before regenerating from the project detail page", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(sceneSheetsInReviewProject);
+    vi.spyOn(apiModule.apiClient, "listSceneSheets").mockResolvedValue({
+      currentBatch: sceneSheetsInReviewProject.currentSceneSheetBatch,
+      scenes: [
+        {
+          id: "scene-1",
+          projectId: "proj-1",
+          batchId: "scene-batch-1",
+          sourceMasterPlotId: "mp-1",
+          sourceCharacterSheetBatchId: "char-batch-1",
+          sceneName: "暴雨码头",
+          scenePurpose: "开场的外部环境锚点。",
+          constraintsText: "保持码头结构、远处吊机轮廓、暴雨夜氛围。",
+          promptTextGenerated: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+          promptTextCurrent: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+          imageAssetPath: "scene-sheets/scene-1/current.png",
+          imageWidth: 1536,
+          imageHeight: 1024,
+          provider: "seedance",
+          model: "seedance-scene",
+          status: "in_review" as const,
+          updatedAt: "2024-01-01T00:00:06Z",
+          approvedAt: null,
+          sourceTaskId: "task-scene-1",
+        },
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "updateSceneSheetPrompt").mockResolvedValue({
+      id: "scene-1",
+      projectId: "proj-1",
+      batchId: "scene-batch-1",
+      sourceMasterPlotId: "mp-1",
+      sourceCharacterSheetBatchId: "char-batch-1",
+      sceneName: "暴雨码头",
+      scenePurpose: "开场的外部环境锚点。",
+      constraintsText: "保持码头结构、远处吊机轮廓、暴雨夜氛围。",
+      promptTextGenerated: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+      promptTextCurrent: "废旧集装箱码头，暴雨夜，积水映出冷蓝霓虹，远处吊机沉在雨幕里。",
+      imageAssetPath: "scene-sheets/scene-1/current.png",
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "seedance",
+      model: "seedance-scene",
+      status: "in_review",
+      updatedAt: "2024-01-01T00:00:08Z",
+      approvedAt: null,
+      sourceTaskId: "task-scene-1",
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateSceneSheet").mockResolvedValue({
+      id: "task-scene-1-regen",
+      projectId: "proj-1",
+      type: "scene_sheet_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:07Z",
+      updatedAt: "2024-01-01T00:00:07Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-scene-1-regen/input.json",
+        outputPath: "tasks/task-scene-1-regen/output.json",
+        logPath: "tasks/task-scene-1-regen/log.txt",
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("暴雨码头")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: "场景提示词" }), {
+      target: { value: "废旧集装箱码头，暴雨夜，积水映出冷蓝霓虹，远处吊机沉在雨幕里。" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "重新生成当前场景" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.updateSceneSheetPrompt).toHaveBeenCalledWith("proj-1", "scene-1", {
+        promptTextCurrent: "废旧集装箱码头，暴雨夜，积水映出冷蓝霓虹，远处吊机沉在雨幕里。",
+      });
+    });
+    await waitFor(() => {
+      expect(apiModule.apiClient.regenerateSceneSheet).toHaveBeenCalledWith("proj-1", "scene-1");
+    });
+  });
+
+  it("shows scene placeholders when image assets are not ready yet", async () => {
+    vi.spyOn(apiModule.apiClient, "getProjectDetail").mockResolvedValue(sceneSheetsInReviewProject);
+    vi.spyOn(apiModule.apiClient, "listSceneSheets").mockResolvedValue({
+      currentBatch: sceneSheetsInReviewProject.currentSceneSheetBatch,
+      scenes: [
+        {
+          id: "scene-1",
+          projectId: "proj-1",
+          batchId: "scene-batch-1",
+          sourceMasterPlotId: "mp-1",
+          sourceCharacterSheetBatchId: "char-batch-1",
+          sceneName: "暴雨码头",
+          scenePurpose: "开场的外部环境锚点。",
+          constraintsText: "保持码头结构、远处吊机轮廓、暴雨夜氛围。",
+          promptTextGenerated: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+          promptTextCurrent: "废旧集装箱码头，暴雨夜，冷蓝霓虹倒影。",
+          imageAssetPath: null,
+          imageWidth: null,
+          imageHeight: null,
+          provider: null,
+          model: null,
+          status: "generating" as const,
+          updatedAt: "2024-01-01T00:00:06Z",
+          approvedAt: null,
+          sourceTaskId: "task-scene-1",
+        },
+      ],
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "场景" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "场景" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("暴雨码头")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("场景图生成中")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "生成场景设定" })).toBeEnabled();
   });
 });

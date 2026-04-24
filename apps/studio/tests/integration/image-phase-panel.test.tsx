@@ -37,9 +37,9 @@ const baseProject = {
   currentImageBatch: {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
-    shotCount: 1,
+    segmentCount: 1,
     totalRequiredFrameCount: 2,
-    approvedShotCount: 0,
+    approvedSegmentCount: 0,
     updatedAt: "2024-01-01T00:00:09Z",
   },
 };
@@ -71,6 +71,9 @@ function createFrame(
     approvedAt: string | null;
     updatedAt: string;
     sourceTaskId: string | null;
+    selectedSceneId: string | null;
+    selectedSceneName: string | null;
+    selectedSceneImageAssetPath: string | null;
   }> = {},
 ) {
   return {
@@ -99,6 +102,9 @@ function createFrame(
     approvedAt: null,
     updatedAt: "2024-01-01T00:00:09Z",
     sourceTaskId: "task-frame-start-1",
+    selectedSceneId: "scene-sheet-market",
+    selectedSceneName: "雨夜市场入口",
+    selectedSceneImageAssetPath: "scene-sheets/scene-sheet-market/current.png",
     ...overrides,
   };
 }
@@ -115,8 +121,12 @@ function createShot(
     shotOrder: number;
     shotId: string;
     shotCode: string;
+    segmentName: string | null;
+    segmentSummary: string;
+    sourceShotIds: string[];
     frameDependency: "start_frame_only" | "start_and_end_frame";
     referenceStatus: "pending" | "in_review" | "approved";
+    status: "pending" | "in_review" | "approved";
     startFrame: ReturnType<typeof createFrame>;
     endFrame: ReturnType<typeof createFrame> | null;
     updatedAt: string;
@@ -156,7 +166,11 @@ function createShot(
     shotOrder: startFrame.order,
     shotId: "shot-1",
     shotCode: "S01-SG01-SH01",
+    segmentName: "雨夜开场",
+    segmentSummary: "林在雨夜市场边停下，抬头望向天际。",
+    sourceShotIds: ["shot-1"],
     frameDependency,
+    status: "in_review" as const,
     referenceStatus: "in_review" as const,
     startFrame,
     endFrame,
@@ -167,7 +181,7 @@ function createShot(
 
 const imageListResponse = {
   currentBatch: baseProject.currentImageBatch,
-  shots: [createShot()],
+  segments: [createShot()],
 };
 
 function renderPanel() {
@@ -193,14 +207,14 @@ describe("ImagePhasePanel", () => {
     vi.useRealTimers();
   });
 
-  it("renders scene tabs and shows only the active scene's shot cards", async () => {
+  it("renders scene tabs and shows only the active scene's segment cards", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: {
         ...baseProject.currentImageBatch,
-        shotCount: 2,
+        segmentCount: 2,
         totalRequiredFrameCount: 3,
       },
-      shots: [
+      segments: [
         createShot({
           id: "shot-ref-scene-1",
           shotId: "shot-scene-1",
@@ -252,20 +266,22 @@ describe("ImagePhasePanel", () => {
     expect(screen.getByRole("button", { name: /scene-1/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /scene-2/ })).toBeInTheDocument();
 
-    expect(screen.getByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
+    expect(await screen.findByText("scene-1_segment-1")).toBeInTheDocument();
     expect(screen.getByDisplayValue("scene 1 start")).toBeInTheDocument();
-    expect(screen.queryByText("scene-2_segment-1_shot_1")).not.toBeInTheDocument();
+    expect(screen.queryByText("scene-2_segment-1")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("scene 2 start")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /scene-2/ }));
 
-    expect(screen.getByText("scene-2_segment-1_shot_1")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("scene 2 start")).toBeInTheDocument();
-    expect(screen.queryByText("scene-1_segment-1_shot_1")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("scene 1 start")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("scene-2_segment-1")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("scene 2 start")).toBeInTheDocument();
+      expect(screen.queryByText("scene-1_segment-1")).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue("scene 1 start")).not.toBeInTheDocument();
+    });
   });
 
-  it("renders shot cards with independent start and end frame panels", async () => {
+  it("renders segment cards with independent start and end frame panels", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
 
     renderPanel();
@@ -275,8 +291,9 @@ describe("ImagePhasePanel", () => {
     });
 
     expect(screen.getByText("Segment 1")).toBeInTheDocument();
-    expect(screen.getByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
-    expect(screen.getByText("Shot Code: S01-SG01-SH01")).toBeInTheDocument();
+    expect(screen.getByText("scene-1_segment-1")).toBeInTheDocument();
+    expect(screen.getByText("Segment ID: segment-1")).toBeInTheDocument();
+    expect(screen.getByText("来源 Shot: shot-1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "结束帧" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("雨夜市场入口，林站在霓虹雨幕前。")).toBeInTheDocument();
@@ -285,16 +302,32 @@ describe("ImagePhasePanel", () => {
     expect(screen.queryByLabelText("结束帧负面提示词")).not.toBeInTheDocument();
     expect(screen.getByText(/未匹配角色/i)).toBeInTheDocument();
     expect(screen.getAllByText("current.png")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("已选场景")).toHaveLength(2);
+    expect(screen.getAllByText("雨夜市场入口")).toHaveLength(4);
+    expect(screen.getAllByText("场景")).toHaveLength(2);
   });
 
-  it("groups unsorted shots by segment order and shows a stable scene/segment/shot label", async () => {
+  it("renders the selected scene preview inside the matched-reference grid", async () => {
+    vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
+    });
+
+    expect(screen.getAllByAltText("场景参考图")).toHaveLength(2);
+    expect(screen.getAllByText("角色")).toHaveLength(2);
+  });
+
+  it("orders unsorted segments by scene and segment order", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: {
         ...baseProject.currentImageBatch,
-        shotCount: 3,
+        segmentCount: 3,
         totalRequiredFrameCount: 4,
       },
-      shots: [
+      segments: [
         createShot({
           id: "shot-ref-scene-1-segment-2",
           sceneId: "scene_1",
@@ -302,6 +335,7 @@ describe("ImagePhasePanel", () => {
           segmentOrder: 2,
           shotOrder: 1,
           shotId: "shot_seg2_02",
+          sourceShotIds: ["shot_seg2_02"],
           shotCode: "sc1_seg2_s2",
           frameDependency: "start_frame_only",
           startFrame: createFrame({
@@ -315,31 +349,13 @@ describe("ImagePhasePanel", () => {
           endFrame: null,
         }),
         createShot({
-          id: "shot-ref-scene-1-segment-1-shot-2",
-          sceneId: "scene_1",
-          segmentId: "segment_1",
-          segmentOrder: 1,
-          shotOrder: 2,
-          shotId: "shot_1_1_2",
-          shotCode: "s1_seg1_shot2",
-          frameDependency: "start_frame_only",
-          startFrame: createFrame({
-            id: "frame-scene-1-segment-1-shot-2-start",
-            sceneId: "scene_1",
-            segmentId: "segment_1",
-            order: 2,
-            promptTextSeed: "scene 1 segment 1 shot 2 start",
-            promptTextCurrent: "scene 1 segment 1 shot 2 start",
-          }),
-          endFrame: null,
-        }),
-        createShot({
           id: "shot-ref-scene-1-segment-1-shot-1",
           sceneId: "scene_1",
           segmentId: "segment_1",
           segmentOrder: 1,
           shotOrder: 1,
           shotId: "shot_legacy_001",
+          sourceShotIds: ["shot_legacy_001"],
           shotCode: "legacy_weird_name",
           frameDependency: "start_frame_only",
           startFrame: createFrame({
@@ -361,34 +377,28 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
     });
 
-    expect(screen.getAllByRole("heading", { level: 4 }).map((node) => node.textContent)).toEqual([
-      "Segment 1",
-      "Segment 2",
-    ]);
-    expect(screen.getByText("scene_1_segment_1_shot_1")).toBeInTheDocument();
-    expect(screen.getByText("scene_1_segment_1_shot_2")).toBeInTheDocument();
-    expect(screen.getByText("scene_1_segment_2_shot_1")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByRole("heading", { level: 4 }).map((node) => node.textContent)).toEqual([
+        "Segment 1",
+        "Segment 2",
+      ]);
+    });
+    expect(screen.getByText("scene_1_segment_1")).toBeInTheDocument();
+    expect(screen.getByText("scene_1_segment_2")).toBeInTheDocument();
     expect(
       screen
-        .getByText("scene_1_segment_1_shot_1")
-        .compareDocumentPosition(screen.getByText("scene_1_segment_1_shot_2")) &
+        .getByText("scene_1_segment_1")
+        .compareDocumentPosition(screen.getByText("scene_1_segment_2")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(
-      screen
-        .getByText("scene_1_segment_1_shot_2")
-        .compareDocumentPosition(screen.getByText("scene_1_segment_2_shot_1")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(screen.getByText("Shot Code: legacy_weird_name")).toBeInTheDocument();
-    expect(screen.getByText("Shot Code: s1_seg1_shot2")).toBeInTheDocument();
-    expect(screen.getByText("Shot Code: sc1_seg2_s2")).toBeInTheDocument();
+    expect(screen.getByText("来源 Shot: shot_legacy_001")).toBeInTheDocument();
+    expect(screen.getByText("来源 Shot: shot_seg2_02")).toBeInTheDocument();
   });
 
   it("shows the failed frame locator in the top workspace summary", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: baseProject.currentImageBatch,
-      shots: [
+      segments: [
         createShot({
           startFrame: createFrame({
             id: "frame-start-pending",
@@ -425,7 +435,7 @@ describe("ImagePhasePanel", () => {
     expect(await screen.findByText("当前生成状态")).toBeInTheDocument();
     expect(screen.getByText("Prompt 失败 1/2")).toBeInTheDocument();
     expect(
-      screen.getByText("scene-1 / segment-1 / scene-1_segment-1_shot_1 / 结束帧"),
+      screen.getByText("scene-1 / segment-1 / scene-1_segment-1 / 结束帧"),
     ).toBeInTheDocument();
   });
 
@@ -456,10 +466,10 @@ describe("ImagePhasePanel", () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: {
         ...baseProject.currentImageBatch,
-        shotCount: 1,
+        segmentCount: 1,
         totalRequiredFrameCount: 1,
       },
-      shots: [
+      segments: [
         createShot({
           frameDependency: "start_frame_only",
           endFrame: null,
@@ -473,16 +483,16 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledWith("proj-1");
     });
 
-    expect(screen.getByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
+    expect(screen.getByText("scene-1_segment-1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "起始帧" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "结束帧" })).not.toBeInTheDocument();
-    expect(screen.queryByText("当前 Shot 缺少帧记录。")).not.toBeInTheDocument();
+    expect(screen.queryByText("当前 Segment 缺少帧记录。")).not.toBeInTheDocument();
   });
 
   it("blocks end-frame image generation until the shot has a start-frame image", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
       currentBatch: baseProject.currentImageBatch,
-      shots: [
+      segments: [
         createShot({
           startFrame: createFrame({
             id: "frame-start-missing-image",
@@ -509,7 +519,7 @@ describe("ImagePhasePanel", () => {
 
     renderPanel();
 
-    expect(await screen.findByText("scene-1_segment-1_shot_1")).toBeInTheDocument();
+    expect(await screen.findByText("scene-1_segment-1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "生成起始帧图片" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "生成结束帧图片" })).toBeDisabled();
     expect(
@@ -521,7 +531,7 @@ describe("ImagePhasePanel", () => {
     const refreshProject = vi.fn();
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
     vi.spyOn(apiModule.apiClient, "updateImageFramePrompt").mockResolvedValue({
-      ...imageListResponse.shots[0].startFrame,
+      ...imageListResponse.segments[0].startFrame,
       promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
       negativePromptTextCurrent: "低清晰度、重复人物",
     });
@@ -558,7 +568,7 @@ describe("ImagePhasePanel", () => {
       },
     });
     vi.spyOn(apiModule.apiClient, "approveImageFrame").mockResolvedValue({
-      ...imageListResponse.shots[0].startFrame,
+      ...imageListResponse.segments[0].startFrame,
       imageStatus: "approved",
       approvedAt: "2024-01-01T00:00:11Z",
     });
@@ -660,7 +670,7 @@ describe("ImagePhasePanel", () => {
       expect(apiModule.apiClient.listImages).toHaveBeenCalledTimes(3);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "审核通过当前镜头" }));
+    fireEvent.click(screen.getByRole("button", { name: "审核通过当前 Segment" }));
     await waitFor(() => {
       expect(apiModule.apiClient.approveImageFrame).toHaveBeenCalledWith(
         "proj-1",
@@ -678,7 +688,7 @@ describe("ImagePhasePanel", () => {
       .mockResolvedValueOnce(imageListResponse)
       .mockResolvedValueOnce({
         ...imageListResponse,
-        shots: imageListResponse.shots.map((shot) => ({
+        segments: imageListResponse.segments.map((shot) => ({
           ...shot,
           startFrame: {
             ...shot.startFrame,
@@ -753,7 +763,7 @@ describe("ImagePhasePanel", () => {
       .mockResolvedValueOnce(imageListResponse)
       .mockResolvedValueOnce({
         ...imageListResponse,
-        shots: imageListResponse.shots.map((shot) => ({
+        segments: imageListResponse.segments.map((shot) => ({
           ...shot,
           startFrame: {
             ...shot.startFrame,
@@ -854,12 +864,12 @@ describe("ImagePhasePanel", () => {
     ).toBeTruthy();
   });
 
-  it("shows failure-only retry buttons and retries only failed prompt and frame items", async () => {
+  it("shows retry buttons and retries failed prompts plus remaining image frames", async () => {
     const refreshProject = vi.fn();
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce({
         currentBatch: baseProject.currentImageBatch,
-        shots: [
+        segments: [
           createShot({
             id: "shot-ref-failed-prompt",
             startFrame: createFrame({
@@ -911,7 +921,7 @@ describe("ImagePhasePanel", () => {
       })
       .mockResolvedValueOnce({
         currentBatch: baseProject.currentImageBatch,
-        shots: [
+        segments: [
           createShot({
             id: "shot-ref-failed-frame",
             startFrame: createFrame({
@@ -931,7 +941,7 @@ describe("ImagePhasePanel", () => {
       })
       .mockResolvedValue({
         currentBatch: baseProject.currentImageBatch,
-        shots: [createShot()],
+        segments: [createShot()],
       });
     vi.spyOn(apiModule.apiClient, "regenerateFailedImagePrompts").mockResolvedValue({
       id: "task-image-batch-regenerate-failed-prompts",
@@ -982,7 +992,7 @@ describe("ImagePhasePanel", () => {
       name: "重新生成失败的Prompt",
     });
     const failedFrameButton = screen.getByRole("button", {
-      name: "重新生成失败的帧",
+      name: "重新生成余下的帧",
     });
 
     await waitFor(() => {
@@ -1003,7 +1013,7 @@ describe("ImagePhasePanel", () => {
     expect(refreshProject).toHaveBeenCalledTimes(1);
   });
 
-  it("disables failure-only retry buttons when no matching failed items exist", async () => {
+  it("disables retry buttons when no failed prompts or remaining image frames exist", async () => {
     vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue(imageListResponse);
 
     renderPanel();
@@ -1011,7 +1021,7 @@ describe("ImagePhasePanel", () => {
     const failedPromptButton = await screen.findByRole("button", {
       name: "重新生成失败的Prompt",
     });
-    const failedFrameButton = screen.getByRole("button", { name: "重新生成失败的帧" });
+    const failedFrameButton = screen.getByRole("button", { name: "重新生成余下的帧" });
 
     await waitFor(() => {
       expect(failedPromptButton).toBeDisabled();
@@ -1026,7 +1036,7 @@ describe("ImagePhasePanel", () => {
       vi.spyOn(apiModule.apiClient, "listImages")
         .mockResolvedValueOnce({
           currentBatch: imageListResponse.currentBatch,
-          shots: imageListResponse.shots.map((shot) => ({
+          segments: imageListResponse.segments.map((shot) => ({
             ...shot,
             startFrame: {
               ...shot.startFrame,
@@ -1093,7 +1103,7 @@ describe("ImagePhasePanel", () => {
     try {
       vi.spyOn(apiModule.apiClient, "listImages").mockResolvedValue({
         currentBatch: imageListResponse.currentBatch,
-        shots: imageListResponse.shots.map((shot) => ({
+        segments: imageListResponse.segments.map((shot) => ({
           ...shot,
           startFrame: {
             ...shot.startFrame,
@@ -1150,7 +1160,7 @@ describe("ImagePhasePanel", () => {
       .mockResolvedValueOnce(imageListResponse)
       .mockResolvedValueOnce({
         currentBatch: imageListResponse.currentBatch,
-        shots: imageListResponse.shots.map((shot) =>
+        segments: imageListResponse.segments.map((shot) =>
           shot.id === "shot-ref-1"
             ? {
                 ...shot,
@@ -1224,7 +1234,7 @@ describe("ImagePhasePanel", () => {
     vi.spyOn(apiModule.apiClient, "listImages")
       .mockResolvedValueOnce({
         currentBatch: imageListResponse.currentBatch,
-        shots: imageListResponse.shots.map((shot) => ({
+        segments: imageListResponse.segments.map((shot) => ({
           ...shot,
           startFrame: {
             ...shot.startFrame,

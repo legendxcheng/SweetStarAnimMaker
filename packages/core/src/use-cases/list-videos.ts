@@ -1,6 +1,6 @@
 import type { VideoListResponse } from "@sweet-star/shared";
 
-import { toCurrentVideoBatchSummary } from "../domain/video";
+import { toCurrentVideoBatchSummary, toPublicSegmentVideoRecord } from "../domain/video";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentVideoBatchNotFoundError } from "../errors/video-errors";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -9,6 +9,7 @@ import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { normalizeStaleGeneratingVideoSegment } from "./derive-project-video-status";
 import { repairSegmentVideoPromptsIfMissing } from "./repair-segment-video-prompts";
 
 export interface ListVideosInput {
@@ -53,7 +54,7 @@ export function createListVideosUseCase(
       const repairedSegments = await Promise.all(
         segments.map(async (segment) => {
           try {
-            return await repairSegmentVideoPromptsIfMissing(
+            return normalizeStaleGeneratingVideoSegment(await repairSegmentVideoPromptsIfMissing(
               {
                 shotScriptStorage: dependencies.shotScriptStorage,
                 shotImageRepository: dependencies.shotImageRepository,
@@ -63,16 +64,18 @@ export function createListVideosUseCase(
               },
               project,
               segment,
-            );
+            ));
           } catch {
-            return segment;
+            return normalizeStaleGeneratingVideoSegment(segment);
           }
         }),
       );
 
       return {
         currentBatch: toCurrentVideoBatchSummary(batch, repairedSegments),
-        segments: repairedSegments.map(toVisibleSegmentVideoRecord),
+        segments: repairedSegments.map((segment) =>
+          toPublicSegmentVideoRecord(toVisibleSegmentVideoRecord(segment)),
+        ),
       };
     },
   };

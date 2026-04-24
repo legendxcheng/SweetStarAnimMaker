@@ -248,5 +248,16 @@ describe("shot image storage", () => {
         ),
       ),
     ).rejects.toBeDefined();
+
+    await expect(
+      storage.readFramePlanning({
+        projectStorageDir: "projects/proj_1-my-story",
+        planningRelPath: frame.planningRelPath,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        selectedCharacterIds: ["char_rin_1"],
+      }),
+    );
   });
 });

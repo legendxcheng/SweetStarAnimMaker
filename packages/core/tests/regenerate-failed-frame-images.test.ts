@@ -7,7 +7,7 @@ import {
 } from "../src/index";
 
 describe("regenerate failed frame images use case", () => {
-  it("creates tasks only for frames whose image generation failed after prompt planning succeeded", async () => {
+  it("creates tasks for unfinished image frames after prompt planning succeeded without touching completed frames", async () => {
     const projectRepository = {
       insert: vi.fn(),
       findById: vi.fn().mockResolvedValue({
@@ -153,6 +153,88 @@ describe("regenerate failed frame images use case", () => {
           endFrame: null,
           updatedAt: "2026-03-27T00:00:00.000Z",
         },
+        {
+          id: "shot_generating_image",
+          batchId: "image_batch_1",
+          projectId: "proj_1",
+          sourceShotScriptId: "shot_script_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          shotId: "shot_4",
+          shotCode: "S01-SG01-SH04",
+          frameDependency: "start_frame_only",
+          referenceStatus: "pending",
+          startFrame: {
+            id: "frame_generating_image",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 4,
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "generating",
+            selectedCharacterIds: ["char_rin_1"],
+            matchedReferenceImagePaths: [],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "雨夜市场入口。",
+            promptTextCurrent: "雨夜市场入口。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: "2026-03-27T00:00:00.000Z",
+            imageAssetPath: null,
+            imageWidth: null,
+            imageHeight: null,
+            provider: null,
+            model: null,
+            approvedAt: null,
+            updatedAt: "2026-03-27T00:00:00.000Z",
+            sourceTaskId: "task_generating_frame",
+          },
+          endFrame: null,
+          updatedAt: "2026-03-27T00:00:00.000Z",
+        },
+        {
+          id: "shot_completed_image",
+          batchId: "image_batch_1",
+          projectId: "proj_1",
+          sourceShotScriptId: "shot_script_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          shotId: "shot_5",
+          shotCode: "S01-SG01-SH05",
+          frameDependency: "start_frame_only",
+          referenceStatus: "in_review",
+          startFrame: {
+            id: "frame_completed_image",
+            batchId: "image_batch_1",
+            projectId: "proj_1",
+            sourceShotScriptId: "shot_script_1",
+            segmentId: "segment_1",
+            sceneId: "scene_1",
+            order: 5,
+            frameType: "start_frame",
+            planStatus: "planned",
+            imageStatus: "in_review",
+            selectedCharacterIds: ["char_rin_1"],
+            matchedReferenceImagePaths: [],
+            unmatchedCharacterIds: [],
+            promptTextSeed: "雨夜市场入口。",
+            promptTextCurrent: "雨夜市场入口。",
+            negativePromptTextCurrent: null,
+            promptUpdatedAt: "2026-03-27T00:00:00.000Z",
+            imageAssetPath: "images/frame_completed_image.png",
+            imageWidth: 1536,
+            imageHeight: 1024,
+            provider: "turnaround-image",
+            model: "doubao-seedream-5-0-260128",
+            approvedAt: null,
+            updatedAt: "2026-03-27T00:00:00.000Z",
+            sourceTaskId: "task_completed_frame",
+          },
+          endFrame: null,
+          updatedAt: "2026-03-27T00:00:00.000Z",
+        },
       ]),
       insertFrame: vi.fn(),
       findFrameById: vi.fn(),
@@ -176,7 +258,10 @@ describe("regenerate failed frame images use case", () => {
     };
     const taskQueue = { enqueue: vi.fn() };
     const taskIdGenerator = {
-      generateTaskId: vi.fn().mockReturnValue("task_failed_frame_1"),
+      generateTaskId: vi
+        .fn()
+        .mockReturnValueOnce("task_failed_frame_1")
+        .mockReturnValueOnce("task_pending_frame_1"),
     };
 
     const useCase = createRegenerateFailedFrameImagesUseCase({
@@ -191,12 +276,13 @@ describe("regenerate failed frame images use case", () => {
 
     await expect(useCase.execute({ projectId: "proj_1" })).resolves.toEqual({
       batchId: "image_batch_1",
-      frameCount: 1,
-      taskIds: ["task_failed_frame_1"],
+      frameCount: 2,
+      taskIds: ["task_failed_frame_1", "task_pending_frame_1"],
     });
 
-    expect(shotImageRepository.updateFrame).toHaveBeenCalledTimes(1);
-    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledTimes(2);
+    expect(shotImageRepository.updateFrame).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         id: "frame_failed_image",
         imageStatus: "generating",
@@ -205,8 +291,19 @@ describe("regenerate failed frame images use case", () => {
         sourceTaskId: "task_failed_frame_1",
       }),
     );
+    expect(shotImageRepository.updateFrame).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id: "frame_pending_image",
+        imageStatus: "generating",
+        approvedAt: null,
+        updatedAt: "2026-03-27T00:10:00.000Z",
+        sourceTaskId: "task_pending_frame_1",
+      }),
+    );
     expect(shotImageRepository.updateShot).not.toHaveBeenCalled();
-    expect(taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith(
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         input: expect.objectContaining({
           taskType: "frame_image_generate",
@@ -215,7 +312,17 @@ describe("regenerate failed frame images use case", () => {
         }),
       }),
     );
-    expect(taskQueue.enqueue).toHaveBeenCalledTimes(1);
+    expect(taskFileStorage.createTaskArtifacts).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          taskType: "frame_image_generate",
+          frameId: "frame_pending_image",
+          batchId: "image_batch_1",
+        }),
+      }),
+    );
+    expect(taskQueue.enqueue).toHaveBeenCalledTimes(2);
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_1",
       status: "images_generating",

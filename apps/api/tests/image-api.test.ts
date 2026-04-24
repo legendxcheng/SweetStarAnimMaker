@@ -4,11 +4,14 @@ import path from "node:path";
 
 import {
   createProjectRecord,
+  createSceneSheetBatchRecord,
+  createSceneSheetRecord,
   createShotReferenceRecord,
   createShotImageBatchRecord,
 } from "@sweet-star/core";
 import {
   createLocalDataPaths,
+  createSqliteSceneSheetRepository,
   createShotScriptStorage,
   createSqliteDb,
   createSqliteProjectRepository,
@@ -55,15 +58,22 @@ describe("images api", () => {
       expect.objectContaining({
         currentBatch: expect.objectContaining({
           id: "image_batch_1",
-          shotCount: 1,
+          segmentCount: 1,
           totalRequiredFrameCount: 2,
-          approvedShotCount: 0,
+          approvedSegmentCount: 0,
         }),
-        shots: expect.arrayContaining([
+        segments: expect.arrayContaining([
           expect.objectContaining({
             id: "shot_ref_1",
             frameDependency: "start_and_end_frame",
-            startFrame: expect.objectContaining({ id: "frame_start_1", frameType: "start_frame" }),
+            startFrame: expect.objectContaining({
+              id: "frame_start_1",
+              frameType: "start_frame",
+              selectedSceneId: "scene_sheet_cbd_street",
+              selectedSceneName: "CBD街头",
+              selectedSceneImageAssetPath:
+                "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_cbd_street/current.png",
+            }),
             endFrame: expect.objectContaining({ id: "frame_end_1", frameType: "end_frame" }),
           }),
         ]),
@@ -80,6 +90,10 @@ describe("images api", () => {
       expect.objectContaining({
         id: "frame_start_1",
         promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前。",
+        selectedSceneId: "scene_sheet_cbd_street",
+        selectedSceneName: "CBD街头",
+        selectedSceneImageAssetPath:
+          "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_cbd_street/current.png",
       }),
     );
 
@@ -98,6 +112,10 @@ describe("images api", () => {
         id: "frame_start_1",
         promptTextCurrent: "雨夜市场入口，林站在霓虹雨幕前，镜头更贴近人物表情。",
         negativePromptTextCurrent: "低清晰度、重复人物",
+        selectedSceneId: "scene_sheet_cbd_street",
+        selectedSceneName: "CBD街头",
+        selectedSceneImageAssetPath:
+          "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_cbd_street/current.png",
       }),
     );
 
@@ -113,6 +131,10 @@ describe("images api", () => {
         id: "frame_start_1",
         imageStatus: "approved",
         approvedAt: expect.any(String),
+        selectedSceneId: "scene_sheet_cbd_street",
+        selectedSceneName: "CBD街头",
+        selectedSceneImageAssetPath:
+          "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_cbd_street/current.png",
       }),
     );
 
@@ -554,12 +576,12 @@ describe("images api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         currentBatch: expect.objectContaining({
-          approvedShotCount: 1,
+          approvedSegmentCount: 1,
         }),
-        shots: expect.arrayContaining([
+        segments: expect.arrayContaining([
           expect.objectContaining({
             id: "shot_ref_1",
-            referenceStatus: "approved",
+            status: "approved",
             startFrame: expect.objectContaining({ id: "frame_start_1", imageStatus: "approved" }),
             endFrame: expect.objectContaining({ id: "frame_end_1", imageStatus: "approved" }),
           }),
@@ -703,7 +725,40 @@ async function seedImageBatch(input: {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });
   const projectRepository = createSqliteProjectRepository({ db });
+  const sceneSheetRepository = createSqliteSceneSheetRepository({ db });
   const shotImageRepository = createSqliteShotImageRepository({ db });
+
+  const sceneBatch = createSceneSheetBatchRecord({
+    id: "scene_batch_1",
+    projectId: input.projectId,
+    projectStorageDir: input.projectStorageDir,
+    sourceMasterPlotId: "master_plot_1",
+    sourceCharacterSheetBatchId: "char_batch_1",
+    sceneCount: 1,
+    createdAt: "2026-03-24T12:50:00.000Z",
+    updatedAt: "2026-03-24T12:50:00.000Z",
+  });
+  sceneSheetRepository.insertBatch(sceneBatch);
+  sceneSheetRepository.insertScene(
+    createSceneSheetRecord({
+      id: "scene_sheet_cbd_street",
+      projectId: input.projectId,
+      projectStorageDir: input.projectStorageDir,
+      batchId: sceneBatch.id,
+      sourceMasterPlotId: "master_plot_1",
+      sourceCharacterSheetBatchId: "char_batch_1",
+      sceneName: "CBD街头",
+      scenePurpose: "锁定都市夜景空间",
+      promptTextGenerated: "都市CBD雨夜街头",
+      promptTextCurrent: "都市CBD雨夜街头",
+      constraintsText: "霓虹、街灯、积水路面",
+      imageAssetPath: "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_cbd_street/current.png",
+      status: "approved",
+      updatedAt: "2026-03-24T12:50:00.000Z",
+      approvedAt: "2026-03-24T12:50:00.000Z",
+      sourceTaskId: "task_scene_sheet_1",
+    }),
+  );
 
   const batch = createShotImageBatchRecord({
     id: "image_batch_1",
@@ -767,6 +822,12 @@ async function seedImageBatch(input: {
 
   shotImageRepository.insertBatch(batch);
   shotImageRepository.insertShot?.(shot);
+  await seedFramePlanning(input.tempDir, {
+    projectStorageDir: input.projectStorageDir,
+    planningRelPath: shot.startFrame.planningRelPath,
+    selectedSceneId: "scene_sheet_cbd_street",
+    selectedSceneName: "CBD街头",
+  });
   projectRepository.updateCurrentImageBatch({
     projectId: input.projectId,
     batchId: batch.id,
@@ -906,4 +967,32 @@ async function markImageShotFailedForFrame(
 
   await shotImageRepository.updateShot?.(nextShot);
   db.close();
+}
+
+async function seedFramePlanning(
+  tempDir: string,
+  input: {
+    projectStorageDir: string;
+    planningRelPath: string;
+    selectedSceneId: string;
+    selectedSceneName: string;
+  },
+) {
+  const planningPath = path.join(
+    createLocalDataPaths(tempDir).projectPath(input.projectStorageDir),
+    input.planningRelPath,
+  );
+  await fs.mkdir(path.dirname(planningPath), { recursive: true });
+  await fs.writeFile(
+    planningPath,
+    JSON.stringify(
+      {
+        selectedSceneId: input.selectedSceneId,
+        selectedSceneName: input.selectedSceneName,
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
 }

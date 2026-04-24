@@ -15,6 +15,100 @@ export interface CreateSqliteShotImageRepositoryOptions {
 export function createSqliteShotImageRepository(
   options: CreateSqliteShotImageRepositoryOptions,
 ): ShotImageRepository {
+  const insertShotRow = (shot: ShotReferenceRecordEntity) => {
+    options.db
+      .prepare(
+        `
+          INSERT INTO shot_image_shots (
+            id,
+            batch_id,
+            project_id,
+            project_storage_dir,
+            source_shot_script_id,
+            scene_id,
+            segment_id,
+            shot_id,
+            shot_code,
+            segment_order,
+            segment_name,
+            segment_summary,
+            source_shot_ids_json,
+            shot_order,
+            duration_sec,
+            frame_dependency,
+            status,
+            reference_status,
+            approved_at,
+            updated_at,
+            storage_dir,
+            manifest_rel_path,
+            start_frame_json,
+            end_frame_json
+          ) VALUES (
+            @id,
+            @batch_id,
+            @project_id,
+            @project_storage_dir,
+            @source_shot_script_id,
+            @scene_id,
+            @segment_id,
+            @shot_id,
+            @shot_code,
+            @segment_order,
+            @segment_name,
+            @segment_summary,
+            @source_shot_ids_json,
+            @shot_order,
+            @duration_sec,
+            @frame_dependency,
+            @status,
+            @reference_status,
+            @approved_at,
+            @updated_at,
+            @storage_dir,
+            @manifest_rel_path,
+            @start_frame_json,
+            @end_frame_json
+          )
+        `,
+      )
+      .run(toShotRow(shot));
+  };
+
+  const updateShotRow = (shot: ShotReferenceRecordEntity) => {
+    options.db
+      .prepare(
+        `
+          UPDATE shot_image_shots
+          SET
+            project_id = @project_id,
+            project_storage_dir = @project_storage_dir,
+            source_shot_script_id = @source_shot_script_id,
+            scene_id = @scene_id,
+            segment_id = @segment_id,
+            shot_id = @shot_id,
+            shot_code = @shot_code,
+            segment_order = @segment_order,
+            segment_name = @segment_name,
+            segment_summary = @segment_summary,
+            source_shot_ids_json = @source_shot_ids_json,
+            shot_order = @shot_order,
+            duration_sec = @duration_sec,
+            frame_dependency = @frame_dependency,
+            status = @status,
+            reference_status = @reference_status,
+            approved_at = @approved_at,
+            updated_at = @updated_at,
+            storage_dir = @storage_dir,
+            manifest_rel_path = @manifest_rel_path,
+            start_frame_json = @start_frame_json,
+            end_frame_json = @end_frame_json
+          WHERE id = @id
+        `,
+      )
+      .run(toShotRow(shot));
+  };
+
   return {
     insertBatch(batch) {
       options.db
@@ -117,6 +211,20 @@ export function createSqliteShotImageRepository(
 
       return rows.map(fromShotRow);
     },
+    listSegmentsByBatchId(batchId) {
+      const rows = options.db
+        .prepare(
+          `
+            SELECT *
+            FROM shot_image_shots
+            WHERE batch_id = ?
+            ORDER BY segment_order ASC, shot_order ASC
+          `,
+        )
+        .all(batchId) as ShotImageShotRow[];
+
+      return rows.map(fromShotRow);
+    },
     insertFrame(frame) {
       options.db
         .prepare(
@@ -197,53 +305,10 @@ export function createSqliteShotImageRepository(
         .run(toFrameRow(frame));
     },
     insertShot(shot) {
-      options.db
-        .prepare(
-          `
-            INSERT INTO shot_image_shots (
-              id,
-              batch_id,
-              project_id,
-              project_storage_dir,
-              source_shot_script_id,
-              scene_id,
-              segment_id,
-              shot_id,
-              shot_code,
-              segment_order,
-              shot_order,
-              duration_sec,
-              frame_dependency,
-              reference_status,
-              updated_at,
-              storage_dir,
-              manifest_rel_path,
-              start_frame_json,
-              end_frame_json
-            ) VALUES (
-              @id,
-              @batch_id,
-              @project_id,
-              @project_storage_dir,
-              @source_shot_script_id,
-              @scene_id,
-              @segment_id,
-              @shot_id,
-              @shot_code,
-              @segment_order,
-              @shot_order,
-              @duration_sec,
-              @frame_dependency,
-              @reference_status,
-              @updated_at,
-              @storage_dir,
-              @manifest_rel_path,
-              @start_frame_json,
-              @end_frame_json
-            )
-          `,
-        )
-        .run(toShotRow(shot));
+      insertShotRow(shot);
+    },
+    insertSegment(segment) {
+      insertShotRow(segment);
     },
     findFrameById(frameId) {
       const shotRow = options.db
@@ -273,6 +338,13 @@ export function createSqliteShotImageRepository(
       const row = options.db
         .prepare("SELECT * FROM shot_image_shots WHERE id = ?")
         .get(shotId) as ShotImageShotRow | undefined;
+
+      return row ? fromShotRow(row) : null;
+    },
+    findSegmentById(segmentId) {
+      const row = options.db
+        .prepare("SELECT * FROM shot_image_shots WHERE id = ?")
+        .get(segmentId) as ShotImageShotRow | undefined;
 
       return row ? fromShotRow(row) : null;
     },
@@ -307,7 +379,7 @@ export function createSqliteShotImageRepository(
                 updatedAt: frame.updatedAt,
               };
 
-        this.updateShot?.(updatedShot);
+        updateShotRow(updatedShot);
         return;
       }
 
@@ -347,32 +419,10 @@ export function createSqliteShotImageRepository(
         .run(toFrameRow(frame));
     },
     updateShot(shot) {
-      options.db
-        .prepare(
-          `
-            UPDATE shot_image_shots
-            SET
-              project_id = @project_id,
-              project_storage_dir = @project_storage_dir,
-              source_shot_script_id = @source_shot_script_id,
-              scene_id = @scene_id,
-              segment_id = @segment_id,
-              shot_id = @shot_id,
-              shot_code = @shot_code,
-              segment_order = @segment_order,
-              shot_order = @shot_order,
-              duration_sec = @duration_sec,
-              frame_dependency = @frame_dependency,
-              reference_status = @reference_status,
-              updated_at = @updated_at,
-              storage_dir = @storage_dir,
-              manifest_rel_path = @manifest_rel_path,
-              start_frame_json = @start_frame_json,
-              end_frame_json = @end_frame_json
-            WHERE id = @id
-          `,
-        )
-        .run(toShotRow(shot));
+      updateShotRow(shot);
+    },
+    updateSegment(segment) {
+      updateShotRow(segment);
     },
   };
 }
@@ -403,10 +453,15 @@ interface ShotImageShotRow {
   shot_id: string;
   shot_code: string;
   segment_order: number;
+  segment_name: string | null;
+  segment_summary: string;
+  source_shot_ids_json: string;
   shot_order: number;
   duration_sec: number | null;
   frame_dependency: ShotReferenceRecordEntity["frameDependency"];
+  status: ShotReferenceRecordEntity["status"];
   reference_status: ShotReferenceRecordEntity["referenceStatus"];
+  approved_at: string | null;
   updated_at: string;
   storage_dir: string;
   manifest_rel_path: string;
@@ -572,13 +627,18 @@ function toShotRow(shot: ShotReferenceRecordEntity): ShotImageShotRow {
     source_shot_script_id: shot.sourceShotScriptId,
     scene_id: shot.sceneId,
     segment_id: shot.segmentId,
-    shot_id: shot.shotId,
-    shot_code: shot.shotCode,
+    shot_id: shot.shotId ?? "",
+    shot_code: shot.shotCode ?? "",
     segment_order: shot.segmentOrder,
-    shot_order: shot.shotOrder,
+    segment_name: shot.segmentName ?? null,
+    segment_summary: shot.segmentSummary ?? "",
+    source_shot_ids_json: JSON.stringify(shot.sourceShotIds ?? []),
+    shot_order: shot.shotOrder ?? 0,
     duration_sec: shot.durationSec,
     frame_dependency: shot.frameDependency,
+    status: shot.status,
     reference_status: shot.referenceStatus,
+    approved_at: shot.approvedAt,
     updated_at: shot.updatedAt,
     storage_dir: shot.storageDir,
     manifest_rel_path: shot.manifestRelPath,
@@ -599,10 +659,15 @@ function fromShotRow(row: ShotImageShotRow): ShotReferenceRecordEntity {
     shotId: row.shot_id,
     shotCode: row.shot_code,
     segmentOrder: row.segment_order,
+    segmentName: row.segment_name,
+    segmentSummary: row.segment_summary,
+    sourceShotIds: parseJsonArray<string>(row.source_shot_ids_json),
     shotOrder: row.shot_order,
     durationSec: row.duration_sec,
     frameDependency: row.frame_dependency,
+    status: row.status,
     referenceStatus: row.reference_status,
+    approvedAt: row.approved_at,
     updatedAt: row.updated_at,
     storageDir: row.storage_dir,
     manifestRelPath: row.manifest_rel_path,
@@ -622,4 +687,17 @@ function fromShotRow(row: ShotImageShotRow): ShotReferenceRecordEntity {
     frameDependency: "start_frame_only",
     endFrame: null,
   };
+}
+
+function parseJsonArray<T>(value: string | null | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
 }

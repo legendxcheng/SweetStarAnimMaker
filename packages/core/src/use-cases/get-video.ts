@@ -1,5 +1,6 @@
 import type { ShotVideoRecord } from "@sweet-star/shared";
 
+import { toPublicSegmentVideoRecord } from "../domain/video";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
 import type { ProjectRepository } from "../ports/project-repository";
@@ -8,6 +9,7 @@ import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import { normalizeStaleGeneratingVideoSegment } from "./derive-project-video-status";
 import { repairSegmentVideoPromptsIfMissing } from "./repair-segment-video-prompts";
 
 export interface GetVideoInput {
@@ -46,19 +48,23 @@ export function createGetVideoUseCase(
       }
 
       try {
-        return await repairSegmentVideoPromptsIfMissing(
-          {
-            shotScriptStorage: dependencies.shotScriptStorage,
-            shotImageRepository: dependencies.shotImageRepository,
-            videoStorage: dependencies.videoStorage,
-            videoPromptProvider: dependencies.videoPromptProvider,
-            videoRepository: dependencies.videoRepository,
-          },
-          project,
-          segment,
+        return toPublicSegmentVideoRecord(
+          normalizeStaleGeneratingVideoSegment(
+            await repairSegmentVideoPromptsIfMissing(
+              {
+                shotScriptStorage: dependencies.shotScriptStorage,
+                shotImageRepository: dependencies.shotImageRepository,
+                videoStorage: dependencies.videoStorage,
+                videoPromptProvider: dependencies.videoPromptProvider,
+                videoRepository: dependencies.videoRepository,
+              },
+              project,
+              segment,
+            ),
+          ),
         );
       } catch {
-        return segment;
+        return toPublicSegmentVideoRecord(normalizeStaleGeneratingVideoSegment(segment));
       }
     },
   };

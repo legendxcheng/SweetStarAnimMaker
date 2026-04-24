@@ -294,4 +294,129 @@ describe("seedance video provider", () => {
     expect(result.thumbnailUrl).toBe("https://cdn.example/stage-last-frame.png");
     expect(result.durationSec).toBe(6);
   });
+
+  it("retries with fewer reference images and finally prompt-only when Seedance rejects input images as real-person privacy content", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({
+            error: {
+              code: "InputImageSensitiveContentDetected.PrivacyInformation",
+              message: "input image may contain real person",
+            },
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({
+            error: {
+              code: "InputImageSensitiveContentDetected.PrivacyInformation",
+              message: "input image may contain real person",
+            },
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "cgt-seedance-stage-retry",
+          status: "queued",
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "cgt-seedance-stage-retry",
+          status: "succeeded",
+          content: {
+            video_url: "https://cdn.example/stage-retry-output.mp4",
+            last_frame_url: "https://cdn.example/stage-retry-last-frame.png",
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createSeedanceStageVideoProvider({
+      apiToken: "test-token",
+      modelName: "doubao-seedance-2-0-260128",
+      durationSeconds: 12,
+      generateAudio: true,
+      returnLastFrame: true,
+    });
+
+    const result = await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      promptText: "保持角色外观一致，生成连续的中间剧情片段。",
+      referenceImages: [
+        {
+          assetPath: "https://cdn.example/start.png",
+          label: "start",
+          order: 0,
+        },
+        {
+          assetPath: "https://cdn.example/end.png",
+          label: "end",
+          order: 1,
+        },
+      ],
+      referenceAudios: [],
+      durationSec: 6,
+    });
+
+    const firstRequest = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(firstRequest.content).toEqual([
+      {
+        type: "text",
+        text: "保持角色外观一致，生成连续的中间剧情片段。",
+      },
+      {
+        type: "image_url",
+        role: "reference_image",
+        image_url: {
+          url: "https://cdn.example/start.png",
+        },
+      },
+      {
+        type: "image_url",
+        role: "reference_image",
+        image_url: {
+          url: "https://cdn.example/end.png",
+        },
+      },
+    ]);
+
+    const secondRequest = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
+    expect(secondRequest.content).toEqual([
+      {
+        type: "text",
+        text: "保持角色外观一致，生成连续的中间剧情片段。",
+      },
+      {
+        type: "image_url",
+        role: "reference_image",
+        image_url: {
+          url: "https://cdn.example/start.png",
+        },
+      },
+    ]);
+
+    const thirdRequest = JSON.parse(fetchMock.mock.calls[2]![1].body as string);
+    expect(thirdRequest.content).toEqual([
+      {
+        type: "text",
+        text: "保持角色外观一致，生成连续的中间剧情片段。",
+      },
+    ]);
+
+    expect(result.videoUrl).toBe("https://cdn.example/stage-retry-output.mp4");
+    expect(result.thumbnailUrl).toBe("https://cdn.example/stage-retry-last-frame.png");
+    expect(result.model).toBe("doubao-seedance-2-0-260128");
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
 });

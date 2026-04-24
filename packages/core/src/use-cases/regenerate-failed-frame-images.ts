@@ -58,15 +58,9 @@ export function createRegenerateFailedFrameImagesUseCase(
       const failedFrames =
         shots
           ?.flatMap((shot) => [shot.startFrame, ...(shot.endFrame ? [shot.endFrame] : [])])
-          .filter(
-            (frame) =>
-              frame.planStatus === "planned" && frame.imageStatus === "failed",
-          ) ??
+          .filter(isFrameImageUnfinished) ??
         (await dependencies.shotImageRepository.listFramesByBatchId(project.currentImageBatchId))
-          .filter(
-            (frame) =>
-              frame.planStatus === "planned" && frame.imageStatus === "failed",
-          );
+          .filter(isFrameImageUnfinished);
       const timestamp = dependencies.clock.now();
       const taskIds: string[] = [];
 
@@ -125,4 +119,11 @@ export function createRegenerateFailedFrameImagesUseCase(
       };
     },
   };
+}
+
+function isFrameImageUnfinished(frame: { planStatus: string; imageStatus: string }) {
+  return (
+    frame.planStatus === "planned" &&
+    (frame.imageStatus === "pending" || frame.imageStatus === "failed")
+  );
 }

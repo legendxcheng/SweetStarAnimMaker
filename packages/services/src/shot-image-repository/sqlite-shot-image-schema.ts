@@ -31,10 +31,15 @@ export function initializeSqliteShotImageSchema(db: SqliteDatabase) {
       shot_id TEXT NOT NULL,
       shot_code TEXT NOT NULL,
       segment_order INTEGER NOT NULL,
+      segment_name TEXT NULL,
+      segment_summary TEXT NOT NULL DEFAULT '',
+      source_shot_ids_json TEXT NOT NULL DEFAULT '[]',
       shot_order INTEGER NOT NULL,
       duration_sec INTEGER NULL,
       frame_dependency TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
       reference_status TEXT NOT NULL,
+      approved_at TEXT NULL,
       updated_at TEXT NOT NULL,
       storage_dir TEXT NOT NULL,
       manifest_rel_path TEXT NOT NULL,
@@ -88,6 +93,11 @@ export function initializeSqliteShotImageSchema(db: SqliteDatabase) {
 
   ensureShotImageBatchesColumn(db, "shot_count", "INTEGER NOT NULL DEFAULT 0");
   ensureShotImageBatchesColumn(db, "total_required_frame_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureShotImageShotsColumn(db, "segment_name", "TEXT NULL");
+  ensureShotImageShotsColumn(db, "segment_summary", "TEXT NOT NULL DEFAULT ''");
+  ensureShotImageShotsColumn(db, "source_shot_ids_json", "TEXT NOT NULL DEFAULT '[]'");
+  ensureShotImageShotsColumn(db, "status", "TEXT NOT NULL DEFAULT 'pending'");
+  ensureShotImageShotsColumn(db, "approved_at", "TEXT NULL");
 }
 
 function ensureShotImageBatchesColumn(
@@ -101,5 +111,17 @@ function ensureShotImageBatchesColumn(
 
   if (!columns.some((column) => column.name === columnName)) {
     db.exec(`ALTER TABLE shot_image_batches ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
+}
+
+function ensureShotImageShotsColumn(
+  db: SqliteDatabase,
+  columnName: string,
+  columnDefinition: string,
+) {
+  const columns = db.prepare("PRAGMA table_info(shot_image_shots)").all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE shot_image_shots ADD COLUMN ${columnName} ${columnDefinition}`);
   }
 }

@@ -82,12 +82,13 @@ export function createProcessImagesGenerateTaskUseCase(
           throw new CurrentShotScriptNotFoundError(project.id);
         }
 
-        const shotEntries = currentShotScript.segments.flatMap((segment) =>
-          segment.shots.map((shot) => ({ segment, shot })),
-        );
-        const totalRequiredFrameCount = shotEntries.reduce(
-          (count, { shot }) =>
-            count + (shot.frameDependency === "start_and_end_frame" ? 2 : 1),
+        const segmentEntries = currentShotScript.segments.map((segment) => ({
+          segment,
+          frameDependency: deriveSegmentFrameDependency(segment),
+        }));
+        const totalRequiredFrameCount = segmentEntries.reduce(
+          (count, { frameDependency }) =>
+            count + (frameDependency === "start_and_end_frame" ? 2 : 1),
           0,
         );
 
@@ -96,7 +97,7 @@ export function createProcessImagesGenerateTaskUseCase(
           projectId: project.id,
           projectStorageDir: project.storageDir,
           sourceShotScriptId: taskInput.sourceShotScriptId,
-          shotCount: shotEntries.length,
+          shotCount: segmentEntries.length,
           totalRequiredFrameCount,
           createdAt: startedAt,
           updatedAt: startedAt,
@@ -108,23 +109,30 @@ export function createProcessImagesGenerateTaskUseCase(
 
         await dependencies.shotImageRepository.insertBatch(batch);
         await dependencies.shotImageStorage.writeBatchManifest({ batch });
-        const insertShot = dependencies.shotImageRepository.insertShot;
+        const insertSegment = dependencies.shotImageRepository.insertSegment
+          ? (segmentRecord: ReturnType<typeof createShotReferenceRecord>) =>
+              dependencies.shotImageRepository.insertSegment!(segmentRecord)
+          : dependencies.shotImageRepository.insertShot
+            ? (segmentRecord: ReturnType<typeof createShotReferenceRecord>) =>
+                dependencies.shotImageRepository.insertShot!(segmentRecord)
+            : null;
 
-        if (!insertShot) {
-          throw new Error("Shot image repository does not support shot records");
+        if (!insertSegment) {
+          throw new Error("Shot image repository does not support segment image records");
         }
 
-        for (const { segment, shot } of shotEntries) {
+        for (const { segment, frameDependency } of segmentEntries) {
           if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
             return;
           }
 
-          const shotRecord = createShotReferenceRecord({
+          const representativeShot = segment.shots[0] ?? null;
+          const segmentRecord = createShotReferenceRecord({
             id: toShotReferenceId(
               batch.id,
               segment.sceneId,
               segment.segmentId,
-              shot.id,
+              segment.segmentId,
             ),
             batchId: batch.id,
             projectId: project.id,
@@ -132,20 +140,24 @@ export function createProcessImagesGenerateTaskUseCase(
             sourceShotScriptId: currentShotScript.id,
             sceneId: segment.sceneId,
             segmentId: segment.segmentId,
-            shotId: shot.id,
-            shotCode: shot.shotCode,
             segmentOrder: segment.order,
-            shotOrder: shot.order,
-            durationSec: shot.durationSec,
-            frameDependency: shot.frameDependency,
+            segmentName: segment.name,
+            segmentSummary: segment.summary,
+            sourceShotIds: segment.shots.map((shot) => shot.id),
+            frameDependency,
+            approvedAt: null,
+            shotId: representativeShot?.id,
+            shotCode: representativeShot?.shotCode,
+            shotOrder: representativeShot?.order,
+            durationSec: segment.durationSec ?? null,
             updatedAt: startedAt,
           });
 
-          await insertShot(shotRecord);
+          await insertSegment(segmentRecord);
 
           const requiredFrames = [
-            shotRecord.startFrame,
-            ...(shotRecord.endFrame ? [shotRecord.endFrame] : []),
+            segmentRecord.startFrame,
+            ...(segmentRecord.endFrame ? [segmentRecord.endFrame] : []),
           ];
 
           for (const frame of requiredFrames) {
@@ -162,12 +174,14 @@ export function createProcessImagesGenerateTaskUseCase(
               projectId: project.id,
               taskType: "frame_prompt_generate",
               batchId: batch.id,
-              shotId: shot.id,
+              shotId: representativeShot?.id,
               frameId: frame.id,
               sourceShotScriptId: currentShotScript.id,
               segmentId: segment.segmentId,
               sceneId: segment.sceneId,
               frameType: frame.frameType,
+              sourceShotIds: segment.shots.map((shot) => shot.id),
+              segmentSnapshot: segment,
             };
 
             await dependencies.taskRepository.insert(framePromptTask);
@@ -194,6 +208,12 @@ export function createProcessImagesGenerateTaskUseCase(
         didActivateBatch = true;
 
         const finishedAt = dependencies.clock.now();
+
+        await dependencies.projectRepository.updateStatus({
+          projectId: project.id,
+          status: "images_in_review",
+          updatedAt: finishedAt,
+        });
 
         await dependencies.taskFileStorage.writeTaskOutput({
           task,
@@ -264,7 +284,15 @@ function toShotReferenceId(
   batchId: string,
   sceneId: string,
   segmentId: string,
-  shotId: string,
+  recordKey: string,
 ) {
-  return `shot_ref_${batchId}_${sceneId}_${segmentId}_${shotId}`;
+  return `segment_img_${batchId}_${sceneId}_${segmentId}_${recordKey}`;
+}
+
+function deriveSegmentFrameDependency(segment: {
+  shots: Array<{ frameDependency: "start_frame_only" | "start_and_end_frame" }>;
+}) {
+  return segment.shots.some((shot) => shot.frameDependency === "start_and_end_frame")
+    ? "start_and_end_frame"
+    : "start_frame_only";
 }

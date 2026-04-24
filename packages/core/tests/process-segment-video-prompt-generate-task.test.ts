@@ -165,7 +165,13 @@ describe("process segment video prompt generate task use case", () => {
           imageWidth: 1024,
           imageHeight: 1024,
         },
-        endFrame: null,
+        endFrame: {
+          id: "frame_end_2",
+          imageAssetPath:
+            "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_2/end-frame/current.png",
+          imageWidth: 1024,
+          imageHeight: 1024,
+        },
         referenceImages: [
           {
             id: "ref_img_1",
@@ -375,6 +381,18 @@ describe("process segment video prompt generate task use case", () => {
             label: "Rain guide",
           }),
         ],
+        startFrame: {
+          imageAssetPath:
+            "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+          width: 1024,
+          height: 1024,
+        },
+        endFrame: {
+          imageAssetPath:
+            "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_2/end-frame/current.png",
+          width: 1024,
+          height: 1024,
+        },
       }),
     );
     expect(videoRepository.updateSegment).toHaveBeenCalledWith(

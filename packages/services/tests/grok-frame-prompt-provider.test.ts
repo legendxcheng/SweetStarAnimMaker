@@ -17,6 +17,7 @@ describe("grok frame-prompt provider", () => {
               content: JSON.stringify({
                 frameType: "start_frame",
                 selectedCharacterIds: ["char_ivo_2", "char_unknown", "char_rin_1"],
+                selectedSceneId: "scene_market",
                 promptText: "  雨夜积水街口，林抬头望向彗星余辉，动漫电影感，细致光影。  ",
                 negativePromptText: "  低清晰度、畸形肢体、额外手指  ",
                 rationale: "开场帧聚焦林与伊沃的到场关系。",
@@ -101,6 +102,27 @@ describe("grok frame-prompt provider", () => {
           imageAssetPath: "character-sheets/char_ivo/current.png",
         },
       ],
+      sceneCandidates: [
+        {
+          sceneId: "scene_market",
+          sceneName: "雨夜市场入口",
+          scenePurpose: "作为追逐戏前的核心环境锚点。",
+          promptTextCurrent: "雨夜市场入口，狭窄棚顶、潮湿地面、冷暖混合霓虹。",
+          constraintsText: "保持棚顶结构与入口招牌关系。",
+          imageAssetPath: "scene-sheets/scene_market/current.png",
+          environmentSummary: "雨夜市场入口，狭窄棚顶、潮湿地面、冷暖混合霓虹。",
+        },
+      ],
+      sceneContext: {
+        source: "shot_script",
+        sceneId: "scene_1",
+        sceneName: "雨夜市场入口",
+        scenePurpose: null,
+        promptTextCurrent: null,
+        constraintsText: "地面始终有积水反光。",
+        imageAssetPath: null,
+        environmentSummary: "林在雨夜市场边听见彗星歌声。",
+      },
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -119,6 +141,7 @@ describe("grok frame-prompt provider", () => {
 
     expect(request.messages[0].content).toContain("SeaDream");
     expect(requestText).toContain('"characterId": "char_rin_1"');
+    expect(requestText).toContain('"sceneId": "scene_market"');
     expect(requestText).toContain('"currentShot"');
     expect(requestText).toContain('"shotCode": "SC01-SG01-SH01"');
     expect(requestText).toContain("start_frame 必须体现当前 shot 的开始状态");
@@ -130,6 +153,7 @@ describe("grok frame-prompt provider", () => {
     expect(result).toEqual({
       frameType: "start_frame",
       selectedCharacterIds: ["char_ivo_2", "char_rin_1"],
+      selectedSceneId: "scene_market",
       promptText: "雨夜积水街口，林抬头望向彗星余辉，动漫电影感，细致光影。",
       negativePromptText: "低清晰度、畸形肢体、额外手指",
       rationale: "开场帧聚焦林与伊沃的到场关系。",
@@ -151,6 +175,7 @@ describe("grok frame-prompt provider", () => {
                 content: JSON.stringify({
                   frameType: "end_frame",
                   selectedCharacterIds: [],
+                  selectedSceneId: null,
                   promptText: "   ",
                   negativePromptText: null,
                   rationale: null,
@@ -193,6 +218,17 @@ describe("grok frame-prompt provider", () => {
           continuityNotes: null,
         },
         characterRoster: [],
+        sceneCandidates: [],
+        sceneContext: {
+          source: "shot_script",
+          sceneId: "scene_1",
+          sceneName: "市场边缘",
+          scenePurpose: null,
+          promptTextCurrent: null,
+          constraintsText: null,
+          imageAssetPath: null,
+          environmentSummary: "结尾定格在市场边缘。",
+        },
       }),
     ).rejects.toThrow("Grok frame prompt provider returned invalid promptText");
   });
@@ -207,6 +243,7 @@ describe("grok frame-prompt provider", () => {
               content: JSON.stringify({
                 frameType: "end_frame",
                 selectedCharacterIds: [],
+                selectedSceneId: null,
                 promptText: "尾帧定格在出口前。",
                 negativePromptText: null,
                 rationale: "延续首帧并落到结果状态。",
@@ -255,6 +292,17 @@ describe("grok frame-prompt provider", () => {
         imageAssetPath: "images/frame-start/current.png",
       },
       characterRoster: [],
+      sceneCandidates: [],
+      sceneContext: {
+        source: "shot_script",
+        sceneId: "scene_1",
+        sceneName: "雨夜市场",
+        scenePurpose: null,
+        promptTextCurrent: null,
+        constraintsText: "林的左肩背包保持不变。",
+        imageAssetPath: null,
+        environmentSummary: "林在雨夜市场边确认出口被堵住。",
+      },
     });
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);

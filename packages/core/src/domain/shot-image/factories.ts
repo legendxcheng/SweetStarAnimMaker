@@ -41,6 +41,7 @@ export function createShotReferenceBatchRecord(
   input: CreateShotReferenceBatchRecordInput,
 ): ShotReferenceBatchRecord {
   const totalRequiredFrameCount = input.totalRequiredFrameCount ?? input.shotCount * 2;
+  const segmentCount = input.shotCount;
 
   return {
     id: input.id,
@@ -53,7 +54,7 @@ export function createShotReferenceBatchRecord(
     manifestRelPath: toShotImageBatchManifestRelPath(input.id),
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
-    segmentCount: input.shotCount,
+    segmentCount,
     totalFrameCount: totalRequiredFrameCount,
   };
 }
@@ -79,7 +80,7 @@ export function createShotReferenceRecord(
   const selector = {
     sceneId: input.sceneId,
     segmentId: input.segmentId,
-    shotId: input.shotId,
+    shotId: input.shotId ?? input.segmentId,
   };
 
   const startFrame = createShotReferenceFrameEntity({
@@ -88,7 +89,7 @@ export function createShotReferenceRecord(
     projectStorageDir: input.projectStorageDir,
     sourceShotScriptId: input.sourceShotScriptId,
     selector,
-    shotOrder: input.shotOrder,
+    shotOrder: input.shotOrder ?? input.segmentOrder,
     frameType: "start_frame",
     updatedAt: input.updatedAt,
     frame: input.startFrame,
@@ -101,17 +102,22 @@ export function createShotReferenceRecord(
     sourceShotScriptId: input.sourceShotScriptId,
     sceneId: input.sceneId,
     segmentId: input.segmentId,
-    shotId: input.shotId,
-    shotCode: input.shotCode,
     segmentOrder: input.segmentOrder,
-    shotOrder: input.shotOrder,
-    durationSec: input.durationSec,
+    segmentName: input.segmentName ?? null,
+    segmentSummary: input.segmentSummary ?? "",
+    sourceShotIds: [...(input.sourceShotIds ?? (input.shotId ? [input.shotId] : []))],
     frameDependency: input.frameDependency,
-    referenceStatus: input.referenceStatus ?? "pending",
+    status: input.status ?? input.referenceStatus ?? "pending",
+    approvedAt: input.approvedAt ?? null,
     updatedAt: input.updatedAt,
     storageDir: `${input.projectStorageDir}/${toShotReferenceStorageDir(input.batchId, selector)}`,
     manifestRelPath: toShotReferenceManifestRelPath(input.batchId, selector),
     startFrame,
+    shotId: input.shotId,
+    shotCode: input.shotCode,
+    shotOrder: input.shotOrder,
+    durationSec: input.durationSec,
+    referenceStatus: input.referenceStatus ?? input.status ?? "pending",
   };
 
   if (input.frameDependency === "start_and_end_frame") {
@@ -160,6 +166,9 @@ export function createSegmentFrameRecord(
     planStatus: input.planStatus ?? "pending",
     imageStatus: input.imageStatus ?? "pending",
     selectedCharacterIds: input.selectedCharacterIds ?? [],
+    selectedSceneId: input.selectedSceneId ?? null,
+    selectedSceneName: input.selectedSceneName ?? null,
+    selectedSceneImageAssetPath: input.selectedSceneImageAssetPath ?? null,
     matchedReferenceImagePaths: input.matchedReferenceImagePaths ?? [],
     unmatchedCharacterIds: input.unmatchedCharacterIds ?? [],
     promptTextSeed: input.promptTextSeed ?? "",
@@ -245,6 +254,9 @@ function createShotReferenceFrameEntity(input: {
     planStatus: frame?.planStatus ?? "pending",
     imageStatus: frame?.imageStatus ?? "pending",
     selectedCharacterIds: frame?.selectedCharacterIds ?? [],
+    selectedSceneId: frame?.selectedSceneId ?? null,
+    selectedSceneName: frame?.selectedSceneName ?? null,
+    selectedSceneImageAssetPath: frame?.selectedSceneImageAssetPath ?? null,
     matchedReferenceImagePaths: frame?.matchedReferenceImagePaths ?? [],
     unmatchedCharacterIds: frame?.unmatchedCharacterIds ?? [],
     promptTextSeed: frame?.promptTextSeed ?? "",

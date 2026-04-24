@@ -8,6 +8,8 @@ describe("image api schema", () => {
       "master_plot_generate",
       "character_sheets_generate",
       "character_sheet_generate",
+      "scene_sheets_generate",
+      "scene_sheet_generate",
       "storyboard_generate",
       "shot_script_generate",
       "shot_script_segment_generate",
@@ -29,15 +31,15 @@ describe("image api schema", () => {
     const parsed = shared.currentImageBatchSummaryResponseSchema.parse({
       id: "image_batch_20260323_ab12cd",
       sourceShotScriptId: "shot_script_20260323_ab12cd",
-      shotCount: 2,
+      segmentCount: 2,
       totalRequiredFrameCount: 3,
-      approvedShotCount: 1,
+      approvedSegmentCount: 1,
       updatedAt: "2026-03-23T12:00:00.000Z",
     });
 
-    expect(parsed.shotCount).toBe(2);
+    expect(parsed.segmentCount).toBe(2);
     expect(parsed.totalRequiredFrameCount).toBe(3);
-    expect(parsed.approvedShotCount).toBe(1);
+    expect(parsed.approvedSegmentCount).toBe(1);
   });
 
   it("accepts a frame detail payload with prompt and reference-image fields", () => {
@@ -53,6 +55,10 @@ describe("image api schema", () => {
       planStatus: "planned",
       imageStatus: "in_review",
       selectedCharacterIds: ["char_rin", "char_ivo"],
+      selectedSceneId: "scene_market",
+      selectedSceneName: "清晨积水集市",
+      selectedSceneImageAssetPath:
+        ".local-data/projects/proj_20260323_ab12cd/scene-sheets/scene_market/current.png",
       matchedReferenceImagePaths: [
         ".local-data/projects/proj_20260323_ab12cd/images/characters/char_rin.png",
       ],
@@ -72,34 +78,35 @@ describe("image api schema", () => {
     });
 
     expect(parsed.frameType).toBe("start_frame");
+    expect(parsed.selectedSceneImageAssetPath).toContain("scene_market/current.png");
     expect(parsed.matchedReferenceImagePaths).toHaveLength(1);
     expect(parsed.unmatchedCharacterIds).toEqual(["char_ivo"]);
   });
 
-  it("accepts a list-images response with shot reference records", () => {
+  it("accepts a list-images response with segment image records", () => {
     const parsed = shared.imageFrameListResponseSchema.parse({
       currentBatch: {
         id: "image_batch_20260323_ab12cd",
         sourceShotScriptId: "shot_script_20260323_ab12cd",
-        shotCount: 2,
+        segmentCount: 2,
         totalRequiredFrameCount: 3,
-        approvedShotCount: 1,
+        approvedSegmentCount: 1,
         updatedAt: "2026-03-23T12:00:00.000Z",
       },
-      shots: [
+      segments: [
         {
-          id: "shot_ref_20260323_1",
+          id: "segment_img_20260323_1",
           batchId: "image_batch_20260323_ab12cd",
           projectId: "proj_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
           sceneId: "scene_1",
           segmentId: "segment_1",
           segmentOrder: 1,
-          shotOrder: 1,
-          shotId: "shot_script_20260323_ab12cd_SC01",
-          shotCode: "SC01-SG01-SH01",
+          segmentName: "雨夜入口",
+          segmentSummary: "林夏在积水集市入口停住脚步，回头确认退路。",
+          sourceShotIds: ["shot_script_20260323_ab12cd_SC01"],
           frameDependency: "start_frame_only",
-          referenceStatus: "approved",
+          status: "approved",
           startFrame: {
             id: "frame_20260323_start_1",
             batchId: "image_batch_20260323_ab12cd",
@@ -112,6 +119,9 @@ describe("image api schema", () => {
             planStatus: "planned",
             imageStatus: "approved",
             selectedCharacterIds: ["char_rin"],
+            selectedSceneId: "scene_market",
+            selectedSceneName: "清晨积水集市",
+            selectedSceneImageAssetPath: "scene-sheets/scene_market/current.png",
             matchedReferenceImagePaths: [],
             unmatchedCharacterIds: [],
             promptTextSeed: "清晨积水集市入口。",
@@ -128,33 +138,40 @@ describe("image api schema", () => {
             sourceTaskId: null,
           },
           endFrame: null,
+          approvedAt: "2026-03-23T12:10:00.000Z",
           updatedAt: "2026-03-23T12:10:00.000Z",
         },
         {
-          id: "shot_ref_20260323_2",
+          id: "segment_img_20260323_2",
           batchId: "image_batch_20260323_ab12cd",
           projectId: "proj_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
           sceneId: "scene_1",
-          segmentId: "segment_1",
-          segmentOrder: 1,
-          shotOrder: 2,
-          shotId: "shot_script_20260323_ab12cd_SC01-SH02",
-          shotCode: "SC01-SG01-SH02",
+          segmentId: "segment_2",
+          segmentOrder: 2,
+          segmentName: "巷口回头",
+          segmentSummary: "她猛然回头，看见巷口彻底被霓虹摊棚堵死。",
+          sourceShotIds: [
+            "shot_script_20260323_ab12cd_SC02-SH01",
+            "shot_script_20260323_ab12cd_SC02-SH02",
+          ],
           frameDependency: "start_and_end_frame",
-          referenceStatus: "in_review",
+          status: "in_review",
           startFrame: {
             id: "frame_20260323_start_2",
             batchId: "image_batch_20260323_ab12cd",
             projectId: "proj_20260323_ab12cd",
             sourceShotScriptId: "shot_script_20260323_ab12cd",
-            segmentId: "segment_1",
+            segmentId: "segment_2",
             sceneId: "scene_1",
             order: 2,
             frameType: "start_frame",
             planStatus: "planned",
             imageStatus: "in_review",
             selectedCharacterIds: ["char_rin"],
+            selectedSceneId: "scene_alley",
+            selectedSceneName: "黄昏小巷",
+            selectedSceneImageAssetPath: "scene-sheets/scene_alley/current.png",
             matchedReferenceImagePaths: [],
             unmatchedCharacterIds: [],
             promptTextSeed: "黄昏的巷子。",
@@ -175,13 +192,16 @@ describe("image api schema", () => {
             batchId: "image_batch_20260323_ab12cd",
             projectId: "proj_20260323_ab12cd",
             sourceShotScriptId: "shot_script_20260323_ab12cd",
-            segmentId: "segment_1",
+            segmentId: "segment_2",
             sceneId: "scene_1",
             order: 2,
             frameType: "end_frame",
             planStatus: "planned",
             imageStatus: "pending",
             selectedCharacterIds: ["char_rin"],
+            selectedSceneId: "scene_alley",
+            selectedSceneName: "黄昏小巷",
+            selectedSceneImageAssetPath: "scene-sheets/scene_alley/current.png",
             matchedReferenceImagePaths: [],
             unmatchedCharacterIds: [],
             promptTextSeed: "黄昏的巷子。2",
@@ -197,44 +217,49 @@ describe("image api schema", () => {
             updatedAt: "2026-03-23T12:18:00.000Z",
             sourceTaskId: null,
           },
+          approvedAt: null,
           updatedAt: "2026-03-23T12:20:00.000Z",
         },
       ],
     });
 
-    expect(parsed.shots[0]?.startFrame.imageStatus).toBe("approved");
-    expect(parsed.shots[0]?.sceneId).toBe("scene_1");
-    expect(parsed.shots[0]?.segmentId).toBe("segment_1");
-    expect(parsed.shots[0]?.segmentOrder).toBe(1);
-    expect(parsed.shots[1]?.shotOrder).toBe(2);
-    expect(parsed.currentBatch.shotCount).toBe(2);
+    expect(parsed.segments[0]?.startFrame.imageStatus).toBe("approved");
+    expect(parsed.segments[0]?.sceneId).toBe("scene_1");
+    expect(parsed.segments[0]?.segmentId).toBe("segment_1");
+    expect(parsed.segments[0]?.segmentOrder).toBe(1);
+    expect(parsed.segments[1]?.segmentOrder).toBe(2);
+    expect(parsed.currentBatch.segmentCount).toBe(2);
     expect(parsed.currentBatch.totalRequiredFrameCount).toBe(3);
-    expect(parsed.currentBatch.approvedShotCount).toBe(1);
-    expect(parsed.shots[0]?.frameDependency).toBe("start_frame_only");
-    expect(parsed.shots[0]?.endFrame).toBeNull();
+    expect(parsed.currentBatch.approvedSegmentCount).toBe(1);
+    expect(parsed.segments[0]?.frameDependency).toBe("start_frame_only");
+    expect(parsed.segments[0]?.endFrame).toBeNull();
   });
 
-  it("rejects a start-frame-only shot that includes an end frame", () => {
+  it("rejects a start-frame-only segment that includes an end frame", () => {
     expect(() =>
       shared.imageFrameListResponseSchema.parse({
         currentBatch: {
           id: "image_batch_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
-          shotCount: 1,
+          segmentCount: 1,
           totalRequiredFrameCount: 1,
-          approvedShotCount: 0,
+          approvedSegmentCount: 0,
           updatedAt: "2026-03-23T12:00:00.000Z",
         },
-        shots: [
+        segments: [
           {
-            id: "shot_ref_20260323_1",
+            id: "segment_img_20260323_1",
             batchId: "image_batch_20260323_ab12cd",
             projectId: "proj_20260323_ab12cd",
             sourceShotScriptId: "shot_script_20260323_ab12cd",
-            shotId: "shot_script_20260323_ab12cd_SC01",
-            shotCode: "SC01-SG01-SH01",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            segmentOrder: 1,
+            segmentName: "集市入口",
+            segmentSummary: "林夏确认退路。",
+            sourceShotIds: ["shot_script_20260323_ab12cd_SC01"],
             frameDependency: "start_frame_only",
-            referenceStatus: "in_review",
+            status: "in_review",
             startFrame: {
               id: "frame_20260323_start_1",
               batchId: "image_batch_20260323_ab12cd",
@@ -247,6 +272,9 @@ describe("image api schema", () => {
               planStatus: "planned",
               imageStatus: "in_review",
               selectedCharacterIds: [],
+              selectedSceneId: null,
+              selectedSceneName: null,
+              selectedSceneImageAssetPath: null,
               matchedReferenceImagePaths: [],
               unmatchedCharacterIds: [],
               promptTextSeed: "清晨积水集市入口。",
@@ -274,6 +302,9 @@ describe("image api schema", () => {
               planStatus: "planned",
               imageStatus: "pending",
               selectedCharacterIds: [],
+              selectedSceneId: null,
+              selectedSceneName: null,
+              selectedSceneImageAssetPath: null,
               matchedReferenceImagePaths: [],
               unmatchedCharacterIds: [],
               promptTextSeed: "清晨积水集市出口。",
@@ -289,6 +320,7 @@ describe("image api schema", () => {
               updatedAt: "2026-03-23T12:12:00.000Z",
               sourceTaskId: null,
             },
+            approvedAt: null,
             updatedAt: "2026-03-23T12:12:00.000Z",
           },
         ],
@@ -296,27 +328,31 @@ describe("image api schema", () => {
     ).toThrow(/endFrame/i);
   });
 
-  it("rejects a two-frame shot without an end frame", () => {
+  it("rejects a two-frame segment without an end frame", () => {
     expect(() =>
       shared.imageFrameListResponseSchema.parse({
         currentBatch: {
           id: "image_batch_20260323_ab12cd",
           sourceShotScriptId: "shot_script_20260323_ab12cd",
-          shotCount: 1,
+          segmentCount: 1,
           totalRequiredFrameCount: 2,
-          approvedShotCount: 0,
+          approvedSegmentCount: 0,
           updatedAt: "2026-03-23T12:00:00.000Z",
         },
-        shots: [
+        segments: [
           {
-            id: "shot_ref_20260323_2",
+            id: "segment_img_20260323_2",
             batchId: "image_batch_20260323_ab12cd",
             projectId: "proj_20260323_ab12cd",
             sourceShotScriptId: "shot_script_20260323_ab12cd",
-            shotId: "shot_script_20260323_ab12cd_SC02",
-            shotCode: "SC01-SG01-SH02",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            segmentOrder: 1,
+            segmentName: "黄昏巷口",
+            segmentSummary: "林夏回头时，巷口已被堵死。",
+            sourceShotIds: ["shot_script_20260323_ab12cd_SC02"],
             frameDependency: "start_and_end_frame",
-            referenceStatus: "pending",
+            status: "pending",
             startFrame: {
               id: "frame_20260323_start_2",
               batchId: "image_batch_20260323_ab12cd",
@@ -329,6 +365,9 @@ describe("image api schema", () => {
               planStatus: "planned",
               imageStatus: "pending",
               selectedCharacterIds: [],
+              selectedSceneId: null,
+              selectedSceneName: null,
+              selectedSceneImageAssetPath: null,
               matchedReferenceImagePaths: [],
               unmatchedCharacterIds: [],
               promptTextSeed: "黄昏的巷子。",
@@ -345,6 +384,7 @@ describe("image api schema", () => {
               sourceTaskId: null,
             },
             endFrame: null,
+            approvedAt: null,
             updatedAt: "2026-03-23T12:20:00.000Z",
           },
         ],

@@ -10,7 +10,7 @@ import type { VideoBatchRecord } from "../domain/video";
 import { toCurrentVideoBatchSummary } from "../domain/video";
 
 type ImageSummaryRecord =
-  | Pick<ShotReferenceRecordEntity, "referenceStatus">
+  | Pick<ShotReferenceRecordEntity, "status" | "referenceStatus">
   | Pick<SegmentFrameRecordEntity, "imageStatus">;
 
 type CompatibleImageBatch = Pick<ShotImageBatchRecord, "id" | "sourceShotScriptId" | "updatedAt"> &
@@ -31,13 +31,13 @@ export function toCompatibleCurrentImageBatch(
   batch: CompatibleImageBatch,
   records: ImageSummaryRecord[],
 ): CurrentImageBatch | null {
-  const shotCount = firstPositiveNumber(batch.shotCount, batch.segmentCount);
+  const segmentCount = firstPositiveNumber(batch.segmentCount, batch.shotCount);
   const totalRequiredFrameCount = firstPositiveNumber(
     batch.totalRequiredFrameCount,
     batch.totalFrameCount,
   );
 
-  if (shotCount === null || totalRequiredFrameCount === null) {
+  if (segmentCount === null || totalRequiredFrameCount === null) {
     return null;
   }
 
@@ -45,7 +45,8 @@ export function toCompatibleCurrentImageBatch(
     {
       id: batch.id,
       sourceShotScriptId: batch.sourceShotScriptId,
-      shotCount,
+      shotCount: segmentCount,
+      segmentCount,
       totalRequiredFrameCount,
       updatedAt: batch.updatedAt,
     },

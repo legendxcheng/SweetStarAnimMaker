@@ -1,6 +1,6 @@
 import type { VideoListResponse } from "@sweet-star/shared";
 
-import { toCurrentVideoBatchSummary } from "../domain/video";
+import { toCurrentVideoBatchSummary, toPublicSegmentVideoRecord } from "../domain/video";
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { CurrentVideoBatchNotFoundError } from "../errors/video-errors";
 import type { Clock } from "../ports/clock";
@@ -94,7 +94,7 @@ export function createApproveAllVideoSegmentsUseCase(
 
       return {
         currentBatch: toCurrentVideoBatchSummary(batch, updatedSegments),
-        segments: updatedSegments,
+        segments: updatedSegments.map(toPublicSegmentVideoRecord),
       };
     },
   };

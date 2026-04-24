@@ -11,6 +11,13 @@ export type {
 } from "../ports/character-sheet-repository";
 export type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 export type {
+  SceneSheetStorage,
+  WriteCurrentSceneSheetImageInput,
+  WriteGeneratedScenePromptInput,
+  WriteSceneSheetBatchManifestInput,
+  WriteSceneSheetImageVersionInput,
+} from "../ports/scene-sheet-storage";
+export type {
   CharacterSheetStorage,
   CharacterSheetReferenceImageContent,
   GetCharacterSheetImageContentInput,

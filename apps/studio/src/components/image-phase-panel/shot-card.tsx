@@ -3,7 +3,7 @@ import type { ShotReferenceFrame, ShotReferenceRecord } from "@sweet-star/shared
 import { getButtonClassName } from "../../styles/button-styles";
 import { FrameEditorCard } from "./frame-editor-card";
 import type { FrameDraftMap, FrameDraftState, ImagePhaseActionBusy } from "./types";
-import { buildShotDisplayLabel, isShotReadyForApproval } from "./utils";
+import { buildSegmentDisplayLabel, isShotReadyForApproval } from "./utils";
 
 interface ShotCardProps {
   projectId: string;
@@ -40,10 +40,10 @@ export function ShotCard({
     actionBusy?.kind === "approve-all" ||
     actionBusy?.kind === "regenerate-all-prompts" ||
     actionBusy?.kind === "regenerate-failed-prompts" ||
-    actionBusy?.kind === "regenerate-failed-frames" ||
+    actionBusy?.kind === "regenerate-remaining-frames" ||
     actionBusy?.kind === "generate-all-frames" ||
     (actionBusy?.kind === "approve" && actionBusy.shotId === shot.id);
-  const canApproveShot = shot.referenceStatus !== "approved" && isShotReadyForApproval(shot);
+  const canApproveShot = (shot.status ?? shot.referenceStatus) !== "approved" && isShotReadyForApproval(shot);
   const isEndFrameGenerationBlocked =
     shot.frameDependency === "start_and_end_frame" && !shot.startFrame.imageAssetPath;
 
@@ -62,13 +62,25 @@ export function ShotCard({
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h5 className="text-base font-semibold text-(--color-text-primary)">
-            {buildShotDisplayLabel(shot)}
+            {buildSegmentDisplayLabel(shot)}
           </h5>
-          <p className="text-sm text-(--color-text-muted) mt-1">Shot Code: {shot.shotCode}</p>
-          <p className="text-sm text-(--color-text-muted)">Shot ID: {shot.shotId}</p>
+          <p className="text-sm text-(--color-text-muted) mt-1">
+            Segment ID: {shot.segmentId}
+          </p>
+          {shot.segmentName ? (
+            <p className="text-sm text-(--color-text-muted)">名称: {shot.segmentName}</p>
+          ) : null}
+          {shot.segmentSummary ? (
+            <p className="text-sm text-(--color-text-muted)">摘要: {shot.segmentSummary}</p>
+          ) : null}
+          {shot.sourceShotIds?.length ? (
+            <p className="text-sm text-(--color-text-muted)">
+              来源 Shot: {shot.sourceShotIds.join("、")}
+            </p>
+          ) : null}
         </div>
         <div className="text-right">
-          <p className={metaLabelClass}>镜头依赖</p>
+          <p className={metaLabelClass}>关键画面</p>
           <p className={metaValueClass}>
             {shot.frameDependency === "start_frame_only" ? "仅起始帧" : "起始帧 + 结束帧"}
           </p>
@@ -120,7 +132,7 @@ export function ShotCard({
           disabled={shotBusy || !canApproveShot}
           className={getButtonClassName({ variant: "success" })}
         >
-          审核通过当前镜头
+          审核通过当前 Segment
         </button>
       </div>
     </section>

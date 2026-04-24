@@ -1,5 +1,6 @@
 import type { SegmentVideoRecord } from "@sweet-star/shared";
 
+import { toPublicSegmentVideoRecord } from "../domain/video";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
@@ -136,7 +137,7 @@ export function createRegenerateVideoPromptUseCase(
         updatedAt: timestamp,
       });
 
-      return updatedSegment;
+      return toPublicSegmentVideoRecord(updatedSegment);
     },
   };
 }

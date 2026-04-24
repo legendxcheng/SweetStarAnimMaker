@@ -186,7 +186,7 @@ describe("list videos use case", () => {
           }),
         ],
         referenceAudios: [],
-        status: "generating",
+        status: "in_review",
         videoAssetPath: null,
         thumbnailAssetPath: null,
       }),
@@ -330,6 +330,125 @@ describe("list videos use case", () => {
         videoAssetPath: "videos/batches/video_batch_1/segments/scene_1__segment_1/current.mp4",
         thumbnailAssetPath:
           "videos/batches/video_batch_1/segments/scene_1__segment_1/thumbnail.webp",
+      }),
+    );
+  });
+
+  it("surfaces prompt-ready stale generating segments as in_review", async () => {
+    const useCase = createListVideosUseCase({
+      projectRepository: {
+        insert: vi.fn(),
+        findById: vi.fn().mockResolvedValue({
+          id: "proj_1",
+          currentVideoBatchId: "video_batch_1",
+        }),
+        listAll: vi.fn(),
+        updatePremiseMetadata: vi.fn(),
+        updateCurrentMasterPlot: vi.fn(),
+        updateCurrentCharacterSheetBatch: vi.fn(),
+        updateCurrentStoryboard: vi.fn(),
+        updateCurrentShotScript: vi.fn(),
+        updateCurrentImageBatch: vi.fn(),
+        updateCurrentVideoBatch: vi.fn(),
+        updateStatus: vi.fn(),
+      },
+      shotScriptStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeShotScriptVersion: vi.fn(),
+        readShotScriptVersion: vi.fn(),
+        writeCurrentShotScript: vi.fn(),
+        readCurrentShotScript: vi.fn(),
+      },
+      shotImageRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        findCurrentBatchByProjectId: vi.fn(),
+        listFramesByBatchId: vi.fn(),
+        listShotsByBatchId: vi.fn(),
+        insertFrame: vi.fn(),
+        findFrameById: vi.fn(),
+        updateFrame: vi.fn(),
+      },
+      videoStorage: {
+        initializePromptTemplate: vi.fn(),
+        readPromptTemplate: vi.fn(),
+        writePromptSnapshot: vi.fn(),
+        writePromptPlan: vi.fn(),
+        writeRawResponse: vi.fn(),
+        writeBatchManifest: vi.fn(),
+        writeCurrentVideo: vi.fn(),
+        writeVideoVersion: vi.fn(),
+        resolveProjectAssetPath: vi.fn(),
+      },
+      videoPromptProvider: {
+        generateVideoPrompt: vi.fn(),
+      },
+      videoRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn().mockResolvedValue({
+          id: "video_batch_1",
+          sourceImageBatchId: "image_batch_1",
+          sourceShotScriptId: "shot_script_1",
+          segmentCount: 1,
+          updatedAt: "2026-03-25T01:00:00.000Z",
+        }),
+        findCurrentBatchByProjectId: vi.fn(),
+        listSegmentsByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "video_segment_1",
+            projectId: "proj_1",
+            batchId: "video_batch_1",
+            sourceImageBatchId: "image_batch_1",
+            sourceShotScriptId: "shot_script_1",
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            segmentOrder: 1,
+            segmentName: "Arrival",
+            segmentSummary: "Rin enters the flooded market and scans the crowd.",
+            shotCount: 2,
+            sourceShotIds: ["shot_1", "shot_2"],
+            status: "generating",
+            promptTextSeed: "seed prompt 1",
+            promptTextCurrent: "current prompt 1",
+            promptUpdatedAt: "2026-03-25T01:00:00.000Z",
+            referenceImages: [],
+            referenceAudios: [],
+            videoAssetPath: null,
+            thumbnailAssetPath: null,
+            durationSec: null,
+            provider: null,
+            model: null,
+            updatedAt: "2026-03-25T01:00:00.000Z",
+            approvedAt: null,
+            sourceTaskId: null,
+          },
+        ]),
+        insertSegment: vi.fn(),
+        findSegmentById: vi.fn(),
+        findCurrentSegmentByProjectIdAndSegmentId: vi.fn(),
+        findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn(),
+        updateSegment: vi.fn(),
+      },
+    });
+
+    const result = await useCase.execute({ projectId: "proj_1" });
+
+    expect(result.currentBatch).toEqual(
+      expect.objectContaining({
+        segmentCount: 1,
+        approvedSegmentCount: 0,
+      }),
+    );
+    expect(result.segments[0]).toEqual(
+      expect.objectContaining({
+        id: "video_segment_1",
+        status: "in_review",
+        sourceTaskId: null,
+        videoAssetPath: null,
+        thumbnailAssetPath: null,
       }),
     );
   });
@@ -787,6 +906,45 @@ describe("list videos use case", () => {
 
     expect(videoPromptProvider.generateVideoPrompt).toHaveBeenCalledTimes(1);
     expect(videoRepository.updateSegment).not.toHaveBeenCalled();
-    expect(result.segments).toEqual([blockedShot]);
+    expect(result.segments).toEqual([
+      expect.objectContaining({
+        id: "video_segment_1",
+        projectId: "proj_1",
+        batchId: "video_batch_1",
+        sourceImageBatchId: "image_batch_1",
+        sourceShotScriptId: "shot_script_1",
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        segmentOrder: 1,
+        segmentName: "Arrival",
+        segmentSummary: "Rin arrives at the flooded market.",
+        shotCount: 1,
+        sourceShotIds: ["shot_1"],
+        status: "failed",
+        promptTextSeed: "",
+        promptTextCurrent: "",
+        promptUpdatedAt: "",
+        referenceImages: blockedShot.referenceImages,
+        referenceAudios: [],
+        videoAssetPath: null,
+        thumbnailAssetPath: null,
+        durationSec: 3,
+        provider: null,
+        model: null,
+        updatedAt: "2026-03-25T01:00:00.000Z",
+        approvedAt: null,
+        sourceTaskId: null,
+      }),
+    ]);
+    expect(result.segments[0]).not.toHaveProperty("projectStorageDir");
+    expect(result.segments[0]).not.toHaveProperty("shotId");
+    expect(result.segments[0]).not.toHaveProperty("shotCode");
+    expect(result.segments[0]).not.toHaveProperty("shotOrder");
+    expect(result.segments[0]).not.toHaveProperty("frameDependency");
+    expect(result.segments[0]).not.toHaveProperty("storageDir");
+    expect(result.segments[0]).not.toHaveProperty("currentVideoRelPath");
+    expect(result.segments[0]).not.toHaveProperty("currentMetadataRelPath");
+    expect(result.segments[0]).not.toHaveProperty("thumbnailRelPath");
+    expect(result.segments[0]).not.toHaveProperty("versionsStorageDir");
   });
 });

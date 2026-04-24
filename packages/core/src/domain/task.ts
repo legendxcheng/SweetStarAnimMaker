@@ -264,6 +264,8 @@ export interface FramePromptGenerateTaskInput {
   segmentId: string;
   sceneId: string;
   frameType: "start_frame" | "end_frame";
+  sourceShotIds?: string[];
+  segmentSnapshot?: ShotScriptSegment;
 }
 
 export interface FrameImageGenerateTaskInput {

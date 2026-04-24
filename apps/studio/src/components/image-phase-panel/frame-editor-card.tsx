@@ -32,7 +32,7 @@ export function FrameEditorCard({
   if (!frame || !draft) {
     return (
       <div className="rounded-xl border border-dashed border-(--color-border-muted) bg-(--color-bg-base) p-4">
-        <p className="text-sm text-(--color-text-muted)">当前 Shot 缺少帧记录。</p>
+        <p className="text-sm text-(--color-text-muted)">当前 Segment 缺少帧记录。</p>
       </div>
     );
   }
@@ -50,6 +50,26 @@ export function FrameEditorCard({
     !generationBlocked;
   const finalPromptText = buildFinalImagePrompt(draft.promptTextCurrent, visualStyleText);
   const canPreviewFinalPrompt = !isPromptPending && draft.promptTextCurrent.trim().length > 0;
+  const referenceItems = [
+    ...(frame.selectedSceneImageAssetPath
+      ? [
+          {
+            key: `scene:${frame.selectedSceneImageAssetPath}`,
+            path: frame.selectedSceneImageAssetPath,
+            label: frame.selectedSceneName ?? frame.selectedSceneId ?? "场景参考图",
+            alt: "场景参考图",
+            badge: "场景",
+          },
+        ]
+      : []),
+    ...frame.matchedReferenceImagePaths.map((imagePath) => ({
+      key: `ref:${imagePath}`,
+      path: imagePath,
+      label: imagePath.split("/").pop() ?? imagePath,
+      alt: "参考图",
+      badge: "角色",
+    })),
+  ];
   const promptStatusLabel = isPromptTimedOut
     ? "Prompt 生成超时"
     : FRAME_PLAN_STATUS_LABELS[frame.planStatus];
@@ -137,6 +157,10 @@ export function FrameEditorCard({
           <p className={metaLabelClass}>模型</p>
           <p className={metaValueClass}>{frame.model ?? "未生成"}</p>
         </div>
+        <div>
+          <p className={metaLabelClass}>已选场景</p>
+          <p className={metaValueClass}>{frame.selectedSceneName ?? frame.selectedSceneId ?? "未选择"}</p>
+        </div>
       </div>
 
       <div className="grid gap-4">
@@ -160,23 +184,26 @@ export function FrameEditorCard({
         <div className="grid gap-3">
           <div>
             <p className={metaLabelClass}>已匹配参考图</p>
-            {frame.matchedReferenceImagePaths.length > 0 ? (
+            {referenceItems.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {frame.matchedReferenceImagePaths.map((imagePath) => (
+                {referenceItems.map((item) => (
                   <div
-                    key={imagePath}
+                    key={item.key}
                     className="rounded-xl border border-(--color-border) bg-(--color-bg-base) p-2 text-center"
                   >
                     <img
-                      src={config.projectAssetContentUrl(projectId, imagePath)}
-                      alt="参考图"
+                      src={config.projectAssetContentUrl(projectId, item.path)}
+                      alt={item.alt}
                       className="h-24 mx-auto mb-2 rounded object-cover"
                     />
+                    <p className="mb-1 text-[10px] uppercase tracking-wide text-(--color-text-muted)">
+                      {item.badge}
+                    </p>
                     <p
                       className={`${metaValueClass} break-all text-xs line-clamp-2`}
-                      title={imagePath}
+                      title={item.label}
                     >
-                      {imagePath.split("/").pop()}
+                      {item.label}
                     </p>
                   </div>
                 ))}

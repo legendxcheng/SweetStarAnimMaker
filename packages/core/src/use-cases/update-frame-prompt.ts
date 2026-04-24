@@ -8,7 +8,10 @@ import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-
 import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
+import type { ShotImageStorage } from "../ports/shot-image-storage";
+import { hydrateFrameWithPlanningSceneMetadata } from "./frame-planning-scene-metadata";
 import { resolveShotFrameRecord } from "./shot-reference-frame-helpers";
 
 export interface UpdateFramePromptInput extends UpdateImageFramePromptRequest {
@@ -22,7 +25,9 @@ export interface UpdateFramePromptUseCase {
 
 export interface UpdateFramePromptUseCaseDependencies {
   projectRepository: ProjectRepository;
+  sceneSheetRepository?: SceneSheetRepository;
   shotImageRepository: ShotImageRepository;
+  shotImageStorage?: ShotImageStorage;
   clock: Clock;
 }
 
@@ -69,7 +74,10 @@ export function createUpdateFramePromptUseCase(
 
       await dependencies.shotImageRepository.updateFrame(updatedFrame);
 
-      return updatedFrame;
+      return hydrateFrameWithPlanningSceneMetadata(updatedFrame, {
+        shotImageStorage: dependencies.shotImageStorage,
+        sceneSheetRepository: dependencies.sceneSheetRepository,
+      });
     },
   };
 }

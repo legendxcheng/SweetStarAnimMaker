@@ -53,6 +53,12 @@ export {
   type CreateCharacterSheetsGenerateTaskUseCaseDependencies,
 } from "../use-cases/create-character-sheets-generate-task";
 export {
+  createCreateSceneSheetsGenerateTaskUseCase,
+  type CreateSceneSheetsGenerateTaskInput,
+  type CreateSceneSheetsGenerateTaskUseCase,
+  type CreateSceneSheetsGenerateTaskUseCaseDependencies,
+} from "../use-cases/create-scene-sheets-generate-task";
+export {
   createCreateImagesGenerateTaskUseCase,
   type CreateImagesGenerateTaskInput,
   type CreateImagesGenerateTaskUseCase,
@@ -88,6 +94,30 @@ export {
   type ListCharacterSheetsUseCase,
   type ListCharacterSheetsUseCaseDependencies,
 } from "../use-cases/list-character-sheets";
+export {
+  createListSceneSheetsUseCase,
+  type ListSceneSheetsInput,
+  type ListSceneSheetsUseCase,
+  type ListSceneSheetsUseCaseDependencies,
+} from "../use-cases/list-scene-sheets";
+export {
+  createUpdateSceneSheetPromptUseCase,
+  type UpdateSceneSheetPromptInput,
+  type UpdateSceneSheetPromptUseCase,
+  type UpdateSceneSheetPromptUseCaseDependencies,
+} from "../use-cases/update-scene-sheet-prompt";
+export {
+  createRegenerateSceneSheetUseCase,
+  type RegenerateSceneSheetInput,
+  type RegenerateSceneSheetUseCase,
+  type RegenerateSceneSheetUseCaseDependencies,
+} from "../use-cases/regenerate-scene-sheet";
+export {
+  createApproveSceneSheetUseCase,
+  type ApproveSceneSheetInput,
+  type ApproveSceneSheetUseCase,
+  type ApproveSceneSheetUseCaseDependencies,
+} from "../use-cases/approve-scene-sheet";
 export {
   createDeleteCharacterSheetReferenceImageUseCase,
   type DeleteCharacterSheetReferenceImageInput,
@@ -327,6 +357,18 @@ export {
   type ProcessCharacterSheetsGenerateTaskUseCase,
   type ProcessCharacterSheetsGenerateTaskUseCaseDependencies,
 } from "../use-cases/process-character-sheets-generate-task";
+export {
+  createProcessSceneSheetsGenerateTaskUseCase,
+  type ProcessSceneSheetsGenerateTaskInput,
+  type ProcessSceneSheetsGenerateTaskUseCase,
+  type ProcessSceneSheetsGenerateTaskUseCaseDependencies,
+} from "../use-cases/process-scene-sheets-generate-task";
+export {
+  createProcessSceneSheetGenerateTaskUseCase,
+  type ProcessSceneSheetGenerateTaskInput,
+  type ProcessSceneSheetGenerateTaskUseCase,
+  type ProcessSceneSheetGenerateTaskUseCaseDependencies,
+} from "../use-cases/process-scene-sheet-generate-task";
 export {
   createProcessCharacterSheetGenerateTaskUseCase,
   type ProcessCharacterSheetGenerateTaskInput,

@@ -4,15 +4,15 @@ import { ShotCard } from "./shot-card";
 import type {
   FrameDraftMap,
   FrameDraftState,
+  ImageSegmentGroup,
   ImagePhaseActionBusy,
-  SegmentShotGroup,
 } from "./types";
 
 interface SegmentSectionProps {
   cardClass: string;
   projectId: string;
   visualStyleText: string;
-  segment: SegmentShotGroup;
+  segment: ImageSegmentGroup;
   index: number;
   drafts: FrameDraftMap;
   actionBusy: ImagePhaseActionBusy | null;
@@ -54,26 +54,21 @@ export function SegmentSection({
         </p>
       </div>
 
-      <div className="grid gap-4">
-        {segment.shots.map((shot) => (
-          <ShotCard
-            key={shot.id}
-            projectId={projectId}
-            visualStyleText={visualStyleText}
-            shot={shot}
-            drafts={drafts}
-            actionBusy={actionBusy}
-            metaLabelClass={metaLabelClass}
-            metaValueClass={metaValueClass}
-            endFrameDependencyMessage={endFrameDependencyMessage}
-            onDraftChange={onDraftChange}
-            onSavePrompt={onSavePrompt}
-            onRegeneratePrompt={onRegeneratePrompt}
-            onGenerateFrame={onGenerateFrame}
-            onApproveShot={onApproveShot}
-          />
-        ))}
-      </div>
+      <ShotCard
+        projectId={projectId}
+        visualStyleText={visualStyleText}
+        shot={segment.segment}
+        drafts={drafts}
+        actionBusy={actionBusy}
+        metaLabelClass={metaLabelClass}
+        metaValueClass={metaValueClass}
+        endFrameDependencyMessage={endFrameDependencyMessage}
+        onDraftChange={onDraftChange}
+        onSavePrompt={onSavePrompt}
+        onRegeneratePrompt={onRegeneratePrompt}
+        onGenerateFrame={onGenerateFrame}
+        onApproveShot={onApproveShot}
+      />
     </article>
   );
 }

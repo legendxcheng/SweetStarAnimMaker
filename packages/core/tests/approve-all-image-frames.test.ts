@@ -7,8 +7,8 @@ import {
 } from "../src/index";
 
 describe("approve all image frames use case", () => {
-  it("approves every ready shot reference and leaves incomplete shots pending", async () => {
-    const readyShot = createShotReferenceRecord({
+  it("approves every ready segment reference and leaves incomplete segments pending", async () => {
+    const readySegment = createShotReferenceRecord({
       id: "shot_ref_image_batch_1_scene_1_segment_1_shot_1",
       batchId: "image_batch_1",
       projectId: "proj_1",
@@ -27,7 +27,7 @@ describe("approve all image frames use case", () => {
         imageStatus: "in_review",
       },
     });
-    const incompleteShot = createShotReferenceRecord({
+    const incompleteSegment = createShotReferenceRecord({
       id: "shot_ref_image_batch_1_scene_1_segment_1_shot_2",
       batchId: "image_batch_1",
       projectId: "proj_1",
@@ -57,7 +57,7 @@ describe("approve all image frames use case", () => {
           projectId: "proj_1",
           projectStorageDir: "projects/proj_1-my-story",
           sourceShotScriptId: "shot_script_v1",
-          shotCount: 2,
+          segmentCount: 2,
           totalRequiredFrameCount: 3,
           createdAt: "2026-03-24T00:00:00.000Z",
           updatedAt: "2026-03-24T00:19:00.000Z",
@@ -65,13 +65,13 @@ describe("approve all image frames use case", () => {
       ),
       findCurrentBatchByProjectId: vi.fn(),
       listFramesByBatchId: vi.fn(),
-      listShotsByBatchId: vi.fn().mockResolvedValue([readyShot, incompleteShot]),
+      listSegmentsByBatchId: vi.fn().mockResolvedValue([readySegment, incompleteSegment]),
       insertFrame: vi.fn(),
-      insertShot: vi.fn(),
+      insertSegment: vi.fn(),
       findFrameById: vi.fn(),
-      findShotById: vi.fn(),
+      findSegmentById: vi.fn(),
       updateFrame: vi.fn(),
-      updateShot: vi.fn(),
+      updateSegment: vi.fn(),
     };
     const projectRepository = {
       insert: vi.fn(),
@@ -97,16 +97,16 @@ describe("approve all image frames use case", () => {
 
     const result = await useCase.execute({ projectId: "proj_1" });
 
-    expect(shotImageRepository.updateShot).toHaveBeenCalledTimes(2);
-    expect(result.currentBatch.approvedShotCount).toBe(1);
-    expect(result.shots[0]).toEqual(
+    expect(shotImageRepository.updateSegment).toHaveBeenCalledTimes(2);
+    expect(result.currentBatch.approvedSegmentCount).toBe(1);
+    expect(result.segments[0]).toEqual(
       expect.objectContaining({
-        referenceStatus: "approved",
+        status: "approved",
       }),
     );
-    expect(result.shots[1]).toEqual(
+    expect(result.segments[1]).toEqual(
       expect.objectContaining({
-        referenceStatus: "pending",
+        status: "pending",
       }),
     );
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({

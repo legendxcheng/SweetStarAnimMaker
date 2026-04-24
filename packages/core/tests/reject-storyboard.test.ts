@@ -15,12 +15,14 @@ describe("reject storyboard use case", () => {
           name: "My Story",
           slug: "my-story",
           storageDir: "projects/proj_20260321_ab12cd-my-story",
-          premiseRelPath: "premise/v1.md",
-          premiseBytes: 120,
-          currentMasterPlotId: "mp_20260321_ab12cd",
-          currentStoryboardId: null,
-          status: "storyboard_in_review",
-          createdAt: "2026-03-21T10:00:00.000Z",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 120,
+        currentMasterPlotId: "mp_20260321_ab12cd",
+        currentCharacterSheetBatchId: "char_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
+        currentStoryboardId: null,
+        status: "storyboard_in_review",
+        createdAt: "2026-03-21T10:00:00.000Z",
           updatedAt: "2026-03-21T12:00:00.000Z",
           premiseUpdatedAt: "2026-03-21T10:00:00.000Z",
         }),
@@ -69,6 +71,8 @@ describe("reject storyboard use case", () => {
         premiseRelPath: "premise/v1.md",
         premiseBytes: 120,
         currentMasterPlotId: "mp_20260321_ab12cd",
+        currentCharacterSheetBatchId: "char_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
         currentStoryboardId: "storyboard_20260321_ab12cd",
         status: "storyboard_in_review",
         createdAt: "2026-03-21T10:00:00.000Z",
@@ -134,7 +138,7 @@ describe("reject storyboard use case", () => {
     });
     expect(projectRepository.updateStatus).toHaveBeenNthCalledWith(1, {
       projectId: "proj_20260321_ab12cd",
-      status: "character_sheets_approved",
+      status: "scene_sheets_approved",
       updatedAt: "2026-03-21T12:00:00.000Z",
     });
     expect(projectRepository.updateStatus).toHaveBeenNthCalledWith(2, {

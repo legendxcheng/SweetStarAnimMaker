@@ -12,13 +12,16 @@ export type ImageFrameStatus =
 export interface CurrentImageBatch {
   id: string;
   sourceShotScriptId: string;
-  shotCount: number;
+  segmentCount: number;
   totalRequiredFrameCount: number;
-  approvedShotCount: number;
+  approvedSegmentCount: number;
   updatedAt: string;
+  shotCount?: number;
+  approvedShotCount?: number;
 }
 
-export type ShotReferenceStatus = "pending" | "in_review" | "approved" | "failed";
+export type SegmentImageStatus = "pending" | "in_review" | "approved" | "failed";
+export type ShotReferenceStatus = SegmentImageStatus;
 
 export interface ShotReferenceFrame {
   id: string;
@@ -32,6 +35,9 @@ export interface ShotReferenceFrame {
   planStatus: ImageFramePlanStatus;
   imageStatus: ImageFrameStatus;
   selectedCharacterIds: string[];
+  selectedSceneId: string | null;
+  selectedSceneName: string | null;
+  selectedSceneImageAssetPath?: string | null;
   matchedReferenceImagePaths: string[];
   unmatchedCharacterIds: string[];
   promptTextSeed: string;
@@ -48,40 +54,47 @@ export interface ShotReferenceFrame {
   sourceTaskId: string | null;
 }
 
-interface ShotReferenceRecordBase {
+interface SegmentImageRecordBase {
   id: string;
   batchId: string;
   projectId: string;
   sourceShotScriptId: string;
-  sceneId?: string;
-  segmentId?: string;
-  segmentOrder?: number;
-  shotOrder?: number;
-  shotId: string;
-  shotCode: string;
-  referenceStatus: ShotReferenceStatus;
+  sceneId: string;
+  segmentId: string;
+  segmentOrder: number;
+  segmentName: string | null;
+  segmentSummary: string;
+  sourceShotIds: string[];
+  status: SegmentImageStatus;
   startFrame: ShotReferenceFrame;
+  approvedAt: string | null;
   updatedAt: string;
+  shotId?: string;
+  shotCode?: string;
+  shotOrder?: number;
+  referenceStatus?: ShotReferenceStatus;
 }
 
-export interface StartFrameOnlyShotReferenceRecord extends ShotReferenceRecordBase {
+export interface StartFrameOnlySegmentImageRecord extends SegmentImageRecordBase {
   frameDependency: "start_frame_only";
   endFrame: null;
 }
 
-export interface StartAndEndShotReferenceRecord extends ShotReferenceRecordBase {
+export interface StartAndEndSegmentImageRecord extends SegmentImageRecordBase {
   frameDependency: "start_and_end_frame";
   endFrame: ShotReferenceFrame;
 }
 
-export type ShotReferenceRecord =
-  | StartFrameOnlyShotReferenceRecord
-  | StartAndEndShotReferenceRecord;
+export type SegmentImageRecord =
+  | StartFrameOnlySegmentImageRecord
+  | StartAndEndSegmentImageRecord;
+export type ShotReferenceRecord = SegmentImageRecord;
 
 export type SegmentFrameRecord = ShotReferenceFrame;
 export interface ImageFrameListResponse {
   currentBatch: CurrentImageBatch;
-  shots: ShotReferenceRecord[];
+  segments: SegmentImageRecord[];
+  shots?: ShotReferenceRecord[];
 }
 
 export interface RegenerateAllImagePromptsResponse {

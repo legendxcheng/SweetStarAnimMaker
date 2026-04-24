@@ -9,22 +9,29 @@ import type {
 export function toCurrentImageBatch(
   batch: Pick<
     ShotReferenceBatchRecord,
-    "id" | "sourceShotScriptId" | "shotCount" | "totalRequiredFrameCount" | "updatedAt"
+    | "id"
+    | "sourceShotScriptId"
+    | "shotCount"
+    | "segmentCount"
+    | "totalRequiredFrameCount"
+    | "updatedAt"
   >,
   records: Array<
-    | Pick<ShotReferenceRecordEntity, "referenceStatus">
+    | Pick<ShotReferenceRecordEntity, "status" | "referenceStatus">
     | Pick<SegmentFrameRecordEntity, "imageStatus">
   >,
 ): CurrentImageBatch {
+  const segmentCount = batch.segmentCount ?? batch.shotCount;
+
   return {
     id: batch.id,
     sourceShotScriptId: batch.sourceShotScriptId,
-    shotCount: batch.shotCount,
+    segmentCount,
     totalRequiredFrameCount: batch.totalRequiredFrameCount,
-    approvedShotCount: records.filter((record) =>
-      "referenceStatus" in record
-        ? record.referenceStatus === "approved"
-        : record.imageStatus === "approved",
+    approvedSegmentCount: records.filter((record) =>
+      "imageStatus" in record
+        ? record.imageStatus === "approved"
+        : (record.status ?? record.referenceStatus) === "approved",
     ).length,
     updatedAt: batch.updatedAt,
   };

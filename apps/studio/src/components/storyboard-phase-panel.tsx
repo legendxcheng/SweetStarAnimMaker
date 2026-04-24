@@ -128,7 +128,7 @@ export function StoryboardPhasePanel({
             disabled={disableGenerate}
             className={getButtonClassName()}
           >
-            {creatingTask ? "启动中..." : "重新生成"}
+            {creatingTask ? "启动中..." : "重新生成分镜"}
           </button>
         </div>
       </div>

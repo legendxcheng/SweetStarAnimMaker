@@ -47,6 +47,11 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     "prompt-templates",
     "segment_video.generate.txt",
   );
+  const sceneSheetTemplatePath = path.join(
+    workspaceRoot,
+    "prompt-templates",
+    "scene_sheet.generate.txt",
+  );
 
   await fs.mkdir(path.dirname(masterPlotPromptTemplatePath), { recursive: true });
   await fs.writeFile(
@@ -129,4 +134,5 @@ export async function ensureTestPromptTemplate(workspaceRoot: string) {
     ].join("\n"),
     "utf8",
   );
+  await fs.writeFile(sceneSheetTemplatePath, "{{promptTextCurrent}}", "utf8");
 }

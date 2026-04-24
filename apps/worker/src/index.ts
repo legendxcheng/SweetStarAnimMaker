@@ -3,6 +3,8 @@ import IORedis from "ioredis";
 import {
   characterSheetGenerateQueueName,
   characterSheetsGenerateQueueName,
+  sceneSheetGenerateQueueName,
+  sceneSheetsGenerateQueueName,
   frameImageGenerateQueueName,
   framePromptGenerateQueueName,
   finalCutGenerateQueueName,
@@ -65,6 +67,12 @@ export interface StartWorkerOptions {
     processCharacterSheetGenerateTask: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
+    processSceneSheetGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
+    processSceneSheetsGenerateTask?: {
+      execute(input: { taskId: string }): Promise<void> | void;
+    };
     processImagesGenerateTask?: {
       execute(input: { taskId: string }): Promise<void> | void;
     };
@@ -109,6 +117,7 @@ export interface StartWorkerOptions {
   characterSheetImageProvider?: CharacterSheetImageProvider;
   framePromptProvider?: FramePromptProvider;
   shotImageProvider?: ShotImageProvider;
+  sceneSheetImageProvider?: ShotImageProvider;
   workerFactory?: (input: {
     queueName: string;
     concurrency: number;
@@ -132,6 +141,7 @@ export async function startWorker(
       characterSheetImageProvider: options.characterSheetImageProvider,
       framePromptProvider: options.framePromptProvider,
       shotImageProvider: options.shotImageProvider,
+      sceneSheetImageProvider: options.sceneSheetImageProvider,
     });
   const processors: Array<{
     queueName: string;
@@ -197,6 +207,32 @@ export async function startWorker(
       concurrency: 20,
       processor: async (job: WorkerJob) => {
         await shotScriptSegmentTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+  const sceneSheetsTaskProcessor = services.processSceneSheetsGenerateTask;
+  const sceneSheetTaskProcessor = services.processSceneSheetGenerateTask;
+
+  if (sceneSheetTaskProcessor) {
+    processors.splice(4, 0, {
+      queueName: sceneSheetGenerateQueueName,
+      concurrency: 5,
+      processor: async (job: WorkerJob) => {
+        await sceneSheetTaskProcessor.execute({
+          taskId: job.data.taskId,
+        });
+      },
+    });
+  }
+
+  if (sceneSheetsTaskProcessor) {
+    processors.splice(5, 0, {
+      queueName: sceneSheetsGenerateQueueName,
+      concurrency: 1,
+      processor: async (job: WorkerJob) => {
+        await sceneSheetsTaskProcessor.execute({
           taskId: job.data.taskId,
         });
       },

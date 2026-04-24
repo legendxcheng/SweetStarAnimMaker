@@ -8,7 +8,7 @@ import {
 } from "../src/domain/shot-image";
 
 describe("shot image domain", () => {
-  it("builds shot storage paths and omits end frame for start-frame-only references", () => {
+  it("builds segment storage paths and omits end frame for start-frame-only references", () => {
     const batch = createShotReferenceBatchRecord({
       id: "image_batch_v1",
       projectId: "proj_1",
@@ -46,10 +46,10 @@ describe("shot image domain", () => {
       }),
     ).toContain("/shots/");
     expect(record.startFrame.storageDir).toContain("/shots/");
-    expect(toCurrentImageBatch(batch, [record]).approvedShotCount).toBe(0);
+    expect(toCurrentImageBatch(batch, [record]).approvedSegmentCount).toBe(0);
   });
 
-  it("builds a current batch summary with approved shot counts", () => {
+  it("builds a current batch summary with approved segment counts", () => {
     const batch = createShotReferenceBatchRecord({
       id: "image_batch_v1",
       projectId: "proj_1",
@@ -110,9 +110,9 @@ describe("shot image domain", () => {
     expect(toCurrentImageBatch(batch, [approvedShot, inReviewShot])).toEqual({
       id: "image_batch_v1",
       sourceShotScriptId: "shot_script_v1",
-      shotCount: 2,
+      segmentCount: 2,
       totalRequiredFrameCount: 3,
-      approvedShotCount: 1,
+      approvedSegmentCount: 1,
       updatedAt: "2026-03-24T00:10:00.000Z",
     });
   });

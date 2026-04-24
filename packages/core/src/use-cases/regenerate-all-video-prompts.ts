@@ -1,6 +1,6 @@
 import type { VideoListResponse } from "@sweet-star/shared";
 
-import { toCurrentVideoBatchSummary } from "../domain/video";
+import { toCurrentVideoBatchSummary, toPublicSegmentVideoRecord } from "../domain/video";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentShotScriptNotFoundError } from "../errors/storyboard-errors";
 import { CurrentVideoBatchNotFoundError } from "../errors/video-errors";
@@ -156,7 +156,7 @@ export function createRegenerateAllVideoPromptsUseCase(
           batch,
           persistedSegments,
         ),
-        segments: persistedSegments,
+        segments: persistedSegments.map(toPublicSegmentVideoRecord),
       };
     },
   };

@@ -2,6 +2,8 @@ import type {
   ImageFramePlanStatus,
   ImageFrameStatus,
   ImageFrameType,
+  SegmentImageRecord,
+  SegmentImageStatus,
   ShotFrameDependency,
   ShotReferenceFrame,
   ShotReferenceStatus,
@@ -72,32 +74,38 @@ interface ShotReferenceRecordEntityBase {
   sourceShotScriptId: string;
   sceneId: string;
   segmentId: string;
-  shotId: string;
-  shotCode: string;
   segmentOrder: number;
-  shotOrder: number;
-  durationSec: number | null;
-  referenceStatus: ShotReferenceStatus;
+  segmentName: string | null;
+  segmentSummary: string;
+  sourceShotIds: string[];
+  status: SegmentImageStatus;
+  approvedAt: string | null;
   projectStorageDir: string;
   storageDir: string;
   manifestRelPath: string;
   startFrame: ShotReferenceFrameEntity;
   updatedAt: string;
+  shotId?: string;
+  shotCode?: string;
+  shotOrder?: number;
+  durationSec?: number | null;
+  referenceStatus?: ShotReferenceStatus;
 }
 
-export type StartFrameOnlyShotReferenceRecordEntity = ShotReferenceRecordEntityBase & {
+export type StartFrameOnlySegmentImageRecordEntity = ShotReferenceRecordEntityBase & {
   frameDependency: "start_frame_only";
   endFrame: null;
 };
 
-export type StartAndEndShotReferenceRecordEntity = ShotReferenceRecordEntityBase & {
+export type StartAndEndSegmentImageRecordEntity = ShotReferenceRecordEntityBase & {
   frameDependency: "start_and_end_frame";
   endFrame: ShotReferenceFrameEntity;
 };
 
-export type ShotReferenceRecordEntity =
-  | StartFrameOnlyShotReferenceRecordEntity
-  | StartAndEndShotReferenceRecordEntity;
+export type SegmentImageRecordEntity =
+  | StartFrameOnlySegmentImageRecordEntity
+  | StartAndEndSegmentImageRecordEntity;
+export type ShotReferenceRecordEntity = SegmentImageRecordEntity;
 
 export interface CreateShotReferenceRecordInput {
   id: string;
@@ -107,12 +115,17 @@ export interface CreateShotReferenceRecordInput {
   sourceShotScriptId: string;
   sceneId: string;
   segmentId: string;
-  shotId: string;
-  shotCode: string;
   segmentOrder: number;
-  shotOrder: number;
-  durationSec: number | null;
+  segmentName: string | null;
+  segmentSummary: string;
+  sourceShotIds: string[];
   frameDependency: ShotFrameDependency;
+  status?: SegmentImageStatus;
+  approvedAt?: string | null;
+  shotId?: string;
+  shotCode?: string;
+  shotOrder?: number;
+  durationSec?: number | null;
   referenceStatus?: ShotReferenceStatus;
   startFrame?: Partial<ShotReferenceFrameEntity>;
   endFrame?: Partial<ShotReferenceFrameEntity> | null;
@@ -131,6 +144,9 @@ interface LegacySegmentFrameRecord {
   planStatus: ImageFramePlanStatus;
   imageStatus: ImageFrameStatus;
   selectedCharacterIds: string[];
+  selectedSceneId: string | null;
+  selectedSceneName: string | null;
+  selectedSceneImageAssetPath?: string | null;
   matchedReferenceImagePaths: string[];
   unmatchedCharacterIds: string[];
   promptTextSeed: string;
@@ -172,6 +188,9 @@ export interface CreateSegmentFrameRecordInput {
   planStatus?: ImageFramePlanStatus;
   imageStatus?: ImageFrameStatus;
   selectedCharacterIds?: string[];
+  selectedSceneId?: string | null;
+  selectedSceneName?: string | null;
+  selectedSceneImageAssetPath?: string | null;
   matchedReferenceImagePaths?: string[];
   unmatchedCharacterIds?: string[];
   promptTextSeed?: string;

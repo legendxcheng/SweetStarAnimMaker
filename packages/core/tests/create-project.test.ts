@@ -81,6 +81,7 @@ describe("create project use case", () => {
       },
       currentMasterPlot: null,
       currentCharacterSheetBatch: null,
+      currentSceneSheetBatch: null,
       currentStoryboard: null,
       currentShotScript: null,
       currentImageBatch: null,

@@ -20,7 +20,7 @@ export interface RegenerateStoryboardUseCaseDependencies {
 }
 
 const storyboardRegenerateAllowedStatuses = new Set([
-  "character_sheets_approved",
+  "scene_sheets_approved",
   "storyboard_generating",
   "storyboard_in_review",
   "storyboard_approved",
@@ -47,11 +47,12 @@ export function createRegenerateStoryboardUseCase(
       }
 
       if (
+        !project.currentSceneSheetBatchId ||
         !project.currentCharacterSheetBatchId ||
         !storyboardRegenerateAllowedStatuses.has(project.status)
       ) {
         throw new ProjectValidationError(
-          "Storyboard regenerate requires approved character sheets",
+          "Storyboard regenerate requires approved scene sheets",
         );
       }
 
@@ -74,7 +75,7 @@ export function createRegenerateStoryboardUseCase(
       });
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: "character_sheets_approved",
+        status: "scene_sheets_approved",
         updatedAt: timestamp,
       });
 

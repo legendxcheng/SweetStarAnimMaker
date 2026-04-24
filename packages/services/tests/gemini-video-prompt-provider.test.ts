@@ -254,4 +254,203 @@ describe("gemini video prompt provider", () => {
       "环境声/音效：雨声、远处摊布拍打声。未提供参考音频。必须输出可听音轨，不允许静音或无声成片。无背景音乐、无BGM、无配乐。禁止新增未提供的人声、背景音乐、BGM、配乐或额外音效。",
     );
   });
+
+  it("tells Gemini that segment endFrame maps to the clip ending state instead of an intermediate shot timestamp", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    finalPrompt: "图片1用于开头，图片2用于结尾，片段按时间轴推进。",
+                    dialoguePlan: "无人物对白，无旁白，无语音，不需要口型。",
+                    audioPlan: "保留城市环境音和脚步声。",
+                    visualGuardrails: "保持人物与场景连续。",
+                    rationale: "通过两张参考图锚定片段开头和片段结尾。",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiVideoPromptProvider({
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await provider.generateVideoPrompt({
+      projectId: "proj_1",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        summary: "林峰在街头遭遇连续霉运。",
+        durationSec: 15,
+      },
+      shots: [
+        {
+          id: "shot_1",
+          shotCode: "S01_01_001",
+          purpose: "建立焦急状态",
+          visual: "林峰在人群中奔跑。",
+          subject: "林峰",
+          action: "他急刹步停下看手机。",
+          frameDependency: "start_and_end_frame",
+          durationSec: 4,
+          dialogue: null,
+          os: "为什么倒霉的总是我？",
+          audio: "嘈杂车流声和急促脚步声。",
+          transitionHint: "硬切",
+          continuityNotes: "灰气固定在头顶。",
+        },
+        {
+          id: "shot_2",
+          shotCode: "S01_01_004",
+          purpose: "落到终态",
+          visual: "林峰胸前布满咖啡污渍。",
+          subject: "林峰",
+          action: "他踉跄后退两三步才勉强站稳。",
+          frameDependency: "start_and_end_frame",
+          durationSec: 4,
+          dialogue: null,
+          os: null,
+          audio: "沉闷压抑的环境音渐渐推高。",
+          transitionHint: "硬切",
+          continuityNotes: "咖啡污渍位置固定。",
+        },
+      ],
+      referenceImages: [
+        {
+          id: "ref_img_1",
+          assetPath: "images/segment_1/start-frame.png",
+          source: "auto",
+          order: 0,
+          sourceShotId: "shot_1",
+          label: "S01_01_001 start",
+        },
+        {
+          id: "ref_img_2",
+          assetPath: "images/segment_1/end-frame.png",
+          source: "auto",
+          order: 1,
+          sourceShotId: "shot_1",
+          label: "S01_01_001 end",
+        },
+      ],
+      startFrame: {
+        imageAssetPath: "images/segment_1/start-frame.png",
+        width: 1024,
+        height: 576,
+      },
+      endFrame: {
+        imageAssetPath: "images/segment_1/end-frame.png",
+        width: 1024,
+        height: 576,
+      },
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const promptText = request.contents[0]?.parts[0]?.text as string;
+
+    expect(promptText).toContain("segment.startFrame 和 segment.endFrame");
+    expect(promptText).toContain("不要把 segment.endFrame 误写成第一个子镜头的结束画面");
+    expect(promptText).toContain("segment 起始关键帧");
+    expect(promptText).toContain("segment 结尾关键帧");
+  });
+
+  it("filters music-like clauses out of deterministic audio constraints and prompt context", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    finalPrompt: "片段保留鸟鸣、脚步声和人物动作拟音。",
+                    dialoguePlan: "模型原始返回，可被系统覆写。",
+                    audioPlan: "模型原始返回，可被系统覆写。",
+                    visualGuardrails: "保持彩虹广场和人物服装连续。",
+                    rationale: "测试系统是否剔除配乐描述。",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiVideoPromptProvider({
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateVideoPrompt({
+      projectId: "proj_1",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_4",
+        order: 1,
+        summary: "雨后彩虹下的林峰感受到转运。",
+      },
+      shots: [
+        {
+          id: "shot_1",
+          shotCode: "S04_SEG01_01",
+          purpose: "建立雨后空间",
+          visual: "暴雨初歇的广场上挂着彩虹。",
+          subject: "林峰",
+          action: "林峰深呼吸，感受雨后空气。",
+          frameDependency: "start_frame_only",
+          durationSec: 5,
+          dialogue: null,
+          os: null,
+          audio: "雨后清脆的鸟鸣声，舒缓治愈的吉他旋律淡入。",
+          transitionHint: null,
+          continuityNotes: "保持光线明亮稳定。",
+        },
+        {
+          id: "shot_2",
+          shotCode: "S04_SEG01_02",
+          purpose: "沉淀情绪",
+          visual: "林峰低头注视胸前微光。",
+          subject: "林峰",
+          action: "他轻拍胸口，随后释然微笑。",
+          frameDependency: "start_frame_only",
+          durationSec: 5,
+          dialogue: null,
+          os: "转运真的就在一瞬间。",
+          audio: "背景音乐开始向高潮推升，衣物轻微摩擦声。",
+          transitionHint: null,
+          continuityNotes: "金光位置与手部动作对应。",
+        },
+      ],
+      startFrame: {
+        imageAssetPath: "images/segment_4/start-frame.png",
+        width: 1024,
+        height: 576,
+      },
+      endFrame: null,
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const promptText = request.contents[0]?.parts[0]?.text as string;
+
+    expect(promptText).not.toContain("吉他旋律");
+    expect(promptText).not.toContain("背景音乐开始向高潮推升");
+    expect(result.audioPlan).toContain("雨后清脆的鸟鸣声");
+    expect(result.audioPlan).toContain("衣物轻微摩擦声");
+    expect(result.audioPlan).not.toContain("吉他旋律");
+    expect(result.audioPlan).not.toContain("背景音乐开始向高潮推升");
+  });
 });

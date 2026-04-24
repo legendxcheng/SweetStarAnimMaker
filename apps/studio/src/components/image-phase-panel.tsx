@@ -10,9 +10,9 @@ import { TaskStatusCard } from "./image-phase-panel/task-status-card";
 import type {
   FrameDraftMap,
   FrameDraftState,
+  ImageSegmentGroup,
   ImagePhaseActionBusy,
   ImagePhasePanelProps,
-  SegmentShotGroup,
 } from "./image-phase-panel/types";
 import {
   createFrameDraft,
@@ -39,7 +39,7 @@ export function ImagePhasePanel({
 }: ImagePhasePanelProps) {
   const endFrameDependencyMessage =
     "请先生成首帧，尾帧会自动引用首帧结果图以保持一致性。";
-  const [shots, setShots] = useState<ShotReferenceRecord[]>([]);
+  const [segments, setSegments] = useState<ShotReferenceRecord[]>([]);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<Error | null>(null);
@@ -53,38 +53,41 @@ export function ImagePhasePanel({
   const batchSummary = project.currentImageBatch;
 
   const frames = useMemo(
-    () => shots.flatMap((shot) => getRequiredFrames(shot)),
-    [shots],
+    () => segments.flatMap((segment) => getRequiredFrames(segment)),
+    [segments],
   );
   const hasPendingFramePlans = frames.some((frame) => isFramePromptPending(frame));
   const hasFailedPromptFrames = frames.some((frame) => isFramePromptFailed(frame));
-  const hasFailedImageFrames = frames.some(
-    (frame) => frame.planStatus === "planned" && frame.imageStatus === "failed",
+  const hasRemainingImageFrames = frames.some(
+    (frame) =>
+      frame.planStatus === "planned" &&
+      (frame.imageStatus === "pending" || frame.imageStatus === "failed"),
   );
   const canGenerateAllFrames =
-    shots.length > 0 &&
-    shots.every((shot) => {
+    segments.length > 0 &&
+    segments.every((segment) => {
       const canGenerateStartFrame =
-        shot.startFrame.planStatus === "planned" &&
-        shot.startFrame.promptTextCurrent.trim().length > 0;
+        segment.startFrame.planStatus === "planned" &&
+        segment.startFrame.promptTextCurrent.trim().length > 0;
 
       if (!canGenerateStartFrame) {
         return false;
       }
 
-      if (!shot.endFrame) {
+      if (!segment.endFrame) {
         return true;
       }
 
       return (
-        shot.endFrame.planStatus === "planned" && shot.endFrame.promptTextCurrent.trim().length > 0
+        segment.endFrame.planStatus === "planned" &&
+        segment.endFrame.promptTextCurrent.trim().length > 0
       );
     });
-  const generationStatusSummary = getFrameGenerationStatusSummary(shots);
+  const generationStatusSummary = getFrameGenerationStatusSummary(segments);
 
   useEffect(() => {
     if (!batchSummary) {
-      setShots([]);
+      setSegments([]);
       setDrafts({});
       setListError(null);
       setListLoading(false);
@@ -161,44 +164,16 @@ export function ImagePhasePanel({
     };
   }, [batchSummary?.id, hasPendingFramePlans, project.id, project.status]);
 
-  const segmentGroups = useMemo<SegmentShotGroup[]>(() => {
-    const groups = new Map<string, SegmentShotGroup>();
-
-    for (const shot of shots) {
-      const sceneId = getShotSceneId(shot);
-      const segmentId = getShotSegmentId(shot);
-      const segmentOrder = getShotSegmentOrder(shot);
-      const key = `${sceneId}:${segmentId}`;
-      const group = groups.get(key);
-
-      if (group) {
-        group.shots.push(shot);
-        continue;
-      }
-
-      groups.set(key, {
-        segmentId,
-        sceneId,
-        segmentOrder: segmentOrder ?? undefined,
-        shots: [shot],
-      });
-    }
-
-    return Array.from(groups.values()).sort((left, right) => {
-      if (
-        left.segmentOrder !== undefined &&
-        right.segmentOrder !== undefined &&
-        left.segmentOrder !== right.segmentOrder
-      ) {
-        return left.segmentOrder - right.segmentOrder;
-      }
-
-      return left.segmentId.localeCompare(right.segmentId, "zh-CN", {
-        numeric: true,
-        sensitivity: "base",
-      });
-    });
-  }, [shots]);
+  const segmentGroups = useMemo<ImageSegmentGroup[]>(
+    () =>
+      sortShotsByHierarchy(segments).map((segment) => ({
+        segmentId: getShotSegmentId(segment),
+        sceneId: getShotSceneId(segment),
+        segmentOrder: getShotSegmentOrder(segment) ?? undefined,
+        segment,
+      })),
+    [segments],
+  );
 
   const sceneIds = useMemo(() => {
     const seen = new Set<string>();
@@ -245,10 +220,10 @@ export function ImagePhasePanel({
   );
 
   function applyImageListResponse(response: ImageFrameListResponse) {
-    const nextShots = sortShotsByHierarchy(response.shots);
-    const nextFrames = nextShots.flatMap((shot) => getRequiredFrames(shot));
+    const nextSegments = sortShotsByHierarchy(response.segments ?? response.shots ?? []);
+    const nextFrames = nextSegments.flatMap((segment) => getRequiredFrames(segment));
 
-    setShots(nextShots);
+    setSegments(nextSegments);
     setDrafts((currentDrafts) => {
       const nextDrafts: FrameDraftMap = {};
       const previousFramesById = new Map(frames.map((frame) => [frame.id, frame]));
@@ -273,7 +248,9 @@ export function ImagePhasePanel({
   }
 
   function updateFrame(nextFrame: ShotReferenceFrame) {
-    setShots((currentShots) => currentShots.map((shot) => replaceFrameOnShot(shot, nextFrame)));
+    setSegments((currentSegments) =>
+      currentSegments.map((segment) => replaceFrameOnShot(segment, nextFrame)),
+    );
     setDrafts((currentDrafts) => ({
       ...currentDrafts,
       [nextFrame.id]: createFrameDraft(nextFrame),
@@ -292,7 +269,7 @@ export function ImagePhasePanel({
     return response;
   }
 
-  async function refreshShots() {
+  async function refreshSegments() {
     await loadImageList();
   }
 
@@ -323,7 +300,7 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "regenerate", frameId: frame.id });
       await apiClient.regenerateImageFramePrompt(project.id, frame.id);
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -337,7 +314,7 @@ export function ImagePhasePanel({
       setActionBusy({ kind: "generate", frameId: frame.id });
       await apiClient.generateImageFrame(project.id, frame.id);
       await refreshProject();
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -350,7 +327,7 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "approve", shotId: shot.id });
       await apiClient.approveImageFrame(project.id, shot.startFrame.id);
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
       await refreshProject();
     } catch (error) {
@@ -387,7 +364,7 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "regenerate-all-prompts" });
       await apiClient.regenerateAllImagePrompts(project.id);
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -404,7 +381,7 @@ export function ImagePhasePanel({
     try {
       setActionBusy({ kind: "regenerate-failed-prompts" });
       await apiClient.regenerateFailedImagePrompts(project.id);
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -413,16 +390,16 @@ export function ImagePhasePanel({
     }
   }
 
-  async function handleRegenerateFailedFrames() {
-    if (!batchSummary || !hasFailedImageFrames) {
+  async function handleRegenerateRemainingFrames() {
+    if (!batchSummary || !hasRemainingImageFrames) {
       return;
     }
 
     try {
-      setActionBusy({ kind: "regenerate-failed-frames" });
+      setActionBusy({ kind: "regenerate-remaining-frames" });
       await apiClient.regenerateFailedImageFrames(project.id);
       await refreshProject();
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -440,7 +417,7 @@ export function ImagePhasePanel({
       setActionBusy({ kind: "generate-all-frames" });
       await apiClient.generateAllImageFrames(project.id);
       await refreshProject();
-      await refreshShots();
+      await refreshSegments();
       setActionError(null);
     } catch (error) {
       setActionError(error as Error);
@@ -468,7 +445,7 @@ export function ImagePhasePanel({
         disableGenerate={disableGenerate}
         segmentGroupCount={segmentGroups.length}
         hasFailedPromptFrames={hasFailedPromptFrames}
-        hasFailedImageFrames={hasFailedImageFrames}
+        hasRemainingImageFrames={hasRemainingImageFrames}
         canGenerateAllFrames={canGenerateAllFrames}
         generationStatusSummary={generationStatusSummary}
         onRegenerateAllPrompts={() => {
@@ -480,8 +457,8 @@ export function ImagePhasePanel({
         onGenerateAllFrames={() => {
           void handleGenerateAllFrames();
         }}
-        onRegenerateFailedFrames={() => {
-          void handleRegenerateFailedFrames();
+        onRegenerateRemainingFrames={() => {
+          void handleRegenerateRemainingFrames();
         }}
         onApproveAll={() => {
           void handleApproveAll();
@@ -530,7 +507,7 @@ export function ImagePhasePanel({
 
       {batchSummary && !listLoading && segmentGroups.length === 0 && !listError && (
         <div className={cardClass}>
-          <p className="text-sm text-(--color-text-muted)">还没有可编辑的 Shot 参考图。</p>
+          <p className="text-sm text-(--color-text-muted)">还没有可编辑的 Segment 关键画面。</p>
         </div>
       )}
 
@@ -543,7 +520,7 @@ export function ImagePhasePanel({
 
       {activeSegmentGroups.map((segment, index) => (
         <SegmentSection
-          key={`${segment.sceneId}:${segment.segmentId}`}
+          key={segment.segment.id}
           cardClass={cardClass}
           projectId={project.id}
           visualStyleText={project.premise.visualStyleText ?? ""}

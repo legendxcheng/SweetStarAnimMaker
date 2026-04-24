@@ -2,6 +2,7 @@ import type { ProjectStatus } from "@sweet-star/shared";
 
 import type {
   SegmentFrameRecordEntity,
+  SegmentImageRecordEntity,
   ShotReferenceFrameEntity,
   ShotReferenceRecordEntity,
 } from "../domain/shot-image";
@@ -18,9 +19,14 @@ export async function resolveShotFrameRecord(input: {
   frameId: string;
   shotId?: string;
 }): Promise<ResolvedShotFrameRecord | null> {
+  const findSegmentById = input.repository.findSegmentById
+    ? (shotId: string) => input.repository.findSegmentById!(shotId)
+    : input.repository.findShotById
+      ? (shotId: string) => input.repository.findShotById!(shotId)
+      : null;
   const shotById =
-    input.shotId && input.repository.findShotById
-      ? await input.repository.findShotById(input.shotId)
+    input.shotId && findSegmentById
+      ? await findSegmentById(input.shotId)
       : null;
 
   if (shotById) {
@@ -31,11 +37,17 @@ export async function resolveShotFrameRecord(input: {
     }
   }
 
-  if (!input.repository.listShotsByBatchId) {
+  const listSegments = input.repository.listSegmentsByBatchId
+    ? (batchId: string) => input.repository.listSegmentsByBatchId!(batchId)
+    : input.repository.listShotsByBatchId
+      ? (batchId: string) => input.repository.listShotsByBatchId!(batchId)
+      : null;
+
+  if (!listSegments) {
     return null;
   }
 
-  const shots = await input.repository.listShotsByBatchId(input.batchId);
+  const shots = await listSegments(input.batchId);
 
   for (const shot of shots) {
     const frame = findFrameInShot(shot, input.frameId);
@@ -64,7 +76,12 @@ export function replaceFrameOnShot(
 
     return {
       ...nextShot,
+      status: deriveShotReferenceStatus(nextShot),
       referenceStatus: deriveShotReferenceStatus(nextShot),
+      approvedAt:
+        deriveShotReferenceStatus(nextShot) === "approved"
+          ? nextShot.approvedAt ?? updatedFrame.approvedAt
+          : null,
     };
   }
 
@@ -73,10 +90,21 @@ export function replaceFrameOnShot(
     startFrame,
     endFrame: null,
     updatedAt: updatedFrame.updatedAt,
+    status: deriveShotReferenceStatus({
+      startFrame,
+      endFrame: null,
+    }),
     referenceStatus: deriveShotReferenceStatus({
       startFrame,
       endFrame: null,
     }),
+    approvedAt:
+      deriveShotReferenceStatus({
+        startFrame,
+        endFrame: null,
+      }) === "approved"
+        ? shot.approvedAt ?? updatedFrame.approvedAt
+        : null,
   };
 }
 
@@ -105,7 +133,7 @@ export function deriveShotReferenceStatus(
 }
 
 export function deriveProjectImageStatusFromShots(
-  shots: Array<Pick<ShotReferenceRecordEntity, "startFrame" | "endFrame" | "referenceStatus">>,
+  shots: Array<Pick<ShotReferenceRecordEntity, "startFrame" | "endFrame" | "referenceStatus" | "status">>,
 ): ProjectStatus {
   const requiredFrames = shots.flatMap((shot) => getRequiredFrames(shot));
 
@@ -113,7 +141,10 @@ export function deriveProjectImageStatusFromShots(
     return "images_generating";
   }
 
-  if (shots.length > 0 && shots.every((shot) => shot.referenceStatus === "approved")) {
+  if (
+    shots.length > 0 &&
+    shots.every((shot) => (shot.status ?? shot.referenceStatus) === "approved")
+  ) {
     return "images_approved";
   }
 
@@ -143,8 +174,10 @@ export function approveShot(
   if (shot.frameDependency === "start_and_end_frame") {
     return {
       ...shot,
+      status: "approved",
       referenceStatus: "approved",
       updatedAt: approvedAt,
+      approvedAt,
       startFrame,
       endFrame: endFrame ?? shot.endFrame,
     };
@@ -152,8 +185,10 @@ export function approveShot(
 
   return {
     ...shot,
+    status: "approved",
     referenceStatus: "approved",
     updatedAt: approvedAt,
+    approvedAt,
     startFrame,
     endFrame: null,
   };
@@ -172,6 +207,20 @@ export function deriveProjectImageStatusFromFrames(
   }
 
   if (nextFrames.every((frame) => frame.imageStatus === "approved")) {
+    return "images_approved";
+  }
+
+  return "images_in_review";
+}
+
+export function deriveProjectImageStatusFromFrameCollection(
+  frames: Array<Pick<SegmentFrameRecordEntity, "imageStatus">>,
+): ProjectStatus {
+  if (frames.some((frame) => frame.imageStatus === "generating")) {
+    return "images_generating";
+  }
+
+  if (frames.length > 0 && frames.every((frame) => frame.imageStatus === "approved")) {
     return "images_approved";
   }
 

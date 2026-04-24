@@ -17,6 +17,7 @@ import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 import {
   seedApprovedCharacterSheets,
   seedApprovedMasterPlot,
+  seedApprovedSceneSheets,
 } from "./storyboard-test-helpers";
 
 describe("spec2 task flow", () => {
@@ -71,6 +72,11 @@ describe("spec2 task flow", () => {
       projectStorageDir: project.storageDir,
     });
     await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,

@@ -1,5 +1,6 @@
 import type { SegmentVideoRecord } from "@sweet-star/shared";
 
+import { toPublicSegmentVideoRecord } from "../domain/video";
 import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
 import type { Clock } from "../ports/clock";
@@ -71,7 +72,7 @@ export function createApproveVideoSegmentUseCase(
         });
       }
 
-      return updatedSegment;
+      return toPublicSegmentVideoRecord(updatedSegment);
     },
   };
 }

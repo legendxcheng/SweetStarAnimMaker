@@ -71,10 +71,10 @@ export function getShotOrder(
   return shot.shotOrder ?? shot.startFrame.order;
 }
 
-export function buildShotDisplayLabel(
-  shot: Pick<ShotReferenceRecord, "sceneId" | "segmentId" | "shotOrder" | "startFrame">,
+export function buildSegmentDisplayLabel(
+  shot: Pick<ShotReferenceRecord, "sceneId" | "segmentId" | "startFrame">,
 ) {
-  return `${getShotSceneId(shot)}_${getShotSegmentId(shot)}_shot_${getShotOrder(shot)}`;
+  return `${getShotSceneId(shot)}_${getShotSegmentId(shot)}`;
 }
 
 export function sortShotsByHierarchy(shots: ShotReferenceRecord[]) {
@@ -98,17 +98,7 @@ export function sortShotsByHierarchy(shots: ShotReferenceRecord[]) {
       return segmentCompare;
     }
 
-    const shotOrderCompare = getShotOrder(left) - getShotOrder(right);
-    if (shotOrderCompare !== 0) {
-      return shotOrderCompare;
-    }
-
-    const shotIdCompare = shotHierarchyCollator.compare(left.shotId, right.shotId);
-    if (shotIdCompare !== 0) {
-      return shotIdCompare;
-    }
-
-    return shotHierarchyCollator.compare(left.shotCode, right.shotCode);
+    return shotHierarchyCollator.compare(left.id, right.id);
   });
 }
 
@@ -127,7 +117,7 @@ export function getFrameGenerationStatusSummary(
 ): FrameGenerationStatusSummary {
   const orderedEntries = shots.flatMap((shot) =>
     getRequiredFrames(shot).map((frame) => ({
-      shotLabel: buildShotDisplayLabel(shot),
+      segmentLabel: buildSegmentDisplayLabel(shot),
       sceneId: getShotSceneId(shot),
       segmentId: getShotSegmentId(shot),
       frameLabel: frame.frameType === "start_frame" ? "起始帧" : "结束帧",
@@ -154,7 +144,7 @@ export function getFrameGenerationStatusSummary(
     return {
       summary: `Prompt 失败 ${promptFailedCount}/${totalFrameCount}`,
       detail: firstPromptFailure
-        ? `${firstPromptFailure.sceneId} / ${firstPromptFailure.segmentId} / ${firstPromptFailure.shotLabel} / ${firstPromptFailure.frameLabel}`
+        ? `${firstPromptFailure.sceneId} / ${firstPromptFailure.segmentId} / ${firstPromptFailure.segmentLabel} / ${firstPromptFailure.frameLabel}`
         : null,
     };
   }
@@ -170,7 +160,7 @@ export function getFrameGenerationStatusSummary(
     return {
       summary: `图片失败 ${imageFailedCount}/${totalFrameCount}`,
       detail: firstImageFailure
-        ? `${firstImageFailure.sceneId} / ${firstImageFailure.segmentId} / ${firstImageFailure.shotLabel} / ${firstImageFailure.frameLabel}`
+        ? `${firstImageFailure.sceneId} / ${firstImageFailure.segmentId} / ${firstImageFailure.segmentLabel} / ${firstImageFailure.frameLabel}`
         : null,
     };
   }

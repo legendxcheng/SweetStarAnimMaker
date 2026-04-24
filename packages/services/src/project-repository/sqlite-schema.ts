@@ -3,6 +3,7 @@ import { initializeSqliteTaskSchema } from "../task-repository/sqlite-task-schem
 import { initializeSqliteStoryboardSchema } from "../storyboard-repository/sqlite-storyboard-schema";
 import { initializeSqliteStoryboardReviewSchema } from "../storyboard-repository/sqlite-storyboard-review-schema";
 import { initializeSqliteCharacterSheetSchema } from "../character-sheet-repository/sqlite-character-sheet-schema";
+import { initializeSqliteSceneSheetSchema } from "../scene-sheet-repository/sqlite-scene-sheet-schema";
 import { initializeSqliteShotImageSchema } from "../shot-image-repository/sqlite-shot-image-schema";
 import { initializeSqliteShotScriptReviewSchema } from "../shot-script-repository/sqlite-shot-script-review-schema";
 import { initializeSqliteVideoSchema } from "../video-repository/sqlite-video-schema";
@@ -44,6 +45,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
 
   initializeSqliteStoryboardSchema(db);
   initializeSqliteCharacterSheetSchema(db);
+  initializeSqliteSceneSheetSchema(db);
   initializeSqliteShotImageSchema(db);
   initializeSqliteVideoSchema(db);
   initializeSqliteTaskSchema(db);

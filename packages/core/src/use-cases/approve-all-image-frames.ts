@@ -5,7 +5,10 @@ import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentImageBatchNotFoundError } from "../errors/shot-image-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
+import type { ShotImageStorage } from "../ports/shot-image-storage";
+import { hydrateShotWithPlanningSceneMetadata } from "./frame-planning-scene-metadata";
 import {
   approveShot,
   deriveProjectImageStatusFromShots,
@@ -22,7 +25,9 @@ export interface ApproveAllImageFramesUseCase {
 
 export interface ApproveAllImageFramesUseCaseDependencies {
   projectRepository: ProjectRepository;
+  sceneSheetRepository?: SceneSheetRepository;
   shotImageRepository: ShotImageRepository;
+  shotImageStorage?: ShotImageStorage;
   clock: Clock;
 }
 
@@ -47,32 +52,51 @@ export function createApproveAllImageFramesUseCase(
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
-      if (
-        !dependencies.shotImageRepository.listShotsByBatchId ||
-        !dependencies.shotImageRepository.updateShot
-      ) {
+      const listSegments = dependencies.shotImageRepository.listSegmentsByBatchId
+        ? (batchId: string) => dependencies.shotImageRepository.listSegmentsByBatchId!(batchId)
+        : dependencies.shotImageRepository.listShotsByBatchId
+          ? (batchId: string) => dependencies.shotImageRepository.listShotsByBatchId!(batchId)
+          : null;
+      const updateSegment = dependencies.shotImageRepository.updateSegment
+        ? (segment: Parameters<NonNullable<ShotImageRepository["updateSegment"]>>[0]) =>
+            dependencies.shotImageRepository.updateSegment!(segment)
+        : dependencies.shotImageRepository.updateShot
+          ? (segment: Parameters<NonNullable<ShotImageRepository["updateShot"]>>[0]) =>
+              dependencies.shotImageRepository.updateShot!(segment)
+          : null;
+
+      if (!listSegments || !updateSegment) {
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
       const approvedAt = dependencies.clock.now();
-      const shots = await dependencies.shotImageRepository.listShotsByBatchId(batch.id);
-      const updatedShots = shots.map((shot) =>
-        isShotReadyForApproval(shot) ? approveShot(shot, approvedAt) : shot,
+      const segments = await listSegments(batch.id);
+      const updatedSegments = segments.map((segment) =>
+        isShotReadyForApproval(segment) ? approveShot(segment, approvedAt) : segment,
       );
 
-      for (const shot of updatedShots) {
-        await dependencies.shotImageRepository.updateShot(shot);
+      for (const segment of updatedSegments) {
+        await updateSegment(segment);
       }
 
       await dependencies.projectRepository.updateStatus({
         projectId: project.id,
-        status: deriveProjectImageStatusFromShots(updatedShots),
+        status: deriveProjectImageStatusFromShots(updatedSegments),
         updatedAt: approvedAt,
       });
 
+      const hydratedSegments = await Promise.all(
+        updatedSegments.map((segment) =>
+          hydrateShotWithPlanningSceneMetadata(segment, {
+            shotImageStorage: dependencies.shotImageStorage,
+            sceneSheetRepository: dependencies.sceneSheetRepository,
+          }),
+        ),
+      );
+
       return {
-        currentBatch: toCurrentImageBatch(batch, updatedShots),
-        shots: updatedShots,
+        currentBatch: toCurrentImageBatch(batch, updatedSegments),
+        segments: hydratedSegments,
       };
     },
   };

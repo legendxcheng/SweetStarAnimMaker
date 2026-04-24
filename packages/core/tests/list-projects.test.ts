@@ -204,7 +204,7 @@ describe("list projects use case", () => {
     expect(result[0].currentCharacterSheetBatch?.approvedCharacterCount).toBe(1);
     expect(result[0].currentShotScript?.shotCount).toBe(1);
     expect(result[0].currentImageBatch?.id).toBe("image_batch_1");
-    expect(result[0].currentImageBatch?.approvedShotCount).toBe(1);
+    expect(result[0].currentImageBatch?.approvedSegmentCount).toBe(1);
     expect(result[0].currentVideoBatch?.id).toBe("video_batch_1");
     expect(result[1].currentMasterPlot).toBeNull();
     expect(result[1].currentCharacterSheetBatch).toBeNull();
@@ -335,9 +335,9 @@ describe("list projects use case", () => {
 
     expect(result[0].currentImageBatch).toEqual(
       expect.objectContaining({
-        shotCount: 2,
+        segmentCount: 2,
         totalRequiredFrameCount: 3,
-        approvedShotCount: 1,
+        approvedSegmentCount: 1,
       }),
     );
     expect(result[0].currentVideoBatch).toEqual(
@@ -569,9 +569,9 @@ describe("list projects use case", () => {
 
     expect(result[0].currentImageBatch).toEqual(
       expect.objectContaining({
-        shotCount: 2,
+        segmentCount: 2,
         totalRequiredFrameCount: 3,
-        approvedShotCount: 2,
+        approvedSegmentCount: 2,
       }),
     );
     expect(listShotsByBatchId).toHaveBeenCalledWith("image_batch_shot_first");

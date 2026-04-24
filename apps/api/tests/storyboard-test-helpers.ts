@@ -1,12 +1,15 @@
 import {
   createCharacterSheetBatchRecord,
   createCharacterSheetRecord,
+  createSceneSheetBatchRecord,
+  createSceneSheetRecord,
 } from "@sweet-star/core";
 import {
   createLocalDataPaths,
   createSqliteCharacterSheetRepository,
   createSqliteDb,
   createSqliteProjectRepository,
+  createSqliteSceneSheetRepository,
   createStoryboardStorage,
 } from "@sweet-star/services";
 import type { CurrentMasterPlot, CurrentStoryboard } from "@sweet-star/shared";
@@ -164,6 +167,67 @@ export async function seedApprovedStoryboard(input: {
     projectId: input.projectId,
     status: "storyboard_approved",
     updatedAt: storyboard.approvedAt ?? storyboard.updatedAt,
+  });
+  db.close();
+}
+
+export async function seedApprovedSceneSheets(input: {
+  tempDir: string;
+  projectId: string;
+  projectStorageDir: string;
+  batchId?: string;
+}) {
+  const batchId = input.batchId ?? "scene_batch_v1";
+  const paths = createLocalDataPaths(input.tempDir);
+  const db = createSqliteDb({ paths });
+  const projectRepository = createSqliteProjectRepository({ db });
+  const sceneSheetRepository = createSqliteSceneSheetRepository({ db });
+
+  sceneSheetRepository.insertBatch(
+    createSceneSheetBatchRecord({
+      id: batchId,
+      projectId: input.projectId,
+      projectStorageDir: input.projectStorageDir,
+      sourceMasterPlotId: approvedMasterPlot.id,
+      sourceCharacterSheetBatchId: "char_batch_v1",
+      sceneCount: 1,
+      createdAt: "2026-03-21T12:06:00.000Z",
+      updatedAt: "2026-03-21T12:10:00.000Z",
+    }),
+  );
+  sceneSheetRepository.insertScene(
+    createSceneSheetRecord({
+      id: "scene_core_1",
+      projectId: input.projectId,
+      projectStorageDir: input.projectStorageDir,
+      batchId,
+      sourceMasterPlotId: approvedMasterPlot.id,
+      sourceCharacterSheetBatchId: "char_batch_v1",
+      sceneName: "Drowned City Dock",
+      scenePurpose: "Anchor the main harbor environment.",
+      promptTextGenerated: "Flooded dock under comet light.",
+      promptTextCurrent: "Flooded dock under comet light.",
+      constraintsText: "Keep the half-submerged cranes and cold sky glow.",
+      imageAssetPath: `scene-sheets/batches/${batchId}/scenes/scene_core_1/current.png`,
+      imageWidth: 1536,
+      imageHeight: 1024,
+      provider: "turnaround-image",
+      model: "seedream",
+      status: "approved",
+      updatedAt: "2026-03-21T12:10:00.000Z",
+      approvedAt: "2026-03-21T12:10:00.000Z",
+      sourceTaskId: "task_scene_core_1",
+    }),
+  );
+
+  projectRepository.updateCurrentSceneSheetBatch?.({
+    projectId: input.projectId,
+    batchId,
+  });
+  projectRepository.updateStatus({
+    projectId: input.projectId,
+    status: "scene_sheets_approved",
+    updatedAt: "2026-03-21T12:10:00.000Z",
   });
   db.close();
 }

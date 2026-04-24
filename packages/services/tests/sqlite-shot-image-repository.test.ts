@@ -196,6 +196,64 @@ describe("sqlite shot image repository", () => {
     );
   });
 
+  it("persists segment-level image metadata required by the image list schema", async () => {
+    const { projectRepository, repository } = await createRepositoryContext();
+    const project = createProjectRecord({
+      id: "proj_1",
+      name: "My Story",
+      slug: "my-story",
+      createdAt: "2026-03-24T00:00:00.000Z",
+      updatedAt: "2026-03-24T00:00:00.000Z",
+      premiseUpdatedAt: "2026-03-24T00:00:00.000Z",
+    });
+    projectRepository.insert(project);
+    const batch = createShotReferenceBatchRecord({
+      id: "image_batch_segment_meta",
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceShotScriptId: "shot_script_1",
+      shotCount: 1,
+      totalRequiredFrameCount: 2,
+      createdAt: "2026-03-24T00:00:00.000Z",
+      updatedAt: "2026-03-24T00:00:00.000Z",
+    });
+    const segment = createShotReferenceRecord({
+      id: "segment_img_image_batch_segment_meta_scene_1_segment_1_segment_1",
+      batchId: batch.id,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+      sourceShotScriptId: "shot_script_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotId: "shot_1",
+      shotCode: "S01-SG01-SH01",
+      segmentOrder: 1,
+      segmentName: "雨夜开场",
+      segmentSummary: "林夏在雨夜市场停步抬头。",
+      sourceShotIds: ["shot_1", "shot_2"],
+      shotOrder: 1,
+      durationSec: 6,
+      frameDependency: "start_and_end_frame",
+      status: "in_review",
+      approvedAt: "2026-03-24T00:12:00.000Z",
+      updatedAt: "2026-03-24T00:12:00.000Z",
+    });
+
+    repository.insertBatch(batch);
+    repository.insertSegment?.(segment);
+
+    expect(repository.listSegmentsByBatchId?.(batch.id)).toEqual([
+      expect.objectContaining({
+        id: segment.id,
+        segmentName: "雨夜开场",
+        segmentSummary: "林夏在雨夜市场停步抬头。",
+        sourceShotIds: ["shot_1", "shot_2"],
+        status: "in_review",
+        approvedAt: "2026-03-24T00:12:00.000Z",
+      }),
+    ]);
+  });
+
   it("migrates legacy batch tables before inserting shot-first columns", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sweet-star-shot-image-legacy-"));
     const paths = createLocalDataPaths(tempDir);

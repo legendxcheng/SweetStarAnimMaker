@@ -207,14 +207,18 @@ export function createSeedanceStageVideoProvider(
       const referenceAudios = (input.referenceAudios ?? [])
         .sort((left, right) => left.order - right.order)
         .map((reference) => reference.assetPath);
-      const submitted = await provider.submitVideoGenerationTask({
+      const submitInputBase = {
         promptText: input.promptText,
-        referenceImages,
         referenceAudios,
         durationSeconds: input.durationSec ?? options.durationSeconds ?? DEFAULT_DURATION_SECONDS,
         ratio: input.aspectRatio ?? options.ratio,
         generateAudio: options.generateAudio,
         returnLastFrame: options.returnLastFrame,
+      } satisfies Omit<SubmitSeedanceVideoGenerationTaskInput, "referenceImages">;
+      const submitted = await submitSeedanceStageTaskWithImagePrivacyFallback({
+        provider,
+        referenceImages,
+        submitInputBase,
       });
       const completed = await provider.waitForVideoGenerationTask({
         taskId: submitted.taskId,
@@ -249,6 +253,41 @@ export function createSeedanceStageVideoProvider(
       };
     },
   };
+}
+
+async function submitSeedanceStageTaskWithImagePrivacyFallback(input: {
+  provider: SeedanceVideoProvider;
+  referenceImages: string[];
+  submitInputBase: Omit<SubmitSeedanceVideoGenerationTaskInput, "referenceImages">;
+}) {
+  try {
+    return await input.provider.submitVideoGenerationTask({
+      ...input.submitInputBase,
+      referenceImages: input.referenceImages,
+    });
+  } catch (error) {
+    if (!isSeedanceRealPersonPrivacyImageError(error)) {
+      throw error;
+    }
+  }
+
+  if (input.referenceImages.length > 1) {
+    try {
+      return await input.provider.submitVideoGenerationTask({
+        ...input.submitInputBase,
+        referenceImages: input.referenceImages.slice(0, 1),
+      });
+    } catch (error) {
+      if (!isSeedanceRealPersonPrivacyImageError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  return input.provider.submitVideoGenerationTask({
+    ...input.submitInputBase,
+    referenceImages: [],
+  });
 }
 
 async function buildContent(
@@ -430,6 +469,14 @@ function isDataUrl(value: string) {
 
 function isPositiveInteger(value: number | null | undefined) {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+function isSeedanceRealPersonPrivacyImageError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.includes("InputImageSensitiveContentDetected.PrivacyInformation");
 }
 
 async function requestJson(input: {

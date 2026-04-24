@@ -16,6 +16,16 @@ export function buildVideoPromptProviderInput(input: {
   referenceAudios?: SegmentVideoReferenceAudio[];
   shot?: ShotScriptItem;
   shotReference?: ShotReferenceRecordEntity;
+  startFrame?: {
+    imageAssetPath: string | null;
+    imageWidth: number | null;
+    imageHeight: number | null;
+  } | null;
+  endFrame?: {
+    imageAssetPath: string | null;
+    imageWidth: number | null;
+    imageHeight: number | null;
+  } | null;
 }): GenerateVideoPromptInput {
   const shots = resolveShots(input);
   const referenceImages = resolveReferenceImages(input);
@@ -68,14 +78,26 @@ export function buildVideoPromptProviderInput(input: {
         }
       : undefined,
     durationSec,
-    startFrame: input.shotReference
+    startFrame: input.startFrame
+      ? {
+          imageAssetPath: input.startFrame.imageAssetPath,
+          width: input.startFrame.imageWidth,
+          height: input.startFrame.imageHeight,
+        }
+      : input.shotReference
       ? {
           imageAssetPath: input.shotReference.startFrame.imageAssetPath,
           width: input.shotReference.startFrame.imageWidth,
           height: input.shotReference.startFrame.imageHeight,
         }
       : undefined,
-    endFrame: input.shotReference?.endFrame
+    endFrame: input.endFrame
+      ? {
+          imageAssetPath: input.endFrame.imageAssetPath,
+          width: input.endFrame.imageWidth,
+          height: input.endFrame.imageHeight,
+        }
+      : input.shotReference?.endFrame
       ? {
           imageAssetPath: input.shotReference.endFrame.imageAssetPath,
           width: input.shotReference.endFrame.imageWidth,

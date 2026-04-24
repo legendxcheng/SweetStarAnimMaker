@@ -20,6 +20,7 @@ describe("regenerate storyboard use case", () => {
         premiseBytes: 128,
         currentMasterPlotId: "master_plot_v1",
         currentCharacterSheetBatchId: "character_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
         currentStoryboardId: null,
         currentShotScriptId: "shot_script_v1",
         currentImageBatchId: "image_batch_v1",
@@ -69,7 +70,7 @@ describe("regenerate storyboard use case", () => {
     });
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({
       projectId: "proj_20260324_ab12cd",
-      status: "character_sheets_approved",
+      status: "scene_sheets_approved",
       updatedAt: "2026-03-24T12:30:00.000Z",
     });
     expect(createStoryboardGenerateTask.execute).toHaveBeenCalledWith({
@@ -95,6 +96,7 @@ describe("regenerate storyboard use case", () => {
         premiseBytes: 128,
         currentMasterPlotId: "master_plot_v1",
         currentCharacterSheetBatchId: "character_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
         currentStoryboardId: "storyboard_v1",
         currentShotScriptId: "shot_script_v1",
         currentImageBatchId: "image_batch_v1",
@@ -107,6 +109,61 @@ describe("regenerate storyboard use case", () => {
       updatePremiseMetadata: vi.fn(),
       updateCurrentMasterPlot: vi.fn(),
       updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
+      updateStatus: vi.fn(),
+      listAll: vi.fn(),
+    };
+    const useCase = createRegenerateStoryboardUseCase({
+      projectRepository,
+      createStoryboardGenerateTask,
+      clock: {
+        now: () => "2026-03-24T12:30:00.000Z",
+      },
+    });
+
+    await expect(
+      useCase.execute({
+        projectId: "proj_20260324_ab12cd",
+      }),
+    ).resolves.toEqual({
+      id: "task_storyboard_restart",
+    });
+  });
+
+  it("allows storyboard regeneration directly from scene_sheets_approved", async () => {
+    const createStoryboardGenerateTask = {
+      execute: vi.fn().mockResolvedValue({
+        id: "task_storyboard_restart",
+      }),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_20260324_ab12cd",
+        name: "My Story",
+        slug: "my-story",
+        storageDir: "projects/proj_20260324_ab12cd-my-story",
+        premiseRelPath: "premise/v1.md",
+        premiseBytes: 128,
+        currentMasterPlotId: "master_plot_v1",
+        currentCharacterSheetBatchId: "character_batch_v1",
+        currentSceneSheetBatchId: "scene_batch_v1",
+        currentStoryboardId: null,
+        currentShotScriptId: null,
+        currentImageBatchId: null,
+        currentVideoBatchId: null,
+        status: "scene_sheets_approved",
+        createdAt: "2026-03-24T10:00:00.000Z",
+        updatedAt: "2026-03-24T12:00:00.000Z",
+        premiseUpdatedAt: "2026-03-24T10:00:00.000Z",
+      }),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentSceneSheetBatch: vi.fn(),
       updateCurrentStoryboard: vi.fn(),
       updateCurrentShotScript: vi.fn(),
       updateCurrentImageBatch: vi.fn(),

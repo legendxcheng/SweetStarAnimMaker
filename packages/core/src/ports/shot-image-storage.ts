@@ -48,9 +48,17 @@ export interface ResolveProjectAssetPathInput {
   assetRelPath: string;
 }
 
+export interface ReadFramePlanningInput {
+  projectStorageDir: string;
+  planningRelPath: string;
+}
+
 export interface ShotImageStorage {
   writeBatchManifest(input: WriteShotImageBatchManifestInput): Promise<void> | void;
   writeFramePlanning(input: WriteFramePlanningInput): Promise<void> | void;
+  readFramePlanning(
+    input: ReadFramePlanningInput,
+  ): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
   writeFramePromptFiles(input: WriteFramePromptFilesInput): Promise<void> | void;
   writeFramePromptVersion(input: WriteFramePromptVersionInput): Promise<void> | void;
   writeCurrentImage(input: WriteCurrentShotImageInput): Promise<void> | void;

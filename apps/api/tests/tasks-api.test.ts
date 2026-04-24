@@ -14,7 +14,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "../src/app";
 import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
-import { seedApprovedStoryboard } from "./storyboard-test-helpers";
+import {
+  seedApprovedSceneSheets,
+  seedApprovedStoryboard,
+} from "./storyboard-test-helpers";
 
 describe("tasks api", () => {
   const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -50,6 +53,12 @@ describe("tasks api", () => {
     await seedApprovedCharacterSheets({
       tempDir,
       projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
     });
 
     const taskResponse = await app.inject({
@@ -229,6 +238,12 @@ describe("tasks api", () => {
     await seedApprovedCharacterSheets({
       tempDir,
       projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
     });
     await seedApprovedStoryboard({
       tempDir,
@@ -275,6 +290,12 @@ describe("tasks api", () => {
     await seedApprovedCharacterSheets({
       tempDir,
       projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
     });
 
     await app.inject({
@@ -386,6 +407,7 @@ async function seedApprovedMasterPlot(input: {
 async function seedApprovedCharacterSheets(input: {
   tempDir: string;
   projectId: string;
+  projectStorageDir: string;
 }) {
   const paths = createLocalDataPaths(input.tempDir);
   const db = createSqliteDb({ paths });

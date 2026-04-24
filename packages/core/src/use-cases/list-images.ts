@@ -4,7 +4,10 @@ import { toCurrentImageBatch } from "../domain/shot-image";
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { CurrentImageBatchNotFoundError } from "../errors/shot-image-errors";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
+import type { ShotImageStorage } from "../ports/shot-image-storage";
+import { hydrateShotWithPlanningSceneMetadata } from "./frame-planning-scene-metadata";
 
 export interface ListImagesInput {
   projectId: string;
@@ -16,7 +19,9 @@ export interface ListImagesUseCase {
 
 export interface ListImagesUseCaseDependencies {
   projectRepository: ProjectRepository;
+  sceneSheetRepository?: SceneSheetRepository;
   shotImageRepository: ShotImageRepository;
+  shotImageStorage?: ShotImageStorage;
 }
 
 export function createListImagesUseCase(
@@ -40,15 +45,29 @@ export function createListImagesUseCase(
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
-      if (!dependencies.shotImageRepository.listShotsByBatchId) {
+      const listSegments = dependencies.shotImageRepository.listSegmentsByBatchId
+        ? (batchId: string) => dependencies.shotImageRepository.listSegmentsByBatchId!(batchId)
+        : dependencies.shotImageRepository.listShotsByBatchId
+          ? (batchId: string) => dependencies.shotImageRepository.listShotsByBatchId!(batchId)
+          : null;
+
+      if (!listSegments) {
         throw new CurrentImageBatchNotFoundError(project.id);
       }
 
-      const shots = await dependencies.shotImageRepository.listShotsByBatchId(batch.id);
+      const segments = await listSegments(batch.id);
+      const hydratedSegments = await Promise.all(
+        segments.map((segment) =>
+          hydrateShotWithPlanningSceneMetadata(segment, {
+            shotImageStorage: dependencies.shotImageStorage,
+            sceneSheetRepository: dependencies.sceneSheetRepository,
+          }),
+        ),
+      );
 
       return {
-        currentBatch: toCurrentImageBatch(batch, shots),
-        shots,
+        currentBatch: toCurrentImageBatch(batch, segments),
+        segments: hydratedSegments,
       };
     },
   };

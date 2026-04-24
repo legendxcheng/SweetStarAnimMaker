@@ -16,6 +16,7 @@ import { ensureTestPromptTemplate } from "./prompt-template-test-helper";
 import {
   seedApprovedCharacterSheets,
   seedApprovedMasterPlot,
+  seedApprovedSceneSheets,
 } from "./storyboard-test-helpers";
 
 const premiseText = "A washed-up pilot discovers a singing comet above a drowned city.";
@@ -48,6 +49,11 @@ describe("spec4 storyboard review flow", () => {
       projectStorageDir: project.storageDir,
     });
     await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,
@@ -121,6 +127,11 @@ describe("spec4 storyboard review flow", () => {
       projectStorageDir: project.storageDir,
     });
     await seedApprovedCharacterSheets({
+      tempDir,
+      projectId: project.id,
+      projectStorageDir: project.storageDir,
+    });
+    await seedApprovedSceneSheets({
       tempDir,
       projectId: project.id,
       projectStorageDir: project.storageDir,

@@ -24,6 +24,15 @@ export function registerTaskRoutes(
     return reply.status(201).send(task);
   });
 
+  app.post("/projects/:projectId/tasks/scene-sheets-generate", async (request, reply) => {
+    const params = request.params as { projectId: string };
+    const task = await services.createSceneSheetsGenerateTask.execute({
+      projectId: params.projectId,
+    });
+
+    return reply.status(201).send(task);
+  });
+
   app.post("/projects/:projectId/tasks/storyboard-generate", async (request, reply) => {
     const params = request.params as { projectId: string };
     const task = await services.createStoryboardGenerateTask.execute({

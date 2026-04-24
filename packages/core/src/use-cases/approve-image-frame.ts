@@ -4,7 +4,10 @@ import { ProjectNotFoundError, ProjectValidationError } from "../errors/project-
 import { ShotImageNotFoundError } from "../errors/shot-image-errors";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
+import type { ShotImageStorage } from "../ports/shot-image-storage";
+import { hydrateFrameWithPlanningSceneMetadata } from "./frame-planning-scene-metadata";
 import {
   approveShot,
   deriveProjectImageStatusFromShots,
@@ -24,7 +27,9 @@ export interface ApproveImageFrameUseCase {
 
 export interface ApproveImageFrameUseCaseDependencies {
   projectRepository: ProjectRepository;
+  sceneSheetRepository?: SceneSheetRepository;
   shotImageRepository: ShotImageRepository;
+  shotImageStorage?: ShotImageStorage;
   clock: Clock;
 }
 
@@ -75,9 +80,15 @@ export function createApproveImageFrameUseCase(
           updatedAt: timestamp,
         });
 
-        return approvedShot.startFrame.id === input.frameId
-          ? approvedShot.startFrame
-          : approvedShot.endFrame ?? approvedShot.startFrame;
+        return hydrateFrameWithPlanningSceneMetadata(
+          approvedShot.startFrame.id === input.frameId
+            ? approvedShot.startFrame
+            : approvedShot.endFrame ?? approvedShot.startFrame,
+          {
+            shotImageStorage: dependencies.shotImageStorage,
+            sceneSheetRepository: dependencies.sceneSheetRepository,
+          },
+        );
       }
 
       const updatedFrame = {
@@ -99,7 +110,10 @@ export function createApproveImageFrameUseCase(
         });
       }
 
-      return updatedFrame;
+      return hydrateFrameWithPlanningSceneMetadata(updatedFrame, {
+        shotImageStorage: dependencies.shotImageStorage,
+        sceneSheetRepository: dependencies.sceneSheetRepository,
+      });
     },
   };
 }

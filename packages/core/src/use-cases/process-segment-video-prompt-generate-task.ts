@@ -98,6 +98,8 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
             shots: taskInput.shots ?? taskInput.segment.shots,
             referenceImages: currentSegment.referenceImages,
             referenceAudios: currentSegment.referenceAudios,
+            startFrame: taskInput.startFrame,
+            endFrame: taskInput.endFrame,
           }),
         );
 

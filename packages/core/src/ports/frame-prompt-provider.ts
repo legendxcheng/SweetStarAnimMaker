@@ -15,6 +15,27 @@ export interface GenerateFramePromptShotContext {
   continuityNotes: string | null;
 }
 
+export interface GenerateFramePromptSceneContext {
+  source: "scene_sheet" | "shot_script";
+  sceneId: string | null;
+  sceneName: string | null;
+  scenePurpose: string | null;
+  promptTextCurrent: string | null;
+  constraintsText: string | null;
+  imageAssetPath: string | null;
+  environmentSummary: string;
+}
+
+export interface GenerateFramePromptSceneCandidate {
+  sceneId: string;
+  sceneName: string;
+  scenePurpose: string;
+  promptTextCurrent: string;
+  constraintsText: string;
+  imageAssetPath: string | null;
+  environmentSummary: string;
+}
+
 export interface GenerateFramePromptInput {
   projectId: string;
   frameType: ImageFrameType;
@@ -38,11 +59,14 @@ export interface GenerateFramePromptInput {
     promptTextCurrent: string;
     imageAssetPath: string | null;
   }>;
+  sceneCandidates: GenerateFramePromptSceneCandidate[];
+  sceneContext?: GenerateFramePromptSceneContext;
 }
 
 export interface GenerateFramePromptResult {
   frameType: ImageFrameType;
   selectedCharacterIds: string[];
+  selectedSceneId: string | null;
   promptText: string;
   negativePromptText: string | null;
   rationale: string | null;

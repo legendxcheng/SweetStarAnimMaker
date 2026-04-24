@@ -17,6 +17,7 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
   const referenceImages = resolveReferenceImages(input);
   const referenceAudios = resolveReferenceAudios(input);
   const segmentDurationSec = resolveSegmentDurationSec(input, shots);
+  const shotAudioClauses = resolveShotAudioClauses(input);
 
   const lines = [
     "任务：为 Seedance 2.0 短剧片段生成一个结构化 JSON prompt plan。",
@@ -43,6 +44,9 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- 如果没有人物台词、没有旁白、也不需要可感知语音，必须明确写出无人物对白、无旁白、无语音。",
     "- 必须输出可听音轨，不允许静音或无声成片。",
     "- 默认不要背景音乐、BGM、配乐；最终 prompt 和 audioPlan 都要明确写无背景音乐、无BGM、无配乐。",
+    "- 如果同时提供 segment.startFrame 和 segment.endFrame，它们分别代表整段片段的开场状态和片段结束时的稳定终态。",
+    "- 不要把 segment.endFrame 误写成第一个子镜头的结束画面、任意中间秒数或任意中途动作终点。",
+    "- 如果上游 shot.audio 含有音乐、BGM、配乐、旋律、片尾曲等描述，在当前无背景音乐约束下必须视为待剔除噪声，不要写进 finalPrompt 或 audioPlan。",
     "- 系统会在最终 prompt 中追加硬性语音约束和声音约束，你生成的内容必须与这组硬性约束一致。",
     "",
     "片段上下文：",
@@ -56,7 +60,10 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     `- 内部 shot 数：${shots.length}`,
     "",
     "参考图片：",
-    ...formatReferenceImages(referenceImages),
+    ...formatReferenceImages(referenceImages, input),
+    "",
+    "segment 关键帧语义：",
+    ...formatSegmentFrameAnchors(input),
     "",
     "参考音频：",
     ...formatReferenceAudios(referenceAudios),
@@ -70,7 +77,8 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- 如果没有任何语音，必须明确写无人物对白、无旁白、无语音，不需要口型。",
     "",
     "audioPlan 要求：",
-    "- 写清环境声、拟音、参考音频用途、音乐氛围、声场重点，以及是否只有环境声而无人声。",
+    "- 写清环境声、拟音、参考音频用途、声场重点，以及是否只有环境声而无人声。",
+    `- 当前可保留的环境声/拟音候选：${shotAudioClauses.length > 0 ? shotAudioClauses.join("、") : "未提供明确环境声/拟音描述"}`,
     "- 必须明确写必须输出可听音轨，不允许静音或无声成片。",
     "- 必须明确写无背景音乐、无BGM、无配乐。",
     "",
@@ -179,18 +187,14 @@ function buildDialoguePlan(input: GenerateVideoPromptInput) {
 }
 
 function buildAudioPlan(input: GenerateVideoPromptInput) {
-  const shotAudioClauses = uniqueStrings(
-    resolveShots(input)
-      .map((shot) => normalizeClause(shot.audio))
-      .filter((value): value is string => Boolean(value)),
-  );
+  const shotAudioClauses = resolveShotAudioClauses(input);
   const referenceAudioClauses = resolveReferenceAudios(input).map((audio, index) =>
     `音频${index + 1}${audio.label ? `（${audio.label}）` : ""}${formatDurationSuffix(
       audio.durationSec ?? null,
     )}`,
   );
   const sourceAudioText =
-    shotAudioClauses.length > 0 ? shotAudioClauses.join("；") : "未提供明确环境声/拟音描述";
+    shotAudioClauses.length > 0 ? shotAudioClauses.join("、") : "未提供明确环境声/拟音描述";
   const referenceAudioText =
     referenceAudioClauses.length > 0
       ? `参考音频：${referenceAudioClauses.join("、")}，只作为音色、节奏、环境声或口型节奏参考。`
@@ -200,11 +204,7 @@ function buildAudioPlan(input: GenerateVideoPromptInput) {
 }
 
 function buildFinalPromptAudioConstraint(input: GenerateVideoPromptInput) {
-  const audioText = uniqueStrings(
-    resolveShots(input)
-      .map((shot) => normalizeClause(shot.audio))
-      .filter((value): value is string => Boolean(value)),
-  ).join("；");
+  const audioText = resolveShotAudioClauses(input).join("、");
   const referenceAudioText = resolveReferenceAudios(input)
     .map((audio, index) => `音频${index + 1}${audio.label ? `（${audio.label}）` : ""}`)
     .join("、");
@@ -279,6 +279,16 @@ function resolveReferenceAudios(input: GenerateVideoPromptInput) {
   return input.referenceAudios ?? [];
 }
 
+function resolveShotAudioClauses(input: GenerateVideoPromptInput) {
+  return uniqueStrings(
+    resolveShots(input)
+      .flatMap((shot) => splitAudioClauses(shot.audio))
+      .map((clause) => normalizeClause(clause))
+      .filter((value): value is string => Boolean(value))
+      .filter((value) => !isMusicLikeClause(value)),
+  );
+}
+
 function resolveSegmentDurationSec(
   input: GenerateVideoPromptInput,
   shots: ReturnType<typeof resolveShots>,
@@ -296,15 +306,39 @@ function resolveSegmentDurationSec(
   return shotDurationSum > 0 ? shotDurationSum : null;
 }
 
-function formatReferenceImages(images: ReturnType<typeof resolveReferenceImages>) {
+function formatReferenceImages(
+  images: ReturnType<typeof resolveReferenceImages>,
+  input: GenerateVideoPromptInput,
+) {
   if (images.length === 0) {
     return ["- 无参考图片。"];
   }
 
   return images.map(
-    (image, index) =>
-      `- 图片${index + 1}：${image.label ?? "未命名参考图"}；assetPath=${image.assetPath}；source=${image.source}；sourceShotId=${image.sourceShotId ?? "无"}`,
+    (image, index) => {
+      const segmentRole = describeSegmentFrameRole(image.assetPath, input);
+
+      return `- 图片${index + 1}：${image.label ?? "未命名参考图"}；assetPath=${image.assetPath}；source=${image.source}；sourceShotId=${image.sourceShotId ?? "无"}${segmentRole ? `；segmentRole=${segmentRole}` : ""}`;
+    },
   );
+}
+
+function formatSegmentFrameAnchors(input: GenerateVideoPromptInput) {
+  const lines: string[] = [];
+
+  if (input.startFrame?.imageAssetPath) {
+    lines.push(
+      `- segment 起始关键帧：assetPath=${input.startFrame.imageAssetPath}；代表整段片段的0秒开场状态。`,
+    );
+  }
+
+  if (input.endFrame?.imageAssetPath) {
+    lines.push(
+      `- segment 结尾关键帧：assetPath=${input.endFrame.imageAssetPath}；代表整段片段结束时的稳定终态，不是任意中间秒数。`,
+    );
+  }
+
+  return lines.length > 0 ? lines : ["- 未单独提供 segment 起始/结尾关键帧。"];
 }
 
 function formatReferenceAudios(audios: ReturnType<typeof resolveReferenceAudios>) {
@@ -346,7 +380,7 @@ function formatShotTimeline(
       `frameDependency：${shot.frameDependency}`,
       `对白：${shot.dialogue ?? "无"}`,
       `旁白/画外音：${shot.os ?? "无"}`,
-      `音频/声效：${shot.audio ?? "无"}`,
+      `音频/声效：${summarizeShotAudio(shot.audio)}`,
       `转场提示：${shot.transitionHint ?? "无"}`,
       `连续性要求：${shot.continuityNotes ?? "无"}`,
     ].join("；");
@@ -383,6 +417,43 @@ function normalizeClause(value: string | null) {
   }
 
   return trimmed.replace(/[。！？!?]+$/u, "");
+}
+
+function splitAudioClauses(value: string | null) {
+  const normalized = normalizeClause(value);
+
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized
+    .split(/[，,；;、]/u)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function summarizeShotAudio(value: string | null) {
+  const clauses = splitAudioClauses(value).filter((clause) => !isMusicLikeClause(clause));
+
+  return clauses.length > 0 ? clauses.join("、") : "无";
+}
+
+function isMusicLikeClause(value: string) {
+  return /背景音乐|BGM|配乐|片尾曲|旋律|古琴|古筝|弦乐|吉他|钢琴|提琴|琴音|音乐/u.test(
+    value,
+  );
+}
+
+function describeSegmentFrameRole(assetPath: string, input: GenerateVideoPromptInput) {
+  if (input.startFrame?.imageAssetPath && assetPath === input.startFrame.imageAssetPath) {
+    return "segment_start_frame";
+  }
+
+  if (input.endFrame?.imageAssetPath && assetPath === input.endFrame.imageAssetPath) {
+    return "segment_end_frame";
+  }
+
+  return null;
 }
 
 function formatDuration(value: number | null) {

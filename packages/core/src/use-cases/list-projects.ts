@@ -91,11 +91,13 @@ export function createListProjectsUseCase(
             );
 
             if (batch) {
-              const shots = dependencies.shotImageRepository.listShotsByBatchId
-                ? await dependencies.shotImageRepository.listShotsByBatchId(batch.id)
+              const segments = dependencies.shotImageRepository.listSegmentsByBatchId
+                ? await dependencies.shotImageRepository.listSegmentsByBatchId(batch.id)
+                : dependencies.shotImageRepository.listShotsByBatchId
+                  ? await dependencies.shotImageRepository.listShotsByBatchId(batch.id)
                 : null;
               const records =
-                shots ?? (await dependencies.shotImageRepository.listFramesByBatchId(batch.id));
+                segments ?? (await dependencies.shotImageRepository.listFramesByBatchId(batch.id));
               currentImageBatch = toCompatibleCurrentImageBatch(batch, records);
             }
           }

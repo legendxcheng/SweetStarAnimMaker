@@ -11,13 +11,13 @@ interface BatchSummaryCardProps {
   disableGenerate: boolean;
   segmentGroupCount: number;
   hasFailedPromptFrames: boolean;
-  hasFailedImageFrames: boolean;
+  hasRemainingImageFrames: boolean;
   canGenerateAllFrames: boolean;
   generationStatusSummary: ImageGenerationStatusSummary;
   onRegenerateAllPrompts: () => void;
   onRegenerateFailedPrompts: () => void;
   onGenerateAllFrames: () => void;
-  onRegenerateFailedFrames: () => void;
+  onRegenerateRemainingFrames: () => void;
   onApproveAll: () => void;
   onGenerate: () => void;
 }
@@ -32,13 +32,13 @@ export function BatchSummaryCard({
   disableGenerate,
   segmentGroupCount,
   hasFailedPromptFrames,
-  hasFailedImageFrames,
+  hasRemainingImageFrames,
   canGenerateAllFrames,
   generationStatusSummary,
   onRegenerateAllPrompts,
   onRegenerateFailedPrompts,
   onGenerateAllFrames,
-  onRegenerateFailedFrames,
+  onRegenerateRemainingFrames,
   onApproveAll,
   onGenerate,
 }: BatchSummaryCardProps) {
@@ -48,7 +48,7 @@ export function BatchSummaryCard({
         <div>
           <h3 className="text-lg font-semibold text-(--color-text-primary)">画面工作区</h3>
           <p className="text-sm text-(--color-text-muted) mt-1">
-            每个 Shot 根据镜头依赖维护一组关键参考帧，支持逐帧编辑 Prompt、出图，并按镜头完成审核。
+            每个 Segment 维护起始帧，以及可选的结束帧两张关键画面，支持逐帧编辑 Prompt、出图，并按 Segment 完成审核。
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-3">
@@ -85,11 +85,11 @@ export function BatchSummaryCard({
           {batchSummary && (
             <button
               type="button"
-              onClick={onRegenerateFailedFrames}
-              disabled={actionBusy || !hasFailedImageFrames}
+              onClick={onRegenerateRemainingFrames}
+              disabled={actionBusy || !hasRemainingImageFrames}
               className={getButtonClassName({ variant: "warning" })}
             >
-              重新生成失败的帧
+              重新生成余下的帧
             </button>
           )}
           {batchSummary && (
@@ -116,13 +116,13 @@ export function BatchSummaryCard({
       {batchSummary ? (
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <p className={metaLabelClass}>Shot 数量</p>
-            <p className={metaValueClass}>{batchSummary.shotCount}</p>
+            <p className={metaLabelClass}>Segment 数量</p>
+            <p className={metaValueClass}>{batchSummary.segmentCount}</p>
           </div>
           <div>
-            <p className={metaLabelClass}>已通过镜头</p>
+            <p className={metaLabelClass}>已通过 Segment</p>
             <p className={metaValueClass}>
-              {batchSummary.approvedShotCount}/{batchSummary.shotCount}
+              {batchSummary.approvedSegmentCount}/{batchSummary.segmentCount}
             </p>
           </div>
           <div>
@@ -143,7 +143,7 @@ export function BatchSummaryCard({
         </div>
       ) : (
         <p className="text-sm text-(--color-text-muted)">
-          镜头脚本通过后，可以在这里为每个 Shot 生成关键参考帧。
+          镜头脚本通过后，可以在这里为每个 Segment 生成起始帧和可选结束帧。
         </p>
       )}
     </div>

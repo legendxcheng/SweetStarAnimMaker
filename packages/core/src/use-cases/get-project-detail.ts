@@ -17,7 +17,12 @@ import {
   toCompatibleCurrentImageBatch,
   toCompatibleCurrentVideoBatchSummary,
 } from "./project-batch-summary-compat";
+import { deriveProjectVideoStatusFromSegments, normalizeStaleGeneratingVideoSegment } from "./derive-project-video-status";
 import { toProjectDetailDto } from "./project-detail-dto";
+import {
+  deriveProjectImageStatusFromFrameCollection,
+  deriveProjectImageStatusFromShots,
+} from "./shot-reference-frame-helpers";
 
 export interface GetProjectDetailInput {
   projectId: string;
@@ -72,6 +77,7 @@ export function createGetProjectDetailUseCase(
       let currentSceneSheetBatch = null;
       let currentImageBatch = null;
       let currentVideoBatch = null;
+      let effectiveStatus = project.status;
 
       if (project.currentCharacterSheetBatchId) {
         const batch = await dependencies.characterSheetRepository.findBatchById(
@@ -103,12 +109,20 @@ export function createGetProjectDetailUseCase(
         );
 
         if (batch) {
-          const shots = dependencies.shotImageRepository.listShotsByBatchId
-            ? await dependencies.shotImageRepository.listShotsByBatchId(batch.id)
+          const segments = dependencies.shotImageRepository.listSegmentsByBatchId
+            ? await dependencies.shotImageRepository.listSegmentsByBatchId(batch.id)
+            : dependencies.shotImageRepository.listShotsByBatchId
+              ? await dependencies.shotImageRepository.listShotsByBatchId(batch.id)
             : null;
           const records =
-            shots ?? (await dependencies.shotImageRepository.listFramesByBatchId(batch.id));
+            segments ?? (await dependencies.shotImageRepository.listFramesByBatchId(batch.id));
           currentImageBatch = toCompatibleCurrentImageBatch(batch, records);
+
+          if (project.status.startsWith("images_")) {
+            effectiveStatus = segments
+              ? deriveProjectImageStatusFromShots(segments)
+              : deriveProjectImageStatusFromFrameCollection(records);
+          }
         }
       }
 
@@ -117,12 +131,17 @@ export function createGetProjectDetailUseCase(
 
         if (batch) {
           const segments = await dependencies.videoRepository.listSegmentsByBatchId(batch.id);
-          currentVideoBatch = toCompatibleCurrentVideoBatchSummary(batch, segments);
+          const visibleSegments = segments.map(normalizeStaleGeneratingVideoSegment);
+          currentVideoBatch = toCompatibleCurrentVideoBatchSummary(batch, visibleSegments);
+
+          if (project.status.startsWith("videos_") && visibleSegments.length > 0) {
+            effectiveStatus = deriveProjectVideoStatusFromSegments(visibleSegments);
+          }
         }
       }
 
       return toProjectDetailDto(
-        project,
+        { ...project, status: effectiveStatus },
         currentMasterPlot,
         currentCharacterSheetBatch,
         currentSceneSheetBatch,

@@ -64,6 +64,19 @@ const characterSheetsApprovedProject = {
   },
 };
 
+const sceneSheetsApprovedProject = {
+  ...characterSheetsApprovedProject,
+  status: "scene_sheets_approved" as const,
+  currentSceneSheetBatch: {
+    id: "scene-batch-1",
+    sourceMasterPlotId: "mp-1",
+    sourceCharacterSheetBatchId: "char-batch-1",
+    sceneCount: 2,
+    approvedSceneCount: 2,
+    updatedAt: "2024-01-01T00:00:04Z",
+  },
+};
+
 const rinCharacter = {
   id: "char-rin",
   projectId: "proj-1",
@@ -102,7 +115,7 @@ const runningTask = {
 };
 
 const storyboardInReviewProject = {
-  ...characterSheetsApprovedProject,
+  ...sceneSheetsApprovedProject,
   status: "storyboard_in_review" as const,
   currentStoryboard: {
     id: "storyboard-1",
@@ -224,11 +237,15 @@ describe("Spec5 Studio Flow", () => {
       currentBatch: characterSheetsApprovedProject.currentCharacterSheetBatch,
       characters: [rinCharacter],
     });
+    vi.spyOn(apiModule.apiClient, "listSceneSheets").mockResolvedValue({
+      currentBatch: sceneSheetsApprovedProject.currentSceneSheetBatch,
+      scenes: [],
+    });
     vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(rinCharacter);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(characterSheetsApprovedProject)
+      .mockResolvedValueOnce(sceneSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
-      .mockResolvedValueOnce(characterSheetsApprovedProject);
+      .mockResolvedValueOnce(sceneSheetsApprovedProject);
     vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
     vi.spyOn(apiModule.apiClient, "getTaskDetail").mockResolvedValue({
       ...runningTask,
@@ -288,7 +305,7 @@ describe("Spec5 Studio Flow", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
@@ -347,9 +364,13 @@ describe("Spec5 Studio Flow", () => {
       currentBatch: characterSheetsApprovedProject.currentCharacterSheetBatch,
       characters: [rinCharacter],
     });
+    vi.spyOn(apiModule.apiClient, "listSceneSheets").mockResolvedValue({
+      currentBatch: sceneSheetsApprovedProject.currentSceneSheetBatch,
+      scenes: [],
+    });
     vi.spyOn(apiModule.apiClient, "getCharacterSheet").mockResolvedValue(rinCharacter);
     vi.spyOn(apiModule.apiClient, "getProjectDetail")
-      .mockResolvedValueOnce(characterSheetsApprovedProject)
+      .mockResolvedValueOnce(sceneSheetsApprovedProject)
       .mockResolvedValueOnce(storyboardInReviewProject)
       .mockResolvedValueOnce(storyboardApprovedProject);
     vi.spyOn(apiModule.apiClient, "regenerateStoryboard").mockResolvedValue(runningTask);
@@ -388,7 +409,7 @@ describe("Spec5 Studio Flow", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "分镜" }));
-    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成分镜" }));
 
     await waitFor(() => {
       expect(apiModule.apiClient.regenerateStoryboard).toHaveBeenCalledWith("proj-1");
