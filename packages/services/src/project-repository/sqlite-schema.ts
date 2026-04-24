@@ -27,6 +27,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
       current_shot_script_id TEXT NULL,
       current_image_batch_id TEXT NULL,
       current_video_batch_id TEXT NULL,
+      video_reference_strategy TEXT NOT NULL DEFAULT 'auto',
       visual_style_text TEXT NOT NULL DEFAULT ''
     )
   `);
@@ -41,6 +42,7 @@ export function initializeSqliteSchema(db: SqliteDatabase) {
   ensureProjectsColumn(db, "current_shot_script_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_image_batch_id", "TEXT NULL");
   ensureProjectsColumn(db, "current_video_batch_id", "TEXT NULL");
+  ensureProjectsColumn(db, "video_reference_strategy", "TEXT NOT NULL DEFAULT 'auto'");
   ensureProjectsColumn(db, "visual_style_text", "TEXT NOT NULL DEFAULT ''");
 
   initializeSqliteStoryboardSchema(db);

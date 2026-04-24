@@ -35,6 +35,7 @@ export type {
 export type {
   ProjectRepository,
   ResetProjectToPremiseInput,
+  UpdateProjectSettingsInput,
   UpdateCurrentCharacterSheetBatchInput,
   UpdateCurrentImageBatchInput,
   UpdateCurrentMasterPlotInput,

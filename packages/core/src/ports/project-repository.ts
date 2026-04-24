@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@sweet-star/shared";
+import type { ProjectStatus, VideoReferenceStrategy } from "@sweet-star/shared";
 
 import type { ProjectRecord } from "../domain/project";
 
@@ -58,6 +58,12 @@ export interface ResetProjectToPremiseInput {
   premiseUpdatedAt: string;
 }
 
+export interface UpdateProjectSettingsInput {
+  projectId: string;
+  updatedAt: string;
+  videoReferenceStrategy?: VideoReferenceStrategy;
+}
+
 export interface ProjectRepository {
   insert(project: ProjectRecord): Promise<void> | void;
   findById(projectId: string): Promise<ProjectRecord | null> | ProjectRecord | null;
@@ -87,5 +93,6 @@ export interface ProjectRepository {
     input: UpdateCurrentVideoBatchInput,
   ): Promise<void> | void;
   updateStatus(input: UpdateProjectStatusInput): Promise<void> | void;
+  updateSettings?(input: UpdateProjectSettingsInput): Promise<void> | void;
   resetToPremise?(input: ResetProjectToPremiseInput): Promise<void> | void;
 }

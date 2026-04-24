@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { ProjectDetail, TaskDetail } from "@sweet-star/shared";
+import type { ProjectDetail, TaskDetail, VideoReferenceStrategy } from "@sweet-star/shared";
 import { AsyncState } from "../components/async-state";
 import { CharacterSheetsPhasePanel } from "../components/character-sheets-phase-panel";
 import { ErrorState } from "../components/error-state";
@@ -242,6 +242,7 @@ export function ProjectDetailPage() {
   const [resettingPremise, setResettingPremise] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState<ProjectPhaseKey>("premise");
   const [hasAutoSelectedPhase, setHasAutoSelectedPhase] = useState(false);
+  const [updatingProjectSettings, setUpdatingProjectSettings] = useState(false);
 
   const loadProject = async (options?: { showLoading?: boolean }) => {
     if (!projectId) return;
@@ -439,6 +440,35 @@ export function ProjectDetailPage() {
     }
   };
 
+  const handleVideoReferenceStrategyChange = async (
+    videoReferenceStrategy: VideoReferenceStrategy,
+  ) => {
+    if (!projectId || updatingProjectSettings || !project) {
+      return;
+    }
+
+    const previousProject = project;
+    const optimisticProject = {
+      ...previousProject,
+      videoReferenceStrategy,
+    };
+    setProject(optimisticProject);
+    setUpdatingProjectSettings(true);
+
+    try {
+      const nextProject = await apiClient.updateProject(projectId, {
+        videoReferenceStrategy,
+      });
+      setProject(nextProject);
+      setError(null);
+    } catch (err) {
+      setProject(previousProject);
+      setError(err as Error);
+    } finally {
+      setUpdatingProjectSettings(false);
+    }
+  };
+
   const phaseItems = PROJECT_PHASES.map((phase) => ({
     ...phase,
     enabled:
@@ -483,6 +513,43 @@ export function ProjectDetailPage() {
               />
 
               <div>
+                <section className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-5 mb-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-(--color-text-primary)">
+                        项目基础设置
+                      </h3>
+                      <p className="text-sm text-(--color-text-muted) mt-1">
+                        该设置只影响之后新发起的视频生成任务，已创建的视频批次不会被改写。
+                      </p>
+                    </div>
+                    <div className="min-w-[240px]">
+                      <label
+                        htmlFor="video-reference-strategy"
+                        className="block text-sm font-medium text-(--color-text-primary) mb-2"
+                      >
+                        视频参考策略
+                      </label>
+                      <select
+                        id="video-reference-strategy"
+                        aria-label="视频参考策略"
+                        className="w-full rounded-lg border border-(--color-border) bg-(--color-bg-base) px-3 py-2 text-sm text-(--color-text-primary)"
+                        value={currentProject.videoReferenceStrategy}
+                        onChange={(event) => {
+                          void handleVideoReferenceStrategyChange(
+                            event.target.value as VideoReferenceStrategy,
+                          );
+                        }}
+                        disabled={updatingProjectSettings}
+                      >
+                        <option value="auto">自动</option>
+                        <option value="with_frame_refs">带帧参考图</option>
+                        <option value="without_frame_refs">不带帧参考图</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
                 {selectedPhase === "premise" ? (
                   <PremisePhasePanel
                     project={currentProject}

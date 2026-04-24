@@ -3,8 +3,10 @@ import {
   projectDetailResponseSchema,
   projectListResponseSchema,
   resetProjectPremiseRequestSchema,
+  updateProjectRequestSchema,
   type ProjectDetail,
   type ProjectSummary,
+  type UpdateProjectRequest,
 } from "@sweet-star/shared";
 
 import { http, jsonBody } from "./shared";
@@ -20,6 +22,11 @@ export const projectsApi = {
 
   getProjectDetail: (projectId: string) =>
     http.get<ProjectDetail>(`/projects/${projectId}`, projectDetailResponseSchema),
+
+  updateProject: (projectId: string, data: UpdateProjectRequest) =>
+    http.put<ProjectDetail>(`/projects/${projectId}`, projectDetailResponseSchema, {
+      body: jsonBody(updateProjectRequestSchema, data),
+    }),
 
   resetProjectPremise: (
     projectId: string,

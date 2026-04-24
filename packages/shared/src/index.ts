@@ -20,6 +20,7 @@ export { taskTypes, type TaskType } from "./constants/task-type";
 export {
   createProjectRequestSchema,
   resetProjectPremiseRequestSchema,
+  updateProjectRequestSchema,
   projectDetailResponseSchema,
   projectListResponseSchema,
   projectSummaryResponseSchema,
@@ -116,6 +117,8 @@ export {
 } from "./schemas/task-api";
 export type { ProjectDetail, ProjectPremiseMetadata } from "./types/project-detail";
 export type { ProjectSummary } from "./types/project-summary";
+export type { UpdateProjectRequest, VideoReferenceStrategy } from "./types/project";
+export { videoReferenceStrategies } from "./types/project";
 export type {
   ApproveCharacterSheetRequest,
   CharacterReferenceImage,

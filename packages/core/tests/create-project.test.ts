@@ -58,6 +58,7 @@ describe("create project use case", () => {
         storageDir: "projects/proj_20260317_ab12cd-my-story",
         premiseBytes: 88,
         visualStyleText: "赛璐璐动画，冷色霓虹雨夜，电影感光影",
+        videoReferenceStrategy: "auto",
       }),
     );
     expect(masterPlotStorage.initializePromptTemplate).toHaveBeenCalledWith({
@@ -69,6 +70,7 @@ describe("create project use case", () => {
       name: "My Story",
       slug: "my-story",
       status: "premise_ready",
+      videoReferenceStrategy: "auto",
       storageDir: "projects/proj_20260317_ab12cd-my-story",
       createdAt: "2026-03-17T00:00:00.000Z",
       updatedAt: "2026-03-17T00:00:00.000Z",

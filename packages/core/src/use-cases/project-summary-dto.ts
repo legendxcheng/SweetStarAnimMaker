@@ -26,6 +26,7 @@ export function toProjectSummaryDto(
     name: project.name,
     slug: project.slug,
     status: project.status,
+    videoReferenceStrategy: project.videoReferenceStrategy,
     storageDir: project.storageDir,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,

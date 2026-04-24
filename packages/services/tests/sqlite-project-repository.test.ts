@@ -45,6 +45,7 @@ describe("sqlite project repository", () => {
     expect(columns.map((column) => column.name)).toContain("current_image_batch_id");
     expect(columns.map((column) => column.name)).toContain("current_video_batch_id");
     expect(columns.map((column) => column.name)).toContain("visual_style_text");
+    expect(columns.map((column) => column.name)).toContain("video_reference_strategy");
   });
 
   it("inserts and finds a project by id", async () => {
@@ -62,7 +63,10 @@ describe("sqlite project repository", () => {
 
     repository.insert(project);
 
-    expect(repository.findById("proj_20260321_ab12cd")).toEqual(project);
+    expect(repository.findById("proj_20260321_ab12cd")).toEqual({
+      ...project,
+      videoReferenceStrategy: "auto",
+    });
   });
 
   it("updates premise metadata fields", async () => {

@@ -567,6 +567,12 @@ export {
   type UpdateProjectScriptUseCaseDependencies,
 } from "../use-cases/update-project-script";
 export {
+  createUpdateProjectUseCase,
+  type UpdateProjectInput,
+  type UpdateProjectUseCase,
+  type UpdateProjectUseCaseDependencies,
+} from "../use-cases/update-project";
+export {
   createResetProjectPremiseUseCase,
   type ResetProjectPremiseInput,
   type ResetProjectPremiseUseCase,

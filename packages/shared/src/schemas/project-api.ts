@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { initialProjectStatus, projectStatuses } from "../constants/project-status";
+import { videoReferenceStrategies } from "../types/project";
 import {
   currentCharacterSheetBatchSummaryResponseSchema,
 } from "./character-sheet-api";
@@ -15,6 +16,7 @@ import { currentVideoBatchSummaryResponseSchema } from "./video-api";
 
 const requiredTextSchema = z.string().trim().min(1);
 const optionalTextSchema = z.string().trim().default("");
+const videoReferenceStrategySchema = z.enum(videoReferenceStrategies);
 const premiseMetadataSchema = z.object({
   path: z.string(),
   bytes: z.number().int().nonnegative(),
@@ -35,11 +37,16 @@ export const resetProjectPremiseRequestSchema = z.object({
   confirmReset: z.literal(true),
 });
 
+export const updateProjectRequestSchema = z.object({
+  videoReferenceStrategy: videoReferenceStrategySchema.optional(),
+});
+
 export const projectSummaryResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
   status: z.enum(projectStatuses).default(initialProjectStatus),
+  videoReferenceStrategy: videoReferenceStrategySchema.default("auto"),
   storageDir: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -59,6 +66,7 @@ export const projectDetailResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),
   status: z.enum(projectStatuses).default(initialProjectStatus),
+  videoReferenceStrategy: videoReferenceStrategySchema.default("auto"),
   storageDir: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),

@@ -594,6 +594,8 @@ export function buildSpec2WorkerServices(
       projectRepository,
       taskFileStorage,
       shotImageRepository,
+      characterSheetRepository,
+      sceneSheetRepository,
       videoRepository,
       videoStorage,
       videoPromptProvider,

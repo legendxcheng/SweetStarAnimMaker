@@ -6,6 +6,7 @@ import type { CurrentImageBatch } from "./shot-image";
 import type { CurrentShotScriptSummary } from "./shot-script";
 import type { CurrentStoryboardSummary } from "./storyboard";
 import type { CurrentVideoBatchSummary } from "./video";
+import type { VideoReferenceStrategy } from "./project";
 
 export interface ProjectPremiseMetadata {
   path: string;
@@ -20,6 +21,7 @@ export interface ProjectDetail {
   name: string;
   slug: string;
   status: ProjectStatus;
+  videoReferenceStrategy: VideoReferenceStrategy;
   storageDir: string;
   createdAt: string;
   updatedAt: string;

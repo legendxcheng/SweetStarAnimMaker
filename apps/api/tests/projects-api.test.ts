@@ -94,6 +94,7 @@ describe("projects api", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         id: projectId,
+        videoReferenceStrategy: "auto",
         currentMasterPlot: null,
         premise: expect.objectContaining({
           path: "premise/v1.md",
@@ -101,6 +102,49 @@ describe("projects api", () => {
           text: premiseText,
           visualStyleText,
         }),
+      }),
+    );
+  });
+
+  it("updates the project video reference strategy and persists it", async () => {
+    const { app } = await createTempApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/projects",
+      payload: {
+        name: "My Story",
+        premiseText,
+        visualStyleText,
+      },
+    });
+    const projectId = created.json().id as string;
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/projects/${projectId}`,
+      payload: {
+        videoReferenceStrategy: "without_frame_refs",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        id: projectId,
+        videoReferenceStrategy: "without_frame_refs",
+      }),
+    );
+
+    const refreshed = await app.inject({
+      method: "GET",
+      url: `/projects/${projectId}`,
+    });
+
+    expect(refreshed.statusCode).toBe(200);
+    expect(refreshed.json()).toEqual(
+      expect.objectContaining({
+        id: projectId,
+        videoReferenceStrategy: "without_frame_refs",
       }),
     );
   });

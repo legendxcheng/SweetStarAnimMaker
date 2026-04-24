@@ -1,4 +1,8 @@
-import { initialProjectStatus, type ProjectStatus } from "@sweet-star/shared";
+import {
+  initialProjectStatus,
+  type ProjectStatus,
+  type VideoReferenceStrategy,
+} from "@sweet-star/shared";
 
 import { premiseRelPath } from "./project-premise";
 
@@ -16,6 +20,7 @@ export interface ProjectRecord {
   currentShotScriptId: string | null;
   currentImageBatchId: string | null;
   currentVideoBatchId: string | null;
+  videoReferenceStrategy: VideoReferenceStrategy;
   visualStyleText: string;
   status: ProjectStatus;
   createdAt: string;
@@ -39,6 +44,7 @@ export interface CreateProjectRecordInput {
   currentShotScriptId?: string | null;
   currentImageBatchId?: string | null;
   currentVideoBatchId?: string | null;
+  videoReferenceStrategy?: VideoReferenceStrategy;
   status?: ProjectStatus;
 }
 
@@ -67,6 +73,7 @@ export function createProjectRecord(input: CreateProjectRecordInput): ProjectRec
     currentShotScriptId: input.currentShotScriptId ?? null,
     currentImageBatchId: input.currentImageBatchId ?? null,
     currentVideoBatchId: input.currentVideoBatchId ?? null,
+    videoReferenceStrategy: input.videoReferenceStrategy ?? "auto",
     visualStyleText: input.visualStyleText ?? "",
     status: input.status ?? initialProjectStatus,
     storageDir: toProjectStorageDir(input.id, input.slug),
