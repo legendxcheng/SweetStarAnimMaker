@@ -148,12 +148,6 @@ export function createProcessVideosGenerateTaskUseCase(
             strategy: taskInput.videoReferenceStrategy,
             segment,
             shotReferences: segmentShotReferences,
-            sceneSheet:
-              sceneSheets.find(
-                (sceneSheet) =>
-                  sceneSheet.id === segment.sceneId && sceneSheet.status === "approved",
-              ) ?? null,
-            characterSheets,
           });
           const videoRecord = createSegmentVideoRecord({
             id: `video_${batch.id}_${segment.sceneId}_${segment.segmentId}`,

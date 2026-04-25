@@ -15,7 +15,7 @@ export interface CreateSeedanceVideoProviderOptions {
 
 export interface SubmitSeedanceVideoGenerationTaskInput {
   promptText?: string | null;
-  referenceImages?: string[] | null;
+  referenceImages?: Array<string | SeedanceReferenceImageInput> | null;
   referenceVideos?: string[] | null;
   referenceAudios?: string[] | null;
   draftTaskId?: string | null;
@@ -28,6 +28,12 @@ export interface SubmitSeedanceVideoGenerationTaskInput {
   serviceTier?: string | null;
   executionExpiresAfterSec?: number | null;
   safetyIdentifier?: string | null;
+}
+
+export interface SeedanceReferenceImageInput {
+  assetPath: string;
+  role?: "reference_image" | "first_frame" | "last_frame" | null;
+  label?: string | null;
 }
 
 export interface SubmitSeedanceVideoGenerationTaskResult {

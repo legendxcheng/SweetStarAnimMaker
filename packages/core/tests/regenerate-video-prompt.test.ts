@@ -10,6 +10,9 @@ describe("regenerate video prompt use case", () => {
         id: "proj_1",
         storageDir: "projects/proj_1-my-story",
         currentVideoBatchId: "video_batch_1",
+        currentCharacterSheetBatchId: "char_batch_1",
+        currentSceneSheetBatchId: "scene_batch_1",
+        videoReferenceStrategy: "with_frame_refs",
       }),
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
@@ -141,10 +144,58 @@ describe("regenerate video prompt use case", () => {
         findBatchById: vi.fn(),
         findCurrentBatchByProjectId: vi.fn(),
         listFramesByBatchId: vi.fn(),
-        listShotsByBatchId: vi.fn().mockRejectedValue(new Error("should not read shot references")),
+        listShotsByBatchId: vi.fn().mockResolvedValue([
+          {
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            shotId: "shot_1",
+            shotCode: "S01-SG01",
+            startFrame: {
+              imageAssetPath:
+                "images/batches/image_batch_1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+            },
+            endFrame: null,
+          },
+        ]),
         insertFrame: vi.fn(),
+        insertShot: vi.fn(),
         findFrameById: vi.fn(),
+        findShotById: vi.fn(),
         updateFrame: vi.fn(),
+        updateShot: vi.fn(),
+      },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "character_1",
+            characterName: "Rin",
+            imageAssetPath: "character-sheets/batches/char_batch_1/characters/character_1/current.png",
+            status: "approved",
+          },
+        ]),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "scene_sheet_market",
+            sceneName: "Flooded Market",
+            scenePurpose: "Arrival",
+            promptTextCurrent: "Flooded Market with rain and neon reflections.",
+            constraintsText: "Keep rain and neon reflections.",
+            imageAssetPath: "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_market/current.png",
+            status: "approved",
+          },
+        ]),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
       },
       videoRepository,
       videoStorage: {
@@ -168,6 +219,8 @@ describe("regenerate video prompt use case", () => {
           rationale: "把对白、环境声和连续性要求并入 Omni 提示词。",
           provider: "gemini",
           model: "gemini-3.1-pro-preview",
+          selectedCharacterIds: ["character_1"],
+          selectedSceneId: "scene_sheet_market",
         }),
       },
       clock: { now: () => "2026-03-25T00:20:00.000Z" },
@@ -193,7 +246,11 @@ describe("regenerate video prompt use case", () => {
       status: "videos_in_review",
       updatedAt: "2026-03-25T00:20:00.000Z",
     });
-    expect(result.referenceImages[0]?.assetPath).toContain("ref_image_1.png");
+    expect(result.referenceImages.map((reference) => reference.assetPath)).toEqual([
+      "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_market/current.png",
+      "character-sheets/batches/char_batch_1/characters/character_1/current.png",
+      "images/batches/image_batch_1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+    ]);
     expect(result.status).toBe("in_review");
     expect(result.approvedAt).toBeNull();
     expect(result.promptTextCurrent).toContain("有人先到了");
@@ -330,8 +387,27 @@ describe("regenerate video prompt use case", () => {
         listFramesByBatchId: vi.fn(),
         listShotsByBatchId: vi.fn(),
         insertFrame: vi.fn(),
+        insertShot: vi.fn(),
         findFrameById: vi.fn(),
+        findShotById: vi.fn(),
         updateFrame: vi.fn(),
+        updateShot: vi.fn(),
+      },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn(),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn(),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
       },
       videoRepository,
       videoStorage: {

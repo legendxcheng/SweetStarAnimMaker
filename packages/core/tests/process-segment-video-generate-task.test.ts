@@ -228,6 +228,10 @@ describe("process segment video generate task use case", () => {
         referenceAudios: [],
       }),
     });
+    expect(taskFileStorage.appendTaskLog).toHaveBeenCalledWith({
+      task: expect.objectContaining({ id: "task_segment_video_1" }),
+      message: "video provider returned provider=vector-engine model=kling-v3 durationSec=3 videoUrl=yes thumbnailUrl=yes rawResponseLength=22",
+    });
     expect(videoStorage.writeCurrentVideo).toHaveBeenCalledWith({
       segment: expect.objectContaining({
         id: "video_shot_record_1",

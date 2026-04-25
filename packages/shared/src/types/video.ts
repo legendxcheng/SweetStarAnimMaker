@@ -17,6 +17,7 @@ export interface SegmentVideoReferenceImage {
   order: number;
   sourceShotId?: string | null;
   label?: string | null;
+  frameRole?: "first_frame" | "last_frame" | null;
 }
 
 export interface SegmentVideoReferenceAudio {

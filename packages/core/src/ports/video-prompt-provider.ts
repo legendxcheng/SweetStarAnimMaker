@@ -50,12 +50,30 @@ export interface GenerateVideoPromptReferenceAudioContext {
   durationSec?: number | null;
 }
 
+export interface GenerateVideoPromptCharacterCandidateContext {
+  id: string;
+  characterName: string;
+  promptTextCurrent: string;
+  imageAssetPath: string;
+}
+
+export interface GenerateVideoPromptSceneCandidateContext {
+  id: string;
+  sceneName: string;
+  scenePurpose: string;
+  promptTextCurrent: string;
+  constraintsText: string | null;
+  imageAssetPath: string;
+}
+
 export interface GenerateVideoPromptInput {
   projectId: string;
   segment: GenerateVideoPromptSegmentContext;
   shots?: GenerateVideoPromptShotContext[];
   referenceImages?: GenerateVideoPromptReferenceImageContext[];
   referenceAudios?: GenerateVideoPromptReferenceAudioContext[];
+  characterCandidates?: GenerateVideoPromptCharacterCandidateContext[];
+  sceneCandidates?: GenerateVideoPromptSceneCandidateContext[];
   currentShot?: GenerateVideoPromptShotContext;
   durationSec?: number | null;
   startFrame?: GenerateVideoPromptFrameContext;
@@ -71,6 +89,8 @@ export interface GenerateVideoPromptResult {
   rawResponse: string;
   provider: string;
   model: string;
+  selectedCharacterIds?: string[];
+  selectedSceneId?: string | null;
 }
 
 export interface VideoPromptProvider {

@@ -2,6 +2,7 @@ export interface GenerateSegmentVideoReferenceImageInput {
   assetPath: string;
   label?: string | null;
   order: number;
+  frameRole?: "first_frame" | "last_frame" | null;
 }
 
 export interface GenerateSegmentVideoReferenceAudioInput {

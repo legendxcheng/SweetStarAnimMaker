@@ -22,7 +22,7 @@ describe("createConfiguredVideoProvider", () => {
     vi.clearAllMocks();
   });
 
-  it("builds the seedance provider and logs unset optional config by default", () => {
+  it("builds the seedance provider with the default landscape ratio", () => {
     const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const referenceImageUploader = {
       uploadReferenceImage: vi.fn(),
@@ -40,7 +40,7 @@ describe("createConfiguredVideoProvider", () => {
       apiToken: undefined,
       modelName: undefined,
       durationSeconds: undefined,
-      ratio: undefined,
+      ratio: "16:9",
     });
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       "[video-provider-config] selected",
@@ -48,7 +48,7 @@ describe("createConfiguredVideoProvider", () => {
         providerName: "seedance",
         modelName: undefined,
         durationSeconds: undefined,
-        ratio: undefined,
+        ratio: "16:9",
         baseUrlConfigured: true,
         apiKeyConfigured: false,
       }),

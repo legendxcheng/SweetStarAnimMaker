@@ -13,6 +13,7 @@ const baseProject = {
   name: "Test Project",
   slug: "test-project",
   status: "videos_in_review" as const,
+  videoReferenceStrategy: "auto" as const,
   storageDir: "/path/to/project",
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-01-01T00:00:00Z",
@@ -32,8 +33,10 @@ const baseProject = {
     id: "image-batch-1",
     sourceShotScriptId: "shot-script-1",
     shotCount: 2,
+    segmentCount: 1,
     totalRequiredFrameCount: 4,
     approvedShotCount: 2,
+    approvedSegmentCount: 1,
     updatedAt: "2024-01-01T00:00:09Z",
   },
   currentVideoBatch: {
@@ -109,6 +112,17 @@ function renderPanel(overrides?: Partial<ComponentProps<typeof VideoPhasePanel>>
       {...overrides}
     />,
   );
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
 }
 
 describe("video phase panel segment workspace", () => {
@@ -193,6 +207,36 @@ describe("video phase panel segment workspace", () => {
         "proj-1",
         "video-segment-1",
       );
+    });
+  });
+
+  it("clears segment prompt drafts immediately while regenerating all prompts", async () => {
+    const regenerateAllPrompts = createDeferred<Awaited<ReturnType<typeof apiModule.apiClient.regenerateAllVideoPrompts>>>();
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: baseProject.currentVideoBatch,
+      segments: [segment],
+    });
+    vi.spyOn(apiModule.apiClient, "regenerateAllVideoPrompts").mockReturnValue(
+      regenerateAllPrompts.promise,
+    );
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("current prompt")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "重新生成所有片段提示词" }));
+
+    expect(screen.getByRole("textbox")).toHaveValue("");
+
+    regenerateAllPrompts.resolve({
+      currentBatch: baseProject.currentVideoBatch,
+      segments: [{ ...segment, promptTextCurrent: "regenerated prompt" }],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("regenerated prompt")).toBeInTheDocument();
     });
   });
 });

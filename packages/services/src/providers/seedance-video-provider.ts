@@ -10,6 +10,7 @@ import type {
   CreateSeedanceVideoProviderOptions,
   GetSeedanceVideoGenerationTaskInput,
   GetSeedanceVideoGenerationTaskResult,
+  SeedanceReferenceImageInput,
   SeedanceVideoProvider,
   SubmitSeedanceVideoGenerationTaskInput,
   SubmitSeedanceVideoGenerationTaskResult,
@@ -198,11 +199,20 @@ export function createSeedanceStageVideoProvider(
     async generateSegmentVideo(input) {
       const referenceImages =
         input.referenceImages && input.referenceImages.length > 0
-          ? input.referenceImages
-              .sort((left, right) => left.order - right.order)
-              .map((reference) => reference.assetPath)
+          ? normalizeSeedanceReferenceImages(
+              input.referenceImages.sort((left, right) => left.order - right.order).map((reference) => ({
+                assetPath: reference.assetPath,
+                role: "reference_image" as const,
+                label: reference.label,
+              })),
+            )
           : input.startFramePath
-            ? [input.startFramePath]
+            ? [
+                {
+                  assetPath: input.startFramePath,
+                  role: "first_frame" as const,
+                },
+              ]
             : [];
       const referenceAudios = (input.referenceAudios ?? [])
         .sort((left, right) => left.order - right.order)
@@ -220,10 +230,29 @@ export function createSeedanceStageVideoProvider(
         referenceImages,
         submitInputBase,
       });
+      console.info("[video-generate] seedance submitted", {
+        taskId: submitted.taskId,
+        status: submitted.status,
+        model: submitted.modelName,
+        referenceImageCount: referenceImages.length,
+        referenceAudioCount: referenceAudios.length,
+        rawResponseLength: submitted.rawResponse.length,
+      });
       const completed = await provider.waitForVideoGenerationTask({
         taskId: submitted.taskId,
         pollIntervalMs: options.pollIntervalMs,
         timeoutMs: options.pollTimeoutMs,
+      });
+      console.info("[video-generate] seedance completed", {
+        taskId: completed.taskId,
+        status: completed.status,
+        completed: completed.completed,
+        failed: completed.failed,
+        hasVideoUrl: Boolean(completed.videoUrl),
+        hasLastFrameUrl: Boolean(completed.lastFrameUrl),
+        durationSec: completed.durationSec,
+        generateAudio: completed.generateAudio,
+        rawResponseLength: completed.rawResponse.length,
       });
 
       if (completed.failed) {
@@ -257,7 +286,7 @@ export function createSeedanceStageVideoProvider(
 
 async function submitSeedanceStageTaskWithImagePrivacyFallback(input: {
   provider: SeedanceVideoProvider;
-  referenceImages: string[];
+  referenceImages: SeedanceReferenceImageInput[];
   submitInputBase: Omit<SubmitSeedanceVideoGenerationTaskInput, "referenceImages">;
 }) {
   try {
@@ -295,7 +324,11 @@ async function buildContent(
   fetchFn: typeof fetch,
 ) {
   const content: Array<Record<string, unknown>> = [];
-  const promptText = input.promptText?.trim();
+  const referenceImages = normalizeSeedanceReferenceImages(input.referenceImages);
+  const promptText = buildPromptTextWithReferenceImageAliases(
+    input.promptText,
+    referenceImages,
+  );
 
   if (promptText) {
     content.push({
@@ -304,7 +337,6 @@ async function buildContent(
     });
   }
 
-  const referenceImages = normalizeStringArray(input.referenceImages);
   const referenceVideos = normalizeStringArray(input.referenceVideos);
   const referenceAudios = normalizeStringArray(input.referenceAudios);
   const draftTaskId = input.draftTaskId?.trim();
@@ -318,9 +350,9 @@ async function buildContent(
   for (const referenceImage of referenceImages) {
     content.push({
       type: "image_url",
-      role: "reference_image",
+      role: referenceImage.role,
       image_url: {
-        url: await resolveSeedanceAsset(referenceImage, "image", fetchFn),
+        url: await resolveSeedanceAsset(referenceImage.assetPath, "image", fetchFn),
       },
     });
   }
@@ -443,6 +475,59 @@ function normalizeStringArray(value: string[] | null | undefined) {
   return value
     .map((item) => (typeof item === "string" ? item.trim() : ""))
     .filter((item) => item.length > 0);
+}
+
+function normalizeSeedanceReferenceImages(
+  value: Array<string | SeedanceReferenceImageInput> | null | undefined,
+) {
+  return (Array.isArray(value) ? value : [])
+    .map((item) => {
+      if (typeof item === "string") {
+        return {
+          assetPath: item.trim(),
+          role: "reference_image" as const,
+          label: null,
+        };
+      }
+
+      return {
+        assetPath: item.assetPath.trim(),
+        role: item.role ?? "reference_image",
+        label: item.label?.trim() || null,
+      };
+    })
+    .filter((item) => item.assetPath.length > 0);
+}
+
+function buildPromptTextWithReferenceImageAliases(
+  promptText: string | null | undefined,
+  referenceImages: Array<{
+    assetPath: string;
+    label?: string | null;
+  }>,
+) {
+  const normalizedPromptText = promptText?.trim() ?? "";
+  const aliasLines = referenceImages.map((referenceImage, index) => {
+    const alias = `图片${index + 1}`;
+    const label = referenceImage.label?.trim() || inferReferenceImageAlias(referenceImage.assetPath);
+
+    return `${alias} = ${label}`;
+  });
+
+  if (aliasLines.length === 0) {
+    return normalizedPromptText;
+  }
+
+  const aliasText = `参考图别名说明：\n${aliasLines.join("\n")}`;
+
+  return normalizedPromptText ? `${normalizedPromptText}\n\n${aliasText}` : aliasText;
+}
+
+function inferReferenceImageAlias(assetPath: string) {
+  const normalizedAssetPath = assetPath.trim();
+  const fileName = normalizedAssetPath ? path.basename(normalizedAssetPath) : "参考图";
+
+  return fileName || "参考图";
 }
 
 function readApiToken(apiToken: string | undefined) {

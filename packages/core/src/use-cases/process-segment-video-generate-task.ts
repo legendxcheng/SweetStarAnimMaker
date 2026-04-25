@@ -88,6 +88,7 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
               }),
               label: reference.label,
               order: reference.order,
+              frameRole: reference.frameRole ?? null,
             })),
         );
         const referenceAudios = await Promise.all(
@@ -147,6 +148,27 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
           return;
         }
+
+        const providerResultSummary =
+          `video provider returned provider=${providerResult.provider}` +
+          ` model=${providerResult.model}` +
+          ` durationSec=${providerResult.durationSec ?? "unknown"}` +
+          ` videoUrl=${providerResult.videoUrl ? "yes" : "no"}` +
+          ` thumbnailUrl=${providerResult.thumbnailUrl ? "yes" : "no"}` +
+          ` rawResponseLength=${providerResult.rawResponse.length}`;
+        console.info("[video-generate] provider returned", {
+          taskId: task.id,
+          provider: providerResult.provider,
+          model: providerResult.model,
+          durationSec: providerResult.durationSec,
+          hasVideoUrl: Boolean(providerResult.videoUrl),
+          hasThumbnailUrl: Boolean(providerResult.thumbnailUrl),
+          rawResponseLength: providerResult.rawResponse.length,
+        });
+        await dependencies.taskFileStorage.appendTaskLog({
+          task,
+          message: providerResultSummary,
+        });
 
         await dependencies.videoStorage.writeRawResponse({
           taskStorageDir: task.storageDir,

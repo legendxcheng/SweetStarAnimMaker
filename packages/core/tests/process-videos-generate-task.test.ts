@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createProcessVideosGenerateTaskUseCase } from "../src/index";
 
 describe("process videos generate task use case", () => {
-  it("uses frame references when the task strategy is with_frame_refs", async () => {
+  it("preloads only frame references before the LLM selects scene and characters", async () => {
     const harness = createHarness({
       taskInputOverrides: {
         videoReferenceStrategy: "with_frame_refs",
@@ -47,7 +47,7 @@ describe("process videos generate task use case", () => {
     });
   });
 
-  it("keeps auto aligned with frame references for now", async () => {
+  it("keeps auto aligned with frame-only preloading before LLM selection", async () => {
     const harness = createHarness({
       taskInputOverrides: {
         videoReferenceStrategy: "auto",
@@ -72,7 +72,7 @@ describe("process videos generate task use case", () => {
     );
   });
 
-  it("uses approved scene-sheet and character-sheet images when the task strategy is without_frame_refs", async () => {
+  it("preloads no images for without_frame_refs before LLM selection", async () => {
     const harness = createHarness({
       taskInputOverrides: {
         videoReferenceStrategy: "without_frame_refs",
@@ -83,45 +83,13 @@ describe("process videos generate task use case", () => {
 
     expect(harness.videoRepository.insertSegment).toHaveBeenCalledWith(
       expect.objectContaining({
-        referenceImages: [
-          expect.objectContaining({
-            id: "video_ref_image_segment_1_scene_scene_1",
-            assetPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_1/current.png",
-            sourceShotId: null,
-            order: 0,
-            label: "Scene scene_1",
-          }),
-          expect.objectContaining({
-            id: "video_ref_image_segment_1_character_character_1",
-            assetPath: "character-sheets/batches/char_batch_v1/characters/character_1/current.png",
-            sourceShotId: null,
-            order: 1,
-            label: "Character Rin",
-          }),
-          expect.objectContaining({
-            id: "video_ref_image_segment_1_character_character_2",
-            assetPath: "character-sheets/batches/char_batch_v1/characters/character_2/current.png",
-            sourceShotId: null,
-            order: 2,
-            label: "Character Contact",
-          }),
-        ],
+        referenceImages: [],
       }),
     );
     expect(harness.taskFileStorage.createTaskArtifacts).toHaveBeenCalledWith({
       task: expect.objectContaining({ id: "task_segment_video_1" }),
       input: expect.objectContaining({
-        referenceImages: [
-          expect.objectContaining({
-            id: "video_ref_image_segment_1_scene_scene_1",
-          }),
-          expect.objectContaining({
-            id: "video_ref_image_segment_1_character_character_1",
-          }),
-          expect.objectContaining({
-            id: "video_ref_image_segment_1_character_character_2",
-          }),
-        ],
+        referenceImages: [],
       }),
     });
   });
@@ -441,6 +409,34 @@ function createHarness(input?: {
         imagePromptRelPath: "character-sheets/batches/char_batch_v1/characters/character_2/image-prompt.txt",
         versionsStorageDir: "projects/proj_1-my-story/character-sheets/batches/char_batch_v1/characters/character_2/versions",
       },
+      {
+        id: "character_3",
+        projectId: "proj_1",
+        projectStorageDir: "projects/proj_1-my-story",
+        batchId: "char_batch_v1",
+        sourceMasterPlotId: "master_plot_v1",
+        characterName: "Absent Villain",
+        promptTextGenerated: "Generated absent villain prompt",
+        promptTextCurrent: "Current absent villain prompt",
+        referenceImages: [],
+        imageAssetPath: "character-sheets/batches/char_batch_v1/characters/character_3/current.png",
+        imageWidth: 1024,
+        imageHeight: 1024,
+        provider: "ark-character-sheet-image",
+        model: "seedream",
+        status: "approved",
+        updatedAt: "2026-03-25T00:08:00.000Z",
+        approvedAt: "2026-03-25T00:08:30.000Z",
+        sourceTaskId: "task_character_3",
+        storageDir: "projects/proj_1-my-story/character-sheets/batches/char_batch_v1/characters/character_3",
+        currentImageRelPath: "character-sheets/batches/char_batch_v1/characters/character_3/current.png",
+        currentMetadataRelPath: "character-sheets/batches/char_batch_v1/characters/character_3/current.json",
+        promptGeneratedRelPath: "character-sheets/batches/char_batch_v1/characters/character_3/prompt.generated.txt",
+        promptCurrentRelPath: "character-sheets/batches/char_batch_v1/characters/character_3/prompt.current.txt",
+        promptVariablesRelPath: "character-sheets/batches/char_batch_v1/characters/character_3/prompt.variables.json",
+        imagePromptRelPath: "character-sheets/batches/char_batch_v1/characters/character_3/image-prompt.txt",
+        versionsStorageDir: "projects/proj_1-my-story/character-sheets/batches/char_batch_v1/characters/character_3/versions",
+      },
     ]),
     insertCharacter: vi.fn(),
     findCharacterById: vi.fn(),
@@ -451,7 +447,7 @@ function createHarness(input?: {
     findBatchById: vi.fn(),
     listScenesByBatchId: vi.fn().mockResolvedValue([
       {
-        id: "scene_1",
+        id: "scene_sheet_market",
         projectId: "proj_1",
         projectStorageDir: "projects/proj_1-my-story",
         batchId: "scene_batch_v1",
@@ -462,7 +458,7 @@ function createHarness(input?: {
         promptTextGenerated: "Generated scene prompt",
         promptTextCurrent: "Current scene prompt",
         constraintsText: "Keep rain and neon reflections.",
-        imageAssetPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_1/current.png",
+        imageAssetPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_sheet_market/current.png",
         imageWidth: 1536,
         imageHeight: 864,
         provider: "turnaround-image",
@@ -472,7 +468,7 @@ function createHarness(input?: {
         approvedAt: "2026-03-25T00:07:30.000Z",
         sourceTaskId: "task_scene_1",
         storageDir: "projects/proj_1-my-story/scene-sheets/batches/scene_batch_v1/scenes/scene_1",
-        currentImageRelPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_1/current.png",
+        currentImageRelPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_sheet_market/current.png",
         currentMetadataRelPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_1/current.json",
         promptGeneratedRelPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_1/prompt.generated.txt",
         promptCurrentRelPath: "scene-sheets/batches/scene_batch_v1/scenes/scene_1/prompt.current.txt",

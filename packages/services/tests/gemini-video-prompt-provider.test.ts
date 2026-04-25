@@ -25,6 +25,8 @@ describe("gemini video prompt provider", () => {
                     visualGuardrails:
                       "保持林的外观、服装、挎包、空间方位稳定；镜头为单镜头连续推进；首尾帧过渡自然。",
                     rationale: "将对白、环境声和连续性要求合并进单镜头 Kling Omni 可执行提示词。",
+                    selectedCharacterIds: ["character_1"],
+                    selectedSceneId: "scene_sheet_market",
                   }),
                 },
               ],
@@ -75,6 +77,30 @@ describe("gemini video prompt provider", () => {
         width: 1024,
         height: 576,
       },
+      characterCandidates: [
+        {
+          id: "character_1",
+          characterName: "林",
+          promptTextCurrent: "背挎包的青年。",
+          imageAssetPath: "character-sheets/batches/char_batch_1/characters/character_1/current.png",
+        },
+        {
+          id: "character_2",
+          characterName: "无关路人",
+          promptTextCurrent: "不会出现在本片段。",
+          imageAssetPath: "character-sheets/batches/char_batch_1/characters/character_2/current.png",
+        },
+      ],
+      sceneCandidates: [
+        {
+          id: "scene_sheet_market",
+          sceneName: "雨夜市场",
+          scenePurpose: "林发现异常",
+          promptTextCurrent: "雨夜市场、霓虹积水。",
+          constraintsText: "保持雨夜和积水反光。",
+          imageAssetPath: "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_market/current.png",
+        },
+      ],
     });
 
     expect(result.finalPrompt).toContain("<<<image_1>>>");
@@ -94,6 +120,8 @@ describe("gemini video prompt provider", () => {
     expect(result.visualGuardrails).toContain("首尾帧");
     expect(result.provider).toBe("gemini");
     expect(result.model).toBe("gemini-3.1-pro-preview");
+    expect(result.selectedCharacterIds).toEqual(["character_1"]);
+    expect(result.selectedSceneId).toBe("scene_sheet_market");
 
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     expect(request.generationConfig.responseMimeType).toBe("application/json");
@@ -103,7 +131,133 @@ describe("gemini video prompt provider", () => {
       "audioPlan",
       "visualGuardrails",
       "rationale",
+      "selectedCharacterIds",
+      "selectedSceneId",
     ]);
+    const promptText = request.contents[0]?.parts[0]?.text as string;
+    expect(promptText).toContain("候选人物设定图（由你判断是否相关）");
+    expect(promptText).toContain("id=character_1");
+    expect(promptText).toContain("id=character_2");
+    expect(promptText).toContain("候选场景设定图（由你判断是否相关）");
+    expect(promptText).toContain("selectedCharacterIds 和 selectedSceneId 只能使用下方候选列表中给出的 id");
+  });
+
+  it("labels segment start and end frames independently from reference image order", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    finalPrompt:
+                      "视频以【首帧图片】作为0秒开场状态，最终定格在【尾帧图片】的稳定终态。",
+                    dialoguePlan: "无人物对白，无旁白，无语音，不需要口型。",
+                    audioPlan: "保留环境声。",
+                    visualGuardrails: "保持首尾帧连续。",
+                    rationale: "使用明确的首尾帧别名避免图片序号误解。",
+                    selectedCharacterIds: ["character_1"],
+                    selectedSceneId: "scene_sheet_cbd",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiVideoPromptProvider({
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    await provider.generateVideoPrompt({
+      projectId: "proj_1",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        summary: "林峰在CBD街道遭遇连环倒霉事件。",
+        durationSec: 15,
+        shotCount: 3,
+      },
+      shots: [
+        {
+          id: "shot_1",
+          shotCode: "S01_01_001",
+          purpose: "奔跑停下",
+          visual: "林峰在CBD街道奔跑并查看手机。",
+          subject: "林峰",
+          action: "林峰急刹停下查看手机。",
+          frameDependency: "start_frame_only",
+          dialogue: null,
+          os: "为什么倒霉的总是我？",
+          audio: "嘈杂的车流声及急促的脚步声。",
+          transitionHint: null,
+          continuityNotes: "保持灰气特效和深灰色皱西装。",
+          durationSec: 4,
+        },
+      ],
+      referenceImages: [
+        {
+          id: "scene_ref",
+          assetPath: "scene-sheets/cbd/current.png",
+          source: "auto",
+          order: 0,
+          sourceShotId: null,
+          label: "Scene CBD",
+        },
+        {
+          id: "character_ref",
+          assetPath: "character-sheets/linfeng/current.png",
+          source: "auto",
+          order: 1,
+          sourceShotId: null,
+          label: "Character 林峰",
+        },
+        {
+          id: "start_ref",
+          assetPath: "images/segments/segment_1/start-frame/current.png",
+          source: "auto",
+          order: 2,
+          sourceShotId: "shot_1",
+          label: "S01_01_001 start",
+          frameRole: "first_frame",
+        },
+        {
+          id: "end_ref",
+          assetPath: "images/segments/segment_1/end-frame/current.png",
+          source: "auto",
+          order: 3,
+          sourceShotId: "shot_1",
+          label: "S01_01_003 end",
+          frameRole: "last_frame",
+        },
+      ],
+      startFrame: {
+        imageAssetPath: "images/segments/segment_1/start-frame/current.png",
+        width: 1024,
+        height: 576,
+      },
+      endFrame: {
+        imageAssetPath: "images/segments/segment_1/end-frame/current.png",
+        width: 1024,
+        height: 576,
+      },
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    const promptText = request.contents[0]?.parts[0]?.text as string;
+
+    expect(promptText).toContain("图片3");
+    expect(promptText).toContain("首帧图片");
+    expect(promptText).toContain("图片4");
+    expect(promptText).toContain("尾帧图片");
+    expect(promptText).toContain("不要把图片1、图片2等普通参考图写成片段首帧或尾帧");
   });
 
   it("sends explicit speech, narration, and no-background-music constraints to Gemini", async () => {
@@ -122,6 +276,8 @@ describe("gemini video prompt provider", () => {
                     audioPlan: "保留环境雨声，不加入额外人声或配乐。",
                     visualGuardrails: "保持角色和空间连续。",
                     rationale: "明确约束无语音，避免模型补充额外说话内容。",
+                    selectedCharacterIds: [],
+                    selectedSceneId: null,
                   }),
                 },
               ],
@@ -198,6 +354,8 @@ describe("gemini video prompt provider", () => {
                     audioPlan: "模型原始返回，可被系统覆写。",
                     visualGuardrails: "保持角色和空间连续。",
                     rationale: "明确约束无语音，避免模型补充额外说话内容。",
+                    selectedCharacterIds: [],
+                    selectedSceneId: null,
                   }),
                 },
               ],
@@ -270,6 +428,8 @@ describe("gemini video prompt provider", () => {
                     audioPlan: "保留城市环境音和脚步声。",
                     visualGuardrails: "保持人物与场景连续。",
                     rationale: "通过两张参考图锚定片段开头和片段结尾。",
+                    selectedCharacterIds: [],
+                    selectedSceneId: null,
                   }),
                 },
               ],
@@ -361,6 +521,9 @@ describe("gemini video prompt provider", () => {
 
     expect(promptText).toContain("segment.startFrame 和 segment.endFrame");
     expect(promptText).toContain("不要把 segment.endFrame 误写成第一个子镜头的结束画面");
+    expect(promptText).toContain("尾帧图片只能作为最后一瞬间要抵达的目标状态");
+    expect(promptText).toContain("不要让最后一个子镜头一开始就已经定格或静止在尾帧图片状态");
+    expect(promptText).toContain("必须先完成最后动作链，再在片段最后自然抵达尾帧图片状态");
     expect(promptText).toContain("segment 起始关键帧");
     expect(promptText).toContain("segment 结尾关键帧");
   });
@@ -380,6 +543,8 @@ describe("gemini video prompt provider", () => {
                     audioPlan: "模型原始返回，可被系统覆写。",
                     visualGuardrails: "保持彩虹广场和人物服装连续。",
                     rationale: "测试系统是否剔除配乐描述。",
+                    selectedCharacterIds: [],
+                    selectedSceneId: null,
                   }),
                 },
               ],

@@ -543,8 +543,8 @@ export function ProjectDetailPage() {
                         disabled={updatingProjectSettings}
                       >
                         <option value="auto">自动</option>
-                        <option value="with_frame_refs">带帧参考图</option>
-                        <option value="without_frame_refs">不带帧参考图</option>
+                        <option value="with_frame_refs">角色/场景 + 帧参考图</option>
+                        <option value="without_frame_refs">仅角色/场景参考图</option>
                       </select>
                     </div>
                   </div>

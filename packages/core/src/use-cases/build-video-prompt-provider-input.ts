@@ -6,7 +6,11 @@ import type {
 } from "@sweet-star/shared";
 
 import type { ShotReferenceRecordEntity } from "../domain/shot-image";
-import type { GenerateVideoPromptInput } from "../ports/video-prompt-provider";
+import type {
+  GenerateVideoPromptCharacterCandidateContext,
+  GenerateVideoPromptInput,
+  GenerateVideoPromptSceneCandidateContext,
+} from "../ports/video-prompt-provider";
 
 export function buildVideoPromptProviderInput(input: {
   projectId: string;
@@ -14,6 +18,8 @@ export function buildVideoPromptProviderInput(input: {
   shots?: ShotScriptItem[];
   referenceImages?: SegmentVideoReferenceImage[];
   referenceAudios?: SegmentVideoReferenceAudio[];
+  characterCandidates?: GenerateVideoPromptCharacterCandidateContext[];
+  sceneCandidates?: GenerateVideoPromptSceneCandidateContext[];
   shot?: ShotScriptItem;
   shotReference?: ShotReferenceRecordEntity;
   startFrame?: {
@@ -60,6 +66,8 @@ export function buildVideoPromptProviderInput(input: {
     })),
     referenceImages,
     referenceAudios: [...(input.referenceAudios ?? [])].sort((left, right) => left.order - right.order),
+    characterCandidates: input.characterCandidates ?? [],
+    sceneCandidates: input.sceneCandidates ?? [],
     currentShot: shots[0]
       ? {
           id: shots[0].id,

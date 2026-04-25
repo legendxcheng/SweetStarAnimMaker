@@ -177,8 +177,13 @@
 
 - 优先使用 segment 记录里的整组 `referenceImages`
 - 只有 `referenceImages` 为空时才 fallback 到 legacy `startFramePath`
+- 角色设定图、场景设定图和帧参考图都必须进入 Seedance 请求 payload
+- 请求文本会自动追加 `参考图别名说明`，用 `图片1`、`图片2` 等编号说明每张参考图对应的业务含义
 - `referenceAudios` 会随请求一起传给 Seedance
+- worker 默认把 Seedance 请求的 `ratio` 固定为 `16:9`，通过 `SEEDANCE_ASPECT_RATIO` 可覆盖
 - 当前 `referenceImages` 是参考素材集合，不是严格的首帧/尾帧控制模式
+
+注意：短剧当前产品目标是横屏成片，所以视频生成阶段不要依赖 Seedance 的 `adaptive` 默认比例。若请求里不显式传 `ratio: "16:9"`，多参考图或方图首帧可能导致输出不是横屏，后续 final cut 拼接也会混入不同画幅。
 
 当前产品上建议把 segment 视频参考素材理解为一组“有业务语义的参考包”：
 

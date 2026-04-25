@@ -107,6 +107,19 @@ import {
 } from "@sweet-star/services";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
+import {
+  createCharacterSheetPromptProviderWithGrokFallback,
+  createFramePromptProviderWithGrokFallback,
+  createShotScriptProviderWithGrokFallback,
+  createStoryboardProviderWithGrokFallback,
+} from "./spec2-provider-fallbacks";
+import {
+  createUnsupportedShotImageRepository,
+  createUnsupportedShotImageStorage,
+  createUnsupportedShotScriptStorage,
+  createUnsupportedVideoRepository,
+  createUnsupportedVideoStorage,
+} from "./unsupported-spec2-services";
 import { createConfiguredVideoProvider } from "./video-provider-config";
 
 const DEFAULT_LANDSCAPE_IMAGE_SIZE = "2848x1600";
@@ -609,6 +622,9 @@ export function buildSpec2WorkerServices(
       taskRepository,
       projectRepository,
       taskFileStorage,
+      shotImageRepository,
+      characterSheetRepository,
+      sceneSheetRepository,
       videoRepository,
       videoStorage,
       finalCutRenderer,
@@ -670,270 +686,6 @@ export function buildSpec2WorkerServices(
       await Promise.all(Array.from(bullMqQueues.values()).map((queue) => queue.close()));
       await queueConnection?.quit();
       db?.close();
-    },
-  };
-}
-
-function createStoryboardProviderWithGrokFallback(
-  primary: MasterPlotProvider & StoryboardProvider,
-  fallback: MasterPlotProvider & StoryboardProvider,
-): MasterPlotProvider & StoryboardProvider {
-  return {
-    async generateMasterPlot(input) {
-      try {
-        return await primary.generateMasterPlot(input);
-      } catch (error) {
-        if (!shouldRetryWithGrok(error)) {
-          throw error;
-        }
-
-        return fallback.generateMasterPlot(input);
-      }
-    },
-    async generateStoryboard(input) {
-      try {
-        return await primary.generateStoryboard(input);
-      } catch (error) {
-        if (!shouldRetryWithGrok(error)) {
-          throw error;
-        }
-
-        return fallback.generateStoryboard(input);
-      }
-    },
-  };
-}
-
-function createShotScriptProviderWithGrokFallback(
-  primary: ShotScriptProvider,
-  fallback: ShotScriptProvider,
-): ShotScriptProvider {
-  return {
-    generateShotScript: primary.generateShotScript
-      ? async (input) => {
-          try {
-            return await primary.generateShotScript!(input);
-          } catch (error) {
-            if (!shouldRetryWithGrok(error) || !fallback.generateShotScript) {
-              throw error;
-            }
-
-            return fallback.generateShotScript(input);
-          }
-        }
-      : undefined,
-    async generateShotScriptSegment(input) {
-      try {
-        return await primary.generateShotScriptSegment(input);
-      } catch (error) {
-        if (!shouldRetryWithGrok(error)) {
-          throw error;
-        }
-
-        return fallback.generateShotScriptSegment(input);
-      }
-    },
-  };
-}
-
-function createCharacterSheetPromptProviderWithGrokFallback(
-  primary: CharacterSheetPromptProvider,
-  fallback: CharacterSheetPromptProvider,
-): CharacterSheetPromptProvider {
-  return {
-    async generateCharacterPrompt(input) {
-      try {
-        return await primary.generateCharacterPrompt(input);
-      } catch (error) {
-        if (!shouldRetryWithGrok(error)) {
-          throw error;
-        }
-
-        return fallback.generateCharacterPrompt(input);
-      }
-    },
-  };
-}
-
-function createFramePromptProviderWithGrokFallback(
-  primary: FramePromptProvider,
-  fallback: FramePromptProvider,
-): FramePromptProvider {
-  return {
-    async generateFramePrompt(input) {
-      try {
-        return await primary.generateFramePrompt(input);
-      } catch (error) {
-        if (!shouldRetryWithGrok(error)) {
-          throw error;
-        }
-
-        return fallback.generateFramePrompt(input);
-      }
-    },
-  };
-}
-
-function shouldRetryWithGrok(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  return (
-    error.message.includes("PROHIBITED_CONTENT") ||
-    /content is prohibited/i.test(error.message)
-  );
-}
-
-function createUnsupportedShotScriptStorage(): ShotScriptStorage {
-  return {
-    async initializePromptTemplate() {},
-    async readPromptTemplate() {
-      throw new Error("Shot script storage is not configured");
-    },
-    async writePromptSnapshot() {},
-    async writeRawResponse() {},
-    async writeShotScriptVersion() {},
-    async readShotScriptVersion() {
-      throw new Error("Shot script storage is not configured");
-    },
-    async writeCurrentShotScript() {},
-    async readCurrentShotScript() {
-      return null;
-    },
-  };
-}
-
-function createUnsupportedShotImageRepository(): ShotImageRepository {
-  return {
-    insertBatch() {
-      throw new Error("Shot image repository is not configured");
-    },
-    findBatchById() {
-      throw new Error("Shot image repository is not configured");
-    },
-    findCurrentBatchByProjectId() {
-      throw new Error("Shot image repository is not configured");
-    },
-    listFramesByBatchId() {
-      throw new Error("Shot image repository is not configured");
-    },
-    listShotsByBatchId() {
-      throw new Error("Shot image repository is not configured");
-    },
-    insertFrame() {
-      throw new Error("Shot image repository is not configured");
-    },
-    findFrameById() {
-      throw new Error("Shot image repository is not configured");
-    },
-    updateFrame() {
-      throw new Error("Shot image repository is not configured");
-    },
-  };
-}
-
-function createUnsupportedShotImageStorage(): ShotImageStorage {
-  return {
-    async writeBatchManifest() {
-      throw new Error("Shot image storage is not configured");
-    },
-    async writeFramePlanning() {
-      throw new Error("Shot image storage is not configured");
-    },
-    async writeFramePromptFiles() {
-      throw new Error("Shot image storage is not configured");
-    },
-    async writeFramePromptVersion() {
-      throw new Error("Shot image storage is not configured");
-    },
-    async writeCurrentImage() {
-      throw new Error("Shot image storage is not configured");
-    },
-    async writeImageVersion() {
-      throw new Error("Shot image storage is not configured");
-    },
-    async readCurrentFrame() {
-      throw new Error("Shot image storage is not configured");
-    },
-    resolveProjectAssetPath() {
-      throw new Error("Shot image storage is not configured");
-    },
-  };
-}
-
-function createUnsupportedVideoRepository(): VideoRepository {
-  return {
-    insertBatch() {
-      throw new Error("Video repository is not configured");
-    },
-    findBatchById() {
-      throw new Error("Video repository is not configured");
-    },
-    findCurrentBatchByProjectId() {
-      throw new Error("Video repository is not configured");
-    },
-    listSegmentsByBatchId() {
-      throw new Error("Video repository is not configured");
-    },
-    insertSegment() {
-      throw new Error("Video repository is not configured");
-    },
-    findSegmentById() {
-      throw new Error("Video repository is not configured");
-    },
-    findCurrentSegmentByProjectIdAndSegmentId() {
-      throw new Error("Video repository is not configured");
-    },
-    findCurrentSegmentByProjectIdAndSceneIdAndSegmentId() {
-      throw new Error("Video repository is not configured");
-    },
-    updateSegment() {
-      throw new Error("Video repository is not configured");
-    },
-    findCurrentFinalCutByProjectId() {
-      throw new Error("Video repository is not configured");
-    },
-    upsertFinalCut() {
-      throw new Error("Video repository is not configured");
-    },
-  };
-}
-
-function createUnsupportedVideoStorage(): VideoStorage {
-  return {
-    async initializePromptTemplate() {
-      throw new Error("Video storage is not configured");
-    },
-    async readPromptTemplate() {
-      throw new Error("Video storage is not configured");
-    },
-    async writePromptSnapshot() {
-      throw new Error("Video storage is not configured");
-    },
-    async writePromptPlan() {
-      throw new Error("Video storage is not configured");
-    },
-    async writeRawResponse() {
-      throw new Error("Video storage is not configured");
-    },
-    async writeBatchManifest() {
-      throw new Error("Video storage is not configured");
-    },
-    async writeCurrentVideo() {
-      throw new Error("Video storage is not configured");
-    },
-    async writeVideoVersion() {
-      throw new Error("Video storage is not configured");
-    },
-    async writeFinalCutManifest() {
-      throw new Error("Video storage is not configured");
-    },
-    async writeFinalCutFiles() {
-      throw new Error("Video storage is not configured");
-    },
-    resolveProjectAssetPath() {
-      throw new Error("Video storage is not configured");
     },
   };
 }

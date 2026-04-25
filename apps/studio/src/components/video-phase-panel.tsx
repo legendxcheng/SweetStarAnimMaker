@@ -14,7 +14,11 @@ import { CARD_CLASS, META_LABEL_CLASS, META_VALUE_CLASS } from "./video-phase-pa
 import { FinalCutCard } from "./video-phase-panel/final-cut-card";
 import { TaskStatusCard } from "./video-phase-panel/task-status-card";
 import type { VideoPhaseActionBusy } from "./video-phase-panel/types";
-import { isSegmentVideoApprovedOrReady, sortSegmentsByHierarchy } from "./video-phase-panel/utils";
+import {
+  isSegmentVideoApprovedOrReady,
+  isSegmentVideoUnfinished,
+  sortSegmentsByHierarchy,
+} from "./video-phase-panel/utils";
 import { VideoSegmentCard } from "./video-phase-panel/video-segment-card";
 
 interface VideoPhasePanelProps {
@@ -212,7 +216,10 @@ export function VideoPhasePanel({
     };
   }, [finalCutTask, onProjectRefresh, project.id]);
 
-  function applyVideoListResponse(response: VideoListResponse) {
+  function applyVideoListResponse(
+    response: VideoListResponse,
+    options: { forceDraftSync?: boolean } = {},
+  ) {
     setSegments(sortSegmentsByHierarchy(response.segments));
     setDrafts((currentDrafts) => {
       const nextDrafts: Record<string, string> = {};
@@ -222,6 +229,7 @@ export function VideoPhasePanel({
         const currentDraft = currentDrafts[segment.id];
         const previousSegment = previousSegmentsById.get(segment.id);
         const shouldSyncWithServer =
+          options.forceDraftSync === true ||
           currentDraft === undefined ||
           !previousSegment ||
           currentDraft === previousSegment.promptTextCurrent;
@@ -349,14 +357,32 @@ export function VideoPhasePanel({
       return;
     }
 
+    const previousDraftsForRollback = drafts;
+
     try {
       setActionBusy({ kind: "regenerate-all-prompts" });
+      setDrafts((currentDrafts) => {
+        const nextDrafts: Record<string, string> = {};
+
+        for (const segment of segments) {
+          nextDrafts[segment.id] = "";
+        }
+
+        for (const segmentId of Object.keys(currentDrafts)) {
+          if (nextDrafts[segmentId] === undefined) {
+            nextDrafts[segmentId] = currentDrafts[segmentId];
+          }
+        }
+
+        return nextDrafts;
+      });
       const response = await apiClient.regenerateAllVideoPrompts(project.id);
 
-      applyVideoListResponse(response);
+      applyVideoListResponse(response, { forceDraftSync: true });
       await refreshProject();
       setActionError(null);
     } catch (error) {
+      setDrafts(previousDraftsForRollback);
       setActionError(error as Error);
     } finally {
       setActionBusy(null);
@@ -371,7 +397,7 @@ export function VideoPhasePanel({
     try {
       setActionBusy({ kind: "regenerate-all-videos" });
 
-      for (const segment of segments) {
+      for (const segment of segments.filter(isSegmentVideoUnfinished)) {
         await apiClient.generateVideoSegment(project.id, segment.id);
       }
 
@@ -405,6 +431,7 @@ export function VideoPhasePanel({
   const hasDirtyPrompts = segments.some(
     (segment) => (drafts[segment.id] ?? segment.promptTextCurrent) !== segment.promptTextCurrent,
   );
+  const unfinishedSegmentCount = segments.filter(isSegmentVideoUnfinished).length;
 
   return (
     <section aria-label="视频工作区">
@@ -435,10 +462,10 @@ export function VideoPhasePanel({
                 onClick={() => {
                   void handleGenerateAllVideos();
                 }}
-                disabled={actionBusy !== null || hasDirtyPrompts || segments.length === 0}
+                disabled={actionBusy !== null || hasDirtyPrompts || unfinishedSegmentCount === 0}
                 className={getButtonClassName({ variant: "warning" })}
               >
-                生成所有片段视频
+                生成余下视频片段
               </button>
             )}
             {batchSummary && (

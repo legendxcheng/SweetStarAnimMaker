@@ -45,3 +45,9 @@ export function isSegmentVideoApprovedOrReady(
 ) {
   return segment.status === "approved" || isSegmentVideoReadyForApproval(segment);
 }
+
+export function isSegmentVideoUnfinished(
+  segment: Pick<SegmentVideoRecord, "status" | "videoAssetPath">,
+) {
+  return segment.status !== "approved" && segment.status !== "generating" && segment.videoAssetPath === null;
+}

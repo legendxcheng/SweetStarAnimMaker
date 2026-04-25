@@ -237,7 +237,7 @@ describe("VideoPhasePanel", () => {
       screen.getByDisplayValue("雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重新生成所有片段提示词" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "生成所有片段视频" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "生成余下视频片段" })).toBeInTheDocument();
 
     fireEvent.change(
       screen.getByDisplayValue("雨夜市场里，林停步抬头，镜头平稳推进，保持角色与环境连续。"),
@@ -271,9 +271,9 @@ describe("VideoPhasePanel", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "生成所有片段视频" }));
+    fireEvent.click(screen.getByRole("button", { name: "生成余下视频片段" }));
     await waitFor(() => {
-      expect(apiModule.apiClient.generateVideoSegment).toHaveBeenCalledTimes(2);
+      expect(apiModule.apiClient.generateVideoSegment).toHaveBeenCalledTimes(1);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "审核通过当前 Segment" }));
@@ -314,7 +314,7 @@ describe("VideoPhasePanel", () => {
 
     expect(screen.getByRole("button", { name: "保存当前 Segment 配置" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "生成当前 Segment 视频" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "生成所有片段视频" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "生成余下视频片段" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "保存当前 Segment 配置" }));
 
@@ -351,6 +351,93 @@ describe("VideoPhasePanel", () => {
     expect(screen.getByText("当前 Segment 还没有可播放视频")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "审核通过当前 Segment" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "全部片段审核通过" })).toBeDisabled();
+  });
+
+  it("generates only unfinished video segments from the bulk action", async () => {
+    const unfinishedSegment = createVideoSegment({
+      id: "video-segment-unfinished",
+      segmentId: "segment-unfinished",
+      segmentOrder: 1,
+      segmentName: "Unfinished",
+      status: "in_review",
+      videoAssetPath: null,
+      thumbnailAssetPath: null,
+      durationSec: null,
+      provider: null,
+      model: null,
+      sourceTaskId: null,
+    });
+    const completedInReviewSegment = createVideoSegment({
+      id: "video-segment-ready",
+      segmentId: "segment-ready",
+      segmentOrder: 2,
+      segmentName: "Ready",
+      status: "in_review",
+      videoAssetPath: "videos/ready/current.mp4",
+    });
+    const approvedSegment = createVideoSegment({
+      id: "video-segment-approved",
+      segmentId: "segment-approved",
+      segmentOrder: 3,
+      segmentName: "Approved",
+      status: "approved",
+      videoAssetPath: "videos/approved/current.mp4",
+      approvedAt: "2024-01-01T00:00:14Z",
+    });
+    const generatingSegment = createVideoSegment({
+      id: "video-segment-generating",
+      segmentId: "segment-generating",
+      segmentOrder: 4,
+      segmentName: "Generating",
+      status: "generating",
+      videoAssetPath: null,
+    });
+
+    vi.spyOn(apiModule.apiClient, "listVideos").mockResolvedValue({
+      currentBatch: {
+        ...baseProject.currentVideoBatch,
+        segmentCount: 4,
+        approvedSegmentCount: 1,
+      },
+      segments: [
+        unfinishedSegment,
+        completedInReviewSegment,
+        approvedSegment,
+        generatingSegment,
+      ],
+    });
+    vi.spyOn(apiModule.apiClient, "generateVideoSegment").mockResolvedValue({
+      id: "task-segment-generate-1",
+      projectId: "proj-1",
+      type: "segment_video_generate",
+      status: "pending",
+      createdAt: "2024-01-01T00:00:13Z",
+      updatedAt: "2024-01-01T00:00:13Z",
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      files: {
+        inputPath: "tasks/task-segment-generate-1/input.json",
+        outputPath: "tasks/task-segment-generate-1/output.json",
+        logPath: "tasks/task-segment-generate-1/log.txt",
+      },
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.listVideos).toHaveBeenCalledWith("proj-1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "生成余下视频片段" }));
+
+    await waitFor(() => {
+      expect(apiModule.apiClient.generateVideoSegment).toHaveBeenCalledTimes(1);
+    });
+    expect(apiModule.apiClient.generateVideoSegment).toHaveBeenCalledWith(
+      "proj-1",
+      "video-segment-unfinished",
+    );
   });
 
   it("refreshes project summary after saving config for an approved segment", async () => {

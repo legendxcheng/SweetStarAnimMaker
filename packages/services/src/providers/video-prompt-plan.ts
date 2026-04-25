@@ -2,13 +2,28 @@ import type { GenerateVideoPromptInput, GenerateVideoPromptResult } from "@sweet
 
 export const videoPromptPlanResponseJsonSchema = {
   type: "object",
-  required: ["finalPrompt", "dialoguePlan", "audioPlan", "visualGuardrails", "rationale"],
+  required: [
+    "finalPrompt",
+    "dialoguePlan",
+    "audioPlan",
+    "visualGuardrails",
+    "rationale",
+    "selectedCharacterIds",
+    "selectedSceneId",
+  ],
   properties: {
     finalPrompt: { type: "string" },
     dialoguePlan: { type: "string" },
     audioPlan: { type: "string" },
     visualGuardrails: { type: "string" },
     rationale: { type: "string" },
+    selectedCharacterIds: {
+      type: "array",
+      items: { type: "string" },
+    },
+    selectedSceneId: {
+      anyOf: [{ type: "string" }, { type: "null" }],
+    },
   },
 } as const;
 
@@ -28,6 +43,8 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- audioPlan",
     "- visualGuardrails",
     "- rationale",
+    "- selectedCharacterIds",
+    "- selectedSceneId",
     "",
     "关键要求：",
     "- finalPrompt 必须直接可用于 Seedance 2.0 多模态参考生视频。",
@@ -36,7 +53,8 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- 必须把内部 shots 改写成连续时间轴，明确片段开头承接状态、中段推进、结尾交接状态。",
     "- 必须优先控制连续性：人物外观、服装道具、空间关系、情绪线、动作起点和动作终点。",
     "- 不要虚构未提供的新角色设定、剧情、台词、人声、旁白、配乐或额外音效。",
-    "- 如果提供参考图片，必须用“图片1 / 图片2 / ...”显式指代，说明每张图片用于保持什么连续性。",
+    "- 如果提供参考图片，可以用“图片1 / 图片2 / ...”指代普通参考图，但首尾帧必须优先使用【首帧图片】和【尾帧图片】这两个别名。",
+    "- 当参考图片列表中同时存在普通场景/人物参考图和首尾帧时，不要把图片1、图片2等普通参考图写成片段首帧或尾帧。",
     "- 如果提供参考音频，必须说明其只作为音色、节奏、环境声或口型节奏参考，不要凭空扩写未提供的人声内容。",
     "- 必须保留对白、旁白、环境声、拟音和连续性要求；如果没有，也要在 plan 中明确说明。",
     "- 如果存在人物台词或旁白，必须明确写出是谁说了什么，区分角色对白与旁白/画外音。",
@@ -46,8 +64,14 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- 默认不要背景音乐、BGM、配乐；最终 prompt 和 audioPlan 都要明确写无背景音乐、无BGM、无配乐。",
     "- 如果同时提供 segment.startFrame 和 segment.endFrame，它们分别代表整段片段的开场状态和片段结束时的稳定终态。",
     "- 不要把 segment.endFrame 误写成第一个子镜头的结束画面、任意中间秒数或任意中途动作终点。",
+    "- 尾帧图片只能作为最后一瞬间要抵达的目标状态，不是最后一个子镜头一开始就进入的静止状态。",
+    "- 不要让最后一个子镜头一开始就已经定格或静止在尾帧图片状态，也不要写成先定格再移动镜头。",
+    "- 必须先完成最后动作链，再在片段最后自然抵达尾帧图片状态；可写“最终动作完成后，最后一瞬间接近/抵达【尾帧图片】状态”，避免“画面定格于【尾帧图片】”这类过早贴尾帧措辞。",
     "- 如果上游 shot.audio 含有音乐、BGM、配乐、旋律、片尾曲等描述，在当前无背景音乐约束下必须视为待剔除噪声，不要写进 finalPrompt 或 audioPlan。",
     "- 系统会在最终 prompt 中追加硬性语音约束和声音约束，你生成的内容必须与这组硬性约束一致。",
+    "- 必须根据片段上下文和内部 shots 的语义，从候选人物设定图中选择本片段实际出现或需要保持一致性的角色，填入 selectedCharacterIds。",
+    "- 必须根据片段上下文和内部 shots 的语义，从候选场景设定图中选择本片段所在或最相关的场景，填入 selectedSceneId；没有合适场景时填 null。",
+    "- selectedCharacterIds 和 selectedSceneId 只能使用下方候选列表中给出的 id，不允许编造 id，也不要选择无关人物/无关场景。",
     "",
     "片段上下文：",
     `- projectId：${input.projectId}`,
@@ -61,6 +85,12 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "",
     "参考图片：",
     ...formatReferenceImages(referenceImages, input),
+    "",
+    "候选人物设定图（由你判断是否相关）：",
+    ...formatCharacterCandidates(input),
+    "",
+    "候选场景设定图（由你判断是否相关）：",
+    ...formatSceneCandidates(input),
     "",
     "segment 关键帧语义：",
     ...formatSegmentFrameAnchors(input),
@@ -87,7 +117,7 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- 禁止新增无关角色、无关空镜、夸张特效、过度炫技运镜或破坏连续性的机位跳变。",
     "",
     "rationale 要求：",
-    "- 用简短中文解释 finalPrompt 如何把内部 shots 组织成一个 Seedance 连续片段。",
+    "- 用简短中文解释 finalPrompt 如何把内部 shots 组织成一个 Seedance 连续片段，并说明为什么选择这些人物/场景 id。",
   ];
 
   return lines.filter(Boolean).join("\n");
@@ -127,6 +157,14 @@ export function normalizeVideoPromptPayload(
   );
   const dialoguePlan = buildDialoguePlan(input);
   const audioPlan = buildAudioPlan(input);
+  const selectedCharacterIds = readSelectedCharacterIds(
+    (payload as { selectedCharacterIds?: unknown }).selectedCharacterIds,
+    input,
+  );
+  const selectedSceneId = readSelectedSceneId(
+    (payload as { selectedSceneId?: unknown }).selectedSceneId,
+    input,
+  );
 
   return {
     finalPrompt: appendHardConstraints(
@@ -138,7 +176,30 @@ export function normalizeVideoPromptPayload(
     audioPlan,
     visualGuardrails,
     rationale,
+    selectedCharacterIds,
+    selectedSceneId,
   };
+}
+
+function readSelectedCharacterIds(value: unknown, input: GenerateVideoPromptInput) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const allowedIds = new Set((input.characterCandidates ?? []).map((candidate) => candidate.id));
+  return value.filter((id): id is string => typeof id === "string" && allowedIds.has(id));
+}
+
+function readSelectedSceneId(value: unknown, input: GenerateVideoPromptInput) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  return (input.sceneCandidates ?? []).some((candidate) => candidate.id === value) ? value : null;
 }
 
 function readNonEmptyString(value: unknown, fieldName: string, providerLabel: string) {
@@ -317,9 +378,46 @@ function formatReferenceImages(
   return images.map(
     (image, index) => {
       const segmentRole = describeSegmentFrameRole(image.assetPath, input);
+      const frameAlias = formatFrameAlias(segmentRole);
 
-      return `- 图片${index + 1}：${image.label ?? "未命名参考图"}；assetPath=${image.assetPath}；source=${image.source}；sourceShotId=${image.sourceShotId ?? "无"}${segmentRole ? `；segmentRole=${segmentRole}` : ""}`;
+      return `- 图片${index + 1}${frameAlias ? ` / ${frameAlias}` : ""}：${image.label ?? "未命名参考图"}；assetPath=${image.assetPath}；source=${image.source}；sourceShotId=${image.sourceShotId ?? "无"}${segmentRole ? `；segmentRole=${segmentRole}` : ""}`;
     },
+  );
+}
+
+function formatFrameAlias(segmentRole: ReturnType<typeof describeSegmentFrameRole>) {
+  if (segmentRole === "segment_start_frame") {
+    return "首帧图片";
+  }
+
+  if (segmentRole === "segment_end_frame") {
+    return "尾帧图片";
+  }
+
+  return null;
+}
+
+function formatCharacterCandidates(input: GenerateVideoPromptInput) {
+  const candidates = input.characterCandidates ?? [];
+  if (candidates.length === 0) {
+    return ["- 无候选人物设定图。"];
+  }
+
+  return candidates.map(
+    (candidate) =>
+      `- id=${candidate.id}；name=${candidate.characterName}；image=${candidate.imageAssetPath}；设定=${candidate.promptTextCurrent}`,
+  );
+}
+
+function formatSceneCandidates(input: GenerateVideoPromptInput) {
+  const candidates = input.sceneCandidates ?? [];
+  if (candidates.length === 0) {
+    return ["- 无候选场景设定图。"];
+  }
+
+  return candidates.map(
+    (candidate) =>
+      `- id=${candidate.id}；name=${candidate.sceneName}；purpose=${candidate.scenePurpose}；image=${candidate.imageAssetPath}；约束=${candidate.constraintsText ?? "无"}；设定=${candidate.promptTextCurrent}`,
   );
 }
 

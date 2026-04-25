@@ -16,6 +16,7 @@ type CandidateReference = {
   shotOrder: number;
   referenceKey: string;
   label: string | null;
+  frameRole?: "first_frame" | "last_frame" | null;
 };
 
 export function buildSegmentVideoReferences(input: {
@@ -24,13 +25,68 @@ export function buildSegmentVideoReferences(input: {
   shotReferences: ShotReferenceRecordEntity[];
   sceneSheet?: SceneSheetRecordEntity | null;
   characterSheets?: CharacterSheetRecordEntity[];
+  selectedSceneId?: string | null;
+  selectedCharacterIds?: string[];
   limit?: number;
 }): SegmentVideoReferenceImage[] {
+  const sceneAndCharacterReferences = buildSceneAndCharacterReferences(input);
+
   if (input.strategy === "without_frame_refs") {
-    return buildSceneAndCharacterReferences(input);
+    return sceneAndCharacterReferences;
   }
 
-  return buildFrameReferences(input);
+  return combineReferenceImages(
+    [...sceneAndCharacterReferences, ...buildFrameReferences(input)],
+    input.limit ?? defaultReferenceImageLimit,
+  );
+}
+
+export function buildVideoPromptCharacterCandidates(characterSheets: CharacterSheetRecordEntity[]) {
+  return characterSheets
+    .filter((characterSheet) => characterSheet.status === "approved")
+    .map((characterSheet) => ({
+      id: characterSheet.id,
+      characterName: characterSheet.characterName,
+      promptTextCurrent: characterSheet.promptTextCurrent,
+      imageAssetPath: characterSheet.imageAssetPath?.trim() ?? "",
+    }))
+    .filter((candidate) => candidate.imageAssetPath);
+}
+
+export function buildVideoPromptSceneCandidates(sceneSheets: SceneSheetRecordEntity[]) {
+  return sceneSheets
+    .filter((sceneSheet) => sceneSheet.status === "approved")
+    .map((sceneSheet) => ({
+      id: sceneSheet.id,
+      sceneName: sceneSheet.sceneName,
+      scenePurpose: sceneSheet.scenePurpose,
+      promptTextCurrent: sceneSheet.promptTextCurrent,
+      constraintsText: sceneSheet.constraintsText ?? null,
+      imageAssetPath: sceneSheet.imageAssetPath?.trim() ?? "",
+    }))
+    .filter((candidate) => candidate.imageAssetPath);
+}
+
+function combineReferenceImages(
+  references: SegmentVideoReferenceImage[],
+  limit: number,
+): SegmentVideoReferenceImage[] {
+  const seenAssetPaths = new Set<string>();
+
+  return references
+    .filter((reference) => {
+      if (seenAssetPaths.has(reference.assetPath)) {
+        return false;
+      }
+
+      seenAssetPaths.add(reference.assetPath);
+      return true;
+    })
+    .slice(0, limit)
+    .map((reference, index) => ({
+      ...reference,
+      order: index,
+    }));
 }
 
 function buildFrameReferences(input: {
@@ -62,6 +118,7 @@ function buildFrameReferences(input: {
         shotOrder: shot.order,
         referenceKey: `${shot.id}_start_frame`,
         label: `${shot.shotCode} start`,
+        frameRole: "first_frame",
       });
     }
 
@@ -73,6 +130,7 @@ function buildFrameReferences(input: {
         shotOrder: shot.order,
         referenceKey: `${shot.id}_end_frame`,
         label: `${shot.shotCode} end`,
+        frameRole: "last_frame",
       });
     }
   }
@@ -105,6 +163,7 @@ function buildFrameReferences(input: {
       order: index,
       sourceShotId: candidate.sourceShotId,
       label: candidate.label,
+      frameRole: candidate.frameRole ?? null,
     }));
 }
 
@@ -112,26 +171,39 @@ function buildSceneAndCharacterReferences(input: {
   segment: ShotScriptSegment;
   sceneSheet?: SceneSheetRecordEntity | null;
   characterSheets?: CharacterSheetRecordEntity[];
+  selectedSceneId?: string | null;
+  selectedCharacterIds?: string[];
   limit?: number;
 }): SegmentVideoReferenceImage[] {
   const limit = input.limit ?? defaultReferenceImageLimit;
   const seenAssetPaths = new Set<string>();
   const candidates: CandidateReference[] = [];
 
-  if (input.sceneSheet?.status === "approved") {
-    const assetPath = input.sceneSheet.imageAssetPath?.trim();
+  const selectedSceneSheet = input.selectedSceneId
+    ? input.sceneSheet?.id === input.selectedSceneId
+      ? input.sceneSheet
+      : null
+    : input.sceneSheet;
+
+  if (selectedSceneSheet?.status === "approved") {
+    const assetPath = selectedSceneSheet.imageAssetPath?.trim();
     if (assetPath) {
       candidates.push({
         assetPath,
         sourceShotId: null,
         shotOrder: -1,
-        referenceKey: `scene_${input.sceneSheet.id}`,
-        label: `Scene ${input.sceneSheet.id}`,
+        referenceKey: `scene_${selectedSceneSheet.id}`,
+        label: `Scene ${selectedSceneSheet.sceneName}`,
       });
     }
   }
 
+  const selectedCharacterIds = new Set(input.selectedCharacterIds ?? []);
   for (const characterSheet of input.characterSheets ?? []) {
+    if (!selectedCharacterIds.has(characterSheet.id)) {
+      continue;
+    }
+
     if (characterSheet.status !== "approved") {
       continue;
     }

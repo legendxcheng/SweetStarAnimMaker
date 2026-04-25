@@ -100,7 +100,7 @@
 - 按路径去重
 - 默认最多保留 `6` 张参考图
 
-这就是“当前 segment 的默认参考图集合”来源。
+这就是“当前 segment 的帧参考图集合”来源。
 
 从当前产品语义上，建议把这些默认参考图理解成一个 segment 参考包的自动起点，而不是最终完整语义：
 
@@ -109,7 +109,17 @@
 - `尾帧` 只在需要稳定结束状态时作为可选素材
 - `场景设定图` 只在需要稳定环境空间和氛围时作为可选素材
 
-当前代码里的 `buildSegmentVideoReferences(...)` 只会自动从 shot images 中提取首尾帧来源，不会自动补角色设定图或场景设定图。因此如果产品要求执行上面的素材规则，就需要在人工编辑或后续扩展中把这些图补进 `referenceImages`。
+当前代码里的 `buildSegmentVideoReferences(...)` 不再用字符串包含、尾号或别名去判断人物/场景相关性；人物和场景必须由 video prompt LLM 在 prompt plan 里返回选择结果：
+
+- prompt provider 输入会携带已审核的 `characterCandidates` / `sceneCandidates`，每个候选都包含 `id`、名称、当前设定 prompt 和图片路径。
+- LLM 必须根据 `segment + shots` 的语义返回 `selectedCharacterIds` 和 `selectedSceneId`。
+- `selectedCharacterIds` / `selectedSceneId` 只能使用候选列表中的 id，不能编造，也不能选择无关人物/无关场景。
+- `with_frame_refs` / `auto`：按 LLM 选择的场景图、人物图，再追加该 segment 下 shot images 的首尾帧。
+- `without_frame_refs`：只按 LLM 选择的场景图、人物图组织引用，不追加首尾帧。
+
+因此 Studio 里的“带帧参考图”不是“只有帧参考图”，而是“角色/场景参考图 + 帧参考图”。
+
+`重新生成单个片段提示词` 和 `重新生成所有片段提示词` 会重新调用 LLM 做人物/场景选择，并用返回的 id 重建 `referenceImages` 写回当前 segment；它们不会继续沿用旧批次里已经过时的首尾帧列表。
 
 ### 3. worker 生成 segment prompt
 
@@ -120,8 +130,10 @@
 这个阶段做的事：
 
 - 读取 segment 当前记录
-- 把 `segment + shots + referenceImages + referenceAudios` 转成 prompt provider 输入
+- 把 `segment + shots + frame referenceImages + referenceAudios + characterCandidates + sceneCandidates` 转成 prompt provider 输入
 - 调用 `videoPromptProvider.generateVideoPrompt(...)`
+- 读取 LLM 返回的 `selectedCharacterIds` / `selectedSceneId`
+- 根据 LLM 选择结果和项目视频参考策略重建 `referenceImages`
 - 把返回的 `finalPrompt` 写入：
   - `promptTextSeed`
   - `promptTextCurrent`
@@ -260,6 +272,8 @@ worker 代码读的是：
 - `SEEDANCE_DURATION_SEC`
 - `SEEDANCE_ASPECT_RATIO`
 
+其中 `SEEDANCE_ASPECT_RATIO` 未配置时，worker 会默认传 `16:9`。当前短剧成片目标是横屏，所以不要让生产请求落回 Seedance 的 `adaptive` 比例；如果确实要做竖屏或方屏，应显式配置该环境变量，例如 `9:16` 或 `1:1`。
+
 对应文件：
 
 - `apps/worker/src/bootstrap/video-provider-config.ts`
@@ -274,9 +288,11 @@ worker 代码读的是：
 
 - `referenceImages` 优先使用 segment 记录里的整组参考图
 - 只有在 `referenceImages` 为空时，才 fallback 到 `startFramePath`
+- segment 多图参考策略必须把角色图、场景图和帧参考图全部发进 Seedance payload
+- Seedance 请求中的第一段文本会自动追加 `参考图别名说明`，按 `图片1`、`图片2` 等稳定编号说明每张图的业务含义
 - `referenceAudios` 会按 `order` 排序后一起发送
 - `durationSec` 来自 segment 或 provider 默认值
-- `aspectRatio` 映射到 Seedance `ratio`
+- `aspectRatio` 映射到 Seedance `ratio`；没有 segment 级比例时使用 provider 配置，worker 默认是 `16:9`
 
 这意味着当前系统的真实语义是：
 
@@ -294,10 +310,10 @@ worker 代码读的是：
 - `尾帧` 可选
 - `场景设定图` 可选
 
-但要注意，provider 当前并不知道这些图片的业务分类。它只会按顺序接收一组 `reference_image`。所以如果你在上层补充了这些素材，仍然应该：
+但要注意，Seedance 的图片角色字段只表达外部协议角色，不足以承载完整业务分类。所以如果你在上层补充了这些素材，仍然应该：
 
 - 在 `referenceImages` 里按稳定顺序组织它们
-- 在 prompt 中显式说明各类图片的用途
+- 在 prompt / payload 文本中显式说明各类图片的用途；当前 provider 会自动追加 `参考图别名说明`
 - 在 UI 和审核语义中保留这些分类信息，而不是把它们当成无差别图片堆
 
 ### Seedance 请求体如何构造
@@ -309,10 +325,13 @@ worker 代码读的是：
 - 组装 `duration`
 - 可选附带 `resolution` / `ratio` / `generate_audio` / `return_last_frame`
 
+对当前 worker 主链路来说，`ratio` 实际不应视为可省略字段：`apps/worker/src/bootstrap/video-provider-config.ts` 会把未配置的 `SEEDANCE_ASPECT_RATIO` 归一成 `16:9`，再传入 Seedance stage adapter。只有 smoke 脚本或直接调用底层 provider 时，才可能因为未传 `ratio` 而使用 Seedance 服务端默认比例。
+
 `content` 的当前构造规则：
 
 - prompt -> `{ type: "text" }`
 - 参考图 -> `{ type: "image_url", role: "reference_image" }`
+- segment 参考图会按顺序生成 `图片N = <label>` 的别名说明，并追加到 prompt 文本
 - 参考视频 -> `{ type: "video_url", role: "reference_video" }`
 - 参考音频 -> `{ type: "audio_url", role: "reference_audio" }`
 - 可选 `draft_task`
@@ -434,7 +453,8 @@ worker 代码读的是：
 
 - `project.status === "videos_generating"` 时会自动轮询 `listVideos`
 - 编辑中的 prompt draft 只存在前端 state，保存后才写回后端
-- “生成所有片段视频”当前是前端循环逐个调用 `generateVideoSegment(...)`
+- “生成余下视频片段”当前是前端筛选未完成 segment 后循环逐个调用 `generateVideoSegment(...)`
+- 这里的“未完成”指 `status !== "approved"`、`status !== "generating"` 且没有 `videoAssetPath`；不是“未定稿/待审核”
 - segment 处于 `generating` 时，卡片显示 loading，而不是旧视频
 
 ## 列表读取时的补偿逻辑
@@ -471,6 +491,8 @@ worker 代码读的是：
 - 只取 start frame
 - 优先保留首尾镜头
 - 去重策略调整
+
+不要在这里新增“按角色名/场景名字符串匹配”的相关性判断。人物/场景相关性属于 prompt planning，由 `packages/services/src/providers/video-prompt-plan.ts` 里的 LLM 指令和返回 schema 控制。
 
 ### 2. 想改 prompt 结构或 prompt provider 输入
 

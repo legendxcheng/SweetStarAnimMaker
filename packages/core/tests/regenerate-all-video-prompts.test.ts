@@ -10,6 +10,9 @@ describe("regenerate all video prompts use case", () => {
         id: "proj_1",
         storageDir: "projects/proj_1-my-story",
         currentVideoBatchId: "video_batch_1",
+        currentCharacterSheetBatchId: "char_batch_1",
+        currentSceneSheetBatchId: "scene_batch_1",
+        videoReferenceStrategy: "with_frame_refs",
       }),
       listAll: vi.fn(),
       updatePremiseMetadata: vi.fn(),
@@ -240,10 +243,69 @@ describe("regenerate all video prompts use case", () => {
         findBatchById: vi.fn(),
         findCurrentBatchByProjectId: vi.fn(),
         listFramesByBatchId: vi.fn(),
-        listShotsByBatchId: vi.fn().mockRejectedValue(new Error("should not read shot references")),
+        listShotsByBatchId: vi.fn().mockResolvedValue([
+          {
+            sceneId: "scene_1",
+            segmentId: "segment_1",
+            shotId: "shot_1",
+            shotCode: "S01-SG01-SH01",
+            startFrame: {
+              imageAssetPath:
+                "images/batches/image_batch_1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+            },
+            endFrame: null,
+          },
+          {
+            sceneId: "scene_1",
+            segmentId: "segment_2",
+            shotId: "shot_2",
+            shotCode: "S01-SG02-SH01",
+            startFrame: {
+              imageAssetPath:
+                "images/batches/image_batch_1/shots/scene_1__segment_2__shot_2/start-frame/current.png",
+            },
+            endFrame: null,
+          },
+        ]),
         insertFrame: vi.fn(),
+        insertShot: vi.fn(),
         findFrameById: vi.fn(),
+        findShotById: vi.fn(),
         updateFrame: vi.fn(),
+        updateShot: vi.fn(),
+      },
+      characterSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listCharactersByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "character_1",
+            characterName: "Rin",
+            imageAssetPath: "character-sheets/batches/char_batch_1/characters/character_1/current.png",
+            status: "approved",
+          },
+        ]),
+        insertCharacter: vi.fn(),
+        findCharacterById: vi.fn(),
+        updateCharacter: vi.fn(),
+      },
+      sceneSheetRepository: {
+        insertBatch: vi.fn(),
+        findBatchById: vi.fn(),
+        listScenesByBatchId: vi.fn().mockResolvedValue([
+          {
+            id: "scene_sheet_market",
+            sceneName: "Flooded Market",
+            scenePurpose: "Arrival",
+            promptTextCurrent: "Flooded Market with rain and neon reflections.",
+            constraintsText: "Keep rain and neon reflections.",
+            imageAssetPath: "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_market/current.png",
+            status: "approved",
+          },
+        ]),
+        insertScene: vi.fn(),
+        findSceneById: vi.fn(),
+        updateScene: vi.fn(),
       },
       videoRepository,
       videoStorage: {
@@ -268,6 +330,8 @@ describe("regenerate all video prompts use case", () => {
             rationale: "围绕到达动作组织提示词。",
             provider: "gemini",
             model: "gemini-3.1-pro-preview",
+            selectedCharacterIds: ["character_1"],
+            selectedSceneId: "scene_sheet_market",
           })
           .mockResolvedValueOnce({
             finalPrompt: "以<<<image_1>>>为首帧锚点，林转向被水淹没的路口，无对白，强调水流声。",
@@ -277,6 +341,8 @@ describe("regenerate all video prompts use case", () => {
             rationale: "围绕转身动作和环境声组织提示词。",
             provider: "gemini",
             model: "gemini-3.1-pro-preview",
+            selectedCharacterIds: ["character_1"],
+            selectedSceneId: "scene_sheet_market",
           }),
       },
       clock: { now: () => "2026-03-25T00:20:00.000Z" },
@@ -294,7 +360,11 @@ describe("regenerate all video prompts use case", () => {
       }),
     );
     expect(result.segments).toHaveLength(2);
-    expect(result.segments[0]?.referenceImages[0]?.assetPath).toContain("ref_image_1.png");
+    expect(result.segments[0]?.referenceImages.map((reference) => reference.assetPath)).toEqual([
+      "scene-sheets/batches/scene_batch_1/scenes/scene_sheet_market/current.png",
+      "character-sheets/batches/char_batch_1/characters/character_1/current.png",
+      "images/batches/image_batch_1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+    ]);
     expect(result.segments[1]?.referenceAudios[0]?.assetPath).toContain("ref_audio_2.wav");
     expect(result.currentBatch.approvedSegmentCount).toBe(0);
     expect(projectRepository.updateStatus).toHaveBeenCalledWith({

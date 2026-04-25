@@ -20,6 +20,7 @@ export const segmentVideoReferenceImageResponseSchema = z.object({
   order: z.number().int().nonnegative(),
   sourceShotId: z.string().nullable().optional(),
   label: z.string().nullable().optional(),
+  frameRole: z.enum(["first_frame", "last_frame"]).nullable().optional(),
 });
 
 export const segmentVideoReferenceAudioResponseSchema = z.object({

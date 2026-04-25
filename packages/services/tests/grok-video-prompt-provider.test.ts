@@ -23,6 +23,8 @@ describe("grok video prompt provider", () => {
                 visualGuardrails:
                   "保持林的外观、服装、挎包、空间方位稳定；镜头为单镜头连续推进；首尾帧过渡自然。",
                 rationale: "将对白、环境声和连续性要求合并进单镜头 Kling Omni 可执行提示词。",
+                selectedCharacterIds: [],
+                selectedSceneId: null,
               }),
             },
           },

@@ -4,8 +4,10 @@ import {
 import { ProjectNotFoundError } from "../errors/project-errors";
 import { TaskNotFoundError } from "../errors/task-errors";
 import { SegmentVideoNotFoundError } from "../errors/video-errors";
+import type { CharacterSheetRepository } from "../ports/character-sheet-repository";
 import type { Clock } from "../ports/clock";
 import type { ProjectRepository } from "../ports/project-repository";
+import type { SceneSheetRepository } from "../ports/scene-sheet-repository";
 import type { ShotImageRepository } from "../ports/shot-image-repository";
 import type { ShotScriptStorage } from "../ports/shot-script-storage";
 import type { TaskFileStorage } from "../ports/task-file-storage";
@@ -15,6 +17,11 @@ import type { TaskRepository } from "../ports/task-repository";
 import type { VideoPromptProvider } from "../ports/video-prompt-provider";
 import type { VideoRepository } from "../ports/video-repository";
 import type { VideoStorage } from "../ports/video-storage";
+import {
+  buildSegmentVideoReferences,
+  buildVideoPromptCharacterCandidates,
+  buildVideoPromptSceneCandidates,
+} from "./build-segment-video-references";
 import { buildVideoPromptProviderInput } from "./build-video-prompt-provider-input";
 import { deriveProjectVideoStatus } from "./derive-project-video-status";
 import { isTaskStillActive } from "./task-reset-guard";
@@ -33,6 +40,8 @@ export interface ProcessSegmentVideoPromptGenerateTaskUseCaseDependencies {
   taskFileStorage: TaskFileStorage;
   shotScriptStorage?: ShotScriptStorage;
   shotImageRepository?: ShotImageRepository;
+  characterSheetRepository?: CharacterSheetRepository;
+  sceneSheetRepository?: SceneSheetRepository;
   videoRepository: VideoRepository;
   videoStorage: VideoStorage;
   videoPromptProvider: VideoPromptProvider;
@@ -91,6 +100,38 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
           throw new SegmentVideoNotFoundError(taskInput.shotId);
         }
 
+        const characterSheets =
+          dependencies.characterSheetRepository && project.currentCharacterSheetBatchId
+            ? await dependencies.characterSheetRepository.listCharactersByBatchId(
+                project.currentCharacterSheetBatchId,
+              )
+            : [];
+        const sceneSheets =
+          dependencies.sceneSheetRepository && project.currentSceneSheetBatchId
+            ? await dependencies.sceneSheetRepository.listScenesByBatchId(
+                project.currentSceneSheetBatchId,
+              )
+            : [];
+        const shotReferences = dependencies.shotImageRepository?.listShotsByBatchId
+          ? await dependencies.shotImageRepository.listShotsByBatchId(currentSegment.sourceImageBatchId)
+          : [];
+
+        const startFrame = taskInput.startFrame
+          ? {
+              imageAssetPath: taskInput.startFrame.imageAssetPath,
+              imageWidth: taskInput.startFrame.imageWidth ?? null,
+              imageHeight: taskInput.startFrame.imageHeight ?? null,
+            }
+          : null;
+        const endFrame = taskInput.endFrame
+          ? {
+              imageAssetPath: taskInput.endFrame.imageAssetPath,
+              imageWidth: taskInput.endFrame.imageWidth ?? null,
+              imageHeight: taskInput.endFrame.imageHeight ?? null,
+            }
+          : null;
+        const currentSegmentRecord = currentSegment;
+
         const promptPlan = await dependencies.videoPromptProvider.generateVideoPrompt(
           buildVideoPromptProviderInput({
             projectId: project.id,
@@ -98,8 +139,10 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
             shots: taskInput.shots ?? taskInput.segment.shots,
             referenceImages: currentSegment.referenceImages,
             referenceAudios: currentSegment.referenceAudios,
-            startFrame: taskInput.startFrame,
-            endFrame: taskInput.endFrame,
+            characterCandidates: buildVideoPromptCharacterCandidates(characterSheets),
+            sceneCandidates: buildVideoPromptSceneCandidates(sceneSheets),
+            startFrame,
+            endFrame,
           }),
         );
 
@@ -108,11 +151,25 @@ export function createProcessSegmentVideoPromptGenerateTaskUseCase(
         }
 
         const promptUpdatedAt = startedAt;
+        const referenceImages = buildSegmentVideoReferences({
+          strategy: project.videoReferenceStrategy,
+          segment: taskInput.segment,
+          shotReferences: shotReferences.filter(
+            (item) =>
+              item.sceneId === currentSegmentRecord.sceneId &&
+              item.segmentId === currentSegmentRecord.segmentId,
+          ),
+          sceneSheet: sceneSheets.find((sceneSheet) => sceneSheet.id === promptPlan.selectedSceneId) ?? null,
+          characterSheets,
+          selectedSceneId: promptPlan.selectedSceneId ?? null,
+          selectedCharacterIds: promptPlan.selectedCharacterIds ?? [],
+        });
         const updatedSegment = {
           ...currentSegment,
           status: "in_review" as const,
           promptTextSeed: promptPlan.finalPrompt,
           promptTextCurrent: promptPlan.finalPrompt,
+          referenceImages,
           promptUpdatedAt,
           updatedAt: promptUpdatedAt,
         };
