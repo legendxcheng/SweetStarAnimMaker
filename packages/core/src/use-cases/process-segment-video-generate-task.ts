@@ -78,8 +78,12 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
           throw new SegmentVideoNotFoundError(taskInput.segmentId);
         }
 
+        const currentReferenceImages = filterReferenceImagesForVideoStrategy(
+          currentSegment.referenceImages ?? [],
+          project.videoReferenceStrategy,
+        );
         const referenceImages = await Promise.all(
-          [...(currentSegment.referenceImages ?? [])]
+          currentReferenceImages
             .sort((left, right) => left.order - right.order)
             .map(async (reference) => ({
               assetPath: await dependencies.videoStorage.resolveProjectAssetPath({
@@ -107,7 +111,7 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
         const promptVariables = {
           segment: taskInput.segment,
           shots,
-          referenceImages: currentSegment.referenceImages ?? [],
+          referenceImages: currentReferenceImages,
           referenceAudios: currentSegment.referenceAudios ?? [],
         };
         const promptText = currentSegment.promptTextCurrent;
@@ -278,4 +282,30 @@ export function createProcessSegmentVideoGenerateTaskUseCase(
       }
     },
   };
+}
+
+function filterReferenceImagesForVideoStrategy<
+  T extends {
+    order: number;
+    sourceShotId?: string | null;
+    frameRole?: "first_frame" | "last_frame" | null;
+  },
+>(referenceImages: T[], strategy: string | null | undefined): T[] {
+  const filtered =
+    strategy === "without_frame_refs"
+      ? referenceImages.filter((referenceImage) => {
+          if (referenceImage.frameRole) {
+            return false;
+          }
+
+          return !referenceImage.sourceShotId;
+        })
+      : referenceImages;
+
+  return filtered
+    .sort((left, right) => left.order - right.order)
+    .map((referenceImage, index) => ({
+      ...referenceImage,
+      order: index,
+    }));
 }

@@ -344,7 +344,7 @@ describe("process frame image generate task use case", () => {
     expect(shotImageProvider.generateShotImage).not.toHaveBeenCalled();
   });
 
-  it("appends the owning shot start-frame image after matched references for end-frame generation", async () => {
+  it("places the owning shot start-frame image first and labels it in the end-frame prompt", async () => {
     const shot = createShotReferenceRecord({
       id: "shot_ref_end_reference",
       batchId: "image_batch_end_reference",
@@ -499,10 +499,13 @@ describe("process frame image generate task use case", () => {
 
     expect(shotImageProvider.generateShotImage).toHaveBeenCalledWith(
       expect.objectContaining({
+        promptText: expect.stringContaining(
+          "参考图1是当前 segment 的首帧，请在参考图1的基础上生成尾帧",
+        ),
         referenceImagePaths: [
+          "E:/resolved/images/batches/image_batch_end_reference/shots/scene_1/segment_1/shot_1/start-frame/current.png",
           "E:/refs/char-rin.png",
           "E:/resolved/character-sheets/char-ivo/current.png",
-          "E:/resolved/images/batches/image_batch_end_reference/shots/scene_1/segment_1/shot_1/start-frame/current.png",
         ],
       }),
     );

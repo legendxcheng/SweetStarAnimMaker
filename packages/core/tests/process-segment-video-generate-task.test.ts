@@ -456,6 +456,249 @@ describe("process segment video generate task use case", () => {
     });
   });
 
+  it("filters stale frame references at submit time when the project uses scene and character references only", async () => {
+    const taskRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "task_segment_video_refs",
+        projectId: "proj_1",
+        type: "segment_video_generate",
+        queueName: "segment-video-generate",
+        storageDir: "projects/proj_1-my-story/tasks/task_segment_video_refs",
+        inputRelPath: "tasks/task_segment_video_refs/input.json",
+        outputRelPath: "tasks/task_segment_video_refs/output.json",
+        logRelPath: "tasks/task_segment_video_refs/log.txt",
+      }),
+      findLatestByProjectId: vi.fn(),
+      delete: vi.fn(),
+      markRunning: vi.fn(),
+      markSucceeded: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const projectRepository = {
+      insert: vi.fn(),
+      findById: vi.fn().mockResolvedValue({
+        id: "proj_1",
+        storageDir: "projects/proj_1-my-story",
+        currentVideoBatchId: "video_batch_v1",
+        videoReferenceStrategy: "without_frame_refs",
+      }),
+      listAll: vi.fn(),
+      updatePremiseMetadata: vi.fn(),
+      updateCurrentMasterPlot: vi.fn(),
+      updateCurrentCharacterSheetBatch: vi.fn(),
+      updateCurrentStoryboard: vi.fn(),
+      updateCurrentShotScript: vi.fn(),
+      updateCurrentImageBatch: vi.fn(),
+      updateCurrentVideoBatch: vi.fn(),
+      updateStatus: vi.fn(),
+    };
+    const taskFileStorage = {
+      createTaskArtifacts: vi.fn(),
+      readTaskInput: vi.fn().mockResolvedValue({
+        taskId: "task_segment_video_refs",
+        projectId: "proj_1",
+        taskType: "segment_video_generate",
+        batchId: "video_batch_v1",
+        sourceImageBatchId: "image_batch_v1",
+        sourceShotScriptId: "shot_script_v1",
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        shotId: "shot_1",
+        shotCode: "SC01-SG01-SH01",
+        frameDependency: "start_and_end_frame",
+        segment: {
+          segmentId: "segment_1",
+          sceneId: "scene_1",
+          order: 1,
+          name: "Arrival",
+          summary: "Rin arrives at the flooded market.",
+          durationSec: 8,
+          status: "approved",
+          lastGeneratedAt: "2026-03-25T00:09:00.000Z",
+          approvedAt: "2026-03-25T00:10:00.000Z",
+          shots: [],
+        },
+        shot: {
+          id: "shot_1",
+          sceneId: "scene_1",
+          segmentId: "segment_1",
+          order: 1,
+          shotCode: "SC01-SG01-SH01",
+          durationSec: 8,
+          frameDependency: "start_and_end_frame",
+          purpose: "Arrival",
+          visual: "Rin crosses the flooded market.",
+          subject: "Rin",
+          action: "She advances toward the camera.",
+          dialogue: null,
+          os: null,
+          audio: null,
+          transitionHint: null,
+          continuityNotes: null,
+        },
+        startFrame: {
+          id: "frame_start_1",
+          imageAssetPath:
+            "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_1/start-frame/current.png",
+          imageWidth: 1024,
+          imageHeight: 1024,
+        },
+        endFrame: {
+          id: "frame_end_1",
+          imageAssetPath:
+            "images/batches/image_batch_v1/shots/scene_1__segment_1__shot_1/end-frame/current.png",
+          imageWidth: 1024,
+          imageHeight: 1024,
+        },
+        promptTemplateKey: "segment_video.generate",
+      }),
+      writeTaskOutput: vi.fn(),
+      appendTaskLog: vi.fn(),
+    };
+    const currentSegment = {
+      id: "video_segment_1",
+      batchId: "video_batch_v1",
+      projectId: "proj_1",
+      projectStorageDir: "projects/proj_1-my-story",
+      sourceImageBatchId: "image_batch_v1",
+      sourceShotScriptId: "shot_script_v1",
+      shotId: "shot_1",
+      shotCode: "SC01-SG01-SH01",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      shotOrder: 1,
+      frameDependency: "start_and_end_frame" as const,
+      status: "generating" as const,
+      promptTextSeed: "seed prompt",
+      promptTextCurrent: "current prompt",
+      promptUpdatedAt: "2026-03-25T00:12:00.000Z",
+      referenceImages: [
+        {
+          id: "scene_ref",
+          assetPath: "scene-sheets/current.png",
+          source: "auto",
+          order: 0,
+          sourceShotId: null,
+          label: "Scene Market",
+        },
+        {
+          id: "character_ref",
+          assetPath: "character-sheets/current.png",
+          source: "auto",
+          order: 1,
+          sourceShotId: null,
+          label: "Character Rin",
+        },
+        {
+          id: "start_ref",
+          assetPath: "images/start-frame/current.png",
+          source: "auto",
+          order: 2,
+          sourceShotId: "shot_1",
+          frameRole: "first_frame" as const,
+          label: "SC01-SG01-SH01 start",
+        },
+        {
+          id: "end_ref",
+          assetPath: "images/end-frame/current.png",
+          source: "auto",
+          order: 3,
+          sourceShotId: "shot_1",
+          frameRole: "last_frame" as const,
+          label: "SC01-SG01-SH01 end",
+        },
+      ],
+      referenceAudios: [],
+      videoAssetPath: null,
+      thumbnailAssetPath: null,
+      durationSec: 8,
+      provider: null,
+      model: null,
+      updatedAt: "2026-03-25T00:12:00.000Z",
+      approvedAt: null,
+      sourceTaskId: null,
+      storageDir: "projects/proj_1-my-story/videos/batches/video_batch_v1/segments/scene_1__segment_1",
+      currentVideoRelPath: "videos/batches/video_batch_v1/segments/scene_1__segment_1/current.mp4",
+      currentMetadataRelPath: "videos/batches/video_batch_v1/segments/scene_1__segment_1/current.json",
+      thumbnailRelPath: "videos/batches/video_batch_v1/segments/scene_1__segment_1/thumbnail.webp",
+      versionsStorageDir: "videos/batches/video_batch_v1/segments/scene_1__segment_1/versions",
+    };
+    const videoRepository = {
+      insertBatch: vi.fn(),
+      findBatchById: vi.fn(),
+      findCurrentBatchByProjectId: vi.fn(),
+      listSegmentsByBatchId: vi.fn().mockResolvedValue([{ id: "video_segment_1", status: "in_review" }]),
+      insertSegment: vi.fn(),
+      findSegmentById: vi.fn(),
+      findCurrentSegmentByProjectIdAndSegmentId: vi.fn().mockResolvedValue(currentSegment),
+      findCurrentSegmentByProjectIdAndSceneIdAndSegmentId: vi.fn().mockResolvedValue(currentSegment),
+      findCurrentSegmentByProjectIdAndSceneIdAndSegmentIdAndShotId:
+        vi.fn().mockResolvedValue(currentSegment),
+      updateSegment: vi.fn(),
+    };
+    const videoStorage = {
+      initializePromptTemplate: vi.fn(),
+      readPromptTemplate: vi.fn(),
+      writePromptSnapshot: vi.fn(),
+      writePromptPlan: vi.fn(),
+      writeRawResponse: vi.fn(),
+      writeBatchManifest: vi.fn(),
+      writeCurrentVideo: vi.fn(),
+      writeVideoVersion: vi.fn(),
+      resolveProjectAssetPath: vi
+        .fn()
+        .mockImplementation(({ assetRelPath }) => `E:/SweetStarAnimMaker/.local-data/${assetRelPath}`),
+    };
+    const videoProvider = {
+      generateSegmentVideo: vi.fn().mockResolvedValue({
+        provider: "seedance",
+        model: "doubao-seedance",
+        videoUrl: "https://cdn.example/output.mp4",
+        thumbnailUrl: null,
+        rawResponse: "{}",
+        durationSec: 8,
+      }),
+    };
+
+    const useCase = createProcessSegmentVideoGenerateTaskUseCase({
+      taskRepository,
+      projectRepository,
+      taskFileStorage,
+      videoRepository,
+      videoStorage,
+      videoProvider,
+      clock: {
+        now: vi
+          .fn()
+          .mockReturnValueOnce("2026-03-25T00:12:30.000Z")
+          .mockReturnValueOnce("2026-03-25T00:13:00.000Z"),
+      },
+    });
+
+    await useCase.execute({ taskId: "task_segment_video_refs" });
+
+    expect(videoProvider.generateSegmentVideo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImages: [
+          expect.objectContaining({ label: "Scene Market", order: 0, frameRole: null }),
+          expect.objectContaining({ label: "Character Rin", order: 1, frameRole: null }),
+        ],
+      }),
+    );
+    expect(videoProvider.generateSegmentVideo.mock.calls[0]?.[0].referenceImages).toHaveLength(2);
+    expect(videoStorage.writePromptSnapshot).toHaveBeenCalledWith({
+      taskStorageDir: "projects/proj_1-my-story/tasks/task_segment_video_refs",
+      promptText: "current prompt",
+      promptVariables: expect.objectContaining({
+        referenceImages: [
+          expect.objectContaining({ label: "Scene Market", order: 0 }),
+          expect.objectContaining({ label: "Character Rin", order: 1 }),
+        ],
+      }),
+    });
+  });
+
   it("marks the task failed instead of leaving it running when shot video generation throws", async () => {
     const taskRepository = {
       insert: vi.fn(),

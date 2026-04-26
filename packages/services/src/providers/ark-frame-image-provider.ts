@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import type {
   GenerateShotImageInput,
   GenerateShotImageResult,
@@ -13,7 +16,7 @@ export interface CreateArkFrameImageProviderOptions {
 
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com";
 const DEFAULT_MODEL = "doubao-seedream-5-0-260128";
-const DEFAULT_SIZE = "2K";
+const DEFAULT_SIZE = "2848x1600";
 const DEFAULT_OUTPUT_FORMAT = "png";
 
 export function createArkFrameImageProvider(
@@ -30,11 +33,17 @@ export function createArkFrameImageProvider(
         throw new Error("SEEDANCE_API_KEY is required for frame image generation");
       }
 
+      const referenceImagePaths = input.referenceImagePaths ?? [];
+      const referenceImageUrls = await Promise.all(
+        referenceImagePaths.map(readReferenceImageAsDataUrl),
+      );
+
       const response = await requestArkImageGeneration({
         apiToken,
         baseUrl,
         model,
         promptText: buildPrompt(input.promptText, input.negativePromptText),
+        referenceImageUrls,
         timeoutMs: options.timeoutMs,
       });
       const firstImage = readFirstImage(response);
@@ -63,11 +72,42 @@ export function createArkFrameImageProvider(
   };
 }
 
+async function readReferenceImageAsDataUrl(localFilePath: string) {
+  const mimeType = resolveArkReferenceImageMimeType(localFilePath);
+  const bytes = await readFile(localFilePath);
+
+  return `data:${mimeType};base64,${Buffer.from(bytes).toString("base64")}`;
+}
+
+function resolveArkReferenceImageMimeType(localFilePath: string) {
+  const extension = path.extname(localFilePath).toLowerCase();
+
+  switch (extension) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".webp":
+      return "image/webp";
+    case ".bmp":
+      return "image/bmp";
+    case ".tif":
+    case ".tiff":
+      return "image/tiff";
+    case ".gif":
+      return "image/gif";
+    default:
+      throw new Error(`Unsupported Ark reference image format: ${extension || "unknown"}`);
+  }
+}
+
 async function requestArkImageGeneration(input: {
   apiToken: string;
   baseUrl: string;
   model: string;
   promptText: string;
+  referenceImageUrls: string[];
   timeoutMs?: number;
 }) {
   const controller = input.timeoutMs ? new AbortController() : null;
@@ -75,19 +115,32 @@ async function requestArkImageGeneration(input: {
     input.timeoutMs && controller ? setTimeout(() => controller.abort(), input.timeoutMs) : null;
 
   try {
+    const requestBody: {
+      model: string;
+      prompt: string;
+      size: string;
+      output_format: string;
+      watermark: boolean;
+      image?: string[];
+    } = {
+      model: input.model,
+      prompt: input.promptText.trim(),
+      size: DEFAULT_SIZE,
+      output_format: DEFAULT_OUTPUT_FORMAT,
+      watermark: false,
+    };
+
+    if (input.referenceImageUrls.length > 0) {
+      requestBody.image = input.referenceImageUrls;
+    }
+
     const response = await fetch(`${input.baseUrl}/api/v3/images/generations`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${input.apiToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: input.model,
-        prompt: input.promptText.trim(),
-        size: DEFAULT_SIZE,
-        output_format: DEFAULT_OUTPUT_FORMAT,
-        watermark: false,
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller?.signal,
     });
 
@@ -153,7 +206,7 @@ function buildPrompt(promptText: string, negativePromptText: string | null) {
   return `${trimmedPrompt}\n\nNegative prompt:\n${trimmedNegativePrompt}`;
 }
 
-function readFirstImage(payload: unknown) {
+function readFirstImage(payload: unknown): { url?: string; size?: unknown } | null {
   const data = (payload as { data?: Array<Record<string, unknown>> })?.data;
   return Array.isArray(data) ? data[0] : null;
 }

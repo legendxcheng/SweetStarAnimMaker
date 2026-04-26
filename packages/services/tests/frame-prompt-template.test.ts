@@ -3,6 +3,47 @@ import { describe, expect, it } from "vitest";
 import { buildFramePromptText } from "../src/providers/frame-prompt-template";
 
 describe("frame prompt template", () => {
+  it("tells end-frame planning to derive from the start frame instead of rewriting it", () => {
+    const promptText = buildFramePromptText({
+      projectId: "proj_1",
+      frameType: "end_frame",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_1",
+        order: 1,
+        summary: "林从市场入口推进到出口。",
+        shots: [],
+      },
+      currentShot: {
+        id: "shot_2",
+        shotCode: "SC01-SG01-SH02",
+        purpose: "呈现段落终态。",
+        visual: "雨夜市场出口。",
+        subject: "林",
+        action: "她越过积水后转身看向追来的人。",
+        frameDependency: "start_frame_only",
+        dialogue: null,
+        os: null,
+        audio: "雨声。",
+        transitionHint: null,
+        continuityNotes: "保持左肩背包。",
+      },
+      startFrameContext: {
+        promptTextCurrent: "首帧中林站在雨夜市场入口，脚边有积水。",
+        selectedCharacterIds: ["char_rin"],
+        imageStatus: "approved",
+        imageAssetPath: "images/start.png",
+      },
+      characterRoster: [],
+      sceneCandidates: [],
+    });
+
+    expect(promptText).toContain("必须在 startFrameContext.promptTextCurrent 的基础上生成尾帧");
+    expect(promptText).toContain("不要复制或同义改写首帧");
+    expect(promptText).toContain("同一段落的最终状态");
+    expect(promptText).toContain("明确写出相对首帧已经发生的画面变化");
+  });
+
   it("adds single-frame guidance for shots that only need a start frame", () => {
     const promptText = buildFramePromptText({
       projectId: "proj_1",

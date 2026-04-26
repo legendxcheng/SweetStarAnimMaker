@@ -111,11 +111,11 @@ describe("seedance video provider", () => {
       {
         type: "text",
         text:
-          "参考图片和视频节奏，生成克制写实的连续短剧片段。\n\n参考图别名说明：\n图片1 = ref.png",
+          "参考图片和视频节奏，生成克制写实的连续短剧片段。\n\n参考图别名说明：\n图片1 = ref.png。用途：作为普通多模态参考图，辅助约束画面元素、道具、风格或连续性。",
       },
       {
         type: "image_url",
-        role: "first_frame",
+        role: "reference_image",
         image_url: {
           url: "data:image/png;base64,aW1hZ2UtYnl0ZXM=",
         },
@@ -282,7 +282,7 @@ describe("seedance video provider", () => {
       {
         type: "text",
         text:
-          "保持角色外观一致，生成连续的中间剧情片段。\n\n参考图别名说明：\n图片1 = start.png",
+          "保持角色外观一致，生成连续的中间剧情片段。\n\n参考图别名说明：\n图片1 = start.png。用途：约束视频开头状态，开场画面应承接这张图的构图、动作起点和镜头起势。",
       },
       {
         type: "image_url",
@@ -299,49 +299,18 @@ describe("seedance video provider", () => {
     expect(result.durationSec).toBe(6);
   });
 
-  it("retries with fewer reference images and finally prompt-only when Seedance rejects input images as real-person privacy content", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        text: async () =>
-          JSON.stringify({
-            error: {
-              code: "InputImageSensitiveContentDetected.PrivacyInformation",
-              message: "input image may contain real person",
-            },
-          }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        text: async () =>
-          JSON.stringify({
-            error: {
-              code: "InputImageSensitiveContentDetected.PrivacyInformation",
-              message: "input image may contain real person",
-            },
-          }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: "cgt-seedance-stage-retry",
-          status: "queued",
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: "cgt-seedance-stage-retry",
-          status: "succeeded",
-          content: {
-            video_url: "https://cdn.example/stage-retry-output.mp4",
-            last_frame_url: "https://cdn.example/stage-retry-last-frame.png",
+  it("fails immediately when Seedance rejects reference images as real-person privacy content", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: "InputImageSensitiveContentDetected.PrivacyInformation",
+            message: "input image may contain real person",
           },
         }),
-      });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const provider = createSeedanceStageVideoProvider({
@@ -352,33 +321,35 @@ describe("seedance video provider", () => {
       returnLastFrame: true,
     });
 
-    const result = await provider.generateSegmentVideo({
-      projectId: "proj_1",
-      sceneId: "scene_1",
-      segmentId: "segment_1",
-      promptText: "保持角色外观一致，生成连续的中间剧情片段。",
-      referenceImages: [
-        {
-          assetPath: "https://cdn.example/start.png",
-          label: "start",
-          order: 0,
-        },
-        {
-          assetPath: "https://cdn.example/end.png",
-          label: "end",
-          order: 1,
-        },
-      ],
-      referenceAudios: [],
-      durationSec: 6,
-    });
+    await expect(
+      provider.generateSegmentVideo({
+        projectId: "proj_1",
+        sceneId: "scene_1",
+        segmentId: "segment_1",
+        promptText: "保持角色外观一致，生成连续的中间剧情片段。",
+        referenceImages: [
+          {
+            assetPath: "https://cdn.example/start.png",
+            label: "start",
+            order: 0,
+          },
+          {
+            assetPath: "https://cdn.example/end.png",
+            label: "end",
+            order: 1,
+          },
+        ],
+        referenceAudios: [],
+        durationSec: 6,
+      }),
+    ).rejects.toThrow("InputImageSensitiveContentDetected.PrivacyInformation");
 
     const firstRequest = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     expect(firstRequest.content).toEqual([
       {
         type: "text",
         text:
-          "保持角色外观一致，生成连续的中间剧情片段。\n\n参考图别名说明：\n图片1 = start\n图片2 = end",
+          "保持角色外观一致，生成连续的中间剧情片段。\n\n参考图别名说明：\n图片1 = start。用途：作为普通多模态参考图，辅助约束画面元素、道具、风格或连续性。\n图片2 = end。用途：作为普通多模态参考图，辅助约束画面元素、道具、风格或连续性。",
       },
       {
         type: "image_url",
@@ -395,35 +366,87 @@ describe("seedance video provider", () => {
         },
       },
     ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
-    const secondRequest = JSON.parse(fetchMock.mock.calls[1]![1].body as string);
-    expect(secondRequest.content).toEqual([
-      {
-        type: "text",
-        text:
-          "保持角色外观一致，生成连续的中间剧情片段。\n\n参考图别名说明：\n图片1 = start",
-      },
-      {
-        type: "image_url",
-        role: "reference_image",
-        image_url: {
-          url: "https://cdn.example/start.png",
+  it("returns a request audit for the submitted Seedance reference images", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "cgt-seedance-stage-audit",
+          status: "queued",
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "cgt-seedance-stage-audit",
+          status: "succeeded",
+          content: {
+            video_url: "https://cdn.example/stage-audit-output.mp4",
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createSeedanceStageVideoProvider({
+      apiToken: "test-token",
+      modelName: "doubao-seedance-2-0-260128",
+      ratio: "16:9",
+    });
+
+    const result = await provider.generateSegmentVideo({
+      projectId: "proj_1",
+      sceneId: "scene_1",
+      segmentId: "segment_1",
+      promptText: "保持角色外观一致，生成连续的中间剧情片段。",
+      referenceImages: [
+        {
+          assetPath: "https://cdn.example/scene.png",
+          label: "Scene City",
+          order: 0,
         },
-      },
-    ]);
+        {
+          assetPath: "https://cdn.example/character.png",
+          label: "Character Lin Feng",
+          order: 1,
+        },
+        {
+          assetPath: "https://cdn.example/start.png",
+          label: "S01 start",
+          order: 2,
+          frameRole: "first_frame",
+        },
+      ],
+      referenceAudios: [],
+      durationSec: 6,
+    });
 
-    const thirdRequest = JSON.parse(fetchMock.mock.calls[2]![1].body as string);
-    expect(thirdRequest.content).toEqual([
-      {
-        type: "text",
-        text: "保持角色外观一致，生成连续的中间剧情片段。",
-      },
-    ]);
-
-    expect(result.videoUrl).toBe("https://cdn.example/stage-retry-output.mp4");
-    expect(result.thumbnailUrl).toBe("https://cdn.example/stage-retry-last-frame.png");
-    expect(result.model).toBe("doubao-seedance-2-0-260128");
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const rawResponse = JSON.parse(result.rawResponse);
+    expect(rawResponse.seedanceAudit).toMatchObject({
+      finalAttempt: 1,
+      fallbackApplied: false,
+      attempts: [
+        {
+          attempt: 1,
+          status: "submitted",
+          strategy: "all_reference_images",
+          taskId: "cgt-seedance-stage-audit",
+          request: {
+            model: "doubao-seedance-2-0-260128",
+            duration: 6,
+            ratio: "16:9",
+            referenceImages: [
+              { alias: "图片1", label: "Scene City", role: "reference_image" },
+              { alias: "图片2", label: "Character Lin Feng", role: "reference_image" },
+              { alias: "图片3", label: "S01 start", semanticRole: "first_frame" },
+            ],
+          },
+        },
+      ],
+    });
   });
 
   it("submits scene, character, and frame references with image aliases", async () => {
@@ -475,11 +498,13 @@ describe("seedance video provider", () => {
           assetPath: "https://cdn.example/end.png",
           label: "SH01 end",
           order: 2,
+          frameRole: "last_frame",
         },
         {
           assetPath: "https://cdn.example/start.png",
           label: "SH01 start",
           order: 3,
+          frameRole: "first_frame",
         },
       ],
       referenceAudios: [],
@@ -491,7 +516,7 @@ describe("seedance video provider", () => {
       {
         type: "text",
         text:
-          "按首尾状态生成连续短剧片段。\n\n参考图别名说明：\n图片1 = Scene Ritual Room\n图片2 = Character Hero\n图片3 = SH01 end\n图片4 = SH01 start",
+          "按首尾状态生成连续短剧片段。\n\n参考图别名说明：\n图片1 = Scene Ritual Room。用途：锁定场景环境、空间结构、关键陈设和整体氛围。\n图片2 = Character Hero。用途：锁定角色外观、脸部特征、发型、服装、体型和人物一致性。\n图片3 = SH01 end。用途：约束视频结尾状态，最后画面应自然抵达这张图的动作、情绪和构图。\n图片4 = SH01 start。用途：约束视频开头状态，开场画面应承接这张图的构图、动作起点和镜头起势。",
       },
       {
         type: "image_url",

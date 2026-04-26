@@ -33,6 +33,7 @@ export interface SubmitSeedanceVideoGenerationTaskInput {
 export interface SeedanceReferenceImageInput {
   assetPath: string;
   role?: "reference_image" | "first_frame" | "last_frame" | null;
+  semanticRole?: "first_frame" | "last_frame" | null;
   label?: string | null;
 }
 
@@ -42,6 +43,7 @@ export interface SubmitSeedanceVideoGenerationTaskResult {
   provider: string;
   modelName: string;
   rawResponse: string;
+  requestAudit?: SeedanceSubmitRequestAudit;
 }
 
 export interface GetSeedanceVideoGenerationTaskInput {
@@ -77,6 +79,62 @@ export interface SeedanceVideoProvider {
   waitForVideoGenerationTask(
     input: WaitForSeedanceVideoGenerationTaskInput,
   ): Promise<GetSeedanceVideoGenerationTaskResult> | GetSeedanceVideoGenerationTaskResult;
+}
+
+export interface SeedanceSubmitReferenceImageAudit {
+  alias: string;
+  label: string;
+  role: "reference_image" | "first_frame" | "last_frame";
+  semanticRole: "first_frame" | "last_frame" | null;
+  assetPath: string;
+  resolvedAsset: {
+    kind: "remote_url" | "asset_url" | "data_url" | "local_file";
+    mimeType?: string;
+    byteLength?: number;
+    sha256?: string;
+    urlPrefix?: string;
+  };
+}
+
+export interface SeedanceSubmitRequestAudit {
+  model: string;
+  duration: number;
+  resolution?: string;
+  ratio?: string;
+  generateAudio?: boolean;
+  returnLastFrame?: boolean;
+  serviceTier?: string;
+  executionExpiresAfterSec?: number;
+  safetyIdentifier?: string;
+  promptText: string;
+  content: Array<{
+    type: string;
+    role?: string;
+    alias?: string;
+    label?: string;
+    semanticRole?: "first_frame" | "last_frame" | null;
+  }>;
+  referenceImages: SeedanceSubmitReferenceImageAudit[];
+  referenceAudioCount: number;
+  referenceVideoCount: number;
+  hasDraftTask: boolean;
+}
+
+export interface SeedanceStageSubmitAttemptAudit {
+  attempt: number;
+  status: "submitted" | "failed";
+  strategy: "all_reference_images";
+  request: SeedanceSubmitRequestAudit;
+  taskId?: string;
+  providerStatus?: string | null;
+  fallbackReason?: string;
+  errorMessage?: string;
+}
+
+export interface SeedanceStageGenerationAudit {
+  attempts: SeedanceStageSubmitAttemptAudit[];
+  fallbackApplied: boolean;
+  finalAttempt: number | null;
 }
 
 export interface CreateSeedanceStageVideoProviderOptions

@@ -91,6 +91,7 @@ export function createRegenerateAllFramePromptsUseCase(
           segmentId: owningShot?.segmentId ?? frame.segmentId,
           sceneId: owningShot?.sceneId ?? frame.sceneId,
           frameType: frame.frameType,
+          sourceShotIds: owningShot?.sourceShotIds,
         };
 
         await dependencies.taskRepository.insert(task);

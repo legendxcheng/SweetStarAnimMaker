@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 import type { VideoProvider } from "@sweet-star/core";
@@ -11,7 +12,10 @@ import type {
   GetSeedanceVideoGenerationTaskInput,
   GetSeedanceVideoGenerationTaskResult,
   SeedanceReferenceImageInput,
+  SeedanceStageGenerationAudit,
+  SeedanceStageSubmitAttemptAudit,
   SeedanceVideoProvider,
+  SeedanceSubmitRequestAudit,
   SubmitSeedanceVideoGenerationTaskInput,
   SubmitSeedanceVideoGenerationTaskResult,
   WaitForSeedanceVideoGenerationTaskInput,
@@ -36,14 +40,25 @@ const DEFAULT_POLL_TIMEOUT_MS = 7_200_000;
 const SUCCESS_STATUSES = new Set(["succeeded"]);
 const FAILURE_STATUSES = new Set(["failed", "expired", "cancelled", "canceled"]);
 
+class SeedanceSubmitError extends Error {
+  constructor(
+    message: string,
+    public readonly requestAudit: SeedanceSubmitRequestAudit,
+  ) {
+    super(message);
+    this.name = "SeedanceSubmitError";
+  }
+}
+
 export function createSeedanceVideoProvider(
   options: CreateSeedanceVideoProviderOptions = {},
 ): SeedanceVideoProvider {
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
   const modelName = options.modelName?.trim() || DEFAULT_MODEL_NAME;
-  const defaultDurationSeconds = isPositiveInteger(options.durationSeconds)
-    ? options.durationSeconds
-    : DEFAULT_DURATION_SECONDS;
+  const defaultDurationSeconds: number =
+    typeof options.durationSeconds === "number" && isPositiveInteger(options.durationSeconds)
+      ? options.durationSeconds
+      : DEFAULT_DURATION_SECONDS;
   const requestTimeoutMs = options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const fetchFn = options.fetchFn ?? fetch;
 
@@ -52,12 +67,15 @@ export function createSeedanceVideoProvider(
       const apiToken = readApiToken(options.apiToken);
       const requestBody: Record<string, unknown> = {
         model: modelName,
-        content: await buildContent(input, fetchFn),
+        content: [],
       };
+      const contentResult = await buildContent(input, fetchFn);
+      requestBody.content = contentResult.content;
 
-      const durationSeconds = isPositiveInteger(input.durationSeconds)
-        ? input.durationSeconds
-        : defaultDurationSeconds;
+      const durationSeconds =
+        typeof input.durationSeconds === "number" && isPositiveInteger(input.durationSeconds)
+          ? input.durationSeconds
+          : defaultDurationSeconds;
       requestBody.duration = durationSeconds;
 
       const resolution = input.resolution?.trim() || options.resolution?.trim();
@@ -108,15 +126,39 @@ export function createSeedanceVideoProvider(
         requestBody.safety_identifier = safetyIdentifier;
       }
 
-      const payload = await requestJson({
-        apiToken,
-        baseUrl,
-        fetchFn,
-        timeoutMs: requestTimeoutMs,
-        method: "POST",
-        path: "/api/v3/contents/generations/tasks",
-        body: requestBody,
-      });
+      const requestAudit: SeedanceSubmitRequestAudit = {
+        model: modelName,
+        duration: durationSeconds,
+        promptText: contentResult.audit.promptText,
+        content: contentResult.audit.content,
+        referenceImages: contentResult.audit.referenceImages,
+        referenceAudioCount: contentResult.audit.referenceAudioCount,
+        referenceVideoCount: contentResult.audit.referenceVideoCount,
+        hasDraftTask: contentResult.audit.hasDraftTask,
+        ...(resolution ? { resolution } : {}),
+        ...(ratio ? { ratio } : {}),
+        ...(typeof generateAudio === "boolean" ? { generateAudio } : {}),
+        ...(typeof returnLastFrame === "boolean" ? { returnLastFrame } : {}),
+        ...(serviceTier ? { serviceTier } : {}),
+        ...(executionExpiresAfterSec ? { executionExpiresAfterSec } : {}),
+        ...(safetyIdentifier ? { safetyIdentifier } : {}),
+      };
+
+      let payload: unknown;
+      try {
+        payload = await requestJson({
+          apiToken,
+          baseUrl,
+          fetchFn,
+          timeoutMs: requestTimeoutMs,
+          method: "POST",
+          path: "/api/v3/contents/generations/tasks",
+          body: requestBody,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new SeedanceSubmitError(message, requestAudit);
+      }
       const taskId = readFirstString(payload, [["id"], ["data", "id"]]);
 
       if (!taskId) {
@@ -129,6 +171,7 @@ export function createSeedanceVideoProvider(
         provider: "seedance-video",
         modelName,
         rawResponse: JSON.stringify(payload),
+        requestAudit,
       };
     },
 
@@ -204,6 +247,7 @@ export function createSeedanceStageVideoProvider(
                 assetPath: reference.assetPath,
                 role: "reference_image" as const,
                 label: reference.label,
+                semanticRole: reference.frameRole,
               })),
             )
           : input.startFramePath
@@ -211,6 +255,7 @@ export function createSeedanceStageVideoProvider(
                 {
                   assetPath: input.startFramePath,
                   role: "first_frame" as const,
+                  semanticRole: "first_frame" as const,
                 },
               ]
             : [];
@@ -225,11 +270,12 @@ export function createSeedanceStageVideoProvider(
         generateAudio: options.generateAudio,
         returnLastFrame: options.returnLastFrame,
       } satisfies Omit<SubmitSeedanceVideoGenerationTaskInput, "referenceImages">;
-      const submitted = await submitSeedanceStageTaskWithImagePrivacyFallback({
+      const submitResult = await submitSeedanceStageTask({
         provider,
         referenceImages,
         submitInputBase,
       });
+      const submitted = submitResult.submitted;
       console.info("[video-generate] seedance submitted", {
         taskId: submitted.taskId,
         status: submitted.status,
@@ -277,6 +323,7 @@ export function createSeedanceStageVideoProvider(
         rawResponse: JSON.stringify({
           submit: JSON.parse(submitted.rawResponse),
           result: JSON.parse(completed.rawResponse),
+          seedanceAudit: submitResult.audit,
         }),
         durationSec: completed.durationSec ?? input.durationSec ?? options.durationSeconds ?? null,
       };
@@ -284,39 +331,23 @@ export function createSeedanceStageVideoProvider(
   };
 }
 
-async function submitSeedanceStageTaskWithImagePrivacyFallback(input: {
+async function submitSeedanceStageTask(input: {
   provider: SeedanceVideoProvider;
   referenceImages: SeedanceReferenceImageInput[];
   submitInputBase: Omit<SubmitSeedanceVideoGenerationTaskInput, "referenceImages">;
 }) {
-  try {
-    return await input.provider.submitVideoGenerationTask({
-      ...input.submitInputBase,
-      referenceImages: input.referenceImages,
-    });
-  } catch (error) {
-    if (!isSeedanceRealPersonPrivacyImageError(error)) {
-      throw error;
-    }
-  }
-
-  if (input.referenceImages.length > 1) {
-    try {
-      return await input.provider.submitVideoGenerationTask({
-        ...input.submitInputBase,
-        referenceImages: input.referenceImages.slice(0, 1),
-      });
-    } catch (error) {
-      if (!isSeedanceRealPersonPrivacyImageError(error)) {
-        throw error;
-      }
-    }
-  }
-
-  return input.provider.submitVideoGenerationTask({
+  const submitted = await input.provider.submitVideoGenerationTask({
     ...input.submitInputBase,
-    referenceImages: [],
+    referenceImages: input.referenceImages,
   });
+
+  return buildStageSubmitResult(submitted, [
+    buildSubmittedAttemptAudit({
+      attempt: 1,
+      strategy: "all_reference_images",
+      submitted,
+    }),
+  ]);
 }
 
 async function buildContent(
@@ -324,6 +355,8 @@ async function buildContent(
   fetchFn: typeof fetch,
 ) {
   const content: Array<Record<string, unknown>> = [];
+  const auditContent: SeedanceSubmitRequestAudit["content"] = [];
+  const auditReferenceImages: SeedanceSubmitRequestAudit["referenceImages"] = [];
   const referenceImages = normalizeSeedanceReferenceImages(input.referenceImages);
   const promptText = buildPromptTextWithReferenceImageAliases(
     input.promptText,
@@ -334,6 +367,9 @@ async function buildContent(
     content.push({
       type: "text",
       text: promptText,
+    });
+    auditContent.push({
+      type: "text",
     });
   }
 
@@ -347,33 +383,61 @@ async function buildContent(
     );
   }
 
-  for (const referenceImage of referenceImages) {
+  for (const [index, referenceImage] of referenceImages.entries()) {
+    const resolvedAsset = await resolveSeedanceAsset(referenceImage.assetPath, "image", fetchFn);
     content.push({
       type: "image_url",
       role: referenceImage.role,
       image_url: {
-        url: await resolveSeedanceAsset(referenceImage.assetPath, "image", fetchFn),
+        url: resolvedAsset.url,
       },
+    });
+    const alias = `图片${index + 1}`;
+    const label = referenceImage.label?.trim() || inferReferenceImageAlias(referenceImage.assetPath);
+    auditContent.push({
+      type: "image_url",
+      role: referenceImage.role,
+      alias,
+      label,
+      semanticRole: referenceImage.semanticRole ?? null,
+    });
+    auditReferenceImages.push({
+      alias,
+      label,
+      role: referenceImage.role,
+      semanticRole: referenceImage.semanticRole ?? null,
+      assetPath: referenceImage.assetPath,
+      resolvedAsset: resolvedAsset.audit,
     });
   }
 
   for (const referenceVideo of referenceVideos) {
+    const resolvedAsset = await resolveSeedanceAsset(referenceVideo, "video", fetchFn);
     content.push({
       type: "video_url",
       role: "reference_video",
       video_url: {
-        url: await resolveSeedanceAsset(referenceVideo, "video", fetchFn),
+        url: resolvedAsset.url,
       },
+    });
+    auditContent.push({
+      type: "video_url",
+      role: "reference_video",
     });
   }
 
   for (const referenceAudio of referenceAudios) {
+    const resolvedAsset = await resolveSeedanceAsset(referenceAudio, "audio", fetchFn);
     content.push({
       type: "audio_url",
       role: "reference_audio",
       audio_url: {
-        url: await resolveSeedanceAsset(referenceAudio, "audio", fetchFn),
+        url: resolvedAsset.url,
       },
+    });
+    auditContent.push({
+      type: "audio_url",
+      role: "reference_audio",
     });
   }
 
@@ -384,13 +448,28 @@ async function buildContent(
         id: draftTaskId,
       },
     });
+    auditContent.push({
+      type: "draft_task",
+    });
   }
 
   if (content.length === 0) {
     throw new Error("Seedance video provider requires promptText, reference assets, or draftTaskId");
   }
 
-  return content;
+  return {
+    content,
+    audit: {
+      model: "",
+      duration: 0,
+      promptText,
+      content: auditContent,
+      referenceImages: auditReferenceImages,
+      referenceAudioCount: referenceAudios.length,
+      referenceVideoCount: referenceVideos.length,
+      hasDraftTask: Boolean(draftTaskId),
+    } satisfies SeedanceSubmitRequestAudit,
+  };
 }
 
 async function resolveSeedanceAsset(
@@ -401,21 +480,55 @@ async function resolveSeedanceAsset(
   const trimmedValue = value.trim();
 
   if (isRemoteUrl(trimmedValue) || isAssetUrl(trimmedValue) || isDataUrl(trimmedValue)) {
-    return trimmedValue;
+    return {
+      url: trimmedValue,
+      audit: {
+        kind: (isRemoteUrl(trimmedValue)
+          ? "remote_url"
+          : isAssetUrl(trimmedValue)
+            ? "asset_url"
+            : "data_url") as "remote_url" | "asset_url" | "data_url",
+        urlPrefix: truncateAuditUrl(trimmedValue),
+      },
+    };
   }
 
   if (mediaType === "video") {
     const fileBytes = await readFile(trimmedValue);
-    return uploadWithPsda1({
+    const uploadedUrl = await uploadWithPsda1({
       fileName: path.basename(trimmedValue),
       fileBytes,
       fetchFn,
     });
+    return {
+      url: uploadedUrl,
+      audit: buildLocalFileAssetAudit(trimmedValue, fileBytes, mediaType),
+    };
   }
 
   const fileBytes = await readFile(trimmedValue);
   const mimeType = resolveMimeType(trimmedValue, mediaType);
-  return `data:${mimeType};base64,${Buffer.from(fileBytes).toString("base64")}`;
+  return {
+    url: `data:${mimeType};base64,${Buffer.from(fileBytes).toString("base64")}`,
+    audit: buildLocalFileAssetAudit(trimmedValue, fileBytes, mediaType),
+  };
+}
+
+function buildLocalFileAssetAudit(
+  filePath: string,
+  fileBytes: Buffer,
+  mediaType: "image" | "audio" | "video",
+) {
+  return {
+    kind: "local_file" as const,
+    mimeType: resolveMimeType(filePath, mediaType),
+    byteLength: fileBytes.byteLength,
+    sha256: createHash("sha256").update(fileBytes).digest("hex"),
+  };
+}
+
+function truncateAuditUrl(value: string) {
+  return value.length > 160 ? `${value.slice(0, 160)}...` : value;
 }
 
 function resolveMimeType(filePath: string, mediaType: "image" | "audio" | "video") {
@@ -486,6 +599,7 @@ function normalizeSeedanceReferenceImages(
         return {
           assetPath: item.trim(),
           role: "reference_image" as const,
+          semanticRole: null,
           label: null,
         };
       }
@@ -493,6 +607,7 @@ function normalizeSeedanceReferenceImages(
       return {
         assetPath: item.assetPath.trim(),
         role: item.role ?? "reference_image",
+        semanticRole: item.semanticRole ?? null,
         label: item.label?.trim() || null,
       };
     })
@@ -504,14 +619,16 @@ function buildPromptTextWithReferenceImageAliases(
   referenceImages: Array<{
     assetPath: string;
     label?: string | null;
+    semanticRole?: "first_frame" | "last_frame" | null;
   }>,
 ) {
   const normalizedPromptText = promptText?.trim() ?? "";
   const aliasLines = referenceImages.map((referenceImage, index) => {
     const alias = `图片${index + 1}`;
     const label = referenceImage.label?.trim() || inferReferenceImageAlias(referenceImage.assetPath);
+    const purposeText = inferReferenceImagePurposeText(referenceImage);
 
-    return `${alias} = ${label}`;
+    return `${alias} = ${label}。用途：${purposeText}`;
   });
 
   if (aliasLines.length === 0) {
@@ -528,6 +645,34 @@ function inferReferenceImageAlias(assetPath: string) {
   const fileName = normalizedAssetPath ? path.basename(normalizedAssetPath) : "参考图";
 
   return fileName || "参考图";
+}
+
+function inferReferenceImagePurposeText(referenceImage: {
+  assetPath: string;
+  label?: string | null;
+  semanticRole?: "first_frame" | "last_frame" | null;
+}) {
+  switch (referenceImage.semanticRole) {
+    case "first_frame":
+      return "约束视频开头状态，开场画面应承接这张图的构图、动作起点和镜头起势。";
+    case "last_frame":
+      return "约束视频结尾状态，最后画面应自然抵达这张图的动作、情绪和构图。";
+    default:
+      break;
+  }
+
+  const label = referenceImage.label?.trim() ?? "";
+  const assetPath = referenceImage.assetPath.trim();
+
+  if (/character|角色/iu.test(label) || /character-sheets/iu.test(assetPath)) {
+    return "锁定角色外观、脸部特征、发型、服装、体型和人物一致性。";
+  }
+
+  if (/scene|场景/iu.test(label) || /scene-sheets/iu.test(assetPath)) {
+    return "锁定场景环境、空间结构、关键陈设和整体氛围。";
+  }
+
+  return "作为普通多模态参考图，辅助约束画面元素、道具、风格或连续性。";
 }
 
 function readApiToken(apiToken: string | undefined) {
@@ -554,14 +699,6 @@ function isDataUrl(value: string) {
 
 function isPositiveInteger(value: number | null | undefined) {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
-}
-
-function isSeedanceRealPersonPrivacyImageError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  return error.message.includes("InputImageSensitiveContentDetected.PrivacyInformation");
 }
 
 async function requestJson(input: {
@@ -686,4 +823,48 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function buildSubmittedAttemptAudit(input: {
+  attempt: number;
+  strategy: SeedanceStageSubmitAttemptAudit["strategy"];
+  submitted: SubmitSeedanceVideoGenerationTaskResult;
+}): SeedanceStageSubmitAttemptAudit {
+  return {
+    attempt: input.attempt,
+    strategy: input.strategy,
+    status: "submitted",
+    request: input.submitted.requestAudit ?? createMissingRequestAudit(),
+    taskId: input.submitted.taskId,
+    providerStatus: input.submitted.status,
+  };
+}
+
+function buildStageSubmitResult(
+  submitted: SubmitSeedanceVideoGenerationTaskResult,
+  attempts: SeedanceStageSubmitAttemptAudit[],
+) {
+  const audit: SeedanceStageGenerationAudit = {
+    attempts,
+    fallbackApplied: false,
+    finalAttempt: attempts.at(-1)?.attempt ?? null,
+  };
+
+  return {
+    submitted,
+    audit,
+  };
+}
+
+function createMissingRequestAudit(): SeedanceSubmitRequestAudit {
+  return {
+    model: "",
+    duration: 0,
+    promptText: "",
+    content: [],
+    referenceImages: [],
+    referenceAudioCount: 0,
+    referenceVideoCount: 0,
+    hasDraftTask: false,
+  };
 }

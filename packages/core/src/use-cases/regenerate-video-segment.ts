@@ -108,10 +108,15 @@ export function createRegenerateVideoSegmentUseCase(
       }
 
       const timestamp = dependencies.clock.now();
+      const referenceImages = filterCurrentSegmentReferenceImagesForStrategy(
+        currentSegment.referenceImages ?? [],
+        project.videoReferenceStrategy,
+      );
       await dependencies.videoRepository.updateSegment({
         ...currentSegment,
         status: "generating",
         approvedAt: null,
+        referenceImages,
         updatedAt: timestamp,
       });
       const task = createTaskRecord({
@@ -170,4 +175,30 @@ export function createRegenerateVideoSegmentUseCase(
       return toTaskDetailDto(task);
     },
   };
+}
+
+function filterCurrentSegmentReferenceImagesForStrategy<
+  T extends {
+    order: number;
+    sourceShotId?: string | null;
+    frameRole?: "first_frame" | "last_frame" | null;
+  },
+>(referenceImages: T[], strategy: string | null | undefined): T[] {
+  const filtered =
+    strategy === "without_frame_refs"
+      ? referenceImages.filter((referenceImage) => {
+          if (referenceImage.frameRole) {
+            return false;
+          }
+
+          return !referenceImage.sourceShotId;
+        })
+      : referenceImages;
+
+  return filtered
+    .sort((left, right) => left.order - right.order)
+    .map((referenceImage, index) => ({
+      ...referenceImage,
+      order: index,
+    }));
 }

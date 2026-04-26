@@ -55,6 +55,13 @@ export function buildFramePromptText(input: GenerateFramePromptInput) {
 
     if (input.startFrameContext?.promptTextCurrent) {
       rules.push("用 startFrameContext.promptTextCurrent 作为连续性锚点。");
+      rules.push(
+        "必须在 startFrameContext.promptTextCurrent 的基础上生成尾帧：保留人物身份、服装、场景和光线连续性，但根据 currentShot.action / visual / continuityNotes 推进到同一段落的最终状态。",
+      );
+      rules.push(
+        "promptText 必须明确写出相对首帧已经发生的画面变化，例如人物站位变化、手中道具/符咒状态变化、动作完成结果、情绪落点或空间关系变化。",
+      );
+      rules.push("不要复制或同义改写首帧，不要让尾帧与首帧只有轻微措辞差异。");
     }
   }
 

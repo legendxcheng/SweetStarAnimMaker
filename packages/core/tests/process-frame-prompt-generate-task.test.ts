@@ -664,6 +664,7 @@ describe("process frame prompt generate task use case", () => {
       segmentId: "segment_1",
       shotId: "shot_1",
       shotCode: "S01-SG01-SH01",
+      sourceShotIds: ["shot_1", "shot_2"],
       segmentOrder: 1,
       shotOrder: 1,
       durationSec: 4,
@@ -749,6 +750,7 @@ describe("process frame prompt generate task use case", () => {
         segmentId: "segment_1",
         sceneId: "scene_1",
         frameType: "end_frame",
+        sourceShotIds: ["shot_1", "shot_2"],
       }),
       writeTaskOutput: vi.fn(),
       appendTaskLog: vi.fn(),
@@ -792,7 +794,7 @@ describe("process frame prompt generate task use case", () => {
         updatedAt: "2026-03-24T00:10:00.000Z",
         approvedAt: "2026-03-24T00:10:00.000Z",
         segmentCount: 1,
-        shotCount: 1,
+        shotCount: 2,
         totalDurationSec: 4,
         segments: [
           {
@@ -823,6 +825,24 @@ describe("process frame prompt generate task use case", () => {
                 audio: "雨声渐弱。",
                 transitionHint: "切到下一镜近景。",
                 continuityNotes: "林夏左肩背包不能丢。",
+              },
+              {
+                id: "shot_2",
+                sceneId: "scene_1",
+                segmentId: "segment_1",
+                order: 2,
+                shotCode: "S01-SG01-SH02",
+                durationSec: 2,
+                purpose: "展现段落终态。",
+                visual: "雨夜市场出口，伊沃退到阴影里。",
+                subject: "林夏、伊沃",
+                action: "林夏越过积水转身看向退后的伊沃。",
+                frameDependency: "start_frame_only",
+                dialogue: null,
+                os: null,
+                audio: "雨声和远处脚步声。",
+                transitionHint: "承接下一段。",
+                continuityNotes: "保持林夏左肩背包，伊沃位于后景阴影。",
               },
             ],
           },
@@ -895,6 +915,10 @@ describe("process frame prompt generate task use case", () => {
           imageAssetPath:
             "images/batches/image_batch_prompt_end_context/shots/scene_1/segment_1/shot_1/start-frame/current.png",
         },
+        currentShot: expect.objectContaining({
+          id: "shot_2",
+          action: "林夏越过积水转身看向退后的伊沃。",
+        }),
       }),
     );
   });
@@ -1530,6 +1554,13 @@ describe("process frame prompt generate task use case", () => {
           selectedSceneId: "scene_sheet_lobby",
           selectedSceneName: "财团大厅",
         }),
+      }),
+    );
+    expect(shotImageRepository.updateFrame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchedReferenceImagePaths: [
+          "scene-sheets/batches/scene_batch_v1/scenes/scene_sheet_lobby/current.png",
+        ],
       }),
     );
   });

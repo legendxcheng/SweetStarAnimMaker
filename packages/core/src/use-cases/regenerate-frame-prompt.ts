@@ -89,6 +89,7 @@ export function createRegenerateFramePromptUseCase(
         segmentId: resolvedShotFrame?.shot.segmentId ?? frame.segmentId,
         sceneId: resolvedShotFrame?.shot.sceneId ?? frame.sceneId,
         frameType: frame.frameType,
+        sourceShotIds: resolvedShotFrame?.shot.sourceShotIds,
       };
 
       await dependencies.taskRepository.insert(task);

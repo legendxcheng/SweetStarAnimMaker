@@ -114,28 +114,31 @@ export function createProcessFrameImageGenerateTaskUseCase(
           activeFrame.matchedReferenceImagePaths.map(resolveReferenceImagePath),
         );
 
-        if (
-          activeFrame.frameType === "end_frame" &&
-          shot?.startFrame.imageAssetPath
-        ) {
-          resolvedReferenceImagePaths.push(
-            await resolveReferenceImagePath(shot.startFrame.imageAssetPath),
-          );
-        }
+        const startFrameReferenceImagePath =
+          activeFrame.frameType === "end_frame" && shot?.startFrame.imageAssetPath
+            ? await resolveReferenceImagePath(shot.startFrame.imageAssetPath)
+            : null;
+        const providerReferenceImagePaths = startFrameReferenceImagePath
+          ? [startFrameReferenceImagePath, ...resolvedReferenceImagePaths]
+          : resolvedReferenceImagePaths;
 
         await dependencies.taskFileStorage.appendTaskLog({
           task,
-          message: `requesting shot image provider for frame ${activeFrame.id} with ${resolvedReferenceImagePaths.length} reference image(s)`,
+          message: `requesting shot image provider for frame ${activeFrame.id} with ${providerReferenceImagePaths.length} reference image(s)`,
         });
         const imageResult = await dependencies.shotImageProvider.generateShotImage({
           projectId: activeProject.id,
           frameId: activeFrame.id,
           promptText: appendVisualStyleToPrompt(
-            activeFrame.promptTextCurrent,
+            buildFrameImagePromptText({
+              frameType: activeFrame.frameType,
+              promptText: activeFrame.promptTextCurrent,
+              hasStartFrameReference: Boolean(startFrameReferenceImagePath),
+            }),
             activeProject.visualStyleText ?? "",
           ),
           negativePromptText: activeFrame.negativePromptTextCurrent,
-          referenceImagePaths: resolvedReferenceImagePaths,
+          referenceImagePaths: providerReferenceImagePaths,
         });
 
         if (!(await isTaskStillActive(dependencies.taskRepository, task.id))) {
@@ -275,4 +278,20 @@ function assertFrameImageTaskInput(input: {
   if (input.taskType !== "frame_image_generate") {
     throw new Error(`Unsupported task input for frame image processing: ${input.taskType}`);
   }
+}
+
+function buildFrameImagePromptText(input: {
+  frameType: "start_frame" | "end_frame";
+  promptText: string;
+  hasStartFrameReference: boolean;
+}) {
+  if (input.frameType !== "end_frame" || !input.hasStartFrameReference) {
+    return input.promptText;
+  }
+
+  return [
+    "参考图1是当前 segment 的首帧，请在参考图1的基础上生成尾帧。",
+    "必须保持参考图1中的角色身份、服装、场景空间、主光线和画幅连续，但画面内容要推进到提示词描述的结束状态；不要复刻参考图1，也不要只做左右反打或同义构图。",
+    input.promptText,
+  ].join("\n");
 }

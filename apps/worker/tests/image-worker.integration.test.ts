@@ -1107,7 +1107,7 @@ describe("image worker integration", () => {
     );
     const request = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     expect(request.model).toBe("doubao-seedream-5-0-260128");
-    expect(request.size).toBe("2K");
+    expect(request.size).toBe("2848x1600");
     expect(request.output_format).toBe("png");
     expect(request.watermark).toBe(false);
   });

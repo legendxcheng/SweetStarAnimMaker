@@ -115,10 +115,15 @@ export function createProcessFramePromptGenerateTaskUseCase(
           throw new Error(`Shot script segment not found: ${taskInput.segmentId}`);
         }
 
-        const currentShot = segment.shots.find((item) => item.id === taskInput.shotId);
+        const currentShotId = selectCurrentShotIdForFrame({
+          frameType: taskInput.frameType,
+          fallbackShotId: taskInput.shotId,
+          sourceShotIds: taskInput.sourceShotIds ?? shot?.sourceShotIds,
+        });
+        const currentShot = segment.shots.find((item) => item.id === currentShotId);
 
         if (!currentShot) {
-          throw new Error(`Shot script shot not found: ${taskInput.shotId}`);
+          throw new Error(`Shot script shot not found: ${currentShotId}`);
         }
 
         const characterRoster = await loadApprovedCharacterRoster({
@@ -185,6 +190,13 @@ export function createProcessFramePromptGenerateTaskUseCase(
         });
         const selectedScene =
           sceneCandidates.find((scene) => scene.sceneId === promptPlan.selectedSceneId) ?? null;
+        const selectedSceneReferenceImagePaths = selectedScene?.imageAssetPath
+          ? [selectedScene.imageAssetPath]
+          : [];
+        const allMatchedReferenceImagePaths = [
+          ...matchedReferenceImagePaths,
+          ...selectedSceneReferenceImagePaths,
+        ];
         const promptText = promptPlan.promptText.trim();
 
         if (!promptText) {
@@ -196,7 +208,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
           ...frame,
           planStatus: "planned" as const,
           selectedCharacterIds,
-          matchedReferenceImagePaths,
+          matchedReferenceImagePaths: allMatchedReferenceImagePaths,
           unmatchedCharacterIds,
           promptTextSeed: promptText,
           promptTextCurrent: promptText,
@@ -229,7 +241,7 @@ export function createProcessFramePromptGenerateTaskUseCase(
           output: {
             frameId: updatedFrame.id,
             selectedCharacterIds,
-            matchedReferenceImagePaths,
+            matchedReferenceImagePaths: allMatchedReferenceImagePaths,
             unmatchedCharacterIds,
           },
         });
@@ -388,8 +400,23 @@ function assertFramePromptTaskInput(input: {
   segmentId: string;
   sceneId: string;
   frameType: "start_frame" | "end_frame";
+  sourceShotIds?: string[];
 } {
   if (input.taskType !== "frame_prompt_generate") {
     throw new Error(`Unsupported task input for frame prompt processing: ${input.taskType}`);
   }
+}
+
+function selectCurrentShotIdForFrame(input: {
+  frameType: "start_frame" | "end_frame";
+  fallbackShotId?: string;
+  sourceShotIds?: string[];
+}) {
+  const sourceShotIds = input.sourceShotIds?.filter((id) => id.trim().length > 0) ?? [];
+
+  if (input.frameType === "end_frame") {
+    return sourceShotIds.at(-1) ?? input.fallbackShotId;
+  }
+
+  return sourceShotIds[0] ?? input.fallbackShotId;
 }
