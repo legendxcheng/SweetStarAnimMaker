@@ -5,6 +5,8 @@
   "packageManager": "pnpm@10.6.5",
   "scripts": {
     "build": "corepack pnpm -r build",
+    "desktop:build": "corepack pnpm --filter @sweet-star/desktop build",
+    "desktop:prepare": "corepack pnpm --filter @sweet-star/studio build && node tooling/scripts/prepare-desktop-runtime.mjs",
     "dev:api": "corepack pnpm --filter @sweet-star/api dev",
     "dev:worker": "corepack pnpm --filter @sweet-star/worker dev",
     "dev:studio": "corepack pnpm --filter @sweet-star/studio dev",

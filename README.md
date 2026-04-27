@@ -28,6 +28,21 @@ What the installer does:
 
 The generated `.env` is intentionally smoke-mode safe. If you want real generation instead of smoke mode, add your own `VECTORENGINE_API_TOKEN` to `.env` after installation.
 
+## Windows Tauri Desktop Package
+
+The short-term desktop package is Windows-only. It embeds the built Studio UI in a Tauri shell and packages the existing Node backend stack as a local runtime resource.
+
+Build the desktop installer:
+
+```bash
+corepack pnpm install
+corepack pnpm desktop:build
+```
+
+The build runs `desktop:prepare`, which builds `apps/studio`, prepares `desktop-runtime`, copies the current Windows `node.exe`, and bundles the existing backend source/runtime dependencies for the Tauri installer. The packaged app starts the local backend on `127.0.0.1:13000` when the desktop window opens and stops it when the window closes.
+
+This first desktop package intentionally reuses the current `.env` and `.local-data` behavior inside the packaged backend runtime. It is a short-term distribution path, not the final workspace-selection design.
+
 ## Backend API And Worker
 
 Install dependencies:

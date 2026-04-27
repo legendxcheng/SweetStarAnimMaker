@@ -1,0 +1,14 @@
+{
+  "name": "@sweet-star/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "corepack pnpm exec tauri build",
+    "dev": "corepack pnpm exec tauri dev",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

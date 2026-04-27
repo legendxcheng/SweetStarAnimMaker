@@ -1,6 +1,8 @@
 node_modules/
 .pnpm-store/
 dist/
+desktop-runtime/
+apps/desktop/src-tauri/target/
 coverage/
 .local-data/
 .worktrees/
