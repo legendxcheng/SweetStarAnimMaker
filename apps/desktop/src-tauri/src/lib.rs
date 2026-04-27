@@ -44,7 +44,7 @@ pub fn run() {
                 .env("SWEETSTAR_WORKSPACE_ROOT", &backend_dir)
                 .env(
                     "STUDIO_ORIGIN",
-                    "tauri://localhost,http://127.0.0.1:14273,http://localhost:5173",
+                    "tauri://localhost,http://tauri.localhost,https://tauri.localhost,http://127.0.0.1:14273,http://localhost:5173",
                 )
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())

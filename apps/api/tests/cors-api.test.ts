@@ -37,6 +37,23 @@ describe("cors api", () => {
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });
 
+  it("allows the packaged Tauri WebView origin for preflight requests", async () => {
+    const app = await createTempApp();
+
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/projects",
+      headers: {
+        origin: "http://tauri.localhost",
+        "access-control-request-method": "GET",
+      },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://tauri.localhost");
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+  });
+
   it("omits CORS headers for origins outside the local allowlist", async () => {
     const app = await createTempApp();
 

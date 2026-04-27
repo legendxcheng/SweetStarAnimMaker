@@ -23,7 +23,10 @@ test("creates a Windows desktop backend launch config", () => {
   assert.equal(config.env.SWEETSTAR_DESKTOP, "1");
   assert.equal(config.env.SWEETSTAR_APP_DATA_DIR, appDataDir);
   assert.equal(config.env.SWEETSTAR_WORKSPACE_ROOT, config.cwd);
-  assert.equal(config.env.STUDIO_ORIGIN, "tauri://localhost,http://127.0.0.1:14273,http://localhost:5173");
+  assert.equal(
+    config.env.STUDIO_ORIGIN,
+    "tauri://localhost,http://tauri.localhost,https://tauri.localhost,http://127.0.0.1:14273,http://localhost:5173",
+  );
 });
 
 test("creates a backend child process using the injected spawner", () => {

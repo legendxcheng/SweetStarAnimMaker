@@ -2,7 +2,7 @@ import { spawn as spawnChildProcess } from "node:child_process";
 import path from "node:path";
 
 export const desktopStudioOrigin =
-  "tauri://localhost,http://127.0.0.1:14273,http://localhost:5173";
+  "tauri://localhost,http://tauri.localhost,https://tauri.localhost,http://127.0.0.1:14273,http://localhost:5173";
 
 export function createDesktopBackendLaunchConfig({
   appDataDir,
