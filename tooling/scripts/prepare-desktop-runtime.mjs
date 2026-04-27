@@ -57,7 +57,7 @@ async function copyPath(from, to) {
           normalized.includes("/.local-data") ||
           normalized.includes("/.codex-runtime") ||
           normalized.includes("/.vite") ||
-          (/^(?:apps|packages)\/[^/]+\/node_modules(?:\/|$)/u).test(relativeSource) ||
+          (/(?:^|\/)node_modules(?:\/|$)/u).test(relativeSource) ||
           normalized.includes("/apps/desktop-runtime") ||
           normalized.includes("/apps/desktop/src-tauri/target")
         );
@@ -92,7 +92,10 @@ async function installRuntimeDependencies() {
 
   await execFileAsync(command, args, {
     cwd: backendRoot,
-    env: process.env,
+    env: {
+      ...process.env,
+      npm_config_node_linker: "hoisted",
+    },
     windowsHide: true,
   });
 }

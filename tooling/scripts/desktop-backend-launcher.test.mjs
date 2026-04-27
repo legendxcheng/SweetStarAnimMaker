@@ -17,7 +17,7 @@ test("creates a Windows desktop backend launch config", () => {
 
   assert.equal(config.command, path.join(resourceDir, "desktop-runtime", "node", "node.exe"));
   assert.deepEqual(config.args, [
-    path.join(resourceDir, "desktop-runtime", "backend", "start-backend-stack.mjs"),
+    path.join(resourceDir, "desktop-runtime", "backend", "tooling", "scripts", "start-backend-stack.mjs"),
   ]);
   assert.equal(config.cwd, path.join(resourceDir, "desktop-runtime", "backend"));
   assert.equal(config.env.SWEETSTAR_DESKTOP, "1");

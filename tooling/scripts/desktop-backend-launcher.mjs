@@ -21,7 +21,7 @@ export function createDesktopBackendLaunchConfig({
   const backendRoot = path.join(runtimeRoot, "backend");
 
   return {
-    args: [path.join(backendRoot, "start-backend-stack.mjs")],
+    args: [path.join(backendRoot, "tooling", "scripts", "start-backend-stack.mjs")],
     command: path.join(runtimeRoot, "node", "node.exe"),
     cwd: backendRoot,
     env: {

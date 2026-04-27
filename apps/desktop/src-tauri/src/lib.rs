@@ -30,7 +30,10 @@ pub fn run() {
             std::fs::create_dir_all(&backend_runtime_dir).map_err(|error| error.to_string())?;
             let node_exe = runtime_dir.join("node").join("node.exe");
             let backend_dir = runtime_dir.join("backend");
-            let backend_entry = backend_dir.join("start-backend-stack.mjs");
+            let backend_entry = backend_dir
+                .join("tooling")
+                .join("scripts")
+                .join("start-backend-stack.mjs");
 
             let child = Command::new(node_exe)
                 .arg(backend_entry)

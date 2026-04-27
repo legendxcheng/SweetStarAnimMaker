@@ -4,14 +4,20 @@ const path = require("node:path");
 const workspaceRoot = path.resolve(__dirname, "..", "..");
 const runtimeDir = process.env.SWEETSTAR_RUNTIME_DIR || path.join(workspaceRoot, ".codex-runtime");
 const outputPath = path.join(runtimeDir, "redis-url.txt");
+
+const redisRuntimeDir = path.join(runtimeDir, "redis-memory-server");
+const redisTempDir = path.join(redisRuntimeDir, "tmp");
+fs.mkdirSync(redisTempDir, { recursive: true });
+process.env.REDISMS_DOWNLOAD_DIR ||= path.join(redisRuntimeDir, "redis-binaries");
+process.env.TMP = redisTempDir;
+process.env.TEMP = redisTempDir;
+
 const redisMemoryServerPath = require.resolve("redis-memory-server", {
   paths: [path.join(workspaceRoot, "apps", "api")],
 });
 const { RedisMemoryServer } = require(redisMemoryServerPath);
 
 let server;
-
-fs.mkdirSync(runtimeDir, { recursive: true });
 
 (async () => {
   server = new RedisMemoryServer();
