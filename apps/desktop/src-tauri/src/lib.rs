@@ -26,6 +26,8 @@ pub fn run() {
                 .resource_dir()
                 .map_err(|error| error.to_string())?;
             let runtime_dir = resource_dir.join("desktop-runtime");
+            let backend_runtime_dir = app_data_dir.join(".codex-runtime");
+            std::fs::create_dir_all(&backend_runtime_dir).map_err(|error| error.to_string())?;
             let node_exe = runtime_dir.join("node").join("node.exe");
             let backend_dir = runtime_dir.join("backend");
             let backend_entry = backend_dir.join("start-backend-stack.mjs");
@@ -35,6 +37,7 @@ pub fn run() {
                 .current_dir(&backend_dir)
                 .env("SWEETSTAR_DESKTOP", "1")
                 .env("SWEETSTAR_APP_DATA_DIR", &app_data_dir)
+                .env("SWEETSTAR_RUNTIME_DIR", &backend_runtime_dir)
                 .env("SWEETSTAR_WORKSPACE_ROOT", &backend_dir)
                 .env(
                     "STUDIO_ORIGIN",

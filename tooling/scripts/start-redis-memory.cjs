@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..");
-const runtimeDir = path.join(workspaceRoot, ".codex-runtime");
+const runtimeDir = process.env.SWEETSTAR_RUNTIME_DIR || path.join(workspaceRoot, ".codex-runtime");
 const outputPath = path.join(runtimeDir, "redis-url.txt");
 const redisMemoryServerPath = require.resolve("redis-memory-server", {
   paths: [path.join(workspaceRoot, "apps", "api")],

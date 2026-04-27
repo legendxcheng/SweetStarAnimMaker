@@ -26,7 +26,8 @@ export async function resolveRootRedisUrl({
   env = process.env,
   waitForRedisUrl = defaultWaitForRedisUrl,
 }) {
-  const redisUrlFile = path.join(workspaceRoot, ".codex-runtime", "redis-url.txt");
+  const runtimeDir = env.SWEETSTAR_RUNTIME_DIR?.trim() || path.join(workspaceRoot, ".codex-runtime");
+  const redisUrlFile = path.join(runtimeDir, "redis-url.txt");
 
   try {
     return await waitForRedisUrl(redisUrlFile);

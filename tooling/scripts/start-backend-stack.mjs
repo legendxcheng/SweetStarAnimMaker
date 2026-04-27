@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -10,8 +11,16 @@ const execFileAsync = promisify(execFile);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "../..");
-const runtimeDir = path.join(workspaceRoot, ".codex-runtime");
+const runtimeDir = process.env.SWEETSTAR_RUNTIME_DIR ?? path.join(workspaceRoot, ".codex-runtime");
 const redisUrlFile = path.join(runtimeDir, "redis-url.txt");
+const require = createRequire(import.meta.url);
+const tsxCliPath = require.resolve("tsx/cli", {
+  paths: [
+    path.join(workspaceRoot, "apps", "api"),
+    path.join(workspaceRoot, "apps", "worker"),
+    workspaceRoot,
+  ],
+});
 
 /** @type {import("node:child_process").ChildProcessWithoutNullStreams[]} */
 const children = [];
@@ -78,15 +87,7 @@ const serviceSpecs = [
     name: "api",
     command: process.execPath,
     args: [
-      path.join(
-        workspaceRoot,
-        "apps",
-        "api",
-        "node_modules",
-        "tsx",
-        "dist",
-        "cli.mjs",
-      ),
+      tsxCliPath,
       path.join(workspaceRoot, "tooling", "scripts", "start-api-root.mjs"),
     ],
   },
@@ -94,15 +95,7 @@ const serviceSpecs = [
     name: "worker",
     command: process.execPath,
     args: [
-      path.join(
-        workspaceRoot,
-        "apps",
-        "worker",
-        "node_modules",
-        "tsx",
-        "dist",
-        "cli.mjs",
-      ),
+      tsxCliPath,
       path.join(workspaceRoot, "tooling", "scripts", "start-worker-root.mjs"),
     ],
   },
