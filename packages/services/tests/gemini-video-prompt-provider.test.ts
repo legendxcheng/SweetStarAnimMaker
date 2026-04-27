@@ -528,6 +528,141 @@ describe("gemini video prompt provider", () => {
     expect(promptText).toContain("segment 结尾关键帧");
   });
 
+  it("prepends a deterministic sub-shot timeline when Gemini collapses a multi-shot segment into prose", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    finalPrompt:
+                      "视频开始，林峰走到广告牌下方，广告牌连接处崩断，他从容后退，广告牌擦着鼻尖落下并砸碎在地，路人惊慌躲避，林峰庆幸地看着碎片。",
+                    dialoguePlan: "模型原始返回，可被系统覆写。",
+                    audioPlan: "模型原始返回，可被系统覆写。",
+                    visualGuardrails: "保持林峰服装、站位和大厅空间连续。",
+                    rationale: "模型把多个子镜头合并成了连续事件描述。",
+                    selectedCharacterIds: [],
+                    selectedSceneId: null,
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeminiVideoPromptProvider({
+      apiToken: "test-token",
+      model: "gemini-3.1-pro-preview",
+    });
+
+    const result = await provider.generateVideoPrompt({
+      projectId: "proj_20260420_b4966d",
+      segment: {
+        segmentId: "segment_1",
+        sceneId: "scene_3",
+        order: 1,
+        name: "广告牌坠落危机",
+        summary: "林峰在财团大厅中险些被坠落广告牌砸中。",
+        durationSec: 15,
+        shotCount: 5,
+      },
+      shots: [
+        {
+          id: "shot_1",
+          shotCode: "S03_Seg01_01",
+          purpose: "交代环境，引导角色自然进入危机发生的中心区域。",
+          visual: "阳光明媚的写字楼大厅，林峰步伐平稳地向前走去，恰好走到一块半空悬挂的巨大广告牌正下方。",
+          subject: "林峰",
+          action: "林峰正常行走，走到广告牌下方时略微停顿了一下。",
+          frameDependency: "start_frame_only",
+          dialogue: null,
+          os: null,
+          audio: "写字楼大厅的环境音，平稳的脚步声。",
+          transitionHint: "切",
+          continuityNotes: "林峰服装一致，大厅光线明亮，机位稳定。",
+          durationSec: 3,
+        },
+        {
+          id: "shot_2",
+          shotCode: "S03_Seg01_02",
+          purpose: "利用细节展示制造突发危机，拉高紧张感和悬念。",
+          visual: "半空中的沉重广告牌特写，连接处突然发生严重变形并崩断。",
+          subject: "广告牌",
+          action: "广告牌金属固定件崩断，结构失去平衡准备坠落。",
+          frameDependency: "start_frame_only",
+          dialogue: null,
+          os: null,
+          audio: "尖锐刺耳的金属断裂声。",
+          transitionHint: "切",
+          continuityNotes: "广告牌的材质与设计样式应与前一镜头的背景保持一致。",
+          durationSec: 2,
+        },
+        {
+          id: "shot_3",
+          shotCode: "S03_Seg01_03",
+          purpose: "精准展示林峰的预知反应与从容态度，体现转运后的直接效果。",
+          visual: "中景，林峰仿佛有预知感应一般，没有任何惊慌，从容地停住脚步。",
+          subject: "林峰",
+          action: "林峰立刻停步，身体重心微微后移，从容地退后半步，抬头看向斜上方。",
+          frameDependency: "start_frame_only",
+          dialogue: null,
+          os: null,
+          audio: "轻微的衣物摩擦声，环境音短暂变弱带来心理压迫感。",
+          transitionHint: "切",
+          continuityNotes: "站位保持在广告牌的阴影边缘，保持衣着连贯。",
+          durationSec: 2,
+        },
+        {
+          id: "shot_4",
+          shotCode: "S03_Seg01_04",
+          purpose: "呈现擦肩而过的致命危机，放大化太岁功效带来的视觉震撼。",
+          visual: "特写或近景仰拍角度，巨大的广告牌带着厚重的阴影急速坠落，极其惊险地擦着林峰的鼻尖划过。",
+          subject: "林峰，广告牌",
+          action: "广告牌垂直狠狠落下，林峰保持后退姿态稳住重心不动，两者险之又险地擦肩而过。",
+          frameDependency: "start_frame_only",
+          dialogue: null,
+          os: null,
+          audio: "重物划破空气的呼啸声，风声灌耳。",
+          transitionHint: "切",
+          continuityNotes: "林峰的姿态需符合上一个镜头后撤半步后的相对静止状态。",
+          durationSec: 2,
+        },
+        {
+          id: "shot_5",
+          shotCode: "S03_Seg01_05",
+          purpose: "展示灾难后果的破坏力，对比出完好无损的幸运，确立逆袭感并交代内心戏。",
+          visual: "全景拉开，巨大的广告牌重重砸在林峰面前的地面上瞬间粉碎。周围路人惊慌失措地看过来，而林峰安然无恙地站在原地，凝视地上的碎片。",
+          subject: "林峰，路人",
+          action: "广告牌狠狠砸碎在地，碎片飞溅，路人受到极大惊吓纷纷躲避，林峰神情从紧绷逐渐转为带有明悟的庆幸。",
+          frameDependency: "start_frame_only",
+          dialogue: null,
+          os: "好险但这感觉，跟以前完全不一样了。",
+          audio: "巨大的重物坠地轰鸣声，碎片摔碎的噼啪声，路人的惊呼声。",
+          transitionHint: null,
+          continuityNotes: "地上的碎片散落位置需紧挨着林峰的正前方，展现距离之近。",
+          durationSec: 6,
+        },
+      ],
+    });
+
+    expect(result.finalPrompt).toContain("【子镜头时间轴】");
+    expect(result.finalPrompt).toContain("0-3秒 / S03_Seg01_01：");
+    expect(result.finalPrompt).toContain("3-5秒 / S03_Seg01_02：");
+    expect(result.finalPrompt).toContain("5-7秒 / S03_Seg01_03：");
+    expect(result.finalPrompt).toContain("7-9秒 / S03_Seg01_04：");
+    expect(result.finalPrompt).toContain("9-15秒 / S03_Seg01_05：");
+    expect(result.finalPrompt).toContain("视频开始，林峰走到广告牌下方");
+    expect(result.finalPrompt).toContain(
+      "语音约束：无人物对白。子镜头5（S03_Seg01_05）旁白/画外音：好险但这感觉，跟以前完全不一样了。",
+    );
+  });
+
   it("filters music-like clauses out of deterministic audio constraints and prompt context", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -26,6 +26,10 @@ function shouldRetryWithGrok(error: unknown) {
 
   return (
     error.message.includes("PROHIBITED_CONTENT") ||
-    /content is prohibited/i.test(error.message)
+    /content is prohibited/i.test(error.message) ||
+    /returned invalid prompt plan JSON/i.test(error.message) ||
+    /returned invalid finalPrompt/i.test(error.message) ||
+    /returned invalid visualGuardrails/i.test(error.message) ||
+    /returned invalid rationale/i.test(error.message)
   );
 }

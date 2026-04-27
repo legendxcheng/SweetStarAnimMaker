@@ -18,7 +18,7 @@ export function ProjectPhaseNav<TPhaseKey extends string>({
   return (
     <nav
       aria-label="项目阶段"
-      className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-3 h-fit"
+      className="bg-(--color-bg-surface) border border-(--color-border) rounded-xl p-3 h-fit lg:sticky lg:top-6 lg:self-start"
     >
       <div className="mb-2 px-2 text-xs font-semibold tracking-wide text-(--color-text-muted)">
         项目阶段

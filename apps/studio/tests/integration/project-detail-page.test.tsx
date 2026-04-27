@@ -413,6 +413,11 @@ describe("Project Detail Page", () => {
       );
     });
 
+    expect(screen.getByRole("navigation", { name: "项目阶段" })).toHaveClass(
+      "lg:sticky",
+      "lg:top-6",
+      "lg:self-start",
+    );
     expect(screen.getByRole("button", { name: "主情节" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "场景" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "分镜" })).toBeDisabled();

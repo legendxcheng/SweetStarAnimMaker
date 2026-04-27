@@ -51,6 +51,9 @@ export function buildVideoPromptText(input: GenerateVideoPromptInput) {
     "- finalPrompt 必须使用简体中文自然语言，不要输出 JSON 片段、标题或解释。",
     "- 这是一个连续短剧片段，不是单镜头 Kling prompt，也不要写成互相孤立的分镜清单。",
     "- 必须把内部 shots 改写成连续时间轴，明确片段开头承接状态、中段推进、结尾交接状态。",
+    "- 如果内部 shot 数大于 1，finalPrompt 必须保留【子镜头时间轴】结构，并逐行使用“0-3秒 / shotCode：画面与动作...”这种格式覆盖每个子镜头。",
+    "- 多子镜头时间轴仍然属于同一次 Seedance 请求、同一个 segment 视频；不要要求为每个子镜头提供单独帧参考图。",
+    "- 不允许把多个内部 shots 压缩成只有一个“视频开始...”的单段散文描述。",
     "- 必须优先控制连续性：人物外观、服装道具、空间关系、情绪线、动作起点和动作终点。",
     "- 不要虚构未提供的新角色设定、剧情、台词、人声、旁白、配乐或额外音效。",
     "- 如果提供参考图片，可以用“图片1 / 图片2 / ...”指代普通参考图，但首尾帧必须优先使用【首帧图片】和【尾帧图片】这两个别名。",
@@ -168,7 +171,7 @@ export function normalizeVideoPromptPayload(
 
   return {
     finalPrompt: appendHardConstraints(
-      finalPromptBase,
+      ensureSubShotTimeline(finalPromptBase, input),
       dialoguePlan,
       buildFinalPromptAudioConstraint(input),
     ),
@@ -294,6 +297,92 @@ function appendHardConstraints(finalPrompt: string, dialoguePlan: string, audioC
   }
 
   return parts.join("\n");
+}
+
+function ensureSubShotTimeline(finalPrompt: string, input: GenerateVideoPromptInput) {
+  const shots = resolveShots(input);
+
+  if (shots.length <= 1) {
+    return finalPrompt.trim();
+  }
+
+  const timelineEntries = buildSubShotTimelineEntries(
+    shots,
+    resolveSegmentDurationSec(input, shots),
+  );
+
+  if (hasCompleteSubShotTimeline(finalPrompt, timelineEntries)) {
+    return finalPrompt.trim();
+  }
+
+  return [
+    "【子镜头时间轴】",
+    ...timelineEntries.map((entry) => `${entry.timeWindow} / ${entry.shotCode}：${entry.text}`),
+    "",
+    "【连续片段描述】",
+    finalPrompt.trim(),
+  ].join("\n");
+}
+
+function hasCompleteSubShotTimeline(
+  finalPrompt: string,
+  timelineEntries: ReturnType<typeof buildSubShotTimelineEntries>,
+) {
+  return timelineEntries.every(
+    (entry) => finalPrompt.includes(entry.timeWindow) && finalPrompt.includes(entry.shotCode),
+  );
+}
+
+function buildSubShotTimelineEntries(
+  shots: ReturnType<typeof resolveShots>,
+  segmentDurationSec: number | null,
+) {
+  let cursor = 0;
+
+  return shots.map((shot, index) => {
+    const durationSec =
+      shot.durationSec ??
+      (segmentDurationSec ? Math.max(1, Math.round(segmentDurationSec / shots.length)) : null);
+    const timeWindow = durationSec
+      ? `${formatSeconds(cursor)}-${formatSeconds(cursor + durationSec)}秒`
+      : `子镜头${index + 1}`;
+    cursor += durationSec ?? 0;
+
+    return {
+      timeWindow,
+      shotCode: shot.shotCode,
+      text: buildSubShotTimelineText(shot),
+    };
+  });
+}
+
+function buildSubShotTimelineText(shot: ReturnType<typeof resolveShots>[number]) {
+  const parts = [
+    `目的：${shot.purpose}`,
+    `画面：${shot.visual}`,
+    `主体：${shot.subject}`,
+    `动作：${shot.action}`,
+  ];
+
+  if (shot.dialogue) {
+    parts.push(`对白：${shot.dialogue}`);
+  }
+
+  if (shot.os) {
+    parts.push(`旁白/画外音：${shot.os}`);
+  }
+
+  parts.push(`音频/声效：${summarizeShotAudio(shot.audio)}`);
+
+  if (shot.transitionHint) {
+    parts.push(`转场提示：${shot.transitionHint}`);
+  }
+
+  if (shot.continuityNotes) {
+    parts.push(`连续性要求：${shot.continuityNotes}`);
+  }
+
+  return parts.join("；");
 }
 
 function resolveShots(input: GenerateVideoPromptInput) {
